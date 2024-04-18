@@ -1,0 +1,34 @@
+STEAM_PROXY_1.0 {
+    global:
+        NextSteamProxy_SetSEH;
+        SteamAPI_Init;
+        SteamAPI_Shutdown;
+        SteamAPI_RunCallbacks;
+        SteamAPI_RegisterCallback;
+        SteamAPI_UnregisterCallback;
+        SteamAPI_RegisterCallResult;
+        SteamAPI_UnregisterCallResult;
+        SteamAPI_UseBreakpadCrashHandler;
+        SteamAPI_SetBreakpadAppID;
+        SteamAPI_WriteMiniDump;
+        SteamAPI_SetMiniDumpComment;
+        SteamUser;
+        SteamFriends;
+        SteamUtils;
+        SteamMatchmaking;
+        SteamUserStats;
+        SteamApps;
+        SteamNetworking;
+        SteamMatchmakingServers;
+        SteamRemoteStorage;
+        SteamScreenshots;
+        SteamHTTP;
+        SteamUnifiedMessages;
+        SteamGameServer_Init;
+        SteamGameServer_Shutdown;
+        SteamGameServer_RunCallbacks;
+        SteamGameServer;
+
+    local:
+        *;
+};

@@ -1,0 +1,5 @@
+#pragma once
+#define GAME_UI_VERSION_MAJOR @gameui_VERSION_MAJOR@
+#define GAME_UI_VERSION_MINOR @gameui_VERSION_MINOR@
+#define GAME_UI_VERSION_PATCH @gameui_VERSION_PATCH@
+#define GAME_UI_VERSION "@gameui_VERSION_MAJOR@.@gameui_VERSION_MINOR@.@gameui_VERSION_PATCH@ (" __DATE__ " " __TIME__ ")"

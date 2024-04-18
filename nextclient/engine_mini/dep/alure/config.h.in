@@ -1,0 +1,17 @@
+/* Define if we have wave file support */
+#cmakedefine HAVE_WAVE
+
+/* Define if we have vorbisfile support */
+#cmakedefine HAVE_VORBISFILE
+
+/* Define if we have FLAC support */
+#cmakedefine HAVE_FLAC
+
+/* Define if we have opusfile support */
+#cmakedefine HAVE_OPUSFILE
+
+/* Define if we have libsndfile support */
+#cmakedefine HAVE_LIBSNDFILE
+
+/* Define if we have MINIMP3 support */
+#cmakedefine HAVE_MINIMP3

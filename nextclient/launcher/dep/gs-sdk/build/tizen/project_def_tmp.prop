@@ -1,0 +1,13 @@
+APPNAME = GameAnalytics
+
+type = <LIB_TYPE>
+profile = mobile-2.4
+
+USER_SRCS = src/gameanalytics/GADevice.cpp src/gameanalytics/GAEvents.cpp src/gameanalytics/GAHTTPApi.cpp src/gameanalytics/GALogger.cpp src/gameanalytics/GameAnalytics.cpp src/gameanalytics/GameAnalyticsExtern.cpp src/gameanalytics/GAState.cpp src/gameanalytics/GAStore.cpp src/gameanalytics/GAThreadingTizen.cpp src/gameanalytics/GAUtilities.cpp src/gameanalytics/GAValidator.cpp src/dependencies/crossguid/guid.cpp src/dependencies/crypto/aes.cpp src/dependencies/crypto/md5.cpp src/dependencies/crypto/hmac_sha2.c src/dependencies/crypto/sha2.c src/dependencies/miniz/miniz.c
+USER_DEFS = USE_TIZEN GUID_LIBUUID <ASYNC>
+USER_CPP_DEFS = USE_TIZEN GUID_LIBUUID <ASYNC>
+USER_INC_DIRS = inc/crypto inc/miniz inc/rapidjson inc/crossguid
+USER_CPP_INC_DIRS = inc/crossguid inc/rapidjson inc/crypto src/gameanalytics inc/miniz
+USER_OBJS =
+USER_LIBS =
+USER_EDCS =

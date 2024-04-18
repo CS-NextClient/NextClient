@@ -1,0 +1,43 @@
+language: cpp
+
+addons:
+  apt:
+    sources:
+      - ubuntu-toolchain-r-test
+    packages:
+      - g++-4.9
+      - libopenal-dev
+      - libvorbis-dev
+      - libopusfile-dev
+      - libsndfile1-dev
+      - libphysfs-dev
+      - libdumb1-dev
+  homebrew:
+    packages:
+      - openal-soft
+      - libvorbis
+      - opusfile
+      - libsndfile
+      - physfs
+      - dumb
+    update: true
+
+git:
+  depth: 1
+
+jobs:
+  include:
+    - os: osx
+      script:
+        - cd build
+        - OPENALDIR=`brew --prefix openal-soft` cmake -DCMAKE_FIND_FRAMEWORK=NEVER ..
+        - cmake --build . --parallel `sysctl -n hw.ncpu`
+    - os: osx
+      env: NPROC=`sysctl -n hw.ncpu`
+    - os: linux
+      env: CC=gcc-4.9 CXX=g++-4.9 NPROC=`nproc`
+
+script:
+  - cd build
+  - cmake ..
+  - cmake --build . --parallel $NPROC

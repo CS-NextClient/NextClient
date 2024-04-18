@@ -1,0 +1,24 @@
+environment:
+    matrix:
+      - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2015
+        GEN: "Visual Studio 14 2015"
+        ARCH: x64
+        CFG: Release
+      - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
+        GEN: "Visual Studio 15 2017"
+        ARCH: x64
+        CFG: Release
+
+install:
+    # Remove the VS Xamarin targets to reduce AppVeyor specific noise in build
+    # logs. See: http://help.appveyor.com/discussions/problems/4569
+    - del "C:\Program Files (x86)\MSBuild\14.0\Microsoft.Common.targets\ImportAfter\Xamarin.Common.targets"
+    - curl "https://openal-soft.org/openal-binaries/openal-soft-1.20.1-bin.zip" -o openal-soft-1.20.1-bin.zip
+    - 7z x -o%APPVEYOR_BUILD_FOLDER%\.. openal-soft-1.20.1-bin.zip
+    - set OPENALDIR=%APPVEYOR_BUILD_FOLDER%\..\openal-soft-1.20.1-bin
+
+build_script:
+- cmd: |
+    cd build
+    cmake -G"%GEN%" -A %ARCH% ..
+    cmake --build . --config %CFG% --clean-first

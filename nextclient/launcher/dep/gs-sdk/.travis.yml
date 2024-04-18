@@ -1,0 +1,36 @@
+osx_image: xcode12.2
+language: objective-c
+xcode_project: GameAnalyticsTests.xcodeproj
+xcode_scheme:
+    - GameAnalyticsTests
+
+notifications:
+    slack:
+        rooms:
+            - gameanalytics:hDYD7nkOTe3tkrvb68WEpyqw#ask-sdk
+        on_success: change
+        on_failure: change
+    email:
+        recipients:
+            - sdk@gameanalytics.com
+    on_success: always
+    on_failure: always
+
+before_install:
+    - brew update
+    - travis_wait 40 python3 build/jenkins/main.py -s -t osx-static
+
+install:
+    - (cd tests && mkdir build && cd build && "../../build/jenkins/dependencies/cmake/bin/cmake" -DPLATFORM:STRING=osx-static -DNO_SQLITE_SRC:STRING=NO -G Xcode ..)
+
+script:
+    - cd tests
+    - cd build
+    - xcodebuild -project GameAnalyticsTests.xcodeproj -target GameAnalyticsTests -configuration Debug
+    - ./Debug/GameAnalyticsTests
+
+# only test develop and master
+branches:
+  only:
+    - develop
+    - master

@@ -1,0 +1,13 @@
+*.opensdf
+*.pyc
+*.sdf
+*.suo
+build/cmake/gameanalytics/.idea
+build/jenkins/.idea/
+build/jenkins/build
+build/jenkins/dependencies
+build/obj
+export/
+tests/.idea
+tests/build
+/.project

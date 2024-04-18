@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<profiles version="2.2">
+	<profile name="develop">
+
+<!-- [REQUIRED] -->
+<!-- This is an author certificate. Please change key and password attributes. -->
+<!-- If you want, you can create a new certificate using the certificate-generator. -->
+		<profileitem
+			ca="<SDK_PATH>/tools/certificate-generator/certificates/developer/tizen-developer-ca.cer"
+			distributor="0"
+			key="<Your Certificate (.p12) Path>"
+			password=""
+			rootca=""/>
+
+<!-- [REQUIRED] -->
+<!-- This is a default distributor certificate for developer. -->
+<!-- Generally, you don't need to change this. -->
+		<profileitem
+			ca="<SDK_PATH>/tools/certificate-generator/certificates/distributor/tizen-distributor-ca.cer"
+			distributor="1"
+			key="<SDK_PATH>/tools/certificate-generator/certificates/distributor/tizen-distributor-signer.p12"
+			password="Vy63flx5JBMc5GA4iEf8oFy+8aKE7FX/+arrDcO4I5k="
+			rootca=""/>
+
+<!-- [OPTIONAL] -->
+<!-- Second distributor is a special purposed option. -->
+<!-- Generally, you don't need to change this. -->
+		<profileitem
+			ca=""
+			distributor="2"
+			key=""
+			password=""
+			rootca=""/>
+	</profile>
+</profiles>
