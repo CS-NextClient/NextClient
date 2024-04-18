@@ -1,4 +1,4 @@
-Language: EN | [RU](https://github.com/CS-NextClient/NextClient/README.ru.md)
+Language: EN | [RU](https://github.com/CS-NextClient/NextClient/blob/main/README.ru.md)
 
 NextClient
 ==========
