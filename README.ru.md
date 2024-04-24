@@ -57,13 +57,13 @@ NextClient это модификация для Counter-Strike 1.6, нацеле
 
 ## Установка
 
-1. NextClient работает только с версией движка 8684, убедитесь, что вы находитесь на бета-ветви "steam_legacy - Pre-25th Anniversary Build" в Steam
+1. NextClient работает только с версией движка 8684, убедитесь, что вы находитесь на бета-ветви "steam_legacy - Pre-25th Anniversary Build" в Steam (⚠️ вам нужны файлы официальной игры из Steam! Вы не можете установить NextClient на пиратские клиенты!)
 2. Скопируйте всю папку Counter-Strike 1.6 (Half-Life) в отдельное место вне папки Steam
 3. Переименуйте steam_api.dll в steam_api_orig.dll
 4. Поместите все файлы NextClient в папку с игрой
 5. Запускайте игру через cs.exe
 
-### ⚠️ Внимание! Никогда не помещайте файлы NextClient в папку установки игры в Steam! Это приведет к VAC бану! ⚠️
+### ⚠️ Внимание! Никогда не помещайте файлы NextClient прямо в папку установки игры в Steam! Это приведет к VAC бану! ⚠️
 
 ## Сборка
 Требования:
@@ -88,7 +88,8 @@ cmake -G "Ninja" -B cmake-build-release -DCMAKE_BUILD_TYPE=Release
 cmake --build cmake-build-release -t INSTALL_ALL
 ```
 
-Вы также можете собрать проект из CLion, VS Code или Visual Studio. Используйте цель BUILD_ALL для сборки.
+Вы также можете собрать проект из CLion, VS Code или Visual Studio. Используйте цель BUILD_ALL для сборки.  
+Имейте в виду, что поддерживаются только генераторы Ninja и NMake Makefiles. Поэтому если вы хотите собрать проект в Visual Studio вы должны поменять его в настройках, потому-что Visual Studio по-умолчанию использует генератор Visual Studio 17 2022.
 
 ## Благодарности
 - [Nordic Warrior](https://github.com/Nord1cWarr1or) - за огромное количество фидбека и багрепортов

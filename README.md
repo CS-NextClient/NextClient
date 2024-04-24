@@ -57,13 +57,13 @@ NextClient has integrated some features from [csldr](https://github.com/mikkokko
 
 ## Installation
 
-1. NextClient only works with engine version 8684, make sure you are on the beta branch "steam_legacy - Pre-25th Anniversary Build" in Steam
+1. NextClient only works with engine version 8684, make sure you are on the beta branch "steam_legacy - Pre-25th Anniversary Build" in Steam (⚠️ Note: you need the official game files from Steam! You cannot install NextClient on pirate clients!)
 2. Copy the entire Counter-Strike 1.6 (Half-Life) folder to a separate location outside the Steam folder
 3. Rename steam_api.dll to steam_api_orig.dll
 4. Place all NextClient files in the game folder
 5. Run the game via cs.exe
 
-### ⚠️ Warning! Never put NextClient files in the installation folder of the game in Steam! This will lead to VAC ban! ⚠️
+### ⚠️ Warning! Never put NextClient files directly into the game installation folder in Steam! This will lead to VAC ban! ⚠️
 
 ## Building
 Requirements:
@@ -88,7 +88,8 @@ cmake -G "Ninja" -B cmake-build-release -DCMAKE_BUILD_TYPE=Release
 cmake --build cmake-build-release -t INSTALL_ALL
 ```
 
-You can also build a project from CLion, VS Code, or Visual Studio. Use the BUILD_ALL target to build.
+You can also build a project from CLion, VS Code, or Visual Studio. Use the BUILD_ALL target to build.  
+Note that only Ninja and NMake Makefiles generators are supported. So if you want to build a project in Visual Studio you should change it in the settings, because Visual Studio uses Visual Studio 17 2022 generator by default.
 
 ## Thanks
 - [Nordic Warrior](https://github.com/Nord1cWarr1or) - for the huge amount of feedback and bug reports
