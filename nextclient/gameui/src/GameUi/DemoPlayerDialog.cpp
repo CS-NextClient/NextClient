@@ -500,7 +500,7 @@ void CDemoPlayerDialog::DemoSelected(const char* demoname)
         return;
 
     char fullstring[270];
-    sprintf(fullstring, "viewdemo %s\n", demoname);
+    sprintf(fullstring, "viewdemo \"%s\"\n", demoname);
 
     m_DemoPlayer->Stop();
     m_Engine->Cbuf_AddText( fullstring );
