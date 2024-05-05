@@ -57,8 +57,10 @@ protected:
     void OnEvents(); // open demo events editor
     void OnSave();	// save demo file again
 
+public:
+    MESSAGE_FUNC_CHARPTR(DemoSelected, "DemoSelected", demoname); // select demo
+
 private:
-    MESSAGE_FUNC_CHARPTR( DemoSelected, "DemoSelected", demoname);
     MESSAGE_FUNC_INT( ButtonToggled, "ButtonToggled", state);
 
 protected:

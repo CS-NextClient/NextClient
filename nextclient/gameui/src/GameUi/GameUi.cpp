@@ -2,6 +2,7 @@
 
 #include <sys/types.h>
 #include <direct.h>
+#include <filesystem>
 
 #include <tier1/tier1.h>
 #include <tier2/tier2.h>
@@ -35,6 +36,10 @@
 #include "Browser/ExtensionMatchmakingListings.h"
 #include "Browser/ExtensionGameUiApi.h"
 
+#include <shellapi.h>
+
+namespace fs = std::filesystem;
+
 static IServerBrowserEx *g_pServerBrowser = nullptr;
 static IBaseSystem* g_pBaseSystem = nullptr;
 static IGameClientExports* g_pGameClientExports = nullptr;
@@ -42,6 +47,7 @@ static vgui2::DHANDLE<CDemoPlayerDialog> g_hDemoPlayerDialog;
 vgui2::DHANDLE<CLoadingDialog> g_hLoadingDialog;
 static CGameUI g_GameUI;
 static HWND g_MainWindow = nullptr;
+static WNDPROC g_MainWindowProc = nullptr;
 
 cl_enginefunc_t* engine = nullptr;
 
@@ -72,6 +78,38 @@ namespace vgui2
     }
 }
 
+LRESULT CALLBACK WindowGlobalProcedure(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
+{
+    switch (uMsg)
+    {
+        case WM_DROPFILES:
+        {
+            bool bIsDemoFound = false;
+            HDROP hdrop = (HDROP)wParam;
+            UINT fileCount = DragQueryFileW(hdrop, 0xFFFFFFFF, NULL, 0);
+            for (UINT i = 0; i < fileCount; ++i)
+            {
+                wchar_t wszFilePath[512];
+                DragQueryFileW(hdrop, i, wszFilePath, sizeof(wszFilePath) / sizeof(wchar_t));
+
+                auto uiLength = V_wcslen(wszFilePath);
+                if (uiLength > 4 && _wcsicmp(&wszFilePath[uiLength - 4], L".dem") == 0)
+                {
+                    g_pFullFileSystem->AddSearchPathNoWrite(fs::path(wszFilePath).parent_path().string().c_str(), "GAME");
+                    g_GameUI.ActivateDemoUI();
+                    g_hDemoPlayerDialog->DemoSelected(fs::path(wszFilePath).filename().string().c_str());
+                    bIsDemoFound = true;
+                    break;
+                }
+            }
+            DragFinish(hdrop);
+            if (bIsDemoFound)
+                return 0;
+        }
+    }
+    return CallWindowProc(g_MainWindowProc, hwnd, uMsg, wParam, lParam);
+}
+
 EXPOSE_SINGLE_INTERFACE_GLOBALVAR(CGameUI, IGameUI, GAMEUI_INTERFACE_VERSION_GS, g_GameUI);
 
 CGameUI::CGameUI()
@@ -93,6 +131,8 @@ void CGameUI::Initialize(CreateInterfaceFn *factories, int count)
 
     if (!vgui2::VGui_InitInterfacesList("GameUI", factories, count))
         return;
+
+    g_MainWindowProc = (WNDPROC)SetWindowLongPtr(g_MainWindow, GWLP_WNDPROC, (LONG_PTR)WindowGlobalProcedure);
 
     for (int i = 0; i < count; ++i)
     {

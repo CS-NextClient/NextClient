@@ -177,19 +177,21 @@ void CDemoPlayerDialog::Update()
     if ( !m_DemoPlayer )
         return;
 
+    wchar_t title[300];
+
     if ( !m_DemoPlayer->IsActive() )
     {
         SetTitle( "Demo Player", false);
     }
     else if ( m_DemoPlayer->IsLoading() )
     {
-        char title[300];
-        sprintf( title, "Loading %s ...", m_DemoPlayer->GetFileName() );
+        swprintf( title, L"Loading %hs ...", m_DemoPlayer->GetFileName() );
         SetTitle( title, false);
     }
     else
     {
-        SetTitle( m_DemoPlayer->GetFileName(), false);
+        swprintf(title, L"%hs", m_DemoPlayer->GetFileName());
+        SetTitle(title, false);
     }
 
     frame_t * firstFrame = m_World->GetFirstFrame();
@@ -235,16 +237,12 @@ void CDemoPlayerDialog::Update()
         descrition = "Paused";
     }
 
-    if ( timeScale == 0.25f )
-        timeScaleString ="x1/4";
-    else if ( timeScale == 0.5f )
-        timeScaleString ="x1/2";
-    else if ( timeScale == 1.0f )
-        timeScaleString ="x1";
-    else if ( timeScale == 2.0f )
-        timeScaleString ="x2";
-    else if ( timeScale == 4.0f )
-        timeScaleString ="x4";
+    if ( timeScale < 0.9f ) 
+        timeScaleString = "x1/" + std::to_string((int)(1 / timeScale));
+    else if ( timeScale > 1.1f )
+        timeScaleString = "x" + std::to_string((int)timeScale);
+    else
+        timeScaleString = "x1";
 
     _snprintf(timeCode,31,"%02u:%02u:%02u  %s  %s", int(worldTime)/60, int(worldTime)%60, int(worldTime*100.0f)%100,
               timeScaleString.c_str(), descrition.c_str() );
@@ -339,7 +337,7 @@ void CDemoPlayerDialog::OnSlower()
 {
     float timeScale = m_DemoPlayer->GetTimeScale();
 
-    if ( timeScale <= 0.25f )
+    if ( (int)(1 / timeScale) >= 8 )
         return;
 
     timeScale /= 2.0f;
@@ -362,14 +360,13 @@ void CDemoPlayerDialog::OnEvents()
 
     m_hDemoEventsDialog->Activate();
     PostMessage( m_hDemoEventsDialog->GetVPanel(), new KeyValues("UpdateCmdList"));	// update event list
-
 }
 
 void CDemoPlayerDialog::OnFaster()
 {
     float timeScale = m_DemoPlayer->GetTimeScale();
 
-    if ( timeScale >= 4.0 )
+    if ( (int)timeScale >= 4 )
         return;
 
     timeScale *= 2.0f;
@@ -500,7 +497,7 @@ void CDemoPlayerDialog::DemoSelected(const char* demoname)
         return;
 
     char fullstring[270];
-    sprintf(fullstring, "viewdemo %s\n", demoname);
+    sprintf(fullstring, "viewdemo \"%s\"\n", demoname);
 
     m_DemoPlayer->Stop();
     m_Engine->Cbuf_AddText( fullstring );
