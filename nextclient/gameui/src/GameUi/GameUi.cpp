@@ -36,7 +36,6 @@
 #include "Browser/ExtensionMatchmakingListings.h"
 #include "Browser/ExtensionGameUiApi.h"
 
-#include "DemoPlayerDialog.h"
 #include <shellapi.h>
 
 namespace fs = std::filesystem;
