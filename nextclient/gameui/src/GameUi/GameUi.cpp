@@ -87,18 +87,18 @@ LRESULT CALLBACK WindowGlobalProcedure(HWND hwnd, UINT uMsg, WPARAM wParam, LPAR
         {
             bool bIsDemoFound = false;
             HDROP hdrop = (HDROP)wParam;
-            UINT fileCount = DragQueryFileA(hdrop, 0xFFFFFFFF, NULL, 0);
+            UINT fileCount = DragQueryFileW(hdrop, 0xFFFFFFFF, NULL, 0);
             for (UINT i = 0; i < fileCount; ++i)
             {
-                char szFilePath[512];
-                DragQueryFileA(hdrop, i, szFilePath, sizeof(szFilePath));
+                wchar_t wszFilePath[512];
+                DragQueryFileW(hdrop, i, wszFilePath, sizeof(wszFilePath) / sizeof(wchar_t));
 
-                auto uiLength = strlen(szFilePath);
-                if (uiLength > 4 && stricmp(&szFilePath[uiLength - 4], ".dem") == 0)
+                auto uiLength = V_wcslen(wszFilePath);
+                if (uiLength > 4 && _wcsicmp(&wszFilePath[uiLength - 4], L".dem") == 0)
                 {
-                    g_pFullFileSystem->AddSearchPathNoWrite(fs::path(szFilePath).relative_path().string().c_str(), "GAME");
+                    g_pFullFileSystem->AddSearchPathNoWrite(fs::path(wszFilePath).parent_path().string().c_str(), "GAME");
                     g_GameUI.ActivateDemoUI();
-                    g_hDemoPlayerDialog->DemoSelected(fs::path(szFilePath).filename().string().c_str());
+                    g_hDemoPlayerDialog->DemoSelected(fs::path(wszFilePath).filename().string().c_str());
                     bIsDemoFound = true;
                     break;
                 }
