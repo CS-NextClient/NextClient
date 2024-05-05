@@ -177,19 +177,21 @@ void CDemoPlayerDialog::Update()
     if ( !m_DemoPlayer )
         return;
 
+    wchar_t title[300];
+
     if ( !m_DemoPlayer->IsActive() )
     {
         SetTitle( "Demo Player", false);
     }
     else if ( m_DemoPlayer->IsLoading() )
     {
-        char title[300];
-        sprintf( title, "Loading %s ...", m_DemoPlayer->GetFileName() );
+        swprintf( title, L"Loading %hs ...", m_DemoPlayer->GetFileName() );
         SetTitle( title, false);
     }
     else
     {
-        SetTitle( m_DemoPlayer->GetFileName(), false);
+        swprintf(title, L"%hs", m_DemoPlayer->GetFileName());
+        SetTitle(title, false);
     }
 
     frame_t * firstFrame = m_World->GetFirstFrame();
