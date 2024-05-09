@@ -33,7 +33,6 @@ class HudCrosshair : public HudBase, public nitroapi::NitroApiHelper
     int m_iAmmoLastCheck{};
     float m_flCrosshairDistance{};
     int m_iCrosshairScaleBase{};
-    float m_flPrevCrosshairTime{};
 
 public:
     explicit HudCrosshair(nitroapi::NitroApiInterface* nitro_api);

@@ -34,7 +34,6 @@ void HudCrosshair::VidInit()
 {
     cl_enginefunc()->pfnGetScreenInfo(&screeninfo_);
 
-    m_flPrevCrosshairTime = 0;
     m_iAmmoLastCheck = 0;
     m_flCrosshairDistance = 0;
     m_iCrosshairScaleBase = 0;
@@ -203,10 +202,8 @@ void HudCrosshair::DrawCrosshair(float flTime, int weaponid)
     }
     else
     {
-        m_flCrosshairDistance -= 1.3f * (flCurTime - m_flPrevCrosshairTime) * m_flCrosshairDistance;
+        m_flCrosshairDistance -= (1.3f * m_flCrosshairDistance + 10.f) * (float)*eng()->host_frametime;
     }
-
-    m_flPrevCrosshairTime = flCurTime;
 
     if (*cl()->g_iShotsFired > 600)
         *cl()->g_iShotsFired = 1;
