@@ -45,6 +45,7 @@ void HudCrosshair::DrawCrosshair(float flTime, int weaponid)
 {
     int iDistance;
     int iDeltaDistance;
+    float flCurTime = cl_enginefunc()->GetClientTime();
 
     switch (weaponid)
     {
@@ -201,8 +202,10 @@ void HudCrosshair::DrawCrosshair(float flTime, int weaponid)
     }
     else
     {
-        m_flCrosshairDistance -= 0.013f * m_flCrosshairDistance + 0.1f;
+        m_flCrosshairDistance -= 1.3f * (flCurTime - m_flPrevCrosshairTime) * m_flCrosshairDistance;
     }
+
+    m_flPrevCrosshairTime = flCurTime;
 
     if (*cl()->g_iShotsFired > 600)
         *cl()->g_iShotsFired = 1;
@@ -214,12 +217,12 @@ void HudCrosshair::DrawCrosshair(float flTime, int weaponid)
 
     int iBarSize = (m_flCrosshairDistance - iDistance) * 0.5f + 5;
 
-    if (cl_enginefunc()->GetClientTime() - m_flPrevTime > 1.0f)
+    if (flCurTime - m_flPrevTime > 1.0f)
     {
         CalculateCrosshairColor();
         CalculateCrosshairDrawMode();
         CalculateCrosshairSize();
-        m_flPrevTime = cl_enginefunc()->GetClientTime();
+        m_flPrevTime = flCurTime;
     }
 
     float flCrosshairDistance = m_flCrosshairDistance;
