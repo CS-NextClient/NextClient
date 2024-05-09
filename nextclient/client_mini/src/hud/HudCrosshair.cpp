@@ -34,6 +34,7 @@ void HudCrosshair::VidInit()
 {
     cl_enginefunc()->pfnGetScreenInfo(&screeninfo_);
 
+    m_flPrevCrosshairTime = 0;
     m_flPrevTime = 0;
     m_iAmmoLastCheck = 0;
     m_flCrosshairDistance = 0;
