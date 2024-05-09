@@ -29,10 +29,10 @@ class HudCrosshair : public HudBase, public nitroapi::NitroApiHelper
     int m_cvarR{}, m_cvarG{}, m_cvarB{};
     int m_bAdditive{};
     char m_szLastCrosshairColor[16]{};
+    char m_szLastCrosshairSize[16]{};
     int m_iAmmoLastCheck{};
     float m_flCrosshairDistance{};
     int m_iCrosshairScaleBase{};
-    float m_flPrevTime{};
     float m_flPrevCrosshairTime{};
 
 public:

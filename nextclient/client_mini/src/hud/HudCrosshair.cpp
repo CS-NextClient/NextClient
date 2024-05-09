@@ -35,11 +35,11 @@ void HudCrosshair::VidInit()
     cl_enginefunc()->pfnGetScreenInfo(&screeninfo_);
 
     m_flPrevCrosshairTime = 0;
-    m_flPrevTime = 0;
     m_iAmmoLastCheck = 0;
     m_flCrosshairDistance = 0;
     m_iCrosshairScaleBase = 0;
     m_szLastCrosshairColor[0] = '\0';
+    m_szLastCrosshairSize[0] = '\0';
 }
 
 void HudCrosshair::DrawCrosshair(float flTime, int weaponid)
@@ -218,13 +218,9 @@ void HudCrosshair::DrawCrosshair(float flTime, int weaponid)
 
     int iBarSize = (m_flCrosshairDistance - iDistance) * 0.5f + 5;
 
-    if (flCurTime - m_flPrevTime > 1.0f)
-    {
-        CalculateCrosshairColor();
-        CalculateCrosshairDrawMode();
-        CalculateCrosshairSize();
-        m_flPrevTime = flCurTime;
-    }
+    CalculateCrosshairColor();
+    CalculateCrosshairDrawMode();
+    CalculateCrosshairSize();
 
     float flCrosshairDistance = m_flCrosshairDistance;
     if (screeninfo_.iWidth != m_iCrosshairScaleBase)
@@ -306,20 +302,20 @@ void HudCrosshair::CalculateCrosshairSize()
 {
     char* value = cl_crosshair_size_->string;
 
-    if (!value)
+    if (!value || V_strcmp(value, m_szLastCrosshairSize) == 0)
         return;
 
     int size = -1;
 
-    if (!stricmp(value, "auto"))
+    if (!V_stricmp(value, "auto"))
         size = 0;
-    else if (!stricmp(value, "small"))
+    else if (!V_stricmp(value, "small"))
         size = 1;
-    else if (!stricmp(value, "medium"))
+    else if (!V_stricmp(value, "medium"))
         size = 2;
-    else if (!stricmp(value, "large"))
+    else if (!V_stricmp(value, "large"))
         size = 3;
-    else if (!stricmp(value, "extra_small"))
+    else if (!V_stricmp(value, "extra_small"))
         size = 4;
 
     switch (size)
@@ -357,57 +353,60 @@ void HudCrosshair::CalculateCrosshairSize()
             break;
         }
     }
+
+    if (size > -1)
+        V_strcpy_safe(m_szLastCrosshairSize, value);
 }
 
 void HudCrosshair::CalculateCrosshairColor()
 {
     char *value = cl_crosshair_color_->string;
 
-    if (value && strcmp(value, m_szLastCrosshairColor) != 0)
+    if (!value || V_strcmp(value, m_szLastCrosshairColor) == 0)
+        return;
+
+    int cvarR, cvarG, cvarB;
+    char *token;
+    char *data = value;
+
+    data = SharedParse(data);
+    token = SharedGetToken();
+
+    if (token)
     {
-        int cvarR, cvarG, cvarB;
-        char *token;
-        char *data = value;
+        cvarR = atoi(token);
 
         data = SharedParse(data);
         token = SharedGetToken();
 
         if (token)
         {
-            cvarR = atoi(token);
+            cvarG = atoi(token);
 
             data = SharedParse(data);
             token = SharedGetToken();
 
             if (token)
             {
-                cvarG = atoi(token);
+                cvarB = atoi(token);
 
-                data = SharedParse(data);
-                token = SharedGetToken();
-
-                if (token)
+                if (m_cvarR != cvarR || m_cvarG != cvarG || m_cvarB != cvarB)
                 {
-                    cvarB = atoi(token);
+                    int r, g, b;
 
-                    if (m_cvarR != cvarR || m_cvarG != cvarG || m_cvarB != cvarB)
-                    {
-                        int r, g, b;
+                    r = std::clamp(cvarR, 0, 255);
+                    g = std::clamp(cvarG, 0, 255);
+                    b = std::clamp(cvarB, 0, 255);
 
-                        r = std::clamp(cvarR, 0, 255);
-                        g = std::clamp(cvarG, 0, 255);
-                        b = std::clamp(cvarB, 0, 255);
-
-                        m_R = r;
-                        m_G = g;
-                        m_B = b;
-                        m_cvarR = cvarR;
-                        m_cvarG = cvarG;
-                        m_cvarB = cvarB;
-                    }
-
-                    V_strcpy_safe(m_szLastCrosshairColor, value);
+                    m_R = r;
+                    m_G = g;
+                    m_B = b;
+                    m_cvarR = cvarR;
+                    m_cvarG = cvarG;
+                    m_cvarB = cvarB;
                 }
+
+                V_strcpy_safe(m_szLastCrosshairColor, value);
             }
         }
     }
@@ -421,8 +420,6 @@ void HudCrosshair::CalculateCrosshairDrawMode()
         m_bAdditive = false;
     else if (value == 1)
         m_bAdditive = true;
-    else
-        Con_Printf("usage: cl_crosshair_translucent <1|0>\n");
 }
 
 void HudCrosshair::DrawCrosshairEx(int iBarSize, float flCrosshairDistance, bool bAdditive, int r, int g, int b, int a)
