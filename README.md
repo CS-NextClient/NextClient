@@ -28,6 +28,8 @@ NextClient has integrated some features from [csldr](https://github.com/mikkokko
  - pre-cache of hud.txt and other standard resources
 
 ### New cvars
+<details>
+<summary>Click to expand</summary>
 
 | Cvar name | Default value | Available in sandbox*       | Description |
 | --- |---------------|-----------------------------| --- |
@@ -54,6 +56,7 @@ NextClient has integrated some features from [csldr](https://github.com/mikkokko
 | http_max_requests_retries | 3             | No                          |   |
 
 *Can the server change the value of a cvar using the cvars sandbox feature.
+</details>
 
 ## Installation
 

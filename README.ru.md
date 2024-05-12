@@ -28,6 +28,8 @@ NextClient это модификация для Counter-Strike 1.6, нацеле
  - прекэш hud.txt и других стандартных ресурсов
 
 ### Новые квары
+<details>
+<summary>Нажмите, чтобы развернуть</summary>
 
 | Cvar name | Default value | Available in sandbox*       | Description |
 | --- |---------------|-----------------------------| --- |
@@ -54,6 +56,7 @@ NextClient это модификация для Counter-Strike 1.6, нацеле
 | http_max_requests_retries | 3             | No                          |   |
 
 *Может ли сервер изменять значение квара, используя функцию песочницы кваров.
+</details>
 
 ## Установка
 
