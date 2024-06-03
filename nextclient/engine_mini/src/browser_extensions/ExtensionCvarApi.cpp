@@ -1,4 +1,6 @@
 #include "ExtensionCvarApi.h"
+#include <utils/TaskRun.h>
+#include "../engine.h"
 
 void RegisterExtensionCvarApi() {
 	CefRegisterExtension(
@@ -17,10 +19,16 @@ void RegisterExtensionCvarApi() {
 				
 				if(name == "getCvarValue" && arguments.size() > 0) {
 					auto cvarName = arguments[0]->GetStringValue();
-					auto cvarPtr = gEngfuncs.pfnGetCvarPointer(cvarName.c_str());
+					auto taskResult = TaskRun::RunInMainThreadAndWait([cvarName] {
+						cvar_t* cvar = gEngfuncs.pfnGetCvarPointer(cvarName.c_str());
+						return cvar ? std::string(cvar->string) : std::optional<std::string>{};
+					});
+					if (taskResult.has_error())
+						return false;
 
-					retval = cvarPtr != nullptr 
-						? CefV8Value::CreateString(cvarPtr->string) 
+					auto cvarValue = *taskResult;
+					retval = cvarValue
+						? CefV8Value::CreateString(*cvarValue)
 						: CefV8Value::CreateNull();
 
 					return true;

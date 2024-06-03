@@ -2,6 +2,8 @@ cmake_minimum_required(VERSION 3.21)
 project(gameui VERSION 1.2.4)
 set(OUTPUT_NAME "GameUI")
 
+find_package(concurrencpp CONFIG REQUIRED)
+
 set(CMAKE_POLICY_DEFAULT_CMP0077 NEW)
 set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 set(CMAKE_CXX_STANDARD 23)
@@ -38,6 +40,7 @@ target_include_directories(${PROJECT_NAME} PRIVATE
         src/GameUi/CreateMultiPlayerGameDialog
         src/GameUi/OptionsDialog
         src/config
+        src/utils
         src
         include
 )
@@ -47,6 +50,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
         NextClient::engine_mini
         nitro_utils::nitro_utils
         data_encoding::data_encoding
+        concurrencpp::concurrencpp
         Ws2_32.lib
 )
 

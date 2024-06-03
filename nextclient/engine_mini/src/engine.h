@@ -1,5 +1,6 @@
 #pragma once
 
+#include <concurrencpp/concurrencpp.h>
 #include <nitroapi/NitroApiInterface.h>
 #include <next_engine_mini/AnalyticsInterface.h>
 #include <next_engine_mini/NextClientVersion.h>

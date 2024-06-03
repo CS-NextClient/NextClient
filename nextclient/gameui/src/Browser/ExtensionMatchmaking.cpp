@@ -1,11 +1,15 @@
 #include "ExtensionMatchmaking.h"
+
+#include <GameUi.h>
+#include <TaskRun.h>
+
 #include "AcceptedDomains.h"
 #include <nitro_utils/net_utils.h>
 
 CServerQueryResponseHandler::CServerQueryResponseHandler(
 	std::string serverIp, 
-	CefRefPtr<CefV8Value> resolveFunc, CefRefPtr<CefV8Value> rejectFunc
-) : CefJsPromiseLike(resolveFunc, rejectFunc), serverIp_(serverIp) {}
+	CefRefPtr<CefV8Context> context, CefRefPtr<CefV8Value> resolveFunc, CefRefPtr<CefV8Value> rejectFunc
+) : CefJsPromiseLike(context, resolveFunc, rejectFunc), serverIp_(serverIp) {}
 
 void CServerQueryResponseHandler::Start() {
 	uint32_t ip; uint16_t port;
@@ -18,8 +22,9 @@ void CServerQueryResponseHandler::FinishQuery() {
 	queryHandle = HSERVERQUERY_INVALID;
 }
 
-CServerQueryResponseHandler::~CServerQueryResponseHandler() {
-	if(queryHandle != HSERVERQUERY_INVALID)
+CServerQueryResponseHandler::~CServerQueryResponseHandler()
+{
+	if (queryHandle != HSERVERQUERY_INVALID)
 		SteamMatchmakingServers()->CancelServerQuery(queryHandle);
 }
 
@@ -28,53 +33,57 @@ HServerQuery CPingServerQuery::StartQuery(uint32 unIP, uint16 usPort) {
 }
 
 void CPingServerQuery::ServerResponded(gameserveritem_t &server) {
-	CefPostTask(TID_UI, new CefFunctionTask([=, &server] {
-		gameserveritem_t srv = server;
-		ServerRespondedCefTask(srv);
+	CefPostTask(TID_UI, new CefFunctionTask([this, server] {
+		ServerRespondedCefTask(server);
 	}));
 }
 
-CefRefPtr<CefV8Value> GameServerItemToV8Object(gameserveritem_t* server) {
+CefRefPtr<CefV8Value> GameServerItemToV8Object(const gameserveritem_t& server) {
 	auto constexpr defProperty = V8_PROPERTY_ATTRIBUTE_NONE;
 
 	auto value = CefV8Value::CreateObject(nullptr);
 	if(!value.get()) return NULL;
 
-	value->SetValue("appId", CefV8Value::CreateInt(server->m_nAppID), defProperty);
-	value->SetValue("gameDir", CefV8Value::CreateString(server->m_szGameDir), defProperty);
-	value->SetValue("address", CefV8Value::CreateString(server->m_NetAdr.GetConnectionAddressString()), defProperty);
-	value->SetValue("hostname", CefV8Value::CreateString(server->GetName()), defProperty);
-	value->SetValue("map", CefV8Value::CreateString(server->m_szMap), defProperty);
-	value->SetValue("playersOnline", CefV8Value::CreateInt(server->m_nPlayers), defProperty);
-	value->SetValue("botsOnline", CefV8Value::CreateInt(server->m_nBotPlayers), defProperty);
-	value->SetValue("playersMax", CefV8Value::CreateInt(server->m_nMaxPlayers), defProperty);
-	value->SetValue("isPasswordProtected", CefV8Value::CreateBool(server->m_bPassword), defProperty);
-	value->SetValue("isVacSecured", CefV8Value::CreateBool(server->m_bSecure), defProperty);
-	value->SetValue("unixTimeLastPlayed", CefV8Value::CreateInt(server->m_ulTimeLastPlayed), defProperty);
+	value->SetValue("appId", CefV8Value::CreateInt(server.m_nAppID), defProperty);
+	value->SetValue("gameDir", CefV8Value::CreateString(server.m_szGameDir), defProperty);
+	value->SetValue("address", CefV8Value::CreateString(server.m_NetAdr.GetConnectionAddressString()), defProperty);
+	value->SetValue("hostname", CefV8Value::CreateString(server.GetName()), defProperty);
+	value->SetValue("map", CefV8Value::CreateString(server.m_szMap), defProperty);
+	value->SetValue("playersOnline", CefV8Value::CreateInt(server.m_nPlayers), defProperty);
+	value->SetValue("botsOnline", CefV8Value::CreateInt(server.m_nBotPlayers), defProperty);
+	value->SetValue("playersMax", CefV8Value::CreateInt(server.m_nMaxPlayers), defProperty);
+	value->SetValue("isPasswordProtected", CefV8Value::CreateBool(server.m_bPassword), defProperty);
+	value->SetValue("isVacSecured", CefV8Value::CreateBool(server.m_bSecure), defProperty);
+	value->SetValue("unixTimeLastPlayed", CefV8Value::CreateInt(server.m_ulTimeLastPlayed), defProperty);
 
 	return value;
 }
 
-void CPingServerQuery::ServerRespondedCefTask(gameserveritem_t &server) {
+void CPingServerQuery::ServerRespondedCefTask(gameserveritem_t server) {
 	CefV8ContextCapture capture(GetContext());
 
-	auto value = GameServerItemToV8Object(&server);
+	auto value = GameServerItemToV8Object(server);
 	Resolve(value);
 
-	FinishQuery();
-	delete this;
+	TaskRun::RunInMainThread([this] {
+		FinishQuery();
+		delete this;
+	});
 }
 
 void CPingServerQuery::ServerFailedToRespond() {
-	CefPostTask(TID_UI, new CefFunctionTask([=] { ServerFailedToRespondCefTask(); }));
+	CefPostTask(TID_UI, new CefFunctionTask([this] { ServerFailedToRespondCefTask(); }));
 }
 
 void CPingServerQuery::ServerFailedToRespondCefTask() {
 	CefV8ContextCapture capture(GetContext());
 
 	Reject(CefV8Value::CreateUndefined());
-	FinishQuery();
-	delete this;
+
+	TaskRun::RunInMainThread([this] {
+		FinishQuery();
+		delete this;
+	});
 }
 
 HServerQuery CPlayerDetailsQuery::StartQuery(uint32 unIP, uint16 usPort) {
@@ -86,7 +95,7 @@ void CPlayerDetailsQuery::AddPlayerToList(const char *playerName, int score, flo
 }
 
 void CPlayerDetailsQuery::PlayersRefreshComplete() {
-	CefPostTask(TID_UI, new CefFunctionTask([=] { PlayersRefreshCompleteCefTask(); }));
+	CefPostTask(TID_UI, new CefFunctionTask([this] { PlayersRefreshCompleteCefTask(); }));
 }
 
 void CPlayerDetailsQuery::PlayersRefreshCompleteCefTask() {
@@ -107,20 +116,26 @@ void CPlayerDetailsQuery::PlayersRefreshCompleteCefTask() {
 	}
 
 	Resolve(value);
-	FinishQuery();
-	delete this;
+
+	TaskRun::RunInMainThread([this] {
+		FinishQuery();
+		delete this;
+	});
 }
 
 void CPlayerDetailsQuery::PlayersFailedToRespond() {
-	CefPostTask(TID_UI, new CefFunctionTask([=] { PlayersFailedToRespondCefTask(); }));
+	CefPostTask(TID_UI, new CefFunctionTask([this] { PlayersFailedToRespondCefTask(); }));
 }
 
 void CPlayerDetailsQuery::PlayersFailedToRespondCefTask() {
 	CefV8ContextCapture capture(GetContext());
 
 	Reject(CefV8Value::CreateUndefined());
-	FinishQuery();
-	delete this;
+
+	TaskRun::RunInMainThread([this] {
+		FinishQuery();
+		delete this;
+	});
 }
 
 HServerQuery CServerRulesQuery::StartQuery(uint32 unIP, uint16 usPort) {
@@ -132,7 +147,7 @@ void CServerRulesQuery::RulesResponded(const char *pchRule, const char *pchValue
 }
 
 void CServerRulesQuery::RulesRefreshComplete() {
-	CefPostTask(TID_UI, new CefFunctionTask([=] { RulesRefreshCompleteCefTask(); }));
+	CefPostTask(TID_UI, new CefFunctionTask([this] { RulesRefreshCompleteCefTask(); }));
 }
 
 void CServerRulesQuery::RulesRefreshCompleteCefTask() {
@@ -152,20 +167,26 @@ void CServerRulesQuery::RulesRefreshCompleteCefTask() {
 	}
 
 	Resolve(value);
-	FinishQuery();
-	delete this;
+
+	TaskRun::RunInMainThread([this] {
+		FinishQuery();
+		delete this;
+	});
 }
 
 void CServerRulesQuery::RulesFailedToRespond() {
-	CefPostTask(TID_UI, new CefFunctionTask([=] { RulesFailedToRespondCefTask(); }));
+	CefPostTask(TID_UI, new CefFunctionTask([this] { RulesFailedToRespondCefTask(); }));
 }
 
 void CServerRulesQuery::RulesFailedToRespondCefTask() {
 	CefV8ContextCapture capture(GetContext());
 
 	Reject(CefV8Value::CreateUndefined());
-	FinishQuery();
-	delete this;
+
+	TaskRun::RunInMainThread([this] {
+		FinishQuery();
+		delete this;
+	});
 }
 
 bool CExtensionMatchmakingHandler::Execute(
@@ -176,19 +197,26 @@ bool CExtensionMatchmakingHandler::Execute(
 
 	if(arguments.size() > 2) {
 		auto ip = arguments[0]->GetStringValue();
+		auto context = CefV8Context::GetCurrentContext();
 		auto resolve = arguments[1];
 		auto reject = arguments[2];
 
 		if(name == "getServerInfo") {
-			(new CPingServerQuery(ip, resolve, reject))->Start();
+			TaskRun::RunInMainThread([ip, context, resolve, reject] {
+				(new CPingServerQuery(ip, context, resolve, reject))->Start();
+			});
 			return true;
 		}
 		else if(name == "getPlayersInfo") {
-			(new CPlayerDetailsQuery(ip, resolve, reject))->Start();
+			TaskRun::RunInMainThread([ip, context, resolve, reject] {
+				(new CPlayerDetailsQuery(ip, context, resolve, reject))->Start();
+			});
 			return true;
 		}
 		else if(name == "getRules") {
-			(new CServerRulesQuery(ip, resolve, reject))->Start();
+			TaskRun::RunInMainThread([ip, context, resolve, reject] {
+				(new CServerRulesQuery(ip, context, resolve, reject))->Start();
+			});
 			return true;
 		}
 	}

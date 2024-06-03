@@ -7,8 +7,11 @@
 #include <GameUINext.h>
 #include <ISystemModule.h>
 #include <vgui_controls/Panel.h>
+#include <concurrencpp/concurrencpp.h>
 #include <IGameClientExports.h>
 #include "LoadingDialog.h"
+
+class TaskRunImpl;
 
 class CGameUI : public IGameUI
 {
@@ -68,6 +71,8 @@ private:
 
     int m_iNumFactories;
     CreateInterfaceFn m_FactoryList[MAX_NUM_FACTORIES];
+
+    std::shared_ptr<TaskRunImpl> task_run_impl_;
 
     class ContainerExtensionGameUiApi* browserExtensionGameUiApi;
 };

@@ -19,7 +19,7 @@ class CExtensionConsoleApiEvents {
 public:
 	explicit CExtensionConsoleApiEvents(CefRefPtr<CefV8Context> context);
 
-	bool OnMessage(std::string text, CompletionObserver* completion);
+	bool OnMessage(std::string text, std::shared_ptr<CompletionObserver> completion);
 };
 
 class ContainerExtensionConsoleApi {

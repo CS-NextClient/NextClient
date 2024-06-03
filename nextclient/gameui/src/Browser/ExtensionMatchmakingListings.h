@@ -27,7 +27,7 @@ class CListingsQueryResponseHandler : public CefJsPromiseLike, public ISteamMatc
 	struct server_t {
 		bool responded;
 		std::string address;
-		gameserveritem_t* info;
+		gameserveritem_t info;
 	};
 	std::unordered_map<int, server_t> servers_;
 
@@ -42,7 +42,7 @@ protected:
 	void FinishQuery();
 
 public:
-	CListingsQueryResponseHandler(CefRefPtr<CefV8Value> resolveFunc, CefRefPtr<CefV8Value> rejectFunc);
+	CListingsQueryResponseHandler(CefRefPtr<CefV8Context> context, CefRefPtr<CefV8Value> resolveFunc, CefRefPtr<CefV8Value> rejectFunc);
 	~CListingsQueryResponseHandler();
 
 	void Start();

@@ -3,6 +3,7 @@ project(engine_mini)
 set(OUTPUT_NAME "next_engine_mini")
 
 find_package(OpenSSL REQUIRED)
+find_package(concurrencpp CONFIG REQUIRED)
 
 set(CMAKE_POLICY_DEFAULT_CMP0077 NEW)
 set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
@@ -62,6 +63,7 @@ target_include_directories(${PROJECT_NAME} PRIVATE
         dep/bzip2
         src/audio/include
         include
+        src
 )
 
 target_link_libraries(${PROJECT_NAME} PRIVATE
@@ -71,6 +73,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
         cpr::cpr
         OpenSSL::SSL
         OpenSSL::Crypto
+        concurrencpp::concurrencpp
         alure2_s
         bzip2
 )

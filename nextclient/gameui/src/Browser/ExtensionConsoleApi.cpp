@@ -1,12 +1,15 @@
 #include "ExtensionConsoleApi.h"
 #include <format>
 #include <GameConsole.h>
+#include <GameUi.h>
+#include <TaskRun.h>
+
 #include "AcceptedDomains.h"
 
 CExtensionConsoleApiEvents::CExtensionConsoleApiEvents(CefRefPtr<CefV8Context> context)
 	: context_(context) { }
 
-bool CExtensionConsoleApiEvents::OnMessage(std::string text, CompletionObserver* completion) {
+bool CExtensionConsoleApiEvents::OnMessage(std::string text, std::shared_ptr<CompletionObserver> completion) {
 	bool result = CefPostTask(TID_UI, new CefFunctionTask([this, text, completion] {
 		CefV8ContextCapture capture(context_);
 		if (!context_->GetFrame().get()) {
@@ -38,7 +41,7 @@ bool CExtensionConsoleApiEvents::OnMessage(std::string text, CompletionObserver*
 		completion->Commit(IsV8CurrentContextOnAcceptedDomain() && retval->GetBoolValue() == false);
 	}));
 
-	if(!result)
+	if (!result)
 		completion->Commit(false);
 
 	return result;
@@ -48,14 +51,16 @@ bool ContainerExtensionConsoleApi::OnMessage(const char* text) {
 	auto events_count = events_.size();
 	if(!events_count) return false;
 
-	auto observer = new CompletionObserver(events_count, [text = std::string(text)](std::vector<bool>& results) {
-		for(auto const result : results) {
-			if(result == true)
-				return;
-		}
+	auto observer = std::make_shared<CompletionObserver>(events_count, [text = std::string(text)](std::vector<bool> results) {
+		TaskRun::RunInMainThread([text, results] {
+			for(auto const result : results) {
+				if(result == true)
+					return;
+			}
 
-		GameConsole().PrintfWithoutJsEvent(text.c_str());
-	});	
+			GameConsole().PrintfWithoutJsEvent(text.c_str());
+		});
+	});
 
 	for (auto& handler : events_)
 		handler->OnMessage(text, observer);
@@ -75,10 +80,12 @@ ContainerExtensionConsoleApi::ContainerExtensionConsoleApi() {
 
 		new CefFunctionV8Handler(
 			[this](const CefString& name, CefRefPtr<CefV8Value> object,
-				const CefV8ValueList& arguments, CefRefPtr<CefV8Value>& retval, CefString& exception) -> bool {
+					 const CefV8ValueList& arguments, CefRefPtr<CefV8Value>& retval, CefString& exception) -> bool {
 				if (name == "init") {
-					events_.push_back(
-						std::make_unique<CExtensionConsoleApiEvents>(CefV8Context::GetCurrentContext()));
+					auto context = CefV8Context::GetCurrentContext();
+					TaskRun::RunInMainThread([this, context] {
+						events_.push_back(std::make_unique<CExtensionConsoleApiEvents>(context));
+					});
 					return true;
 				}
 				return false;

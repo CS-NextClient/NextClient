@@ -6,6 +6,7 @@
 #include <nitro_utils/PtrValidator.h>
 #include <next_engine_mini/engine_mini.h>
 #include <tier2/tier2.h>
+#include <utils/TaskRun.h>
 
 #include "common/common.h"
 #include "common/net_chan.h"
@@ -114,7 +115,6 @@ cvar_t* r_speeds;
 cvar_t* viewmodel_fov;
 
 bool g_bIsDedicatedServer;
-
 r_studio_interface_t* pStudioAPI;
 
 static std::vector<std::shared_ptr<nitroapi::Unsubscriber>> g_Unsubs;
@@ -126,9 +126,7 @@ nitroapi::SDL2Data* sdl2() { return g_NitroApi->GetSDL2Data(); }
 
 static void UninitializeInternal()
 {
-    for (auto &unsubscriber : g_Unsubs)
-        unsubscriber->Unsubscribe();
-    g_Unsubs.clear();
+    TaskRun::UnInitialize();
 
     CL_DeleteHttpDownloadManager();
     UnInstallBrowserExtensions();
@@ -137,6 +135,10 @@ static void UninitializeInternal()
     PROTECTOR_Shutdown();
 
     KV_UninitializeKeyValuesSystem();
+
+    for (auto &unsubscriber : g_Unsubs)
+        unsubscriber->Unsubscribe();
+    g_Unsubs.clear();
 
     g_NitroApi = nullptr;
     g_SettingGuard = nullptr;
@@ -436,6 +438,8 @@ static void InitInternal(AnalyticsInterface* analytics, nitroapi::NitroApiInterf
     g_Unsubs.emplace_back(client()->HUD_GetStudioModelInterface += [](int version, struct r_studio_interface_s **ppinterface, struct engine_studio_api_s *pstudio, int result) {
         pStudioAPI = *ppinterface;
     });
+
+    TaskRun::Initialize(std::make_shared<TaskRunImpl>(napi()));
 
     GL_SetMode_Subscriber(mainwindow, pmaindc, pbaseRC, pszDriver, pszCmdLine, result);
 

@@ -36,6 +36,9 @@
 #include "Browser/ExtensionMatchmakingListings.h"
 #include "Browser/ExtensionGameUiApi.h"
 
+#include <utils/TaskRun.h>
+#include <utils/TaskRunImpl.h>
+
 #include <shellapi.h>
 
 namespace fs = std::filesystem;
@@ -116,6 +119,8 @@ CGameUI::CGameUI()
 {
     m_szPreviousStatusText[0] = 0;
     m_bLoadlingLevel = false;
+    task_run_impl_ = std::make_shared<TaskRunImpl>();
+    TaskRun::Initialize(task_run_impl_);
 }
 
 CGameUI::~CGameUI()
@@ -215,6 +220,9 @@ void CGameUI::Start(cl_enginefuncs_s *engineFuncs, int interfaceVersion, void *s
 
 void CGameUI::Shutdown(void)
 {
+    task_run_impl_->OnShutdown();
+    TaskRun::UnInitialize();
+
     vgui2::system()->SaveUserConfigFile();
 
     if (g_pServerBrowser)
@@ -281,6 +289,7 @@ void CGameUI::RunFrame(void)
         BasePanel()->RunFrame();
 
     browserExtensionGameUiApi->RunFrame();
+    task_run_impl_->OnUpdate();
 }
 
 void CGameUI::ConnectToServer(const char *game, int IP, int port)

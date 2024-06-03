@@ -1,10 +1,14 @@
 #include "ExtensionMatchmakingListings.h"
+
+#include <GameUi.h>
+#include <TaskRun.h>
+
 #include "AcceptedDomains.h"
 #include <nitro_utils/net_utils.h>
 
 CListingsQueryResponseHandler::CListingsQueryResponseHandler(
-	CefRefPtr<CefV8Value> resolveFunc, CefRefPtr<CefV8Value> rejectFunc
-) : CefJsPromiseLike(resolveFunc, rejectFunc) {}
+	CefRefPtr<CefV8Context> context, CefRefPtr<CefV8Value> resolveFunc, CefRefPtr<CefV8Value> rejectFunc
+) : CefJsPromiseLike(context, resolveFunc, rejectFunc) {}
 
 void CListingsQueryResponseHandler::Start() {
 	queryHandle = StartQuery();
@@ -18,14 +22,14 @@ void CListingsQueryResponseHandler::ServerResponded(
 	HServerListRequest hRequest, int iServer
 ) {
 	auto details = SteamMatchmakingServers()->GetServerDetails(hRequest, iServer);
-	servers_[iServer] = { true, details->m_NetAdr.GetConnectionAddressString(), details };
+	servers_[iServer] = { true, details->m_NetAdr.GetConnectionAddressString(), *details };
 }
 
 void CListingsQueryResponseHandler::ServerFailedToRespond(
 	HServerListRequest hRequest, int iServer
 ) {
 	auto details = SteamMatchmakingServers()->GetServerDetails(hRequest, iServer);
-	servers_[iServer] = { false, details->m_NetAdr.GetConnectionAddressString(), details };
+	servers_[iServer] = { false, details->m_NetAdr.GetConnectionAddressString(), *details };
 }
 
 void CListingsQueryResponseHandler::RefreshComplete(
@@ -56,8 +60,10 @@ void CListingsQueryResponseHandler::RefreshCompleteCefTask(
 		Resolve(value);
 	}
 
-	FinishQuery();
-	delete this;
+	TaskRun::RunInMainThread([this] {
+		FinishQuery();
+		delete this;
+	});
 }
 
 CListingsQueryResponseHandler::~CListingsQueryResponseHandler() {
@@ -82,15 +88,20 @@ bool CExtensionMatchmakingListingsHandler::Execute(
 	if(!IsV8CurrentContextOnAcceptedDomain()) return false;
 
 	if(arguments.size() > 1) {
+		auto context = CefV8Context::GetCurrentContext();
 		auto resolve = arguments[0];
 		auto reject = arguments[1];
 		
 		if(name == "getFavoriteServers") {
-			(new CFavoritesListingQuery(resolve, reject))->Start();
+			TaskRun::RunInMainThread([context, resolve, reject] {
+				(new CFavoritesListingQuery(context, resolve, reject))->Start();
+			});
 			return true;
 		}
 		else if(name == "getHistoryServers") {
-			(new CHistoryListingQuery(resolve, reject))->Start();
+			TaskRun::RunInMainThread([context, resolve, reject] {
+				(new CHistoryListingQuery(context, resolve, reject))->Start();
+			});
 			return true;
 		}
 	}
@@ -99,11 +110,15 @@ bool CExtensionMatchmakingListingsHandler::Execute(
 	
 		if(name == "addFavoriteServer") {
 			nitro_utils::inet_stonp(arguments[0]->GetStringValue(), ip, port, true);
-			SteamMatchmaking()->AddFavoriteGame(SteamUtils()->GetAppID(), ip, port, port, k_unFavoriteFlagFavorite, 0);
+			TaskRun::RunInMainThread([ip, port] {
+				SteamMatchmaking()->AddFavoriteGame(SteamUtils()->GetAppID(), ip, port, port, k_unFavoriteFlagFavorite, 0);
+			});
 		}
 		else if(name == "removeFavoriteServer") {
 			nitro_utils::inet_stonp(arguments[0]->GetStringValue(), ip, port, true);
-			SteamMatchmaking()->RemoveFavoriteGame(SteamUtils()->GetAppID(), ip, port, port, k_unFavoriteFlagFavorite);
+			TaskRun::RunInMainThread([ip, port] {
+				SteamMatchmaking()->RemoveFavoriteGame(SteamUtils()->GetAppID(), ip, port, port, k_unFavoriteFlagFavorite);
+			});
 		}
 	}
 

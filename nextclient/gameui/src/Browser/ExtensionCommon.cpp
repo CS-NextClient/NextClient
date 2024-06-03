@@ -1,4 +1,7 @@
 #include "ExtensionCommon.h"
+#include <GameUi.h>
+#include <TaskRun.h>
+
 #include "AcceptedDomains.h"
 
 bool CExtensionCommonHandler::Execute(
@@ -7,9 +10,11 @@ bool CExtensionCommonHandler::Execute(
 ) {
 	if(!IsV8CurrentContextOnAcceptedDomain()) return false;
 
-	if(name == "exec" && arguments.size() > 0) {
-		const auto cmd = arguments[0]->GetStringValue();
-		engine_->pfnClientCmd(cmd.c_str());
+	if(name == "exec" && !arguments.empty()) {
+		const auto cmd = std::string(arguments[0]->GetStringValue());
+		TaskRun::RunInMainThread([this, cmd] {
+			engine_->pfnClientCmd(cmd.c_str());
+		});
 
 		return true;
 	}

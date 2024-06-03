@@ -1,5 +1,6 @@
 #include "ExtensionConnectionApi.h"
 #include <steam/steam_api.h>
+#include <utils/TaskRun.h>
 
 CExtensionConnectionApiEvents::CExtensionConnectionApiEvents(
 	nitroapi::NitroApiInterface* nitro_api,
@@ -55,6 +56,13 @@ CExtensionConnectionApiEvents::CExtensionConnectionApiEvents(
 	});
 }
 
+struct GetConnectedHostData
+{
+	std::string address{};
+	bool is_putinserver{};
+	std::vector<hud_player_info_t> players{};
+};
+
 ContainerExtensionConnectionApi::ContainerExtensionConnectionApi(nitroapi::NitroApiInterface* nitro_api)
 	: NitroApiHelper::NitroApiHelper(nitro_api) {
 
@@ -72,39 +80,62 @@ ContainerExtensionConnectionApi::ContainerExtensionConnectionApi(nitroapi::Nitro
 		new CefFunctionV8Handler(
 			[this](const CefString& name, CefRefPtr<CefV8Value> object,
 				const CefV8ValueList& arguments, CefRefPtr<CefV8Value>& retval, CefString& exception) -> bool {
+				if (!TaskRun::IsInitialized())
+					return false;
 
 				if (name == "init") {
-					events_.push_back(
-						std::make_unique<CExtensionConnectionApiEvents>(api(), CefV8Context::GetCurrentContext())
-					);
+					auto context = CefV8Context::GetCurrentContext();
+					TaskRun::RunInMainThread([this, context] {
+						events_.push_back(std::make_unique<CExtensionConnectionApiEvents>(api(), context));
+					});
 
 					return true;
 				} 
 				else if (name == "getConnectedHost") {
-					auto address = cls()->servername;
-					if (address[0] && cls()->state != ca_disconnected) {
+					auto task_result = TaskRun::RunInMainThreadAndWait([this] {
+						GetConnectedHostData result{};
+
+						auto address = cls()->servername;
+						if (!address[0] || cls()->state == ca_disconnected)
+							return result;
+
+						result.address = address;
+						result.is_putinserver = cls()->state == ca_active || cls()->signon == 1;
+
+						for (int i = 1; i < MAX_PLAYERS; i++)
+						{
+							hud_player_info_t pl {};
+							cl_enginefunc()->pfnGetPlayerInfo(i, &pl);
+							if (!pl.name)
+								continue;
+
+							result.players.emplace_back(pl);
+						}
+
+						return result;
+					});
+					if (task_result.has_error())
+						return false;
+
+					if (!task_result->address.empty())
+					{
 						retval = CefV8Value::CreateObject(nullptr);
 						if (retval.get()) {
 							auto constexpr defProperty = V8_PROPERTY_ATTRIBUTE_NONE;
-							auto isPutinserver = cls()->state == ca_active || cls()->signon == 1;
-
 							auto playersArray = CefV8Value::CreateArray();
-							retval->SetValue("address", CefV8Value::CreateString(address), defProperty);
-							retval->SetValue("state", CefV8Value::CreateString(isPutinserver ? "joined" : "loading"), defProperty);
+							retval->SetValue("address", CefV8Value::CreateString(task_result->address), defProperty);
+							retval->SetValue("state", CefV8Value::CreateString(task_result->is_putinserver ? "joined" : "loading"), defProperty);
 							retval->SetValue("players", playersArray, defProperty);
 
-							for (int i = 1, index = 0; i < MAX_PLAYERS; i++) {
-								hud_player_info_t pl {};
-								cl_enginefunc()->pfnGetPlayerInfo(i, &pl);
-								if (!pl.name)
-									continue;
-
+							int index = 0;
+							for (const auto& player : task_result->players)
+							{
 								auto obj = CefV8Value::CreateObject(nullptr);
 
-								obj->SetValue("name", CefV8Value::CreateString(pl.name), defProperty);
-								obj->SetValue("steamId", CefV8Value::CreateString(std::format("{}", pl.m_nSteamID)), defProperty);
-								obj->SetValue("isInSteamMode", CefV8Value::CreateBool(CSteamID(pl.m_nSteamID).BIndividualAccount()), defProperty);
-								obj->SetValue("isLocalPlayer", CefV8Value::CreateBool(pl.thisplayer), defProperty);
+								obj->SetValue("name", CefV8Value::CreateString(player.name), defProperty);
+								obj->SetValue("steamId", CefV8Value::CreateString(std::to_string(player.m_nSteamID)), defProperty);
+								obj->SetValue("isInSteamMode", CefV8Value::CreateBool(CSteamID(player.m_nSteamID).BIndividualAccount()), defProperty);
+								obj->SetValue("isLocalPlayer", CefV8Value::CreateBool(player.thisplayer), defProperty);
 
 								playersArray->SetValue(index++, obj);
 							}

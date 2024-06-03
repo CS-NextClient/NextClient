@@ -50,7 +50,7 @@ protected:
 public:
 	CServerQueryResponseHandler(
 		std::string serverIp, 
-		CefRefPtr<CefV8Value> resolveFunc, CefRefPtr<CefV8Value> rejectFunc
+		CefRefPtr<CefV8Context> context, CefRefPtr<CefV8Value> resolveFunc, CefRefPtr<CefV8Value> rejectFunc
 	);
 	~CServerQueryResponseHandler();
 
@@ -65,7 +65,7 @@ class CPingServerQuery : public CServerQueryResponseHandler, public ISteamMatchm
     void ServerResponded(gameserveritem_t &server) override;
     void ServerFailedToRespond() override;
 
-	void ServerRespondedCefTask(gameserveritem_t &server);
+	void ServerRespondedCefTask(gameserveritem_t server);
 	void ServerFailedToRespondCefTask();
 };
 
@@ -120,4 +120,4 @@ public:
 };
 
 void RegisterExtensionMatchmaking();
-CefRefPtr<CefV8Value> GameServerItemToV8Object(gameserveritem_t* server);
+CefRefPtr<CefV8Value> GameServerItemToV8Object(const gameserveritem_t& server);

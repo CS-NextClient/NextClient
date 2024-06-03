@@ -1,4 +1,7 @@
 #include "ExtensionGameUiApi.h"
+
+#include <TaskRun.h>
+
 #include "../GameUi.h"
 #include "BasePanel.h"
 #include "AcceptedDomains.h"
@@ -64,24 +67,32 @@ ContainerExtensionGameUiApi::ContainerExtensionGameUiApi() {
 
 		new CefFunctionV8Handler(
 			[this](const CefString& name, CefRefPtr<CefV8Value> object, const CefV8ValueList& arguments,
-				CefRefPtr<CefV8Value>& retval, CefString& exception) -> bool {
+					 CefRefPtr<CefV8Value>& retval, CefString& exception) -> bool {
 				
 				if(name == "init") {
-					events_.push_back(
-						std::make_unique<CExtensionGameUiApiEvents>(CefV8Context::GetCurrentContext())
-					);
+					auto context = CefV8Context::GetCurrentContext();
+					TaskRun::RunInMainThread([this, context] {
+						events_.push_back(std::make_unique<CExtensionGameUiApiEvents>(context));
+					});
 					return true;
 				}
 				else if(name == "getShownStatus") {
-					retval = CefV8Value::CreateBool(GameUI().IsGameUIActive());
+					auto is_gameui_active = TaskRun::RunInMainThreadAndWait([this]{
+						return GameUI().IsGameUIActive();
+					});
+					if (is_gameui_active.has_error())
+						return false;
+					retval = CefV8Value::CreateBool(*is_gameui_active);
 					return true;
 				}
 				else if(name == "openOptionsDialogTab") {
-					if(!IsV8CurrentContextOnAcceptedDomain()) return false;
+					if(!IsV8CurrentContextOnAcceptedDomain())
+						return false;
 					
-					auto tabName = arguments[0]->GetStringValue();
-					options_page_to_open_ = tabName;
-					
+					const auto tab_name = std::string(arguments[0]->GetStringValue());
+					TaskRun::RunInMainThread([this, tab_name]{
+						options_page_to_open_ = tab_name;
+					});
 					return true;
 				}
 

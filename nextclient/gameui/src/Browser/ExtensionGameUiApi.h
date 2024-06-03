@@ -4,6 +4,7 @@
 #include <cef_utils.h>
 #include <vector>
 #include <memory>
+#include <mutex>
 #include <string>
 
 class CExtensionGameUiApiEvents {
