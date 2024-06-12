@@ -273,16 +273,11 @@ namespace MetaAudio
     alure::Vector<alure::StringView> string_views;
     { // split over '/'
       auto haystack = alure::StringView(psz);
-      size_t current_position = 0;
-      while (current_position < haystack.length())
-      {
-        auto next_pos = haystack.find_first_of('/', current_position);
-        next_pos = next_pos == alure::StringView::npos ? next_pos : next_pos + 1;
-
-        string_views.push_back(haystack.substr(current_position, next_pos - current_position));
-
-        current_position = next_pos;
-      }
+      size_t current_position = 0, next_pos = 0;
+      while ((next_pos = haystack.find_first_of('/', current_position)) != alure::StringView::npos)
+        current_position = next_pos + 1;
+      string_views.push_back(haystack.substr(0, current_position));
+      string_views.push_back(haystack.substr(current_position));
     }
 
     { // generate voice list
