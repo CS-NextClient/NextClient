@@ -421,6 +421,9 @@ void HudDeathNotice::Draw(float flTime) {
 		if(notice->kill_rarity_flags & (KILLRARITY_DOMINATION|KILLRARITY_REVENGE))
 			x -= GetKillRaritySpriteFullWidth();
 
+		if(notice->kill_rarity_flags & KILLRARITY_INAIR)
+			x -= GetKillRaritySpriteFullWidth();
+
 		if(notice->is_should_dead_highlight) {
 			DrawRect(
 				x - notice_box_padding_x_, y, 
@@ -463,7 +466,10 @@ void HudDeathNotice::Draw(float flTime) {
 
 			x = DrawString(notice->assistant_name.c_str(), notice->assistant_color, x, draw_string_optimal_y);
 		}
-		
+
+		if(notice->kill_rarity_flags & KILLRARITY_INAIR)
+			x = DrawKillRaritySprite(RarityFrame::KILLER_INAIR, x, kill_rarity_sprite_optimal_y - (kill_rarity_sprite_height_ / 2));
+
 		if(notice->custom_weapon_sprite.sprite)
 			x = DrawCustomWeaponSprite(&notice->custom_weapon_sprite, x, weapon_sprite_optimal_y);
 		else
