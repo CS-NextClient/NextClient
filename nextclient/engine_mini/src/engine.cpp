@@ -92,6 +92,7 @@ float* p_g_SND_VoiceOverdrive;
 int* p_cszrawsentences;
 char *(*p_rgpszrawsentence)[CVOXFILESENTENCEMAX];
 float* p_scr_con_current;
+keydest_t* p_key_dest;
 
 cvar_t* fs_startup_timings;
 cvar_t* fs_lazy_precache;
@@ -197,6 +198,7 @@ static void UninitializeInternal()
     p_cszrawsentences = nullptr;
     p_rgpszrawsentence = nullptr;
     p_scr_con_current = nullptr;
+    p_key_dest= nullptr;
 
     fs_startup_timings = nullptr;
     fs_lazy_precache = nullptr;
@@ -313,6 +315,7 @@ static void InitInternal(AnalyticsInterface* analytics, nitroapi::NitroApiInterf
     v.Assign(p_cmd_argc, GET_VARIABLE_NAME(p_cmd_argc), eng()->cmd_argc);
     v.Assign(p_cmd_argv, GET_VARIABLE_NAME(p_cmd_argv), eng()->cmd_argv);
     v.Assign(p_cvar_vars, GET_VARIABLE_NAME(p_cvar_vars), eng()->cvar_vars);
+    v.Assign(p_key_dest, GET_VARIABLE_NAME(p_key_dest), eng()->key_dest);
 
     if (v.HasNullPtr())
     {
@@ -434,6 +437,27 @@ static void InitInternal(AnalyticsInterface* analytics, nitroapi::NitroApiInterf
     });
 
     g_Unsubs.emplace_back(eng()->GL_Init += GL_Init_Subscriber);
+
+    g_Unsubs.emplace_back(eng()->Con_MessageMode_f += []() {
+        if (*p_key_dest == key_message)
+        {
+            gEngfuncs.pfnServerCmd("chat_open");
+        }
+    });
+
+    g_Unsubs.emplace_back(eng()->Con_MessageMode2_f += []() {
+        if (*p_key_dest == key_message)
+        {
+            gEngfuncs.pfnServerCmd("chat_team_open");
+        }
+    });
+
+    g_Unsubs.emplace_back(eng()->Key_Message += [](int key) {
+        if (*p_key_dest != key_message)
+        {
+            gEngfuncs.pfnServerCmd("chat_close");
+        }
+    });
 
     g_Unsubs.emplace_back(client()->HUD_GetStudioModelInterface += [](int version, struct r_studio_interface_s **ppinterface, struct engine_studio_api_s *pstudio, int result) {
         pStudioAPI = *ppinterface;

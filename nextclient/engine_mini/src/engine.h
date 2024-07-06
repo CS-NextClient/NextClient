@@ -73,6 +73,7 @@ extern float* p_g_SND_VoiceOverdrive;
 extern int* p_cszrawsentences;
 extern char *(*p_rgpszrawsentence)[CVOXFILESENTENCEMAX];
 extern float* p_scr_con_current;
+extern keydest_t* p_key_dest;
 
 extern cvar_t* fs_startup_timings;
 extern cvar_t* fs_lazy_precache;
