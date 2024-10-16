@@ -7,6 +7,7 @@ vcpkg_from_github(
   PATCHES
     fix-include-path.patch
     fix-windows7-run-patch.patch
+    fix-thread-header.patch
 )
 
 vcpkg_cmake_configure(
