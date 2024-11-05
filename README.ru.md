@@ -99,6 +99,8 @@ cmake --build cmake-build-release -t INSTALL_ALL
 - [fl0werD](https://github.com/fl0werD) - за разработку Sprite API
 - [Mikko Kokko](https://github.com/mikkokko) - за проект [csldr](https://github.com/mikkokko/csldr), фичи из которого мы проинтегрировали в NextClient
 - [Felipe](https://github.com/LAGonauta) - за проект [MetaAudio](https://github.com/LAGonauta/MetaAudio), который мы проинтегрировали в NextClient
+- [MoeMod](https://github.com/MoeMod) - за проект [Thanatos-Launcher](https://github.com/MoeMod/Thanatos-Launcher), он очень помог при реализации GameUI и VGUI2
+- [tmp64](https://github.com/tmp64) - за проект [hl1_source_sdk](https://github.com/tmp64/hl1_source_sdk)
 - [TsarVar](https://tsarvar.com) - за идею JS API для gameui
 - Valve - за Counter-Strike 1.6 и лояльное отношение к моддерскому сообществу
 
