@@ -99,7 +99,10 @@ Note that only Ninja and NMake Makefiles generators are supported. So if you wan
 - [fl0werD](https://github.com/fl0werD) - for development of Sprite API
 - [Mikko Kokko](https://github.com/mikkokko) - for the project [csldr](https://github.com/mikkokko/csldr), which features we have integrated into NextClient
 - [Felipe](https://github.com/LAGonauta) - for the project [MetaAudio](https://github.com/LAGonauta/MetaAudio), which we have integrated into NextClient
+- [MoeMod](https://github.com/MoeMod) - for the project [Thanatos-Launcher](https://github.com/MoeMod/Thanatos-Launcher), it helped a lot when implementing GameUI and VGUI2
+- [tmp64](https://github.com/tmp64) - for the project [hl1_source_sdk](https://github.com/tmp64/hl1_source_sdk)
 - [TsarVar](https://tsarvar.com) - for the idea of a JS API for gameui
+
 - Valve - for Counter-Strike 1.6 and loyal attitude to the modder community
 
 Thanks to everyone who supports the project with bug reports, suggestions and words of encouragement.
