@@ -6,7 +6,7 @@
 
 using namespace vgui2;
 
-#include <vgui/ISurface.h>
+#include <vgui/ISurfaceNext.h>
 #include <vgui_controls/Button.h>
 #include <KeyValues.h>
 #include <vgui_controls/ListPanel.h>

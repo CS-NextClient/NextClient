@@ -1,5 +1,5 @@
 #include "BitmapImagePanel.h"
-#include <vgui/ISurface.h>
+#include <vgui/ISurfaceNext.h>
 
 CBitmapImagePanel::CBitmapImagePanel(Panel *parent, char const *panelName, char const *filename) : Panel(parent, panelName)
 {

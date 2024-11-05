@@ -452,7 +452,7 @@ static void InitInternalPost()
 
     CreateInterfaceFn vgui2_factory = Sys_GetFactory("vgui2.dll");
     g_pLocalize = v.Validate((vgui2::ILocalize*)InitializeInterface(VGUI_LOCALIZE_INTERFACE_VERSION, &vgui2_factory, 1), GET_VARIABLE_NAME(localize));
-    g_pLocalize->AddFile(g_pFileSystem, "resource/nextclient_english.txt");
+    g_pLocalize->AddFile(g_pFileSystem, "resource/nextclient_%language%.txt");
 
     KV_InitKeyValuesSystem2(vgui2_factory);
 

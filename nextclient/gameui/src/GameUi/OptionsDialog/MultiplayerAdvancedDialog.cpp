@@ -3,7 +3,7 @@
 #include "MultiplayerAdvancedDialog.h"
 
 #include <vgui/ILocalize.h>
-#include <vgui/ISurface.h>
+#include <vgui/ISurfaceNext.h>
 #include <vgui_controls/ListPanel.h>
 #include <KeyValues.h>
 #include <vgui_controls/Label.h>

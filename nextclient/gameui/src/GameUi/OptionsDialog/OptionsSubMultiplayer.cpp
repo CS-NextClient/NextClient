@@ -8,7 +8,7 @@
 #include "tier1/KeyValues.h"
 #include <vgui_controls/Label.h>
 #include <vgui/ISystem.h>
-#include <vgui/ISurface.h>
+#include <vgui/ISurfaceNext.h>
 #include <vgui/Cursor.h>
 #include <vgui_controls/RadioButton.h>
 #include <vgui_controls/ComboBox.h>
@@ -152,7 +152,7 @@ void CrosshairImagePanel::Paint(void)
     GetSize(wide, tall);
 
     bool additive = m_pAdditive->IsSelected();
-    int alpha = (int)((float)255 * g_pVGuiSurface->DrawGetAlphaMultiplier());
+    int alpha = (int)((float)255 * vgui2::surface()->DrawGetAlphaMultiplier());
 
     void (*pfnFillRGBA)(int x, int y, int w, int h, int r, int g, int b, int a) = additive ? engine->pfnFillRGBA : engine->pfnFillRGBABlend;
 

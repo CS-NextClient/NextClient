@@ -3,8 +3,8 @@
 
 #include <vgui/IInput.h>
 #include <vgui/IInputInternal.h>
-#include <vgui/IScheme.h>
-#include <vgui/ISurface.h>
+#include <vgui/ISchemeNext.h>
+#include <vgui/ISurfaceNext.h>
 #include <vgui/IVGui.h>
 #include <vgui/Cursor.h>
 #include <KeyValues.h>

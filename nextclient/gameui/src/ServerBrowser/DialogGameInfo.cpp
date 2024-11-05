@@ -6,7 +6,7 @@
 #include <ModInfo.h>
 
 #include <vgui/ISystem.h>
-#include <vgui/ISurface.h>
+#include <vgui/ISurfaceNext.h>
 #include <vgui/IVGui.h>
 #include <KeyValues.h>
 

@@ -1,10 +1,12 @@
 #include "MainMenuBrowser.h"
-#include <nitro_utils/string_utils.h>
+
 #include <string>
 #include <vector>
 #include <fstream>
 #include <string>
 #include <format>
+#include <vgui/ISurfaceNext.h>
+#include <nitro_utils/string_utils.h>
 #include <steam/steam_api.h>
 #include <data_encoding/aes.h>
 

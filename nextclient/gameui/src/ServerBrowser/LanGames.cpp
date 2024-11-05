@@ -6,7 +6,7 @@
 #include "InternetGames.h"
 
 #include <KeyValues.h>
-#include <vgui/IScheme.h>
+#include <vgui/ISchemeNext.h>
 #include <vgui/IVGui.h>
 
 #include <vgui_controls/Button.h>

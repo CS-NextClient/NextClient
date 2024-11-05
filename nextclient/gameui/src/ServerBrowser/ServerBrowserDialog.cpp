@@ -6,8 +6,8 @@
 #include <ctime>
 
 #include <vgui/IInput.h>
-#include <vgui/ISurface.h>
-#include <vgui/IScheme.h>
+#include <vgui/ISurfaceNext.h>
+#include <vgui/ISchemeNext.h>
 #include <vgui/IVGui.h>
 #include <vgui/ISystem.h>
 #include <KeyValues.h>

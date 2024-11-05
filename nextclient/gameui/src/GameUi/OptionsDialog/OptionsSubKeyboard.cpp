@@ -13,7 +13,7 @@
 #include <vgui_controls/QueryBox.h>
 
 #include <vgui/Cursor.h>
-#include <vgui/ISurface.h>
+#include <vgui/ISurfaceNext.h>
 #include <tier1/KeyValues.h>
 #include <vgui/KeyCode.h>
 #include <vgui/MouseCode.h>

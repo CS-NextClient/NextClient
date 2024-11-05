@@ -7,11 +7,9 @@
 #include <GameUINext.h>
 #include <ISystemModule.h>
 #include <vgui_controls/Panel.h>
-#include <concurrencpp/concurrencpp.h>
+#include <utils/TaskRun.h>
 #include <IGameClientExports.h>
 #include "LoadingDialog.h"
-
-class TaskRunImpl;
 
 class CGameUI : public IGameUI
 {

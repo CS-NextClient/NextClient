@@ -7,7 +7,7 @@
 #include "FileSystem.h"
 #include "utlbuffer.h"
 
-#include <vgui/IScheme.h>
+#include <vgui/ISchemeNext.h>
 #include <vgui/ISystem.h>
 #include <vgui/IVGui.h>
 #include <KeyValues.h>

@@ -5,7 +5,7 @@
 #include "vgui/IInputInternal.h"
 #include "vgui/ILocalize.h"
 #include "vgui/IPanel.h"
-#include "vgui/ISurface.h"
+#include "vgui/ISurfaceNext.h"
 #include "vgui/ISystem.h"
 #include "vgui/IVGui.h"
 #include "FileSystem.h"
@@ -376,15 +376,6 @@ CBasePanel::CBasePanel(void) : vgui2::Panel(NULL, "BaseGameUIPanel")
 
     m_pFocusParent = NULL;
     m_pFocusPanel = NULL;
-
-    OnWelcomeNewbie();
-}
-
-void CBasePanel::OnWelcomeNewbie(void)
-{
-    char szBuffer[128];
-    if (vgui2::system()->GetRegistryString("HKEY_CURRENT_USER\\Software\\Valve\\Steam\\Language", szBuffer, 127) && strlen(szBuffer) > 0)
-        return;
 }
 
 KeyValues *CBasePanel::GetConsoleControlSettings(void)

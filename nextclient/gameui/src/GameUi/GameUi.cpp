@@ -17,7 +17,8 @@
 #include "../IServerBrowserEx.h"
 
 #include <vgui/ILocalize.h>
-#include <vgui/IScheme.h>
+#include <vgui/ISchemeNext.h>
+#include <vgui/ISurfaceNext.h>
 #include <vgui/IVGui.h>
 #include <vgui/ISystem.h>
 #include <format>
@@ -132,7 +133,7 @@ void CGameUI::Initialize(CreateInterfaceFn *factories, int count)
     g_MainWindow = GetActiveWindow();
 
     ConnectTier1Libraries(factories, count);
-    ConnectTier2Libraries(factories, count, &g_MainWindow);
+    ConnectTier2Libraries(factories, count);
 
     if (!vgui2::VGui_InitInterfacesList("GameUI", factories, count))
         return;
