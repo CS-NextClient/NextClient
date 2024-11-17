@@ -5,11 +5,13 @@ enum class ConLogType
 {
     Info,
     InfoColored,
+    Error
 };
 
 inline std::array<Color, sizeof(ConLogType)> g_LogTypeColors {
     Color{},                      // Info
     Color{173, 200, 247},   // InfoColored
+    Color{242, 43, 43},   // Error
 };
 
 extern bool con_debuglog;

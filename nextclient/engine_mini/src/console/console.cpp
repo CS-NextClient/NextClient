@@ -42,18 +42,24 @@ void Con_DPrintf(ConLogType type, const char* format, ...)
     V_vsnprintf(text, sizeof(text), format, params);
     va_end(params);
 
-    Sys_Printf("%s", text);
+    char prefix[16]{};
+    if (type == ConLogType::Error)
+    {
+        V_strcpy_safe(prefix, "Error: ");
+    }
+
+    Sys_Printf("%s%s", prefix, text);
 
     if (con_debuglog)
-        Con_DebugLog("qconsole.log", "%s", text);
+        Con_DebugLog("qconsole.log", "%s%s", prefix, text);
 
     if (type == ConLogType::Info)
     {
-        g_GameConsole->Printf("%s", text);
+        g_GameConsole->Printf("%s%s", prefix, text);
     }
     else
     {
         const Color& color = g_LogTypeColors[(int)type];
-        g_GameConsoleNext->ColorPrintf(color.r(), color.g(), color.b(), "%s", text);
+        g_GameConsoleNext->ColorPrintf(color.r(), color.g(), color.b(), "%s%s", prefix, text);
     }
 }

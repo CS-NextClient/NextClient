@@ -55,7 +55,7 @@ int CL_HttpGetDownloadQueueSize()
     return g_HttpDownloadManager->GetDownloadQueueSize();
 }
 
-void CL_QueueHTTPDownload(const resource_descriptor_t& file_resource)
+void CL_QueueHTTPDownload(const ResourceDescriptor& file_resource)
 {
     g_HttpDownloadManager->Queue(file_resource);
 }

@@ -515,14 +515,6 @@ void Mod_UnloadFiltered(const std::function<bool(model_t*)>& filter)
             if (Cache_Check(&mod->cache))
                 Cache_Free(&mod->cache);
         }
-        else if (mod->type == mod_brush)
-        {
-            // TODO unload brush model!!
-        }
-        else if (mod->type == mod_sprite)
-        {
-            Mod_UnloadSpriteTextures(mod);
-        }
 
         Q_memset(mod, 0, sizeof(model_t));
         mod->needload = NL_UNREFERENCED;

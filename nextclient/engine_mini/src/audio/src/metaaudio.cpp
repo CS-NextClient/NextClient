@@ -109,9 +109,10 @@ sfx_t* S_PrecacheSound(char *sample)
 
 void S_UnloadSounds(const std::vector<std::string>& names)
 {
-    // TODO implement this
-    //sound_loader->S_UnloadSounds(names);
     OPTICK_EVENT();
+
+    for (const auto& name : names)
+        audio_engine->S_FreeCacheByPath(name);
 }
 
 sfxcache_t* S_LoadSound(sfx_t* sound, channel_t* channel)

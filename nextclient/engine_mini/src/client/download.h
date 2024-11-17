@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../resource_descriptor.h"
+#include <ResourceDescriptor.h>
 #include "http_download/DownloadLoggerAggregator.h"
 
 extern std::shared_ptr<DownloadLoggerAggregator> g_DownloadFileLogger;
@@ -15,7 +15,7 @@ bool CL_RemoveDonwloadFileLogger(DownloadFileLoggerInterface* logger);
 
 void CL_HTTPSetDownloadUrl(const std::string& url);
 int CL_HttpGetDownloadQueueSize();
-void CL_QueueHTTPDownload(const resource_descriptor_t& file_resource);
+void CL_QueueHTTPDownload(const ResourceDescriptor& file_resource);
 void CL_HTTPUpdate();
 void CL_HTTPCancel_f();
 void CL_HTTPStop_f();

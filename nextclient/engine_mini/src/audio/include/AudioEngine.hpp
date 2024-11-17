@@ -67,5 +67,7 @@ namespace MetaAudio
     void S_Update(float* origin, float* forward, float* right, float* up);
 
     sfx_t* S_FindName(const char* name, int* pfInCache);
+
+    void S_FreeCacheByPath(const std::string& path);
   };
 }

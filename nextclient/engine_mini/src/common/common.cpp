@@ -44,6 +44,11 @@ void COM_HexConvert(const char* pszInput, int nInputLength, unsigned char* pOutp
     }
 }
 
+void COM_ClearCustomizationList(customization_t* pHead, qboolean bCleanDecals)
+{
+    eng()->COM_ClearCustomizationList.InvokeChained(pHead, bCleanDecals);
+}
+
 int COM_SizeofResourceList(resource_t* pList, resourceinfo_t* ri)
 {
     OPTICK_EVENT();

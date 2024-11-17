@@ -95,6 +95,53 @@ int CL_GetFragmentSize(void* state)
     return eng()->CL_GetFragmentSize.InvokeChained(state);
 }
 
+void CL_ClearCaches()
+{
+    OPTICK_EVENT();
+
+    for (int i = 1; i < ARRAYSIZE(cl->event_precache) && cl->event_precache[i].pszScript; ++i)
+    {
+        Mem_Free((void*)cl->event_precache[i].pszScript);
+        Mem_Free((void*)cl->event_precache[i].filename);
+
+        Q_memset(&cl->event_precache[i], 0, sizeof(cl->event_precache[i]));
+    }
+}
+
+void CL_ClearClientState()
+{
+    OPTICK_EVENT();
+
+    for (auto& frame : cl->frames)
+    {
+        if (frame.packet_entities.entities)
+        {
+            Mem_Free(frame.packet_entities.entities);
+        }
+
+        frame.packet_entities.entities = nullptr;
+        frame.packet_entities.num_entities = 0;
+    }
+
+    CL_ClearResourceLists();
+
+    for (auto& player : cl->players)
+    {
+        COM_ClearCustomizationList(&player.customdata, false);
+    }
+
+    CL_ClearCaches();
+
+    Q_memset(cl, 0, sizeof(client_state_t));
+
+    cl->resourcesneeded.pPrev = &cl->resourcesneeded;
+    cl->resourcesneeded.pNext = &cl->resourcesneeded;
+    cl->resourcesonhand.pPrev = &cl->resourcesonhand;
+    cl->resourcesonhand.pNext = &cl->resourcesonhand;
+
+    CL_CreateResourceList();
+}
+
 void CL_ConnectClient()
 {
     OPTICK_EVENT();
@@ -166,8 +213,6 @@ bool CL_PrecacheResources()
 {
     OPTICK_EVENT();
 
-    resource_t *p;
-
     SetLoadingProgressBarStatusText("#GameUI_PrecachingResources");
     ContinueLoadingProgressBar("ClientConnect", 7, 0.0);
 
@@ -176,112 +221,108 @@ bool CL_PrecacheResources()
 
     PrivateRes_PrepareToPrecache();
 
-    for (p = cl->resourcesonhand.pNext; p != &cl->resourcesonhand; p = p->pNext)
+    for (resource_t* pResource = cl->resourcesonhand.pNext, * pNext; pResource != &cl->resourcesonhand; pResource = pNext)
     {
-        if (p == nullptr)
-        {
-            AN_AddBreadcrumb("CL_PrecacheResources: cl->resourcesonhand is corrupted, p->pNext == nullptr");
-            break;
-        }
+        pNext = pResource->pNext;
 
-        if (FBitSet(p->ucFlags, RES_PRECACHED))
+        if (FBitSet(pResource->ucFlags, RES_PRECACHED))
             continue;
 
-        switch (p->type)
+        switch (pResource->type)
         {
             case t_sound:
-                if (FBitSet(p->ucFlags, RES_WASMISSING))
+                if (FBitSet(pResource->ucFlags, RES_WASMISSING))
                 {
-                    cl->sound_precache[p->nIndex] = nullptr;
-                    SetBits(p->ucFlags, RES_PRECACHED);
+                    cl->sound_precache[pResource->nIndex] = nullptr;
+                    SetBits(pResource->ucFlags, RES_PRECACHED);
                     break;
                 }
 
                 S_BeginPrecaching();
-                cl->sound_precache[p->nIndex] = S_PrecacheSound(p->szFileName);
+                cl->sound_precache[pResource->nIndex] = S_PrecacheSound(pResource->szFileName);
                 S_EndPrecaching();
 
-                if (cl->sound_precache[p->nIndex] || !FBitSet(p->ucFlags, RES_FATALIFMISSING))
+                if (cl->sound_precache[pResource->nIndex] || !FBitSet(pResource->ucFlags, RES_FATALIFMISSING))
                 {
-                    SetBits(p->ucFlags, RES_PRECACHED);
+                    SetBits(pResource->ucFlags, RES_PRECACHED);
                     break;
                 }
 
-                COM_ExplainDisconnection(true, "Cannot continue without sound %s, disconnecting.", p->szFileName);
+                COM_ExplainDisconnection(true, "Cannot continue without sound %s, disconnecting.", pResource->szFileName);
                 CL_Disconnect();
                 return false;
 
             case t_skin:
             case t_generic:
-                SetBits(p->ucFlags, RES_PRECACHED);
+                SetBits(pResource->ucFlags, RES_PRECACHED);
                 break;
 
             case t_model:
-                if (p->nIndex >= cl->model_precache_count)
-                    cl->model_precache_count = std::min(p->nIndex + 1, MAX_MODELS);
+                if (pResource->nIndex >= cl->model_precache_count)
+                    cl->model_precache_count = std::min(pResource->nIndex + 1, MAX_MODELS);
 
-                if (p->szFileName[0] == '*')
+                if (pResource->szFileName[0] == '*')
                 {
-                    SetBits(p->ucFlags, RES_PRECACHED);
+                    SetBits(pResource->ucFlags, RES_PRECACHED);
                     break;
                 }
 
-                if (fs_lazy_precache->value == 0.0 || !Q_strnicmp(p->szFileName, "maps", 4))
+                if (fs_lazy_precache->value == 0.0 || !Q_strnicmp(pResource->szFileName, "maps", 4))
                 {
-                    cl->model_precache[p->nIndex] = Mod_ForName(p->szFileName, 0, true);
-                    if (cl->model_precache[p->nIndex])
+                    cl->model_precache[pResource->nIndex] = Mod_ForName(pResource->szFileName, 0, true);
+                    if (cl->model_precache[pResource->nIndex])
                         break;
                 }
                 else
                 {
-                    cl->model_precache[p->nIndex] = Mod_FindName(true, p->szFileName);
+                    cl->model_precache[pResource->nIndex] = Mod_FindName(true, pResource->szFileName);
                 }
 
-                if (!cl->model_precache[p->nIndex] && p->ucFlags)
+                if (!cl->model_precache[pResource->nIndex] && pResource->ucFlags)
                 {
-                    Con_Printf("Model %s not found and not available from server\n", p->szFileName);
+                    Con_Printf("Model %s not found and not available from server\n", pResource->szFileName);
 
-                    if (FBitSet(p->ucFlags, RES_FATALIFMISSING))
+                    if (FBitSet(pResource->ucFlags, RES_FATALIFMISSING))
                     {
-                        COM_ExplainDisconnection(true, "Cannot continue without model %s, disconnecting.", p->szFileName);
+                        COM_ExplainDisconnection(true, "Cannot continue without model %s, disconnecting.", pResource->szFileName);
                         CL_Disconnect();
 
                         return false;
                     }
                 }
 
-                if (!Q_stricmp(p->szFileName, "models/player.mdl"))
-                    *cl_playerindex = p->nIndex;
+                if (!Q_stricmp(pResource->szFileName, "models/player.mdl"))
+                    *cl_playerindex = pResource->nIndex;
 
-                SetBits(p->ucFlags, RES_PRECACHED);
+                SetBits(pResource->ucFlags, RES_PRECACHED);
                 break;
 
             case t_decal:
-                if (!FBitSet(p->ucFlags, RES_CUSTOM))
-                    Draw_DecalSetName(p->nIndex, p->szFileName);
+                if (!FBitSet(pResource->ucFlags, RES_CUSTOM))
+                    Draw_DecalSetName(pResource->nIndex, pResource->szFileName);
 
-                SetBits(p->ucFlags, RES_PRECACHED);
+                SetBits(pResource->ucFlags, RES_PRECACHED);
                 break;
 
             case t_eventscript:
-                cl->event_precache[p->nIndex].filename = Mem_Strdup(p->szFileName);
-                cl->event_precache[p->nIndex].pszScript = (const char*) COM_LoadFile(p->szFileName, 5, 0);
+                cl->event_precache[pResource->nIndex].filename = Mem_Strdup(pResource->szFileName);
+                cl->event_precache[pResource->nIndex].pszScript = (const char*) COM_LoadFile(pResource->szFileName, 5, 0);
 
-                if (cl->event_precache[p->nIndex].pszScript)
+                if (cl->event_precache[pResource->nIndex].pszScript)
                 {
-                    SetBits(p->ucFlags, RES_PRECACHED);
+                    SetBits(pResource->ucFlags, RES_PRECACHED);
                     break;
                 }
 
-                Con_Printf("Script %s not found and not available from server\n", p->szFileName);
+                Con_Printf("Script %s not found and not available from server\n", pResource->szFileName);
 
-                if (!FBitSet(p->ucFlags, RES_FATALIFMISSING))
+                if (!FBitSet(pResource->ucFlags, RES_FATALIFMISSING))
                 {
-                    SetBits(p->ucFlags, RES_PRECACHED);
+                    SetBits(pResource->ucFlags, RES_PRECACHED);
                     break;
                 }
 
-                COM_ExplainDisconnection(true, "Cannot continue without script %s, disconnecting.", p->szFileName);
+                COM_ExplainDisconnection(true, "Cannot continue without script %s, disconnecting.", pResource->szFileName);
                 CL_Disconnect();
 
                 return false;
@@ -291,9 +332,7 @@ bool CL_PrecacheResources()
     if (fs_startup_timings->value != 0.0)
         AddStartupTiming("end  CL_PrecacheResources()");
 
-    // To work private resources we need to reinitialize the sprite subsystem to clear the cache and reinitialize gamedll to pick up new sprites
-    SPR_Shutdown();
-    SPR_Init();
+    // To work private resources we need to reinitialize gamedll to pick up new sprites
     eng()->cldll_func->pHudVidInitFunc();
 
     return true;

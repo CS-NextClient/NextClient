@@ -9,3 +9,8 @@ void HPAK_AddLump(qboolean bUseQueue, const char* pakname, resource_t* pResource
 {
     eng()->HPAK_AddLump.InvokeChained(bUseQueue, pakname, pResource, pData, fpSource);
 }
+
+void HPAK_FlushHostQueue()
+{
+    eng()->HPAK_FlushHostQueue.InvokeChained();
+}

@@ -3,7 +3,7 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <string>
-#include <crc.h>
+#include <ResourceDescriptor.h>
 
 enum class PrivateResListState
 {
@@ -14,19 +14,11 @@ enum class PrivateResListState
     Active
 };
 
-struct PrivateResInternal
-{
-    bool only_client;
-    std::string download_file_path;
-    CRC32_t server_crc32;
-    int size;
-};
-
 struct client_stateex_t
 {
-    // key - resource file path
-    std::unordered_map<std::string, PrivateResInternal> privateResources;
-    // key - resource download file path, value - set of keys from privateResources
+    // key - ResourceDescriptor::filename_
+    std::unordered_map<std::string, ResourceDescriptor> privateResources;
+    // key - ResourceDescriptor::download_path_, value - set of keys from client_stateex_t::privateResources
     std::unordered_map<std::string, std::unordered_set<std::string>> privateResourcesReverseCache;
     std::unordered_map<std::string, resource_t> resourcesNeeded;
     std::string privateResListDownloadPath;

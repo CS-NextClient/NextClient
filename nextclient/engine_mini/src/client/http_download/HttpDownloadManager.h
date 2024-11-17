@@ -13,10 +13,11 @@
 #include <vgui/ILocalize.h>
 #include <IGameUI.h>
 
+#include <ResourceDescriptor.h>
+
 #include "TransferStatistics.h"
 #include "RequestContext.hpp"
 #include "QueuedRequest.hpp"
-#include "../../resource_descriptor.h"
 
 class HttpDownloadManager : public HttpDownloadManagerInterface
 {
@@ -62,7 +63,7 @@ public:
                                  std::shared_ptr<nitro_utils::ConfigProviderInterface> config_provider);
 
     void SetUrl(const std::string& url);
-    void Queue(const resource_descriptor_t& file_resource);
+    void Queue(const ResourceDescriptor& file_resource);
     void Stop();
     uint32_t GetDownloadQueueSize();
     void Update();

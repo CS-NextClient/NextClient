@@ -3,10 +3,10 @@
 #include <optick.h>
 #include <bzlib.h>
 #include <nitro_utils/string_utils.h>
+#include <ResourceDescriptor.h>
 #include "zone.h"
 #include "sys_dll.h"
 #include "../console/console.h"
-#include "../resource_descriptor.h"
 #include "../client/cl_private_resources.h"
 #include "../client/download.h"
 
@@ -63,9 +63,19 @@ qboolean Netchan_CopyFileFragments(netchan_t* chan)
         return FALSE;
     }
 
-    bool is_private_res_list = V_strcmp(filename, client_stateex.privateResListDownloadPath.c_str()) == 0;
+    bool bPrivateResourceList = V_strcmp(filename, client_stateex.privateResListDownloadPath.c_str()) == 0;
 
-    if (filename[0] != '!')
+    if (bPrivateResourceList)
+    {
+        if (!IsSafeFileToDownload(filename))
+        {
+            g_DownloadFileLogger->AddLogFileError(filename, LogFileTypeError::FileBlocked, 0, 0);
+            Con_Printf("Private resource list received with bad path, ignoring\n");
+            Netchan_FlushIncoming(chan, FRAG_FILE_STREAM);
+            return FALSE;
+        }
+    }
+    else if (filename[0] != '!')
     {
         if (cls->state == ca_dedicated || !IsSafeFileToDownload(filename))
         {
@@ -75,39 +85,20 @@ qboolean Netchan_CopyFileFragments(netchan_t* chan)
             return FALSE;
         }
 
-        for (const auto& desc : ResDesc_MakeByDownloadPath(filename))
+        for (const auto& desc : ResourceDescriptorFactory::MakeByDownloadPath(filename))
         {
-            if (!IsSafeFileToDownload(desc.save_path))
+            if (!IsSafeFileToDownload(desc.get_save_path()))
             {
-                g_DownloadFileLogger->AddLogFileError(desc.save_path.c_str(), LogFileTypeError::FileBlocked, 0, 0);
+                g_DownloadFileLogger->AddLogFileError(desc.get_save_path().c_str(), LogFileTypeError::FileBlocked, 0, 0);
                 Con_Printf("File fragment received with bad save path, ignoring\n");
                 Netchan_FlushIncoming(chan, FRAG_FILE_STREAM);
                 return FALSE;
             }
 
-            // use std::filesystem instead of filesystem_, because the file may exist under different search paths and we will not be able to overwrite it
-            if (!is_private_res_list && std::filesystem::exists(desc.save_path))
+            if (!desc.NeedToDownload())
             {
-                if (!desc.private_resource)
-                {
-                    Con_Printf("Can't download %s, already exists\n", desc.download_path.c_str());
-                    Netchan_FlushIncoming(chan, FRAG_FILE_STREAM);
-                    return TRUE;
-                }
-
-                CRC32_t crc32 = ResDesc_CalcFileCRC32(desc);
-                if (crc32 == 0)
-                {
-                    Con_Printf("Can't download %s, see errors above\n", desc.download_path.c_str());
-                    Netchan_FlushIncoming(chan, FRAG_FILE_STREAM);
-                    return FALSE;
-                }
-
-                if (crc32 == desc.server_crc32)
-                {
-                    Netchan_FlushIncoming(chan, FRAG_FILE_STREAM);
-                    return TRUE;
-                }
+                Netchan_FlushIncoming(chan, FRAG_FILE_STREAM);
+                return TRUE;
             }
         }
     }
@@ -179,12 +170,12 @@ qboolean Netchan_CopyFileFragments(netchan_t* chan)
         buffer = uncompressedBuffer;
     }
 
-    if (is_private_res_list)
+    if (bPrivateResourceList)
     {
-        Con_DPrintf(ConLogType::Info, "private resource list received from location: %s\n", client_stateex.privateResListDownloadPath.c_str());
+        Con_DPrintf(ConLogType::Info, "Private resource list received from location: %s\n", client_stateex.privateResListDownloadPath.c_str());
 
         if (client_stateex.privateResListState != PrivateResListState::DownloadingResList)
-            Con_DPrintf(ConLogType::Info, "invalid privateResListState state: %d\n", client_stateex.privateResListState);
+            Con_DPrintf(ConLogType::Info, "Invalid privateResListState state: %d\n", client_stateex.privateResListState);
 
         client_stateex.privateResListState = PrivateResListState::RerunBatchResources;
         Con_DPrintf(ConLogType::Info, "privateResListState = RerunBatchResources\n");
@@ -205,21 +196,21 @@ qboolean Netchan_CopyFileFragments(netchan_t* chan)
     {
         if (pos > 0)
         {
-            for (const auto& desc : ResDesc_MakeByDownloadPath(filename))
+            for (const auto& desc : ResourceDescriptorFactory::MakeByDownloadPath(filename))
             {
-                bool is_saved = ResDesc_SaveToFile(desc, (const char*)buffer, pos);
+                bool is_saved = desc.SaveToFile((const char*)buffer, pos);
                 if (!is_saved)
                 {
-                    g_DownloadFileLogger->AddLogFileError(desc.save_path.c_str(), LogFileTypeError::FileSaveError, 0, 0);
+                    g_DownloadFileLogger->AddLogFileError(desc.get_save_path().c_str(), LogFileTypeError::FileSaveError, 0, 0);
 
-                    Con_Printf("File open failed %s\n", desc.save_path.c_str());
+                    Con_Printf("Save to file failed %s\n", desc.get_save_path().c_str());
                     Netchan_FlushIncoming(chan, FRAG_FILE_STREAM);
 
                     Mem_Free(buffer);
                     return FALSE;
                 }
 
-                g_DownloadFileLogger->AddLogFile(desc.download_path.c_str(), desc.download_size, LogFileType::FileDownloaded);
+                g_DownloadFileLogger->AddLogFile(desc.get_download_path().c_str(), desc.get_download_size(), LogFileType::FileDownloaded);
             }
         }
         else
@@ -234,7 +225,7 @@ qboolean Netchan_CopyFileFragments(netchan_t* chan)
     *pMsg_readcount = 0;
 
     // we do not want to precache private resource list
-    if (is_private_res_list)
+    if (bPrivateResourceList)
         return FALSE;
 
     return TRUE;

@@ -1,5 +1,8 @@
 #include "AudioEngine.hpp"
 
+#include <common/com_strings.h>
+#include <console/console.h>
+
 #include "Utilities/VectorUtils.hpp"
 
 #include "Loaders/GoldSrcFileFactory.hpp"
@@ -8,6 +11,7 @@
 
 #include "SoundSources/SoundSourceFactory.hpp"
 #include "Config/SettingsManager.hpp"
+#include <nitro_utils/string_utils.h>
 
 #include "../../engine.h"
 #include "../../common/sys_dll.h"
@@ -18,15 +22,34 @@ namespace MetaAudio
   {
   }
 
+  void AudioEngine::S_FreeCacheByPath(const std::string& path)
+  {
+    std::string path_lower = nitro_utils::to_lower_copy(path);
+
+    if (path_lower.starts_with(DEFAULT_SOUNDPATH))
+    {
+      nitro_utils::replace_nth(path_lower, DEFAULT_SOUNDPATH, 0, "");
+    }
+
+    auto it = known_sfx.find(path_lower);
+    if (it != known_sfx.end())
+    {
+      S_FreeCache(&it->second);
+    }
+  }
+
   void AudioEngine::S_FreeCache(sfx_t* sfx)
   {
     aud_sfxcache_t* sc = static_cast<aud_sfxcache_t*>(sfx->cache.data);
     if (!sc)
+    {
       return;
+    }
 
     //2015-12-12 fixed a bug that a buffer in use is freed
     if (channel_manager->IsPlaying(sfx))
     {
+      Con_DPrintf(ConLogType::Error, "%s: \"%s\" unload failed, file is playing\n", __func__, sfx->name);
       return;
     }
 
@@ -38,6 +61,8 @@ namespace MetaAudio
     sfx->cache.data = nullptr;
 
     m_cache->Cache_Free(sfx->name);
+
+    Con_DPrintf(ConLogType::Info, "%s: unloading \"%s\"\n", __func__, sfx->name);
   }
 
   void AudioEngine::S_FlushCaches()
@@ -89,7 +114,7 @@ namespace MetaAudio
 
       if (!sfx)
       {
-        auto result = known_sfx.emplace(name, sfx_t());
+        auto result = known_sfx.emplace(nitro_utils::to_lower_copy(name), sfx_t());
         sfx = &(result.first->second);
       }
       else

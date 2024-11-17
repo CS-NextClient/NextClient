@@ -365,6 +365,7 @@ static void InitInternal(AnalyticsInterface* analytics, nitroapi::NitroApiInterf
     g_Unsubs.emplace_back(eng()->R_RenderView                |= [](const auto& next)                                                   { R_RenderView(); });
     g_Unsubs.emplace_back(eng()->GL_SelectTexture            |= [](GLenum target, const auto& next)                                    { GL_SelectTexture(target); });
     g_Unsubs.emplace_back(eng()->CL_ConnectClient            |= [](const auto& next)                                                   { CL_ConnectClient(); });
+    g_Unsubs.emplace_back(eng()->CL_ClearClientState         |= [](const auto& next)                                                   { CL_ClearClientState(); });
 
     //
     // The rest of the hooks and subscribers
@@ -524,7 +525,7 @@ public:
     void Uninitialize() override
     {
         if (g_Analytics)
-            g_Analytics->AddBreadcrumb("info", BREADCRUMBS_TAG "EngineMini::Uninitialize");
+            g_Analytics->AddBreadcrumb("info", BREADCRUMBS_TAG " EngineMini::Uninitialize");
 
         for (auto &unsubscriber : unsubs_)
             unsubscriber->Unsubscribe();
