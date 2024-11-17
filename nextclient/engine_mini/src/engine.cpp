@@ -198,7 +198,7 @@ static void UninitializeInternal()
     p_cszrawsentences = nullptr;
     p_rgpszrawsentence = nullptr;
     p_scr_con_current = nullptr;
-    p_key_dest= nullptr;
+    p_key_dest = nullptr;
 
     fs_startup_timings = nullptr;
     fs_lazy_precache = nullptr;

@@ -1,5 +1,6 @@
 #include "main.h"
 #include <cstring>
+#include <ranges>
 #include <next_client_mini/client_mini.h>
 #include <parsemsg.h>
 #include "studiorenderer.h"
@@ -170,12 +171,11 @@ static void UserMsg_InitHUDPost(const char* name, int size, void* data, int resu
 
 static int UserMsg_TextMsgHandler(const char* name, int size, void* data, UserMsg_TextMsgNext next)
 {
-    const char *hiddenServerCmds[] = {
-        "chat_open",
-        "chat_team_open",
-        "chat_close"
+    static const std::string hiddenServerCmds[] = {
+        "chat_open\n",
+        "chat_team_open\n",
+        "chat_close\n",
     };
-    const size_t hiddenServerCmdsNum = std::size(hiddenServerCmds);
 
     BEGIN_READ(data, size);
 
@@ -186,10 +186,9 @@ static int UserMsg_TextMsgHandler(const char* name, int size, void* data, UserMs
         if (message == "#Game_unknown_command")
         {
             std::string command = READ_STRING();
-            for (int i = 0; i < hiddenServerCmdsNum; i++)
+            if (std::ranges::contains(hiddenServerCmds, command))
             {
-                if (command == hiddenServerCmds[i])
-                    return 1;
+                return 1;
             }
         }
     }
