@@ -72,6 +72,7 @@ add_custom_target(INSTALL_ALL
         COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:vgui2> $ENV{NEXTCLIENT_INSTALL_DIR}/vgui2.dll
         COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/nextclient/engine_mini/bin/OpenAL32.dll $ENV{NEXTCLIENT_INSTALL_DIR}/OpenAL32.dll
         COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/nextclient/engine_mini/bin/sndfile.dll $ENV{NEXTCLIENT_INSTALL_DIR}/sndfile.dll
+        COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/dep/optic/bin/OptickCore.dll $ENV{NEXTCLIENT_INSTALL_DIR}/OptickCore.dll
         COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_CURRENT_SOURCE_DIR}/assets $ENV{NEXTCLIENT_INSTALL_DIR}
 )
 

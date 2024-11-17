@@ -2,6 +2,8 @@ cmake_minimum_required(VERSION 3.21)
 project(client_mini)
 set(OUTPUT_NAME "client_mini")
 
+find_package(optic REQUIRED)
+
 set(CMAKE_POLICY_DEFAULT_CMP0077 NEW)
 if (MSVC)
     set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
@@ -74,6 +76,7 @@ target_include_directories(${PROJECT_NAME} PRIVATE
 target_link_libraries(${PROJECT_NAME} PRIVATE
         nitro_api::nitro_api
         NextClient::gameui
+        optic::optic
 )
 
 if (MSVC)
@@ -102,6 +105,7 @@ endif ()
 
 target_compile_definitions(${PROJECT_NAME} PRIVATE
         LOG_TAG="game"
+        USE_OPTICK=$<BOOL:${USE_PROFILER}>
         _HAS_STATIC_RTTI=0 #disable rtti things in stl
 )
 

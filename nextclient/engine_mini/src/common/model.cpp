@@ -472,6 +472,8 @@ void Mod_Print()
 
 void Mod_UnloadSpriteTextures(model_t* pModel)
 {
+    OPTICK_EVENT();
+
     if (!pModel)
         return;
 
