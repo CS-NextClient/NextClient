@@ -479,27 +479,21 @@ void FileSystem_Proxy::AddSearchPathNoWrite(const char *pPath, const char *pathI
 
 void FileSystemNext::SetPathAlias(const char* path, const char* alias)
 {
-    std::string alias_s = alias;
-    nitro_utils::to_lower(alias_s);
-
-    alias_path_.insert_or_assign(alias_s, path);
+    alias_path_.insert_or_assign(nitro_utils::to_lower_copy(alias), path);
 }
 
 bool FileSystemNext::RemovePathAlias(const char* path)
 {
-    std::string path_s = path;
-    nitro_utils::to_lower(path_s);
-
-    return alias_path_.erase(path_s);
+    return alias_path_.erase(nitro_utils::to_lower_copy(path));
 }
 
 const char* FileSystemNext::ResolveAliasPath(const char* path)
 {
-    std::string path_s = path;
-    nitro_utils::to_lower(path_s);
+    std::string path_lower = nitro_utils::to_lower_copy(path);
 
-    if (alias_path_.contains(path_s))
-        return alias_path_[path_s].c_str();
+    auto it = alias_path_.find(path_lower);
+    if (it != alias_path_.end())
+        return it->second.c_str();
 
     return path;
 }

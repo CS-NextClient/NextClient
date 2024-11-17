@@ -21,6 +21,8 @@ static void AL_FullDevices() { audio_engine->AL_Devices(false); }
 
 void AUDIO_Init()
 {
+    OPTICK_EVENT();
+
     if (COM_CheckParm("-nosound"))
         return;
 
@@ -75,6 +77,8 @@ void AUDIO_Init()
 
 void AUDIO_Shutdown()
 {
+    OPTICK_EVENT();
+
     sound_loader.reset();
     audio_engine.reset();
 
@@ -85,6 +89,8 @@ void AUDIO_Shutdown()
 
 void AUDIO_RegisterCommands()
 {
+    OPTICK_EVENT();
+
     if (COM_CheckParm("-nosound"))
         return;
 
@@ -103,21 +109,29 @@ sfx_t* S_PrecacheSound(char *sample)
 
 void S_UnloadSounds(const std::vector<std::string>& names)
 {
-    // TODO implement this
-    //sound_loader->S_UnloadSounds(names);
+    OPTICK_EVENT();
+
+    for (const auto& name : names)
+        audio_engine->S_FreeCacheByPath(name);
 }
 
 sfxcache_t* S_LoadSound(sfx_t* sound, channel_t* channel)
 {
+    OPTICK_EVENT();
+
     return eng()->S_LoadSound(sound, channel);
 }
 
 void VoiceSE_NotifyFreeChannel(int channel)
 {
+    OPTICK_EVENT();
+
     eng()->VoiceSE_NotifyFreeChannel(channel);
 }
 
 sentenceEntry_s* SequenceGetSentenceByIndex(unsigned int index)
 {
+    OPTICK_EVENT();
+
     return eng()->SequenceGetSentenceByIndex(index);
 }

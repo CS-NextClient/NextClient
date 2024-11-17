@@ -135,7 +135,6 @@ public:
     void SetMenuItemBlinkingState(const char *itemName, bool state);
 
 public:
-    void OnWelcomeNewbie(void);
     void OnGameUIActivated(void);
     void OnOpenServerBrowser(void);
     void OnOpenCreateMultiplayerGameDialog(void);
@@ -246,9 +245,6 @@ private:
     int m_iToolBarSize;
     CToolBar *m_pToolBar;
     CMainMenuBrowser* m_pMainMenuBrowser;
-
-public:
-    //CCSBTEGameMenu *m_pGameMenu;
 
 private:
     CPanelAnimationVar(float, m_flBackgroundFillAlpha, "m_flBackgroundFillAlpha", "0");

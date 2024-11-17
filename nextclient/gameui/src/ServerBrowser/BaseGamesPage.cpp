@@ -3,7 +3,7 @@
 #include "ServerBrowserDialog.h"
 
 #include <vgui/ILocalize.h>
-#include <vgui/IScheme.h>
+#include <vgui/ISchemeNext.h>
 #include <vgui/IVGui.h>
 #include <vgui/KeyCode.h>
 #include <vgui/IPanel.h>

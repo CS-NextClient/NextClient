@@ -5,7 +5,7 @@
 #include <stdio.h>
 
 
-#include <vgui/ISurface.h>
+#include <vgui/ISurfaceNext.h>
 #include <vgui_controls/Button.h>
 #include <KeyValues.h>
 #include <vgui_controls/ComboBox.h>

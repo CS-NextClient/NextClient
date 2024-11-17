@@ -1,7 +1,7 @@
 #include "GameUi.h"
 #include "ToolBar.h"
 #include "vgui/ILocalize.h"
-#include "vgui/IScheme.h"
+#include "vgui/ISchemeNext.h"
 
 CToolBar::CToolBar(vgui2::Panel *parent, const char *panelName) : BaseClass(parent, panelName)
 {

@@ -10,7 +10,7 @@
 #include <vgui/ILocalize.h>
 #include <vgui/IInput.h>
 #include <vgui/IInputInternal.h>
-#include <vgui/IScheme.h>
+#include <vgui/ISchemeNext.h>
 #include <vgui/IVGui.h>
 #include <vgui/MouseCode.h>
 #include <KeyValues.h>

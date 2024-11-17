@@ -7,8 +7,8 @@
 #include <vgui/MouseCode.h>
 #include <vgui/KeyCode.h>
 #include <vgui/IInput.h>
-#include <vgui/IScheme.h>
-#include <vgui/ISurface.h>
+#include <vgui/ISchemeNext.h>
+#include <vgui/ISurfaceNext.h>
 #include "PanelListPanel.h"
 
 class VScrollBarReversedButtons : public vgui2::ScrollBar

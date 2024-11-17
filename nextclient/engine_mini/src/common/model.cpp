@@ -472,6 +472,8 @@ void Mod_Print()
 
 void Mod_UnloadSpriteTextures(model_t* pModel)
 {
+    OPTICK_EVENT();
+
     if (!pModel)
         return;
 
@@ -512,14 +514,6 @@ void Mod_UnloadFiltered(const std::function<bool(model_t*)>& filter)
         {
             if (Cache_Check(&mod->cache))
                 Cache_Free(&mod->cache);
-        }
-        else if (mod->type == mod_brush)
-        {
-            // TODO unload brush model!!
-        }
-        else if (mod->type == mod_sprite)
-        {
-            Mod_UnloadSpriteTextures(mod);
         }
 
         Q_memset(mod, 0, sizeof(model_t));

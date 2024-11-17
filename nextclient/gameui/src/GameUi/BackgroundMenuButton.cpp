@@ -2,8 +2,8 @@
 
 #include <KeyValues.h>
 #include <vgui/IImage.h>
-#include <vgui/IScheme.h>
-#include <vgui/ISurface.h>
+#include <vgui/ISchemeNext.h>
+#include <vgui/ISurfaceNext.h>
 #include <vgui_controls/Menu.h>
 #include <vgui_controls/MenuItem.h>
 #include <vgui_controls/ImagePanel.h>

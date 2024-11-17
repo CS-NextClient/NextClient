@@ -5,7 +5,7 @@
 #include "vgui/IInputInternal.h"
 #include "vgui/ILocalize.h"
 #include "vgui/IPanel.h"
-#include "vgui/ISurface.h"
+#include "vgui/ISurfaceNext.h"
 #include "vgui/ISystem.h"
 #include "vgui/IVGui.h"
 #include "FileSystem.h"
@@ -376,15 +376,6 @@ CBasePanel::CBasePanel(void) : vgui2::Panel(NULL, "BaseGameUIPanel")
 
     m_pFocusParent = NULL;
     m_pFocusPanel = NULL;
-
-    OnWelcomeNewbie();
-}
-
-void CBasePanel::OnWelcomeNewbie(void)
-{
-    char szBuffer[128];
-    if (vgui2::system()->GetRegistryString("HKEY_CURRENT_USER\\Software\\Valve\\Steam\\Language", szBuffer, 127) && strlen(szBuffer) > 0)
-        return;
 }
 
 KeyValues *CBasePanel::GetConsoleControlSettings(void)
@@ -1095,20 +1086,14 @@ public:
 
 void CBasePanel::OnOpenQuitConfirmationDialog(void)
 {
-    if (GameUI().IsInLevel() && engine->GetMaxClients() == 1)
+    if (!m_hQuitQueryBox.Get())
     {
-    }
-    else
-    {
-        if (!m_hQuitQueryBox.Get())
-        {
-            m_hQuitQueryBox = new CQuitQueryBox("#GameUI_QuitConfirmationTitle", "#GameUI_QuitConfirmationText", this);
-            m_hQuitQueryBox->SetOKButtonText("#GameUI_Quit");
-            m_hQuitQueryBox->SetOKCommand(new KeyValues("Command", "command", "QuitNoConfirm"));
-            m_hQuitQueryBox->SetCancelCommand(new KeyValues("Command", "command", "ReleaseModalWindow"));
-            m_hQuitQueryBox->AddActionSignalTarget(this);
-            m_hQuitQueryBox->DoModal();
-        }
+        m_hQuitQueryBox = new CQuitQueryBox("#GameUI_QuitConfirmationTitle", "#GameUI_QuitConfirmationText", this);
+        m_hQuitQueryBox->SetOKButtonText("#GameUI_Quit");
+        m_hQuitQueryBox->SetOKCommand(new KeyValues("Command", "command", "QuitNoConfirm"));
+        m_hQuitQueryBox->SetCancelCommand(new KeyValues("Command", "command", "ReleaseModalWindow"));
+        m_hQuitQueryBox->AddActionSignalTarget(this);
+        m_hQuitQueryBox->DoModal();
     }
 }
 

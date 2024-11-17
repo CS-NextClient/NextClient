@@ -45,23 +45,23 @@ void HttpDownloadManager::SetUrl(const std::string &url)
     base_url_ = FixUrl(url);
 }
 
-void HttpDownloadManager::Queue(const resource_descriptor_t& file_resource)
+void HttpDownloadManager::Queue(const ResourceDescriptor& file_resource)
 {
-    if (!IsSafeFileToDownload(file_resource.download_path))
+    if (!IsSafeFileToDownload(file_resource.get_download_path()))
     {
-        Con_Printf("[HTTP] Invalid file path to download: %s\n", file_resource.download_path.c_str());
-        download_logger_->AddLogFileError(file_resource.download_path.c_str(), LogFileTypeError::FileBlocked, 0, 0);
+        Con_Printf("[HTTP] Invalid file path to download: %s\n", file_resource.get_download_path().c_str());
+        download_logger_->AddLogFileError(file_resource.get_download_path().c_str(), LogFileTypeError::FileBlocked, 0, 0);
         return;
     }
 
-    if (!IsSafeFileToDownload(file_resource.save_path))
+    if (!IsSafeFileToDownload(file_resource.get_save_path()))
     {
-        Con_Printf("[HTTP] Invalid file path to save: %s\n", file_resource.save_path.c_str());
-        download_logger_->AddLogFileError(file_resource.download_path.c_str(), LogFileTypeError::FileBlocked, 0, 0);
+        Con_Printf("[HTTP] Invalid file path to save: %s\n", file_resource.get_save_path().c_str());
+        download_logger_->AddLogFileError(file_resource.get_download_path().c_str(), LogFileTypeError::FileBlocked, 0, 0);
         return;
     }
 
-    total_bytes_to_download_ += file_resource.download_size;
+    total_bytes_to_download_ += file_resource.get_download_size();
     total_files_to_download_++;
 
     files_to_download_.emplace(file_resource, 0);
@@ -147,19 +147,19 @@ void HttpDownloadManager::PruneCompletedRequests()
 
         auto response_result = request.get_response().get();
         auto error_message = ValidateResponseAndGetErrorMessage(response_result);
-        const resource_descriptor_t& resource_descriptor = request.get_file_resource();
+        const ResourceDescriptor& resource_descriptor = request.get_file_resource();
 
         if (!error_message)
         {
-            bool is_saved = ResDesc_SaveToFile(resource_descriptor, response_result.text.data(), response_result.text.length());
+            bool is_saved = resource_descriptor.SaveToFile(response_result.text.data(), response_result.text.length());
             if (is_saved)
             {
-                download_logger_->AddLogFile(resource_descriptor.download_path.c_str(), response_result.downloaded_bytes, LogFileType::FileDownloaded);
+                download_logger_->AddLogFile(resource_descriptor.get_download_path().c_str(), response_result.downloaded_bytes, LogFileType::FileDownloaded);
             }
             else
             {
-                Con_Printf("[HTTP] Can't save file: %s\n", resource_descriptor.save_path.c_str());
-                download_logger_->AddLogFileError(resource_descriptor.download_path.c_str(), LogFileTypeError::FileSaveError, 0, 0);
+                Con_Printf("[HTTP] Can't save file: %s\n", resource_descriptor.get_save_path().c_str());
+                download_logger_->AddLogFileError(resource_descriptor.get_download_path().c_str(), LogFileTypeError::FileSaveError, 0, 0);
             }
 
             completed_requests_bytes_downloaded_ += response_result.downloaded_bytes;
@@ -173,12 +173,12 @@ void HttpDownloadManager::PruneCompletedRequests()
             }
             else
             {
-                total_bytes_to_download_ -= resource_descriptor.download_size;
+                total_bytes_to_download_ -= resource_descriptor.get_download_size();
 
-                Con_Printf("[HTTP] Can't download: %s | %s\n", resource_descriptor.download_path.c_str(), error_message->c_str());
+                Con_Printf("[HTTP] Can't download: %s | %s\n", resource_descriptor.get_download_path().c_str(), error_message->c_str());
 
                 auto log_file_type = response_result.status_code == 404 ? LogFileTypeError::FileMissingHTTP : LogFileTypeError::FileErrorHTTP;
-                download_logger_->AddLogFileError(resource_descriptor.download_path.c_str(), log_file_type, (int)response_result.error.code, response_result.status_code);
+                download_logger_->AddLogFileError(resource_descriptor.get_download_path().c_str(), log_file_type, (int)response_result.error.code, response_result.status_code);
             }
         }
 
@@ -195,7 +195,7 @@ void HttpDownloadManager::StartNewDownloads()
 
         auto& queued_request = files_to_download_.front();
 
-        std::string file_url = base_url_ + queued_request.get_file_resource().download_path;
+        std::string file_url = base_url_ + queued_request.get_file_resource().get_download_path();
         nitro_utils::replace_all(file_url, " ", "%20");
 
         auto shared_data = std::make_shared<RequestContext::Shared>();
@@ -315,7 +315,7 @@ void HttpDownloadManager::UpdateUi()
             const auto &request = requests_[0];
 
             float download_progress = (float)request.get_shared_data()->download_now / request.get_shared_data()->download_total;
-            const char* file_path = request.get_file_resource().download_path.c_str();
+            const char* file_path = request.get_file_resource().get_download_path().c_str();
 
             game_ui_->SetSecondaryProgressBar(download_progress);
             game_ui_->SetSecondaryProgressBarText(file_path);

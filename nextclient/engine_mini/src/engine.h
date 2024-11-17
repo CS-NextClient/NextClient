@@ -1,6 +1,5 @@
 #pragma once
 
-#include <concurrencpp/concurrencpp.h>
 #include <nitroapi/NitroApiInterface.h>
 #include <next_engine_mini/AnalyticsInterface.h>
 #include <next_engine_mini/NextClientVersion.h>
@@ -30,7 +29,7 @@ extern int* pMsg_readcount;
 extern double* realtime;
 extern double* host_frametime;
 extern qboolean* gfExtendedError;
-const int kDownloadFileSize = 128;
+const int kDownloadFileSize = 256;
 extern char* gDownloadFile;
 const int kDisconnectReasonSize = 256;
 extern char* gszDisconnectReason;
@@ -103,7 +102,9 @@ nitroapi::EngineData* eng();
 nitroapi::ClientData* client();
 nitroapi::SDL2Data* sdl2();
 
+// common/common.cpp
 int COM_SizeofResourceList(resource_t *pList, resourceinfo_t *ri);
+void COM_ClearCustomizationList(customization_t* pHead, qboolean bCleanDecals);
 
 // client/cl_custom.cpp
 bool IsSafeFileToDownload(const std::string &filename);
@@ -113,10 +114,13 @@ void CL_MoveToOnHandList(resource_t *pResource);
 
 // client/cl_parse.cpp
 void CL_StartResourceDownloading(const char *pszMessage, bool bCustom);
+void CL_ClearResourceLists();
+void CL_CreateResourceList();
 
 // common/hpak.cpp
 bool HPAK_GetDataPointer(const char *filename, resource_t *pResource, uint8_t **buffer, int *bufsize);
 void HPAK_AddLump(qboolean bUseQueue, const char* pakname, resource_t* pResource, uint8_t* pData, FileHandle_t fpSource);
+void HPAK_FlushHostQueue();
 
 // cl_pmove.cpp
 void CL_SetSolidEntities();

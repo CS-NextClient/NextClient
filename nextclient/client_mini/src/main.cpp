@@ -89,7 +89,7 @@ static void HUD_InitPost()
 
 static void HUD_RedrawPost(float flTime, int iIntermission, int result)
 {
-    if(hud_draw->value != 0.0)
+    if (hud_draw->value != 0.0)
         g_GameHud->Draw(flTime);
 }
 

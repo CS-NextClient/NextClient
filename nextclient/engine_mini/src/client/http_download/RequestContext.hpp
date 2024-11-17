@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../../resource_descriptor.h"
+#include <ResourceDescriptor.h>
 #include <cpr/api.h>
 #include <string>
 #include <queue>
@@ -21,14 +21,14 @@ public:
     };
 
 private:
-    resource_descriptor_t resource_descriptor;
+    ResourceDescriptor resource_descriptor;
     int retry_{};
     time_point start_time_;
     cpr::AsyncResponse response_;
     std::shared_ptr<Shared> shared_data_;
 
 public:
-    RequestContext(resource_descriptor_t file_resource, int retry, time_point start_time, std::shared_ptr<Shared> shared_data, cpr::AsyncResponse &&response):
+    RequestContext(ResourceDescriptor file_resource, int retry, time_point start_time, std::shared_ptr<Shared> shared_data, cpr::AsyncResponse &&response):
             resource_descriptor(std::move(file_resource)),
             retry_(retry),
             start_time_(start_time),
@@ -60,7 +60,7 @@ public:
 
     [[nodiscard]] time_point get_start_time() const { return start_time_; }
     cpr::AsyncResponse &get_response() { return response_; }
-    [[nodiscard]] const resource_descriptor_t& get_file_resource() const { return resource_descriptor; }
+    [[nodiscard]] const ResourceDescriptor& get_file_resource() const { return resource_descriptor; }
     [[nodiscard]] std::shared_ptr<Shared> get_shared_data() const { return shared_data_; }
     [[nodiscard]] int get_retry() const { return retry_; }
     void set_retry(int retry) { retry_ = retry; }

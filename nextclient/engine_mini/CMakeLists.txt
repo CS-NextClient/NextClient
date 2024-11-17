@@ -4,6 +4,7 @@ set(OUTPUT_NAME "next_engine_mini")
 
 find_package(OpenSSL REQUIRED)
 find_package(concurrencpp CONFIG REQUIRED)
+find_package(optic REQUIRED)
 
 set(CMAKE_POLICY_DEFAULT_CMP0077 NEW)
 set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
@@ -71,16 +72,13 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
         NextClient::gameui
         NextClient::filesystem_proxy
         cpr::cpr
+        optic::optic
         OpenSSL::SSL
         OpenSSL::Crypto
         concurrencpp::concurrencpp
         alure2_s
         bzip2
 )
-
-if (USE_PROFILER)
-    target_link_libraries(${PROJECT_NAME} ${CMAKE_CURRENT_SOURCE_DIR}/dep/optic/lib/OptickCore.lib)
-endif()
 
 if (MSVC)
     target_compile_options(${PROJECT_NAME} PRIVATE

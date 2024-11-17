@@ -10,7 +10,7 @@
 #include "GameConsoleNext.h"
 #include "GameConsoleDialog.h"
 #include "LoadingDialog.h"
-#include <vgui/ISurface.h>
+#include <vgui/ISurfaceNext.h>
 
 #include <KeyValues.h>
 #include <vgui/Cursor.h>

@@ -15,6 +15,8 @@
 
 class CCvarTextEntry : public vgui2::TextEntry
 {
+    static const int MAX_CVAR_TEXT = 64;
+
 public:
     CCvarTextEntry(vgui2::Panel *parent, const char *panelName, char const *cvarname);
     ~CCvarTextEntry();
@@ -31,7 +33,7 @@ private:
     typedef vgui2::TextEntry BaseClass;
 
     char			*m_pszCvarName;
-    char			m_pszStartValue[64];
+    char			m_pszStartValue[MAX_CVAR_TEXT];
 };
 
 #endif // CVARTEXTENTRY_H

@@ -17,12 +17,10 @@
 // memdbgon must be the last include file in a .cpp file!!!
 #include "tier0/memdbgon.h"
 
-static const int MAX_CVAR_TEXT = 64;
-
 CCvarTextEntry::CCvarTextEntry(Panel *parent, const char *panelName, char const *cvarname)
     : TextEntry(parent, panelName)
 {
-    m_pszCvarName = cvarname ? strdup(cvarname) : NULL;
+    m_pszCvarName = cvarname ? V_strdup(cvarname) : nullptr;
     m_pszStartValue[0] = 0;
 
     if (m_pszCvarName)
@@ -35,10 +33,7 @@ CCvarTextEntry::CCvarTextEntry(Panel *parent, const char *panelName, char const 
 
 CCvarTextEntry::~CCvarTextEntry()
 {
-    if (m_pszCvarName)
-    {
-        free(m_pszCvarName);
-    }
+    delete[] m_pszCvarName;
 }
 
 void CCvarTextEntry::ApplySchemeSettings(vgui2::IScheme *pScheme)
@@ -68,11 +63,11 @@ void CCvarTextEntry::ApplyChanges(bool immediate)
     else
     {
         char szCommand[256];
-        sprintf(szCommand, "%s \"%s\"\n", m_pszCvarName, szText);
+        V_sprintf_safe(szCommand, "%s \"%s\"\n", m_pszCvarName, szText);
         engine->pfnClientCmd(szCommand);
     }
 
-    strcpy(m_pszStartValue, szText);
+    V_strcpy_safe(m_pszStartValue, szText);
 }
 
 void CCvarTextEntry::Reset()
@@ -81,7 +76,7 @@ void CCvarTextEntry::Reset()
     if (value && value[0])
     {
         SetText(value);
-        strcpy(m_pszStartValue, value);
+        V_strcpy_safe(m_pszStartValue, value);
     }
 }
 
@@ -90,7 +85,7 @@ bool CCvarTextEntry::HasBeenModified()
     char szText[MAX_CVAR_TEXT];
     GetText(szText, MAX_CVAR_TEXT);
 
-    return stricmp(szText, m_pszStartValue);
+    return V_stricmp(szText, m_pszStartValue);
 }
 
 

@@ -1,24 +1,50 @@
 #include <metaaudio.h>
+#include <ResourceDescriptor.h>
+#include <common/com_strings.h>
+#include <common/filesystem.h>
 
-#include "../engine.h"
 #include <next_engine_mini/cl_private_resources.h>
 #include <nitro_utils/string_utils.h>
+
+#include "../engine.h"
 #include "../console/console.h"
 #include "../common/net_buffer.h"
 #include "../common/net_chan.h"
 #include "../common/zone.h"
 #include "../common/model.h"
-#include "../common/com_strings.h"
 #include "../client/spriteapi.h"
 #include "download.h"
+#include "cl_private_resources.h"
 
-static void AddPrivateResource(bool only_client, const std::string& filename, const std::string& download_path, CRC32_t server_crc, int size)
+static resourcetype_t ValidateClientResourceAndGetType(const ResourceDescriptor& resource_descriptor)
 {
-    client_stateex.privateResources.try_emplace(filename, PrivateResInternal { only_client, download_path, server_crc, size });
+    std::filesystem::path download_path = resource_descriptor.get_download_path();
+    if (!download_path.has_extension() || !download_path.has_filename())
+    {
+        return rt_max;
+    }
 
-    if (!client_stateex.privateResourcesReverseCache.contains(download_path))
-        client_stateex.privateResourcesReverseCache.emplace(download_path, std::unordered_set<std::string>{});
+    resourcetype_t resource_type = rt_max;
 
+    std::string dl_path_lower = nitro_utils::to_lower_copy(download_path.string());
+
+    if (dl_path_lower.starts_with("sprites/") &&
+        (dl_path_lower.ends_with(".spr") || dl_path_lower.ends_with(".txt")))
+    {
+        resource_type = t_generic;
+    }
+    else if (dl_path_lower.starts_with("sound/") &&
+        (dl_path_lower.ends_with(".wav") || dl_path_lower.ends_with(".flac") || dl_path_lower.ends_with(".ogg") || dl_path_lower.ends_with(".mp3")))
+    {
+        resource_type = t_sound;
+    }
+
+    return resource_type;
+}
+
+static void AddPrivateResource(bool client_only, const std::string& filename, const std::string& download_path, CRC32_t server_crc, int size)
+{
+    client_stateex.privateResources.try_emplace(filename, ResourceDescriptor { filename, download_path, server_crc, size, client_only });
     client_stateex.privateResourcesReverseCache[download_path].emplace(filename);
 }
 
@@ -147,6 +173,8 @@ void PrivateRes_ParseDownloadPath(const std::string& cmd)
         return;
     }
 
+    PrivateRes_Clear();
+
     client_stateex.privateResListDownloadPath = download_path;
     Con_DPrintf(ConLogType::Info, "%s: received: %s\n", __func__, client_stateex.privateResListDownloadPath.c_str());
 
@@ -163,41 +191,23 @@ void PrivateRes_ParseDownloadPath(const std::string& cmd)
 
 void PrivateRes_AddClientOnlyResources(resource_t* list)
 {
-    std::unordered_map<std::string, resource_descriptor_t> private_resources = ResDesc_GetAllOverwriteResources();
-
-    for (const auto& [filepath, res_descriptor] : private_resources)
+    for (const auto& [filepath, res_descriptor] : client_stateex.privateResources)
     {
-        if (!res_descriptor.only_client)
+        if (!res_descriptor.is_client_only())
             continue;
 
-        std::filesystem::path download_path = res_descriptor.download_path;
-        if (!download_path.has_extension() || !download_path.has_filename())
+        resourcetype_t resource_type = ValidateClientResourceAndGetType(res_descriptor);
+
+        if (resource_type == rt_max)
         {
-            Con_DPrintf(ConLogType::Info, "Can't add private resource to resource list '%s' as the download path '%s' is invalid\n", res_descriptor.filename.c_str(), res_descriptor.download_path.c_str());
-            continue;
-        }
-
-        std::string dl_path = download_path.string();
-        nitro_utils::to_lower(dl_path);
-
-        resourcetype_t resourcetype = rt_max;
-        if (dl_path.ends_with(".spr") || dl_path.ends_with(".mp3") || dl_path.starts_with("sprites/") && dl_path.ends_with(".txt"))
-            resourcetype = t_generic;
-        else if (dl_path.ends_with(".mdl"))
-            resourcetype = t_model;
-        else if (dl_path.ends_with(".wav"))
-            resourcetype = t_sound;
-
-        if (resourcetype == rt_max)
-        {
-            Con_DPrintf(ConLogType::Info, "Can't add private resource to resource list '%s' for security reason\n", res_descriptor.filename.c_str());
+            Con_DPrintf(ConLogType::Info, "Can't add private resource to resource list '%s' for security reason\n", res_descriptor.get_filename().c_str());
             continue;
         }
 
         auto* res = (resource_t*)Mem_ZeroMalloc(sizeof(resource_t));
-        Q_strncpy(res->szFileName, filepath.c_str(), sizeof(res->szFileName));
-        res->type = resourcetype;
-        res->nDownloadSize = res_descriptor.download_size;
+        V_strcpy_safe(res->szFileName, filepath.c_str());
+        res->type = resource_type;
+        res->nDownloadSize = res_descriptor.get_download_size();
 
         CL_AddToResourceList(res, list);
     }
@@ -205,18 +215,23 @@ void PrivateRes_AddClientOnlyResources(resource_t* list)
 
 void PrivateRes_UnloadResources()
 {
-    if (!client_stateex.privateResources.empty())
+    if (client_stateex.privateResources.empty())
+        return;
+
+    Mod_UnloadFiltered([](model_t* model) {
+        return client_stateex.privateResources.contains(model->name);
+    });
+
+    std::vector<std::string> sounds;
+    for (const auto& [path, res] : client_stateex.privateResources)
     {
-        Mod_UnloadFiltered([](model_t* model) {
-            return client_stateex.privateResources.contains(model->name);
-        });
-
-        std::vector<std::string> sounds;
-        for (const auto& res : client_stateex.privateResources)
-            sounds.emplace_back(std::string(DEFAULT_SOUNDPATH) + res.first);
-
-        S_UnloadSounds(sounds);
+        if (nitro_utils::start_with(path, DEFAULT_SOUNDPATH, nitro_utils::CompareOptions::RegisterIndependent))
+        {
+            sounds.emplace_back(path);
+        }
     }
+
+    S_UnloadSounds(sounds);
 }
 
 void PrivateRes_PrepareToPrecache()
@@ -225,8 +240,15 @@ void PrivateRes_PrepareToPrecache()
 
     for (const auto& [file, res]: client_stateex.privateResources)
     {
-        resource_descriptor_t desc = ResDesc_Make(file);
-        g_pFileSystemNext->SetPathAlias(std::format("{}/{}", PrivateRes_GetPrivateFolder(), desc.filename).c_str(), desc.filename.c_str());
+        if (FS_FileExists(res.get_filename().c_str()) && !res.is_allow_override_resource())
+        {
+            continue;
+        }
+
+        std::string path = std::format("{}/{}", PrivateRes_GetPrivateFolder(), res.get_filename());
+        std::string alias = res.get_filename();
+
+        g_pFileSystemNext->SetPathAlias(path.c_str(), alias.c_str());
     }
 }
 

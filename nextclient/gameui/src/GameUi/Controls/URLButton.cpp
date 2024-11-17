@@ -4,8 +4,8 @@
 #include <vgui/IBorder.h>
 #include <vgui/IInput.h>
 #include <vgui/IInputInternal.h>
-#include <vgui/IScheme.h>
-#include <vgui/ISurface.h>
+#include <vgui/ISchemeNext.h>
+#include <vgui/ISurfaceNext.h>
 #include <vgui/ISystem.h>
 #include <vgui/IVGui.h>
 #include <vgui/MouseCode.h>

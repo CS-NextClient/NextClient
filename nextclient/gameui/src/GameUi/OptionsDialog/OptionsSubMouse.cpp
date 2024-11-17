@@ -6,7 +6,7 @@
 #include "CvarSlider.h"
 
 #include <KeyValues.h>
-#include <vgui/IScheme.h>
+#include <vgui/ISchemeNext.h>
 #include <stdio.h>
 #include <vgui_controls/TextEntry.h>
 

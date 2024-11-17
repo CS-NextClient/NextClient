@@ -52,7 +52,13 @@ const auto kAllowedCvars = std::to_array<std::string>({
     "r_decals",
     // since v2.2.0
     "cl_yawspeed",
-    "cl_pitchspeed"
+    "cl_pitchspeed",
+    // since v2.4.0
+    "cl_fog_density",
+    "cl_fog_r",
+    "cl_fog_g",
+    "cl_fog_b",
+    "viewmodel_fov"
 });
 
 enum class CvarStatus

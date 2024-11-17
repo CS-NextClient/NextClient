@@ -11,9 +11,9 @@
 
 #include <vgui/IInput.h>
 #include <vgui/IInputInternal.h>
-#include <vgui/IScheme.h>
+#include <vgui/ISchemeNext.h>
 #include <vgui/IVGui.h>
-#include <vgui/ISurface.h>
+#include <vgui/ISurfaceNext.h>
 #include <vgui/ILocalize.h>
 #include <KeyValues.h>
 

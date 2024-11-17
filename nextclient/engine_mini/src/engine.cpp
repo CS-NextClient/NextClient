@@ -368,6 +368,7 @@ static void InitInternal(AnalyticsInterface* analytics, nitroapi::NitroApiInterf
     g_Unsubs.emplace_back(eng()->R_RenderView                |= [](const auto& next)                                                   { R_RenderView(); });
     g_Unsubs.emplace_back(eng()->GL_SelectTexture            |= [](GLenum target, const auto& next)                                    { GL_SelectTexture(target); });
     g_Unsubs.emplace_back(eng()->CL_ConnectClient            |= [](const auto& next)                                                   { CL_ConnectClient(); });
+    g_Unsubs.emplace_back(eng()->CL_ClearClientState         |= [](const auto& next)                                                   { CL_ClearClientState(); });
 
     //
     // The rest of the hooks and subscribers
@@ -476,7 +477,7 @@ static void InitInternalPost()
 
     CreateInterfaceFn vgui2_factory = Sys_GetFactory("vgui2.dll");
     g_pLocalize = v.Validate((vgui2::ILocalize*)InitializeInterface(VGUI_LOCALIZE_INTERFACE_VERSION, &vgui2_factory, 1), GET_VARIABLE_NAME(localize));
-    g_pLocalize->AddFile(g_pFileSystem, "resource/nextclient_english.txt");
+    g_pLocalize->AddFile(g_pFileSystem, "resource/nextclient_%language%.txt");
 
     KV_InitKeyValuesSystem2(vgui2_factory);
 
@@ -548,7 +549,7 @@ public:
     void Uninitialize() override
     {
         if (g_Analytics)
-            g_Analytics->AddBreadcrumb("info", BREADCRUMBS_TAG "EngineMini::Uninitialize");
+            g_Analytics->AddBreadcrumb("info", BREADCRUMBS_TAG " EngineMini::Uninitialize");
 
         for (auto &unsubscriber : unsubs_)
             unsubscriber->Unsubscribe();
