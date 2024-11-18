@@ -1,5 +1,6 @@
 #include "main.h"
 #include <cstring>
+#include <ranges>
 #include <next_client_mini/client_mini.h>
 #include <parsemsg.h>
 #include "studiorenderer.h"
@@ -168,6 +169,33 @@ static void UserMsg_InitHUDPost(const char* name, int size, void* data, int resu
     g_GameHud->InitHUDData();
 }
 
+static int UserMsg_TextMsgHandler(const char* name, int size, void* data, UserMsg_TextMsgNext next)
+{
+    static const std::string hiddenServerCmds[] = {
+        "chat_open\n",
+        "chat_team_open\n",
+        "chat_close\n",
+    };
+
+    BEGIN_READ(data, size);
+
+    const int destType = READ_BYTE();
+    if (destType == 2)
+    {
+        std::string message = READ_STRING();
+        if (message == "#Game_unknown_command")
+        {
+            std::string command = READ_STRING();
+            if (std::ranges::contains(hiddenServerCmds, command))
+            {
+                return 1;
+            }
+        }
+    }
+
+    return next->Invoke(name, size, data);
+}
+
 static void HUD_ProcessPlayerStateHandler(entity_state_s* dst, const entity_state_s* src, HUD_ProcessPlayerStateNext next)
 {
     cl_entity_t* localPlayer = gEngfuncs.GetLocalPlayer();
@@ -205,6 +233,7 @@ public:
         g_Unsub.emplace_back(client_data->HUD_ProcessPlayerState |= HUD_ProcessPlayerStateHandler);
         g_Unsub.emplace_back(client_data->UserMsg_CurWeapon += UserMsg_CurWeaponPost);
         g_Unsub.emplace_back(client_data->UserMsg_InitHUD += UserMsg_InitHUDPost);
+        g_Unsub.emplace_back(client_data->UserMsg_TextMsg |= UserMsg_TextMsgHandler);
 
         g_GameHud = std::make_unique<GameHud>(nitro_api);
     }
