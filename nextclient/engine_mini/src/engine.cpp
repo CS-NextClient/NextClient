@@ -442,21 +442,21 @@ static void InitInternal(AnalyticsInterface* analytics, nitroapi::NitroApiInterf
     g_Unsubs.emplace_back(eng()->Con_MessageMode_f += []() {
         if (*p_key_dest == key_message)
         {
-            gEngfuncs.pfnServerCmd("chat_open");
+            gEngfuncs.pfnServerCmd("client_chat_open");
         }
     });
 
     g_Unsubs.emplace_back(eng()->Con_MessageMode2_f += []() {
         if (*p_key_dest == key_message)
         {
-            gEngfuncs.pfnServerCmd("chat_team_open");
+            gEngfuncs.pfnServerCmd("client_chat_team_open");
         }
     });
 
     g_Unsubs.emplace_back(eng()->Key_Message += [](int key) {
         if (*p_key_dest != key_message)
         {
-            gEngfuncs.pfnServerCmd("chat_close");
+            gEngfuncs.pfnServerCmd("client_chat_close");
         }
     });
 

@@ -172,9 +172,9 @@ static void UserMsg_InitHUDPost(const char* name, int size, void* data, int resu
 static int UserMsg_TextMsgHandler(const char* name, int size, void* data, UserMsg_TextMsgNext next)
 {
     static const std::string hiddenServerCmds[] = {
-        "chat_open\n",
-        "chat_team_open\n",
-        "chat_close\n",
+        "client_chat_open\n",
+        "client_chat_team_open\n",
+        "client_chat_close\n",
     };
 
     BEGIN_READ(data, size);
