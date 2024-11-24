@@ -9,23 +9,28 @@ NextClient has integrated some features from [csldr](https://github.com/mikkokko
 ### Main features:
  - Protector - protects the client from malicious commands from the server
  - Advanced video settings - FOV fix on 16:9 resolutions, ability to adjust FOV and separately adjust FOV for first person model
- - Advanced kill feed - support for advanced kill feed [regamedll](https://github.com/s1lentq/ReGameDLL_CS/pull/858), displaying kill icons: through the wall, through smoke, without aiming, jumping, dominating, etc.
+ - Advanced killfeed - support for advanced killfeed [regamedll](https://github.com/s1lentq/ReGameDLL_CS/pull/858), displaying kill icons: through the wall, through smoke, without aiming, jumping, dominating, etc.
  - Advanced crosshair settings - added new crosshair types: dot, T-shaped, circle
- - 2 GUI schemes with the ability to change them through the settings, and the ability to add your own schemes without deleting the old ones.
- - Display more than 255hp when using [server module](https://github.com/CS-NextClient/NextClientServerApi).
+ - 2 GUI schemes with the ability to change them through the settings, and the ability to add your own schemes without deleting the old ones
+ - Display more than 255hp when using [server module](https://github.com/CS-NextClient/NextClientServerApi)
  - Display number and size of remaining files, total file size and upload speed when connected to the server
  - Color chat in console
- - Support for weapon models with inspection animations
- - Various improvements from csldr (see cvars section)
+ - Various improvements from [csldr](https://github.com/mikkokko/csldr) for viewmodel:
+   - Adjustable origin
+   - Alternative bob from CS:GO 1.0.0.40
+   - Sway/lag
+   - Viewmodel shifting can be disabled
+   - Client-side weapon inspecting
+   - Bone controlled camera movement
 
 ### Features for amxmodx developers:
- - cvars sandbox, the ability to change cvars for a client (from a limited list) while a client is on the server
- - kill feed customization
+ - Cvars sandbox, the ability to change cvars for a client (from a limited list) while a client is on the server
+ - Killfeed customization
  - Sprite API, control of sprites on the screen
- - extended FOV message
- - support for viewmodel effects
- - separate pre-cache for regular cs 1.6 client and NextClient
- - pre-cache of hud.txt and other standard resources
+ - Extended FOV message
+ - Support for viewmodel effects
+ - Separate precache for regular cs 1.6 client and NextClient
+ - Precache of hud.txt and other standard resources
 
 ### New cvars
 <details>
@@ -37,21 +42,25 @@ NextClient has integrated some features from [csldr](https://github.com/mikkokko
 | viewmodel_offset_x | 0             | Yes                         |  |
 | viewmodel_offset_y | 0             | Yes                         |  |
 | viewmodel_offset_z | 0             | Yes                         |  |
+| camera_movement_scale | 1             | No                          | Camera movement scale. |
+| camera_movement_interp | 0             | No                          | Smooths out camera movement when switching weapons. Recommended value is 0.1. Set to 0 to disable smoothing. |
 | viewmodel_fov | 90            | No                          | Min: 70<br/>Max: 100 |
 | cl_crosshair_type | 0             | Yes                         | Crosshair type. 0 - crosshair, 1 - T-shaped, 2 - circle, 3 - dot. |
+| cl_bob_camera | 0             | No                          | View origin bob, does nothing with cl_bobstyle 2. |
 | cl_bobstyle | 0             | Yes                         | 0 for default bob, 1 for old style bob and 2 for CS:GO style bob. |
 | cl_bobamt_vert | 0\.13         | Yes                         | Vertical scale for CS:GO style bob. |
 | cl_bobamt_lat | 0\.32         | Yes                         | Lateral scale for CS:GO style bob. |
 | cl_bob_lower_amt | 8             | Yes                         | Specifies how much the viewmodel moves inwards for CS:GO style bob. |
 | cl_rollangle | 0             | Yes                         | Screen roll angle when strafing or looking (Quake effect). |
 | cl_rollspeed | 200           | Yes                         | Screen roll speed when strafing or looking (Quake effect). |
-| viewmodel_lag_scale | 0             | Yes                         | The value of the lag of the viewmodel from the crosshair (CS:GO effect). |
-| viewmodel_lag_speed | 8             | Yes                         | The speed of the viewmodel following the crosshair (CS:GO effect). |
+| viewmodel_lag_style | 0             | No                          | Viewmodel sway style. 0 is off, 1 is HL2 style and 2 is CS:S/CS:GO style. |
+| viewmodel_lag_scale | 0             | Yes                         | Scale of the viewmodel sway. |
+| viewmodel_lag_speed | 8             | Yes                         |  Speed of the viewmodel sway. (HL2 sway only) |
 | fov_horplus | 0             | No                          | Enables Hor+ scaling for FOV. Fixes the FOV when playing with aspect ratios besides 4:3. |
 | fov_angle | 90            | No (use ncl_setfov instead) | Min: 70<br/>Max: 100 |
 | fov_lerp | 0             | No (use ncl_setfov instead) | FOV interpolation time in seconds. |
-| hud_deathnotice_max | 5             | No                          | The maximum number of kill feed entries that can be displayed. |
-| hud_deathnotice_old | 0             | No                          | Enable the old style of kill feed. |
+| hud_deathnotice_max | 5             | No                          | The maximum number of killfeed entries that can be displayed. |
+| hud_deathnotice_old | 0             | No                          | Enable the old style of killfeed. |
 | http_max_active_requests | 5             | No                          |  |
 | http_max_requests_retries | 3             | No                          |   |
 

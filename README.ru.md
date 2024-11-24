@@ -9,23 +9,28 @@ NextClient это модификация для Counter-Strike 1.6, нацеле
 ### Основные возможности:
  - Протектор - защищает клиент от вредоносных команд с сервера
  - Расширенные настройки видео - фикс FOV на разрешениях 16:9, возможность регулировать FOV и отдельно регулировать FOV для модели от первого лица
- - Расширенный kill feed - поддержка расширенного  kill feed [regamedll](https://github.com/s1lentq/ReGameDLL_CS/pull/858), отображение иконок убийств: через стену, через дым, без прицела, в прыжке, с доминированием, etc.
+ - Расширенный killfeed - поддержка расширенного killfeed [regamedll](https://github.com/s1lentq/ReGameDLL_CS/pull/858), отображение иконок убийств: через стену, через дым, без прицела, в прыжке, с доминированием, etc.
  - Расширенные настройки прицела - добавлены новые виды прицела: точка, T-образный, окружность
- - 2 схемы GUI с возможностью их смены через настройки, и возможность добавлять свои схемы не удаляя старые. 
+ - 2 схемы GUI с возможностью их смены через настройки, и возможность добавлять свои схемы не удаляя старые
  - Отображение более 255hp при использовании [серверного модуля](https://github.com/CS-NextClient/NextClientServerApi)
  - Отображение количества и размера оставшихся файлов, общего размера файлов и скорости загрузки при подключении на сервер
  - Цветной чат в консоли
- - Поддержка моделей оружия с анимациями осмотра
- - Различные улучшения из csldr (см. раздел кваров)
+ - Различные улучшения из [csldr](https://github.com/mikkokko/csldr) для оружия от первого лица:
+    - Настраиваемое расположение модели
+    - Новые типы bob
+    - Поддержка sway/lag
+    - Возможность отключить смещение модели при взгляде вверх/вниз
+    - Поддержка анимации осмотра
+    - Поддержка управления камерой для анимации осмотра
 
 ### Возможности для amxmodx разработчиков:
- - песочница кваров, возможность менять квары клиенту (из ограниченного списка) на время его нахождения на сервере
- - кастомизация kill feed
- - управление спрайтами на экране
- - расширенное FOV сообщение
- - поддержка эффектов для viewmodel
- - раздельный прекэш для обычного клиента cs 1.6 и NextClient
- - прекэш hud.txt и других стандартных ресурсов
+ - Песочница кваров, возможность менять квары клиенту (из ограниченного списка) на время его нахождения на сервере
+ - Кастомизация killfeed
+ - Sprite API, управление спрайтами на экране
+ - Расширенное FOV сообщение
+ - Поддержка эффектов для viewmodel
+ - Раздельный прекэш для обычного клиента cs 1.6 и NextClient
+ - Прекэш hud.txt и других стандартных ресурсов
 
 ### Новые квары
 <details>
@@ -37,21 +42,25 @@ NextClient это модификация для Counter-Strike 1.6, нацеле
 | viewmodel_offset_x | 0             | Yes                         |  |
 | viewmodel_offset_y | 0             | Yes                         |  |
 | viewmodel_offset_z | 0             | Yes                         |  |
+| camera_movement_scale | 1             | No                          | Camera movement scale. |
+| camera_movement_interp | 0             | No                          | Smooths out camera movement when switching weapons. Recommended value is 0.1. Set to 0 to disable smoothing. |
 | viewmodel_fov | 90            | No                          | Min: 70<br/>Max: 100 |
 | cl_crosshair_type | 0             | Yes                         | Crosshair type. 0 - crosshair, 1 - T-shaped, 2 - circle, 3 - dot. |
+| cl_bob_camera | 0             | No                          | View origin bob, does nothing with cl_bobstyle 2. |
 | cl_bobstyle | 0             | Yes                         | 0 for default bob, 1 for old style bob and 2 for CS:GO style bob. |
 | cl_bobamt_vert | 0\.13         | Yes                         | Vertical scale for CS:GO style bob. |
 | cl_bobamt_lat | 0\.32         | Yes                         | Lateral scale for CS:GO style bob. |
 | cl_bob_lower_amt | 8             | Yes                         | Specifies how much the viewmodel moves inwards for CS:GO style bob. |
 | cl_rollangle | 0             | Yes                         | Screen roll angle when strafing or looking (Quake effect). |
 | cl_rollspeed | 200           | Yes                         | Screen roll speed when strafing or looking (Quake effect). |
-| viewmodel_lag_scale | 0             | Yes                         | The value of the lag of the viewmodel from the crosshair (CS:GO effect). |
-| viewmodel_lag_speed | 8             | Yes                         | The speed of the viewmodel following the crosshair (CS:GO effect). |
+| viewmodel_lag_style | 0             | No                          | Viewmodel sway style. 0 is off, 1 is HL2 style and 2 is CS:S/CS:GO style. |
+| viewmodel_lag_scale | 0             | Yes                         | Scale of the viewmodel sway. |
+| viewmodel_lag_speed | 8             | Yes                         |  Speed of the viewmodel sway. (HL2 sway only) |
 | fov_horplus | 0             | No                          | Enables Hor+ scaling for FOV. Fixes the FOV when playing with aspect ratios besides 4:3. |
 | fov_angle | 90            | No (use ncl_setfov instead) | Min: 70<br/>Max: 100 |
 | fov_lerp | 0             | No (use ncl_setfov instead) | FOV interpolation time in seconds. |
-| hud_deathnotice_max | 5             | No                          | The maximum number of kill feed entries that can be displayed. |
-| hud_deathnotice_old | 0             | No                          | Enable the old style of kill feed. |
+| hud_deathnotice_max | 5             | No                          | The maximum number of killfeed entries that can be displayed. |
+| hud_deathnotice_old | 0             | No                          | Enable the old style of killfeed. |
 | http_max_active_requests | 5             | No                          |  |
 | http_max_requests_retries | 3             | No                          |   |
 
