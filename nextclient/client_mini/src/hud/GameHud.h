@@ -36,4 +36,10 @@ public:
 
     [[nodiscard]] std::shared_ptr<HudSpriteStore> get_sprite_store() const { return sprite_store_; }
     [[nodiscard]] std::shared_ptr<HudDeathNotice> get_deathnotice() const { return death_notice_; }
+
+private:
+    void FetchCvars();
+
+public:
+    cvar_t* cl_righthand;
 };

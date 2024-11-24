@@ -1,5 +1,7 @@
 #include "GameHud.h"
 
+extern cl_enginefunc_t gEngfuncs;
+
 GameHud::GameHud(nitroapi::NitroApiInterface* nitro_api)
 {
     health_ = std::make_shared<HudHealth>(nitro_api);
@@ -29,6 +31,8 @@ GameHud::GameHud(nitroapi::NitroApiInterface* nitro_api)
 
 void GameHud::Init()
 {
+    FetchCvars();
+
     for (auto& item : all_hud_)
         item->Init();
 }
@@ -61,4 +65,9 @@ void GameHud::InitHUDData()
 {
     for (auto& item : all_hud_)
         item->InitHUDData();
+}
+
+void GameHud::FetchCvars()
+{
+    cl_righthand = gEngfuncs.pfnGetCvarPointer("cl_righthand");
 }

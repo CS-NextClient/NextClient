@@ -51,6 +51,8 @@ add_library(${PROJECT_NAME} SHARED
         src/color_chat_in_console.h
         src/inspect.cpp
         src/inspect.h
+        src/camera.cpp
+        src/camera.h
         src/hud/HudDamageDirection.cpp
         src/hud/HudDamageDirection.h
         src/hud/HudDamageIcons.cpp

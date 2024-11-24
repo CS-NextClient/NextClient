@@ -3,6 +3,8 @@
 #include <ranges>
 #include <next_client_mini/client_mini.h>
 #include <parsemsg.h>
+
+#include "camera.h"
 #include "studiorenderer.h"
 #include "view.h"
 #include "fov.h"
@@ -81,6 +83,7 @@ static void HUD_InitPost()
     ViewInit();
     FovInit();
     InspectInit();
+    CameraInit();
     g_GameHud->Init();
 
     hud_draw = g_engfuncs.pfnCVarGetPointer("hud_draw");
