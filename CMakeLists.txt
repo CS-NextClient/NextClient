@@ -62,7 +62,7 @@ add_dependencies(BUILD_ALL
 
 add_custom_target(INSTALL_ALL
         COMMENT "Installing libraries and assets..."
-        COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:next_launcher> $ENV{NEXTCLIENT_INSTALL_DIR}/cs.exe
+        COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:next_launcher> $ENV{NEXTCLIENT_INSTALL_DIR}/cstrike.exe
         COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:engine_mini> $ENV{NEXTCLIENT_INSTALL_DIR}/next_engine_mini.dll
         COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:filesystem_proxy> $ENV{NEXTCLIENT_INSTALL_DIR}/FileSystem_Proxy.dll
         COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:client_mini> $ENV{NEXTCLIENT_INSTALL_DIR}/cstrike/cl_dlls/client_mini.dll

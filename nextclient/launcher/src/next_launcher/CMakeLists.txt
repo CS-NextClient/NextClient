@@ -1,5 +1,5 @@
 set(TARGET_NAME "next_launcher")
-set(OUTPUT_NAME "cs")
+set(OUTPUT_NAME "cstrike")
 
 find_package(OpenGL REQUIRED)
 find_package(magic_enum CONFIG REQUIRED)
