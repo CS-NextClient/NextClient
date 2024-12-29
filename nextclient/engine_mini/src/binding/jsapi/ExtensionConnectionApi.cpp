@@ -1,6 +1,6 @@
 #include "ExtensionConnectionApi.h"
 #include <steam/steam_api.h>
-#include <utils/TaskRun.h>
+#include <task/TaskRun.h>
 
 CExtensionConnectionApiEvents::CExtensionConnectionApiEvents(
 	nitroapi::NitroApiInterface* nitro_api,

@@ -1,8 +1,8 @@
 #pragma once
-
 #include <memory>
 
-#include "Result.h"
+#include <utils/Result.h>
+
 #include "TaskRunImpl.h"
 
 class TaskRun

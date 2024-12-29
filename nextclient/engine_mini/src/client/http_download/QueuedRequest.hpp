@@ -1,6 +1,6 @@
 #pragma once
 
-#include <ResourceDescriptor.h>
+#include <resource/ResourceDescriptor.h>
 #include <string>
 #include <utility>
 

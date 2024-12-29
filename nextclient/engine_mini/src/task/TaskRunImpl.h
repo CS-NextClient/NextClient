@@ -3,7 +3,7 @@
 #include <nitroapi/NitroApiInterface.h>
 #include <nitroapi/NitroApiHelper.h>
 
-#include "Result.h"
+#include <utils/Result.h>
 
 class TaskRunImpl : public nitroapi::NitroApiHelper
 {

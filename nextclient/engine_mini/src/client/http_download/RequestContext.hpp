@@ -1,6 +1,6 @@
 #pragma once
 
-#include <ResourceDescriptor.h>
+#include <resource/ResourceDescriptor.h>
 #include <cpr/api.h>
 #include <string>
 #include <queue>

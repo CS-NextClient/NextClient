@@ -6,7 +6,7 @@
 #include <nitro_utils/PtrValidator.h>
 #include <next_engine_mini/engine_mini.h>
 #include <tier2/tier2.h>
-#include <utils/TaskRun.h>
+#include <task/TaskRun.h>
 
 #include "common/common.h"
 #include "common/net_chan.h"
@@ -22,7 +22,7 @@
 #include "client/cl_private_resources.h"
 #include "client/cl_parsefn.h"
 #include "client/cl_game.h"
-#include "browser_extensions/entry.h"
+#include "binding/jsapi/jsapi.h"
 #include "audio/include/metaaudio.h"
 #include "common/cvar.h"
 #include "console/console.h"
@@ -130,7 +130,7 @@ static void UninitializeInternal()
     TaskRun::UnInitialize();
 
     CL_DeleteHttpDownloadManager();
-    UnInstallBrowserExtensions();
+    JSAPI_Shutdown();
     AUDIO_Shutdown();
     CL_CvarsSandboxShutdown();
     PROTECTOR_Shutdown();
@@ -514,7 +514,7 @@ static void InitInternalPost()
     viewmodel_fov = gEngfuncs.pfnRegisterVariable("viewmodel_fov", std::to_string(90.f).c_str(), FCVAR_ARCHIVE);
 
     CL_CreateHttpDownloadManager(g_pGameUi, g_pLocalize, g_SettingGuard);
-    InstallBrowserExtensions();
+    JSAPI_Init();
     AUDIO_RegisterCommands();
     CL_CvarsSandboxInit();
     PROTECTOR_Init(g_SettingGuard);

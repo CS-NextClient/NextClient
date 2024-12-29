@@ -1,5 +1,5 @@
-#include "entry.h"
-#include "../engine.h"
+#include "jsapi.h"
+#include <engine.h>
 #include <cef.h>
 
 #include "ExtensionCvarApi.h"
@@ -17,10 +17,10 @@ public:
 
 ContainerExtensions* container;
 
-void InstallBrowserExtensions() {
+void JSAPI_Init() {
 	container = new ContainerExtensions;
 }
 
-void UnInstallBrowserExtensions() {
+void JSAPI_Shutdown() {
 	delete container;
 }

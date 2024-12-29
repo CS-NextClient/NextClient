@@ -3,7 +3,7 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <string>
-#include <ResourceDescriptor.h>
+#include <resource/ResourceDescriptor.h>
 
 enum class PrivateResListState
 {

@@ -1,5 +1,5 @@
 #include <metaaudio.h>
-#include <ResourceDescriptor.h>
+#include <resource/ResourceDescriptor.h>
 #include <common/com_strings.h>
 #include <common/filesystem.h>
 

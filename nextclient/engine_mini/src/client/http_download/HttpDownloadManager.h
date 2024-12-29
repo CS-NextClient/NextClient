@@ -13,7 +13,7 @@
 #include <vgui/ILocalize.h>
 #include <IGameUI.h>
 
-#include <ResourceDescriptor.h>
+#include <resource/ResourceDescriptor.h>
 
 #include "TransferStatistics.h"
 #include "RequestContext.hpp"

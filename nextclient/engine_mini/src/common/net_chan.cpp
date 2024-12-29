@@ -3,7 +3,7 @@
 #include <optick.h>
 #include <bzlib.h>
 #include <nitro_utils/string_utils.h>
-#include <ResourceDescriptor.h>
+#include <resource/ResourceDescriptor.h>
 #include "zone.h"
 #include "sys_dll.h"
 #include "../console/console.h"

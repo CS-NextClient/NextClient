@@ -1,6 +1,6 @@
 #pragma once
 
-#include <ResourceDescriptor.h>
+#include <resource/ResourceDescriptor.h>
 #include "http_download/DownloadLoggerAggregator.h"
 
 extern std::shared_ptr<DownloadLoggerAggregator> g_DownloadFileLogger;

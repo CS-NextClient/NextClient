@@ -1,6 +1,6 @@
 #include "ExtensionCvarApi.h"
-#include <utils/TaskRun.h>
-#include "../engine.h"
+#include <task/TaskRun.h>
+#include <engine.h>
 
 void RegisterExtensionCvarApi() {
 	CefRegisterExtension(
