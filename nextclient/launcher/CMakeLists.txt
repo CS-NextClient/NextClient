@@ -48,6 +48,9 @@ set(NO_SQLITE_SRC "NO")
 
 # explicit dependencies
 add_subdirectory(dep/gs-sdk/build/cmake/gameanalytics)
+target_compile_options(GameAnalytics PRIVATE
+        /Zc:strictStrings-
+)
 add_subdirectory(dep/gs-sdk/build/cmake/sqlite)
 
 # launcher subprojects
