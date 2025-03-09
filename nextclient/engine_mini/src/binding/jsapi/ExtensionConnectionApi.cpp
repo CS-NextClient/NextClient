@@ -1,6 +1,8 @@
 #include "ExtensionConnectionApi.h"
 #include <steam/steam_api.h>
-#include <task/TaskRun.h>
+#include <taskcoro/TaskCoro.h>
+
+using namespace taskcoro;
 
 CExtensionConnectionApiEvents::CExtensionConnectionApiEvents(
 	nitroapi::NitroApiInterface* nitro_api,
@@ -80,19 +82,21 @@ ContainerExtensionConnectionApi::ContainerExtensionConnectionApi(nitroapi::Nitro
 		new CefFunctionV8Handler(
 			[this](const CefString& name, CefRefPtr<CefV8Value> object,
 				const CefV8ValueList& arguments, CefRefPtr<CefV8Value>& retval, CefString& exception) -> bool {
-				if (!TaskRun::IsInitialized())
+				if (!TaskCoro::IsInitialized())
 					return false;
 
 				if (name == "init") {
 					auto context = CefV8Context::GetCurrentContext();
-					TaskRun::RunInMainThread([this, context] {
+					TaskCoro::RunInMainThread<void>([this, context] {
 						events_.push_back(std::make_unique<CExtensionConnectionApiEvents>(api(), context));
 					});
 
 					return true;
 				} 
 				else if (name == "getConnectedHost") {
-					auto task_result = TaskRun::RunInMainThreadAndWait([this] {
+					GetConnectedHostData result;
+
+					auto task = TaskCoro::RunInMainThread<GetConnectedHostData>([this] {
 						GetConnectedHostData result{};
 
 						auto address = cls()->servername;
@@ -114,21 +118,28 @@ ContainerExtensionConnectionApi::ContainerExtensionConnectionApi(nitroapi::Nitro
 
 						return result;
 					});
-					if (task_result.has_error())
-						return false;
 
-					if (!task_result->address.empty())
+					try
+					{
+						result = task.get();
+					}
+					catch (const std::exception& e)
+					{
+						return false;
+					}
+
+					if (!result.address.empty())
 					{
 						retval = CefV8Value::CreateObject(nullptr);
 						if (retval.get()) {
 							auto constexpr defProperty = V8_PROPERTY_ATTRIBUTE_NONE;
 							auto playersArray = CefV8Value::CreateArray();
-							retval->SetValue("address", CefV8Value::CreateString(task_result->address), defProperty);
-							retval->SetValue("state", CefV8Value::CreateString(task_result->is_putinserver ? "joined" : "loading"), defProperty);
+							retval->SetValue("address", CefV8Value::CreateString(result.address), defProperty);
+							retval->SetValue("state", CefV8Value::CreateString(result.is_putinserver ? "joined" : "loading"), defProperty);
 							retval->SetValue("players", playersArray, defProperty);
 
 							int index = 0;
-							for (const auto& player : task_result->players)
+							for (const auto& player : result.players)
 							{
 								auto obj = CefV8Value::CreateObject(nullptr);
 

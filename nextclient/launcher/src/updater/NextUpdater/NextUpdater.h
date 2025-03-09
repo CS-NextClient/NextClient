@@ -8,6 +8,7 @@
 #include <utils/bitmask.h>
 #include <updater/NextUpdater/NextUpdaterEvent.h>
 #include <updater/json_data/UpdateEntry.h>
+#include <saferesult/Result.h>
 
 #include "NextUpdaterHttpService.h"
 #include "http_download/HttpFileResult.h"
@@ -64,19 +65,19 @@ private:
 
     RestoreFromBackupResult RestoreFromBackup(RestoreFromBackupBehaviour behaviour = RestoreFromBackupBehaviour::None);
 
-    ResultT<UpdateEntry> SendUpdateFilesRequest();
+    saferesult::ResultT<UpdateEntry> SendUpdateFilesRequest();
     std::vector<UpdaterFileInfo> CreateUpdaterFileInfos(const std::vector<FileEntry>& remote_files);
     // key is remote file name
-    static ResultT<std::unordered_map<std::string, UpdaterFileInfo>> GetFilesToUpdate(const std::vector<UpdaterFileInfo>& files);
-    static ResultT<std::vector<HttpFileResult>> DownloadFilesToUpdate(auto files, const std::string& hostname, std::function<bool(cpr::cpr_off_t total, cpr::cpr_off_t downloaded, cpr::cpr_off_t speed)> progress);
+    static saferesult::ResultT<std::unordered_map<std::string, UpdaterFileInfo>> GetFilesToUpdate(const std::vector<UpdaterFileInfo>& files);
+    static saferesult::ResultT<std::vector<HttpFileResult>> DownloadFilesToUpdate(auto files, const std::string& hostname, std::function<bool(cpr::cpr_off_t total, cpr::cpr_off_t downloaded, cpr::cpr_off_t speed)> progress);
 
-    static Result InstallFiles(FileOpener& file_opener, const std::vector<HttpFileResult>& downloaded_files, const std::unordered_map<std::string, UpdaterFileInfo>& updating_file_info);
+    static saferesult::Result InstallFiles(FileOpener& file_opener, const std::vector<HttpFileResult>& downloaded_files, const std::unordered_map<std::string, UpdaterFileInfo>& updating_file_info);
 
     // backup functions
-    Result ClearBackupFolder();
-    Result BackupFiles(auto files);
-    ResultT<int> RestoreFilesFromBackup(auto files);
-    ResultT<int> RestoreFilesFromBackup();
+    saferesult::Result ClearBackupFolder();
+    saferesult::Result BackupFiles(auto files);
+    saferesult::ResultT<int> RestoreFilesFromBackup(auto files);
+    saferesult::ResultT<int> RestoreFilesFromBackup();
 
     // utils
     static std::string GetStreamMd5(std::fstream& stream);

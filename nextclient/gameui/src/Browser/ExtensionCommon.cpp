@@ -12,7 +12,7 @@ bool CExtensionCommonHandler::Execute(
 
 	if(name == "exec" && !arguments.empty()) {
 		const auto cmd = std::string(arguments[0]->GetStringValue());
-		TaskRun::RunInMainThread([this, cmd] {
+		TaskCoro::RunInMainThread([this, cmd] {
 			engine_->pfnClientCmd(cmd.c_str());
 		});
 

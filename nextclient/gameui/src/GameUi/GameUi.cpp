@@ -47,6 +47,7 @@ namespace fs = std::filesystem;
 static IServerBrowserEx *g_pServerBrowser = nullptr;
 static IBaseSystem* g_pBaseSystem = nullptr;
 static IGameClientExports* g_pGameClientExports = nullptr;
+static EngineMiniInterface* g_pEngineMini = nullptr;
 static vgui2::DHANDLE<CDemoPlayerDialog> g_hDemoPlayerDialog;
 vgui2::DHANDLE<CLoadingDialog> g_hLoadingDialog;
 static CGameUI g_GameUI;
@@ -58,6 +59,7 @@ cl_enginefunc_t* engine = nullptr;
 CGameUI &GameUI() { return g_GameUI; }
 IBaseSystem* SystemWrapper() { return g_pBaseSystem; }
 IGameClientExports* GameClientExports() { return g_pGameClientExports; }
+EngineMiniInterface* EngineMini() { return g_pEngineMini; }
 
 namespace vgui2
 {
@@ -120,8 +122,8 @@ CGameUI::CGameUI()
 {
     m_szPreviousStatusText[0] = 0;
     m_bLoadlingLevel = false;
-    task_run_impl_ = std::make_shared<TaskRunImpl>();
-    TaskRun::Initialize(task_run_impl_);
+    task_run_impl_ = std::make_shared<TaskCoroImpl>();
+    TaskCoro::Initialize(task_run_impl_);
 }
 
 CGameUI::~CGameUI()
@@ -146,7 +148,8 @@ void CGameUI::Initialize(CreateInterfaceFn *factories, int count)
             g_pGameClientExports = (IGameClientExports*) factories[i](GAMECLIENTEXPORTS_INTERFACE_VERSION, NULL);
     }
 
-    g_pServerBrowser = (IServerBrowserEx *)CreateInterface(SERVERBROWSEREX_INTERFACE_VERSION, NULL);
+    g_pServerBrowser = (IServerBrowserEx*)CreateInterface(SERVERBROWSEREX_INTERFACE_VERSION, NULL);
+    g_pEngineMini = (EngineMiniInterface*)Sys_GetFactory("next_engine_mini.dll")(ENGINE_MINI_INTERFACE_VERSION, NULL);
 
     g_pVGuiLocalize->AddFile(g_pFullFileSystem, "resource/gameui_%language%.txt");
     g_pVGuiLocalize->AddFile(g_pFullFileSystem, "resource/valve_%language%.txt");
@@ -222,7 +225,7 @@ void CGameUI::Start(cl_enginefuncs_s *engineFuncs, int interfaceVersion, void *s
 void CGameUI::Shutdown(void)
 {
     task_run_impl_->OnShutdown();
-    TaskRun::UnInitialize();
+    TaskCoro::UnInitialize();
 
     vgui2::system()->SaveUserConfigFile();
 

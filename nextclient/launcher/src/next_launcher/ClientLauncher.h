@@ -25,6 +25,8 @@ class ClientLauncher
 {
     static constexpr char kEngineDll[] = "hw.dll";
 
+    NextClientVersion next_client_version_;
+
     std::shared_ptr<next_launcher::IUserStorage> user_storage_;
     std::shared_ptr<next_launcher::IUserInfo> user_info_;
     std::shared_ptr<next_launcher::UserInfoClient> user_info_client_;

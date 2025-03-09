@@ -86,10 +86,6 @@ CBaseGamesPage::CBaseGamesPage(vgui2::Panel *parent, const char *name, const cha
     m_pGameList = new CGameListPanel(this, "gamelist");
     m_pGameList->SetAllowUserModificationOfColumns(true);
 
-    m_pAddToFavoritesButton = new vgui2::Button(this, "AddToFavoritesButton", "");
-    m_pAddToFavoritesButton->SetEnabled(false);
-    m_pAddToFavoritesButton->SetVisible(false);
-
     // TODO tooltips has bug: always shown behind all panels, fix this and uncomment tooltips code below
 
     int i = 0;

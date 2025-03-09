@@ -1,6 +1,5 @@
 #pragma once
 #include <utils/SynchronizationContext.h>
-#include <utils/Result.h>
 #include <gui_app_core/GuiAppInterface.h>
 #include <updater/HttpServiceInterface.h>
 #include <updater/UpdaterDoneStatus.h>

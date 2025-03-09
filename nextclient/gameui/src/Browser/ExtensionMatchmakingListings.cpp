@@ -60,7 +60,7 @@ void CListingsQueryResponseHandler::RefreshCompleteCefTask(
 		Resolve(value);
 	}
 
-	TaskRun::RunInMainThread([this] {
+	TaskCoro::RunInMainThread([this] {
 		FinishQuery();
 		delete this;
 	});
@@ -93,13 +93,13 @@ bool CExtensionMatchmakingListingsHandler::Execute(
 		auto reject = arguments[1];
 		
 		if(name == "getFavoriteServers") {
-			TaskRun::RunInMainThread([context, resolve, reject] {
+			TaskCoro::RunInMainThread([context, resolve, reject] {
 				(new CFavoritesListingQuery(context, resolve, reject))->Start();
 			});
 			return true;
 		}
 		else if(name == "getHistoryServers") {
-			TaskRun::RunInMainThread([context, resolve, reject] {
+			TaskCoro::RunInMainThread([context, resolve, reject] {
 				(new CHistoryListingQuery(context, resolve, reject))->Start();
 			});
 			return true;
@@ -109,14 +109,14 @@ bool CExtensionMatchmakingListingsHandler::Execute(
 		uint32_t ip; uint16_t port;
 	
 		if(name == "addFavoriteServer") {
-			nitro_utils::inet_stonp(arguments[0]->GetStringValue(), ip, port, true);
-			TaskRun::RunInMainThread([ip, port] {
+			nitro_utils::ParseAddress(arguments[0]->GetStringValue(), ip, port, true);
+			TaskCoro::RunInMainThread([ip, port] {
 				SteamMatchmaking()->AddFavoriteGame(SteamUtils()->GetAppID(), ip, port, port, k_unFavoriteFlagFavorite, 0);
 			});
 		}
 		else if(name == "removeFavoriteServer") {
-			nitro_utils::inet_stonp(arguments[0]->GetStringValue(), ip, port, true);
-			TaskRun::RunInMainThread([ip, port] {
+			nitro_utils::ParseAddress(arguments[0]->GetStringValue(), ip, port, true);
+			TaskCoro::RunInMainThread([ip, port] {
 				SteamMatchmaking()->RemoveFavoriteGame(SteamUtils()->GetAppID(), ip, port, port, k_unFavoriteFlagFavorite);
 			});
 		}

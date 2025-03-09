@@ -39,6 +39,8 @@
 
 #include <netadr.h>
 
+#undef PostMessage
+
 using namespace vgui2;
 
 static CServerBrowserDialog *s_InternetDlg = NULL;

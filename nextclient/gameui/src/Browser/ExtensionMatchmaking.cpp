@@ -13,7 +13,7 @@ CServerQueryResponseHandler::CServerQueryResponseHandler(
 
 void CServerQueryResponseHandler::Start() {
 	uint32_t ip; uint16_t port;
-	nitro_utils::inet_stonp(serverIp_, ip, port, true);
+	nitro_utils::ParseAddress(serverIp_, ip, port, true);
 
 	queryHandle = StartQuery(ip, port);
 }
@@ -65,7 +65,7 @@ void CPingServerQuery::ServerRespondedCefTask(gameserveritem_t server) {
 	auto value = GameServerItemToV8Object(server);
 	Resolve(value);
 
-	TaskRun::RunInMainThread([this] {
+	TaskCoro::RunInMainThread([this] {
 		FinishQuery();
 		delete this;
 	});
@@ -80,7 +80,7 @@ void CPingServerQuery::ServerFailedToRespondCefTask() {
 
 	Reject(CefV8Value::CreateUndefined());
 
-	TaskRun::RunInMainThread([this] {
+	TaskCoro::RunInMainThread([this] {
 		FinishQuery();
 		delete this;
 	});
@@ -117,7 +117,7 @@ void CPlayerDetailsQuery::PlayersRefreshCompleteCefTask() {
 
 	Resolve(value);
 
-	TaskRun::RunInMainThread([this] {
+	TaskCoro::RunInMainThread([this] {
 		FinishQuery();
 		delete this;
 	});
@@ -132,7 +132,7 @@ void CPlayerDetailsQuery::PlayersFailedToRespondCefTask() {
 
 	Reject(CefV8Value::CreateUndefined());
 
-	TaskRun::RunInMainThread([this] {
+	TaskCoro::RunInMainThread([this] {
 		FinishQuery();
 		delete this;
 	});
@@ -168,7 +168,7 @@ void CServerRulesQuery::RulesRefreshCompleteCefTask() {
 
 	Resolve(value);
 
-	TaskRun::RunInMainThread([this] {
+	TaskCoro::RunInMainThread([this] {
 		FinishQuery();
 		delete this;
 	});
@@ -183,7 +183,7 @@ void CServerRulesQuery::RulesFailedToRespondCefTask() {
 
 	Reject(CefV8Value::CreateUndefined());
 
-	TaskRun::RunInMainThread([this] {
+	TaskCoro::RunInMainThread([this] {
 		FinishQuery();
 		delete this;
 	});
@@ -202,19 +202,19 @@ bool CExtensionMatchmakingHandler::Execute(
 		auto reject = arguments[2];
 
 		if(name == "getServerInfo") {
-			TaskRun::RunInMainThread([ip, context, resolve, reject] {
+			TaskCoro::RunInMainThread([ip, context, resolve, reject] {
 				(new CPingServerQuery(ip, context, resolve, reject))->Start();
 			});
 			return true;
 		}
 		else if(name == "getPlayersInfo") {
-			TaskRun::RunInMainThread([ip, context, resolve, reject] {
+			TaskCoro::RunInMainThread([ip, context, resolve, reject] {
 				(new CPlayerDetailsQuery(ip, context, resolve, reject))->Start();
 			});
 			return true;
 		}
 		else if(name == "getRules") {
-			TaskRun::RunInMainThread([ip, context, resolve, reject] {
+			TaskCoro::RunInMainThread([ip, context, resolve, reject] {
 				(new CServerRulesQuery(ip, context, resolve, reject))->Start();
 			});
 			return true;

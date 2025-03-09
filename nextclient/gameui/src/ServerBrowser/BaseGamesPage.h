@@ -145,7 +145,6 @@ protected:
     vgui2::Button *m_pRefreshQuick;
     vgui2::Button *m_pAddServer;
     vgui2::Button *m_pAddCurrentServer;
-    vgui2::Button *m_pAddToFavoritesButton;
     vgui2::ToggleButton *m_pFilter{};
 
 private:

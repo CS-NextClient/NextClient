@@ -15,6 +15,7 @@ inline std::array<Color, sizeof(ConLogType)> g_LogTypeColors {
 };
 
 extern bool con_debuglog;
+extern bool con_initialized;
 
 void Con_Init();
 template<class... TArgs>

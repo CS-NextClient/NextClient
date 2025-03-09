@@ -25,9 +25,11 @@
 
 #include "KeyValues.h"
 
+#undef PostMessage
+
 COptionsDialog::COptionsDialog(vgui2::Panel *parent) : PropertyDialog(parent, "OptionsDialog")
 {
-    SetBounds(0, 0, 531, 406);
+    SetBounds(0, 0, 545, 406);
     SetSizeable(false);
     SetTitle("#GameUI_Options", true);
 

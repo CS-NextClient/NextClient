@@ -1,5 +1,7 @@
 #include "ServerList.h"
 
+#include <GameUi.h>
+
 CServerList::CServerList(IServerRefreshResponse *response_target) :
     response_target_(response_target)
 {
@@ -15,14 +17,14 @@ void CServerList::RequestFavorites(MatchMakingKeyValuePair_t **ppchFilters, uint
 {
     Clear();
 
-    server_list_request_ = SteamMatchmakingServers()->RequestFavoritesServerList(SteamUtils()->GetAppID(), ppchFilters, nFilters, this);
+    server_list_request_ = EngineMini()->GetSteamMatchmakingServers()->RequestFavoritesServerList(SteamUtils()->GetAppID(), ppchFilters, nFilters, this);
 }
 
 void CServerList::RequestInternet(MatchMakingKeyValuePair_t **ppchFilters, uint32 nFilters)
 {
     Clear();
 
-    server_list_request_ = SteamMatchmakingServers()->RequestInternetServerList(SteamUtils()->GetAppID(), ppchFilters, nFilters, this);
+    server_list_request_ = EngineMini()->GetSteamMatchmakingServers()->RequestInternetServerList(SteamUtils()->GetAppID(), ppchFilters, nFilters, this);
 }
 
 void CServerList::RequestUnique(MatchMakingKeyValuePair_t **ppchFilters, uint32 nFilters)
@@ -34,21 +36,21 @@ void CServerList::RequestHistory(MatchMakingKeyValuePair_t **ppchFilters, uint32
 {
     Clear();
 
-    server_list_request_ = SteamMatchmakingServers()->RequestHistoryServerList(SteamUtils()->GetAppID(), ppchFilters, nFilters, this);
+    server_list_request_ = EngineMini()->GetSteamMatchmakingServers()->RequestHistoryServerList(SteamUtils()->GetAppID(), ppchFilters, nFilters, this);
 }
 
 void CServerList::RequestFriends(MatchMakingKeyValuePair_t **ppchFilters, uint32 nFilters)
 {
     Clear();
 
-    server_list_request_ = SteamMatchmakingServers()->RequestFriendsServerList(SteamUtils()->GetAppID(), ppchFilters, nFilters, this);
+    server_list_request_ = EngineMini()->GetSteamMatchmakingServers()->RequestFriendsServerList(SteamUtils()->GetAppID(), ppchFilters, nFilters, this);
 }
 
 void CServerList::RequestLan()
 {
     Clear();
 
-    server_list_request_ = SteamMatchmakingServers()->RequestLANServerList(SteamUtils()->GetAppID(), this);
+    server_list_request_ = EngineMini()->GetSteamMatchmakingServers()->RequestLANServerList(SteamUtils()->GetAppID(), this);
 }
 
 bool CServerList::IsServerExists(int iServer)
@@ -66,7 +68,7 @@ unsigned int CServerList::ServerCount()
     if (server_list_request_ == nullptr)
         return 0;
 
-    return SteamMatchmakingServers()->GetServerCount(server_list_request_);
+    return EngineMini()->GetSteamMatchmakingServers()->GetServerCount(server_list_request_);
 }
 
 void CServerList::StartRefreshServer(int iServer)
@@ -77,7 +79,7 @@ void CServerList::StartRefreshServer(int iServer)
     if (servers_.count(iServer) == 0)
         return;
 
-    SteamMatchmakingServers()->RefreshServer(server_list_request_, iServer);
+    EngineMini()->GetSteamMatchmakingServers()->RefreshServer(server_list_request_, iServer);
 }
 
 void CServerList::StartRefresh()
@@ -85,7 +87,7 @@ void CServerList::StartRefresh()
     if (server_list_request_ == nullptr)
         return;
 
-    SteamMatchmakingServers()->RefreshQuery(server_list_request_);
+    EngineMini()->GetSteamMatchmakingServers()->RefreshQuery(server_list_request_);
 }
 
 void CServerList::StopRefresh(IGameList::CancelQueryReason reason)
@@ -93,7 +95,7 @@ void CServerList::StopRefresh(IGameList::CancelQueryReason reason)
     if (server_list_request_ == nullptr)
         return;
 
-    SteamMatchmakingServers()->CancelQuery(server_list_request_);
+    EngineMini()->GetSteamMatchmakingServers()->CancelQuery(server_list_request_);
 }
 
 void CServerList::Clear()
@@ -102,9 +104,9 @@ void CServerList::Clear()
         return;
 
     if (IsRefreshing())
-        SteamMatchmakingServers()->CancelQuery(server_list_request_);
+        EngineMini()->GetSteamMatchmakingServers()->CancelQuery(server_list_request_);
 
-    SteamMatchmakingServers()->ReleaseRequest(server_list_request_);
+    EngineMini()->GetSteamMatchmakingServers()->ReleaseRequest(server_list_request_);
 
     server_list_request_ = nullptr;
     servers_.clear();
@@ -115,7 +117,7 @@ bool CServerList::IsRefreshing()
     if (server_list_request_ == nullptr)
         return false;
 
-    return SteamMatchmakingServers()->IsRefreshing(server_list_request_);
+    return EngineMini()->GetSteamMatchmakingServers()->IsRefreshing(server_list_request_);
 }
 
 std::unordered_map<int, serveritem_t>::iterator CServerList::begin()
@@ -158,7 +160,7 @@ void CServerList::RefreshComplete(HServerListRequest hRequest, EMatchMakingServe
 
 void CServerList::UpdateServerItem(bool successful_response, int iServer)
 {
-    auto server_details = SteamMatchmakingServers()->GetServerDetails(server_list_request_, iServer);
+    auto server_details = EngineMini()->GetSteamMatchmakingServers()->GetServerDetails(server_list_request_, iServer);
 
     if (servers_.count(iServer))
     {

@@ -109,6 +109,8 @@ target_compile_definitions(${PROJECT_NAME} PRIVATE
         LOG_TAG="game"
         USE_OPTICK=$<BOOL:${USE_PROFILER}>
         _HAS_STATIC_RTTI=0 #disable rtti things in stl
+        #easyloggingpp options
+        ELPP_WINSOCK2
 )
 
 if (WIN32)
@@ -119,6 +121,7 @@ if (WIN32)
             WINVER=0x0600
             NOMINMAX
             _UNICODE
+            WIN32_LEAN_AND_MEAN
     )
 endif()
 

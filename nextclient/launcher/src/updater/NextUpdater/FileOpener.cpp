@@ -5,6 +5,7 @@
 #include <Windows.h>
 
 namespace fs = std::filesystem;
+using namespace saferesult;
 
 OpenerFile::OpenerFile(std::filesystem::path filepath, std::fstream&& stream, std::string error, DWORD file_attributes_to_restore, OpenerFileFlags::Value flags) :
         filepath(std::move(filepath)),

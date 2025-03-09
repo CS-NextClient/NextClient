@@ -82,6 +82,7 @@ if (WIN32)
             WINVER=0x0600
             NOMINMAX
             _UNICODE
+            WIN32_LEAN_AND_MEAN
     )
 endif()
 

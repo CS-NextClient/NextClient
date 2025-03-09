@@ -19,7 +19,6 @@ add_library(next_launcher::updater ALIAS ${TARGET_NAME})
 
 target_include_directories(${TARGET_NAME} PRIVATE
         ${NEXT_LAUNCHER_SOURCE_DIR}/include
-        ${NEXT_LAUNCHER_SOURCE_DIR}/dep/easyloggingpp/src
 )
 
 target_link_libraries(${TARGET_NAME} PRIVATE
@@ -33,4 +32,6 @@ target_link_libraries(${TARGET_NAME} PRIVATE
         ZLIB::ZLIB
         taocpp::json
         concurrencpp::concurrencpp
+        easyloggingpp::easyloggingpp
+        SafeResult::SafeResult
 )

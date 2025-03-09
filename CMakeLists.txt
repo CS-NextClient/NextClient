@@ -35,11 +35,12 @@ set(CPR_ENABLE_CURL_HTTP_ONLY OFF)
 set(CPR_ENABLE_SSL ON)
 
 # external dependencies
-add_subdirectory(dep/data_encoding)
 add_subdirectory(dep/cpr)
+add_subdirectory(dep/easyloggingpp)
 
 # NextClient sub-projects
 add_subdirectory(dep/NclNitroApi)
+add_subdirectory(nextclient/packages)
 add_subdirectory(nextclient/launcher)
 add_subdirectory(nextclient/engine_mini)
 add_subdirectory(nextclient/filesystem_proxy)

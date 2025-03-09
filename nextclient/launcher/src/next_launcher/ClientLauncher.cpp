@@ -23,7 +23,7 @@
 #include <nitro_utils/config_utils.h>
 #include <nitro_utils/string_utils.h>
 #include <utils/platform.h>
-#include <utils/Result.h>
+#include <saferesult/Result.h>
 #include <next_launcher/version.h>
 
 #include "Analytics.h"
@@ -34,6 +34,7 @@
 
 INITIALIZE_EASYLOGGINGPP
 
+using namespace saferesult;
 namespace fs = std::filesystem;
 
 #define ERROR_TITLE "Counter-Strike Launcher"
@@ -50,6 +51,8 @@ using namespace std::chrono_literals;
 ClientLauncher::ClientLauncher(HINSTANCE module_instance, const char* cmd_line) :
     module_instance_(module_instance)
 {
+    next_client_version_ = { NEXT_CLIENT_BUILD_VERSION_MAJOR, NEXT_CLIENT_BUILD_VERSION_MINOR, NEXT_CLIENT_BUILD_VERSION_PATCH, NEXT_CLIENT_BUILD_VERSION_PRERELEASE };
+
     user_storage_ = std::make_shared<RegistryUserStorage>("Software\\Valve\\Half-Life\\nextclient");
     user_info_ = std::make_shared<DefaultUserInfo>(user_storage_);
     user_info_client_ = std::make_shared<next_launcher::UserInfoClient>(user_info_.get());
@@ -223,7 +226,7 @@ void ClientLauncher::RunEngine()
         nitro_api->WriteLog(LOG_TAG, versions.c_str());
 
         client_mini->Init(nitro_api);
-        engine_mini->Init(nitro_api, NextClientVersion{NEXT_CLIENT_BUILD_VERSION_MAJOR, NEXT_CLIENT_BUILD_VERSION_MINOR, NEXT_CLIENT_BUILD_VERSION_PATCH}, analytics_.get());
+        engine_mini->Init(nitro_api, next_client_version_, analytics_.get());
 
         //hangs on exit fix
         unsubscribers.emplace_back(nitro_api->GetSDL2Data()->SDL_DestroyWindowFunc += [this, napi = nitro_api](void* window)

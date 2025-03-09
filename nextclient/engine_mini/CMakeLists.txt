@@ -71,6 +71,11 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
         nitro_api::nitro_api
         NextClient::gameui
         NextClient::filesystem_proxy
+        data_encoding::data_encoding
+        data_types::data_types
+        TaskCoro::TaskCoro
+        SafeResult::SafeResult
+        easyloggingpp::easyloggingpp
         cpr::cpr
         optic::optic
         OpenSSL::SSL
@@ -109,6 +114,10 @@ target_compile_definitions(${PROJECT_NAME} PRIVATE
         USE_OPTICK=$<BOOL:${USE_PROFILER}>
         _HAS_STATIC_RTTI=0 #disable rtti things in stl
         BREADCRUMBS_TAG="[${PROJECT_NAME}]"
+        #easyloggingpp options
+        ELPP_WINSOCK2
+        ELPP_NO_DEFAULT_LOG_FILE
+        ELPP_DEFAULT_LOGGER="engine_mini"
 )
 
 if (WIN32)
@@ -119,6 +128,7 @@ if (WIN32)
             WINVER=0x0600
             NOMINMAX
             _UNICODE
+            WIN32_LEAN_AND_MEAN
     )
 endif()
 

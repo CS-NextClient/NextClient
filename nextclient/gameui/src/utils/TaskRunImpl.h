@@ -3,13 +3,14 @@
 
 #include "Result.h"
 
-class TaskRunImpl
+class TaskCoroImpl
 {
     std::unique_ptr<concurrencpp::runtime> ccruntime_;
     std::shared_ptr<concurrencpp::manual_executor> update_executor_;
 
+
 public:
-    explicit TaskRunImpl();
+    explicit TaskCoroImpl();
 
     template<class callable_type, class... argument_types>
     auto RunInMainThreadAndWait(callable_type&& callable, argument_types&&... arguments)
@@ -34,7 +35,7 @@ public:
     }
 
     template<class callable_type, class... argument_types>
-    Result RunInMainThread(callable_type&& callable, argument_types&&... arguments)
+    Result RunInMainThreadAndForget(callable_type&& callable, argument_types&&... arguments)
     {
         if (update_executor_ == nullptr)
             return Result(ResultError("Not initialized"));

@@ -1,14 +1,10 @@
 cmake_minimum_required(VERSION 3.21)
-project(data_encoding VERSION 1.2.4)
-
-if (MSVC)
-    set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
-endif ()
+project(data_encoding)
 
 add_library(data_encoding STATIC
-        aes.cpp
-        base64.cpp
-        md5.cpp
+        src/aes.cpp
+        src/base64.cpp
+        src/md5.cpp
 )
 add_library(data_encoding::data_encoding ALIAS data_encoding)
 

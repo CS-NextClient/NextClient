@@ -7,6 +7,7 @@
 #include "../common/sys_dll.h"
 
 bool con_debuglog;
+bool con_initialized;
 
 void Con_DebugLog(const char* file, const char* format, ...)
 {
@@ -27,6 +28,8 @@ void Con_Init()
     con_debuglog = COM_CheckParm("-condebug");
     if (con_debuglog)
         FS_RemoveFile("qconsole.log", nullptr);
+
+    con_initialized = true;
 }
 
 void Con_DPrintf(ConLogType type, const char* format, ...)

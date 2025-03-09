@@ -1,6 +1,9 @@
 #include "DefaultUserInfo.h"
+
 #include <sstream>
+
 #include <Windows.h>
+#include <Objbase.h>
 #include <strtools.h>
 
 DefaultUserInfo::DefaultUserInfo(std::shared_ptr<next_launcher::IUserStorage> user_storage) :

@@ -9,6 +9,8 @@
 #include <vgui_controls/Panel.h>
 #include <utils/TaskRun.h>
 #include <IGameClientExports.h>
+#include <next_engine_mini/engine_mini.h>
+
 #include "LoadingDialog.h"
 
 class CGameUI : public IGameUI
@@ -70,7 +72,7 @@ private:
     int m_iNumFactories;
     CreateInterfaceFn m_FactoryList[MAX_NUM_FACTORIES];
 
-    std::shared_ptr<TaskRunImpl> task_run_impl_;
+    std::shared_ptr<TaskCoroImpl> task_run_impl_;
 
     class ContainerExtensionGameUiApi* browserExtensionGameUiApi;
 };
@@ -81,5 +83,6 @@ extern IBaseSystem* SystemWrapper();
 extern cl_enginefunc_t* engine;
 extern vgui2::DHANDLE<CLoadingDialog> g_hLoadingDialog;
 extern IGameClientExports* GameClientExports();
+extern EngineMiniInterface* EngineMini();
 
 #endif

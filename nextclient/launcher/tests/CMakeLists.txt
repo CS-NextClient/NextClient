@@ -6,7 +6,9 @@ add_compile_definitions(
         WINVER=0x0600
         NOMINMAX
         _UNICODE
+        WIN32_LEAN_AND_MEAN
         #easyloggingpp options
+        ELPP_WINSOCK2
         ELPP_THREAD_SAFE
         ELPP_DISABLE_DEFAULT_CRASH_HANDLING
         ELPP_DEFAULT_LOGGER="updater-tests"

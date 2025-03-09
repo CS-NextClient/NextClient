@@ -71,13 +71,13 @@ ContainerExtensionGameUiApi::ContainerExtensionGameUiApi() {
 				
 				if(name == "init") {
 					auto context = CefV8Context::GetCurrentContext();
-					TaskRun::RunInMainThread([this, context] {
+					TaskCoro::RunInMainThread([this, context] {
 						events_.push_back(std::make_unique<CExtensionGameUiApiEvents>(context));
 					});
 					return true;
 				}
 				else if(name == "getShownStatus") {
-					auto is_gameui_active = TaskRun::RunInMainThreadAndWait([this]{
+					auto is_gameui_active = TaskCoro::RunInMainThreadAndWait([this]{
 						return GameUI().IsGameUIActive();
 					});
 					if (is_gameui_active.has_error())
@@ -90,7 +90,7 @@ ContainerExtensionGameUiApi::ContainerExtensionGameUiApi() {
 						return false;
 					
 					const auto tab_name = std::string(arguments[0]->GetStringValue());
-					TaskRun::RunInMainThread([this, tab_name]{
+					TaskCoro::RunInMainThread([this, tab_name]{
 						options_page_to_open_ = tab_name;
 					});
 					return true;

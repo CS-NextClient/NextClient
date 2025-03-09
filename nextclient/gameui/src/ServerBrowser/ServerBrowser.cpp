@@ -8,6 +8,8 @@
 #include <vgui/IVGui.h>
 #include <KeyValues.h>
 
+#undef CreateDialog
+
 CServerBrowser g_ServerBrowserSingleton;
 
 EXPOSE_SINGLE_INTERFACE_GLOBALVAR(CServerBrowser, IServerBrowserEx, SERVERBROWSEREX_INTERFACE_VERSION, g_ServerBrowserSingleton);

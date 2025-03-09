@@ -1,5 +1,4 @@
 #pragma once
-
 #include <nitroapi/NitroApiInterface.h>
 #include <next_engine_mini/AnalyticsInterface.h>
 #include <next_engine_mini/NextClientVersion.h>
@@ -101,6 +100,9 @@ nitroapi::NitroApiInterface* napi();
 nitroapi::EngineData* eng();
 nitroapi::ClientData* client();
 nitroapi::SDL2Data* sdl2();
+
+// elpplog.cpp
+void ConfigureEngineElppLogger();
 
 // common/common.cpp
 int COM_SizeofResourceList(resource_t *pList, resourceinfo_t *ri);

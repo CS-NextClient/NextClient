@@ -52,7 +52,7 @@ bool ContainerExtensionConsoleApi::OnMessage(const char* text) {
 	if(!events_count) return false;
 
 	auto observer = std::make_shared<CompletionObserver>(events_count, [text = std::string(text)](std::vector<bool> results) {
-		TaskRun::RunInMainThread([text, results] {
+		TaskCoro::RunInMainThread([text, results] {
 			for(auto const result : results) {
 				if(result == true)
 					return;
@@ -83,7 +83,7 @@ ContainerExtensionConsoleApi::ContainerExtensionConsoleApi() {
 					 const CefV8ValueList& arguments, CefRefPtr<CefV8Value>& retval, CefString& exception) -> bool {
 				if (name == "init") {
 					auto context = CefV8Context::GetCurrentContext();
-					TaskRun::RunInMainThread([this, context] {
+					TaskCoro::RunInMainThread([this, context] {
 						events_.push_back(std::make_unique<CExtensionConsoleApiEvents>(context));
 					});
 					return true;

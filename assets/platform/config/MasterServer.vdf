@@ -1,0 +1,20 @@
+"MasterServer"
+{
+	"Selected"		"1"
+	"CacheServers"		"false"
+	"Servers"
+	{
+		"Steam"
+		{
+			"address"		"hl1master.steampowered.com:27011"
+			"site"		""
+			"region"		"0x03" // see region codes here https://developer.valvesoftware.com/wiki/Master_Server_Query_Protocol#Region_codes
+		}
+		"Tsarvar"
+		{
+			"address"		"ms.tsarvar.com:27010"
+			"site"		"https://tsarvar.com/"
+			"region"		"0xFF"
+		}
+	}
+}

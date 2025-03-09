@@ -18,6 +18,9 @@
 
 using namespace vgui2;
 
+#undef PostMessage
+#undef MessageBox
+
 CAddServerGameList::CAddServerGameList(Panel *parent, const char *panelName) : BaseClass(parent, panelName)
 {
 }
@@ -157,12 +160,12 @@ void CDialogAddServer::OnOK()
     uint32_t ip{}; uint16_t port{};
 
     if (address != nullptr && address[0] != '\0')
-        nitro_utils::inet_stonp(address, ip, port, true);
+        nitro_utils::ParseAddress(address, ip, port, true);
 
     netadr_t netaddr(ip, port);
     if (netaddr.IsValid())
     {
-        ServerBrowserDialog().AddServerToFavorites(netaddr.GetIPHostByteOrder(), netaddr.GetPort());
+        ServerBrowserDialog().AddServerToFavorites(netaddr.GetIPHostByteOrder(), netaddr.GetPortHostByteOrder());
         PostMessage(this, new KeyValues("Close"));
     }
     else
@@ -203,7 +206,7 @@ void CDialogAddServer::TestServers()
 
     uint32_t ip = 0;
     uint16_t port = 0;
-    nitro_utils::inet_stonp(address, ip, port, true);
+    nitro_utils::ParseAddress(address, ip, port, true);
 
     servernetadr_t servernetadr{};
     servernetadr.Init(ip, port, port);

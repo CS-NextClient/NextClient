@@ -7,7 +7,7 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <Windows.h>
-#include <utils/Result.h>
+#include <saferesult/Result.h>
 #include <utils/bitmask.h>
 
 inline constexpr auto kFileNotExistsStringError = "file is not exists";
@@ -106,6 +106,6 @@ public:
 
 private:
     static void OpenSingleFileInternal(const std::filesystem::path& filepath, std::ios_base::openmode openmode, bool delete_new_empty_file_on_close, OpenerFile& open_info);
-    static ResultT<FileOpener::RemoveWriteProtectAttributesResult> RemoveWriteProtectAttributes(const std::filesystem::path& filepath);
-    static Result SetAttributes(const std::filesystem::path& filepath, DWORD attributes);
+    static saferesult::ResultT<FileOpener::RemoveWriteProtectAttributesResult> RemoveWriteProtectAttributes(const std::filesystem::path& filepath);
+    static saferesult::Result SetAttributes(const std::filesystem::path& filepath, DWORD attributes);
 };

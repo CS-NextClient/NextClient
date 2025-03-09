@@ -5,8 +5,11 @@
 #include <nitro_utils/string_utils.h>
 #include <nitro_utils/PtrValidator.h>
 #include <next_engine_mini/engine_mini.h>
+#include <service/matchmaking/MatchmakingService.h>
+#include <service/matchmaking/MatchmakingSteamComp.h>
 #include <tier2/tier2.h>
-#include <task/TaskRun.h>
+#include <taskcoro/TaskCoro.h>
+#include <easylogging++.h>
 
 #include "common/common.h"
 #include "common/net_chan.h"
@@ -118,6 +121,9 @@ cvar_t* viewmodel_fov;
 bool g_bIsDedicatedServer;
 r_studio_interface_t* pStudioAPI;
 
+static std::unique_ptr<service::matchmaking::MatchmakingSteamComp> g_pMatchmakingServers;
+
+static std::shared_ptr<taskcoro::TaskCoroImpl> g_pTaskCoroImpl;
 static std::vector<std::shared_ptr<nitroapi::Unsubscriber>> g_Unsubs;
 
 nitroapi::NitroApiInterface* napi() { return g_NitroApi; }
@@ -125,10 +131,8 @@ nitroapi::EngineData* eng() { return g_NitroApi->GetEngineData(); }
 nitroapi::ClientData* client() { return g_NitroApi->GetClientData(); }
 nitroapi::SDL2Data* sdl2() { return g_NitroApi->GetSDL2Data(); }
 
-static void UninitializeInternal()
+static void EngineMiniUninitialize()
 {
-    TaskRun::UnInitialize();
-
     CL_DeleteHttpDownloadManager();
     JSAPI_Shutdown();
     AUDIO_Shutdown();
@@ -137,9 +141,14 @@ static void UninitializeInternal()
 
     KV_UninitializeKeyValuesSystem();
 
+    g_pMatchmakingServers = nullptr;
+
     for (auto &unsubscriber : g_Unsubs)
         unsubscriber->Unsubscribe();
     g_Unsubs.clear();
+
+    taskcoro::TaskCoro::UnInitialize();
+    g_pTaskCoroImpl = nullptr;
 
     g_NitroApi = nullptr;
     g_SettingGuard = nullptr;
@@ -228,16 +237,27 @@ static void UninitializeInternal()
     p_cvar_vars = nullptr;
 }
 
-static void InitInternal(AnalyticsInterface* analytics, nitroapi::NitroApiInterface* nitro_api, void* mainwindow, HDC* pmaindc, HGLRC* pbaseRC, const char* pszDriver, const char* pszCmdLine, bool result)
+static void EngineMiniInitialize(nitroapi::NitroApiInterface* nitro_api, NextClientVersion next_client_version, AnalyticsInterface* analytics)
 {
-    if (analytics)
-        analytics->AddBreadcrumb("info", BREADCRUMBS_TAG " InitInternal");
+    ConfigureEngineElppLogger();
 
+    g_pTaskCoroImpl = std::make_shared<taskcoro::TaskCoroImpl>(std::this_thread::get_id());
+    taskcoro::TaskCoro::Initialize(g_pTaskCoroImpl);
+
+    g_NitroApi = nitro_api;
+    g_NextClientVersion = next_client_version;
     g_Analytics = analytics;
+
+    g_pMatchmakingServers = std::make_unique<service::matchmaking::MatchmakingSteamComp>();
+}
+
+static void OnGameInitializing(void* mainwindow, HDC* pmaindc, HGLRC* pbaseRC, const char* pszDriver, const char* pszCmdLine, bool result)
+{
+    if (g_Analytics)
+        g_Analytics->AddBreadcrumb("info", BREADCRUMBS_TAG " OnGameInitializing");
 
     nitro_utils::PtrValidator v;
 
-    v.Assign(g_NitroApi, GET_VARIABLE_NAME(g_NitroApi), nitro_api);
     v.Assign(p_gl_mtexable, GET_VARIABLE_NAME(p_gl_mtexable), eng()->gl_mtexable);
     v.Assign(p_currenttexture, GET_VARIABLE_NAME(p_currenttexture), eng()->currenttexture);
     v.Assign(cl, GET_VARIABLE_NAME(cl), eng()->client_state);
@@ -319,9 +339,9 @@ static void InitInternal(AnalyticsInterface* analytics, nitroapi::NitroApiInterf
 
     if (v.HasNullPtr())
     {
-        UninitializeInternal();
+        EngineMiniUninitialize();
 
-        std::string error = std::format(BREADCRUMBS_TAG " InitInternal: PtrValidator failed: {}", nitro_utils::join(v.GetNullPtrNames().cbegin(), v.GetNullPtrNames().cend(), ", "));
+        std::string error = std::format(BREADCRUMBS_TAG " OnGameInitializing: PtrValidator failed: {}", nitro_utils::join(v.GetNullPtrNames().cbegin(), v.GetNullPtrNames().cend(), ", "));
         g_NitroApi->GetEngineData()->Sys_Error.InvokeChained(error.c_str());
         return;
     }
@@ -464,14 +484,19 @@ static void InitInternal(AnalyticsInterface* analytics, nitroapi::NitroApiInterf
         pStudioAPI = *ppinterface;
     });
 
-    TaskRun::Initialize(std::make_shared<TaskRunImpl>(napi()));
+    g_Unsubs.emplace_back(eng()->Host_FrameInternal += [](float delta) {
+        if (g_pTaskCoroImpl)
+        {
+            g_pTaskCoroImpl->Update();
+        }
+    });
 
     GL_SetMode_Subscriber(mainwindow, pmaindc, pbaseRC, pszDriver, pszCmdLine, result);
 
     AUDIO_Init();
 }
 
-static void InitInternalPost()
+static void OnGameInitialized()
 {
     nitro_utils::PtrValidator v;
 
@@ -504,9 +529,9 @@ static void InitInternalPost()
 
     if (v.HasNullPtr())
     {
-        UninitializeInternal();
+        EngineMiniUninitialize();
 
-        std::string error = std::format(BREADCRUMBS_TAG " InitInternalPost: PtrValidator failed: {}", nitro_utils::join(v.GetNullPtrNames().cbegin(), v.GetNullPtrNames().cend(), ", "));
+        std::string error = std::format(BREADCRUMBS_TAG " OnGameInitialize: PtrValidator failed: {}", nitro_utils::join(v.GetNullPtrNames().cbegin(), v.GetNullPtrNames().cend(), ", "));
         g_NitroApi->GetEngineData()->Sys_Error.InvokeChained(error.c_str());
         return;
     }
@@ -523,26 +548,27 @@ static void InitInternalPost()
 class EngineMini : public EngineMiniInterface
 {
     std::vector<std::shared_ptr<nitroapi::Unsubscriber>> unsubs_;
+    std::unique_ptr<service::matchmaking::MatchmakingSteamComp> matchmaking_steam_comp_;
 
 public:
     void Init(nitroapi::NitroApiInterface* nitro_api, NextClientVersion client_version, AnalyticsInterface* analytics) override
     {
-        g_NextClientVersion = client_version;
-
         if (analytics)
             analytics->AddBreadcrumb("info", BREADCRUMBS_TAG " EngineMini::Init");
+
+        EngineMiniInitialize(nitro_api, client_version, analytics);
 
         unsubs_.emplace_back(nitro_api->GetEngineData()->COM_InitArgv |= [](int argc, char** argv, const auto& next) {
             COM_InitArgv(argc, argv);
             next->Invoke(argc, argv);
         });
 
-        unsubs_.emplace_back(nitro_api->GetEngineData()->GL_SetMode +=[nitro_api, analytics](void* mainwindow, HDC* pmaindc, HGLRC* pbaseRC, const char* pszDriver, const char* pszCmdLine, bool result) {
-            InitInternal(analytics, nitro_api, mainwindow, pmaindc, pbaseRC, pszDriver, pszCmdLine, result);
+        unsubs_.emplace_back(nitro_api->GetEngineData()->GL_SetMode += [](void* mainwindow, HDC* pmaindc, HGLRC* pbaseRC, const char* pszDriver, const char* pszCmdLine, bool result) {
+            OnGameInitializing(mainwindow, pmaindc, pbaseRC, pszDriver, pszCmdLine, result);
         });
 
         unsubs_.emplace_back(nitro_api->GetEngineData()->Sys_InitGame += [](char* lpOrgCmdLine, char* pBaseDir, void* pwnd, int bIsDedicated, bool ret) {
-            InitInternalPost();
+            OnGameInitialized();
         });
     }
 
@@ -555,7 +581,7 @@ public:
             unsubscriber->Unsubscribe();
         unsubs_.clear();
 
-        UninitializeInternal();
+        EngineMiniUninitialize();
     }
 
     void GetVersion(char* buffer, int size) override
@@ -587,6 +613,11 @@ public:
     bool RemoveCmdLogger(CommandLoggerInterface* logger) override
     {
         return PROTECTOR_RemoveCmdLogger(logger);
+    }
+
+    ISteamMatchmakingServers* GetSteamMatchmakingServers() override
+    {
+        return g_pMatchmakingServers.get();
     }
 };
 

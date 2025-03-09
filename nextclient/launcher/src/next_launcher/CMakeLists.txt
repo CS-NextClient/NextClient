@@ -20,7 +20,6 @@ add_executable(${TARGET_NAME} WIN32
 
 target_include_directories(${TARGET_NAME} PRIVATE
         ${NEXT_LAUNCHER_SOURCE_DIR}/include
-        ${NEXT_LAUNCHER_SOURCE_DIR}/dep/easyloggingpp/src
 )
 
 target_link_libraries(${TARGET_NAME} PRIVATE
@@ -30,8 +29,10 @@ target_link_libraries(${TARGET_NAME} PRIVATE
         NextClient::gameui
         NextClient::steam_api_proxy
         data_encoding::data_encoding
+        SafeResult::SafeResult
         next_launcher::utils
         magic_enum::magic_enum
+        easyloggingpp::easyloggingpp
         Dbghelp.lib
 )
 
