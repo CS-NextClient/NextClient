@@ -8,6 +8,7 @@ NextClient has integrated some features from [csldr](https://github.com/mikkokko
 
 ### Main features:
  - Protector - protects the client from malicious commands from the server
+ - Ability to change the master server (the default ms is [tsarvar.com](https://tsarvar.com))
  - Advanced video settings - FOV fix on 16:9 resolutions, ability to adjust FOV and separately adjust FOV for first person model
  - Advanced killfeed - support for advanced killfeed [regamedll](https://github.com/s1lentq/ReGameDLL_CS/pull/858), displaying kill icons: through the wall, through smoke, without aiming, jumping, dominating, etc.
  - Advanced crosshair settings - added new crosshair types: dot, T-shaped, circle
@@ -76,6 +77,33 @@ NextClient has integrated some features from [csldr](https://github.com/mikkokko
 5. Run the game via cs.exe
 
 ### ⚠️ Warning! Never put NextClient files directly into the game installation folder in Steam! This will lead to VAC ban! ⚠️
+
+## Changing the master server
+
+The configuration file is located at the path `platform\config\MasterServer.vdf`
+```vdf
+"MasterServer"
+{
+   "Selected"     "1"       // Item number from the Servers section. Numbering starts from 0.
+   "CacheServers" "false"   // In case the master server is unavailable, the servers will be taken from the cache.
+                            // The cache contains servers from the last request that was fully completed.
+   "Servers"
+   {
+      "Steam"
+      {
+         "address" "hl1master.steampowered.com:27011" // Master server address.
+         "site"    ""       // Not used.
+         "region"  "0x03"   // Region code, see https://developer.valvesoftware.com/wiki/Master_Server_Query_Protocol#Region_codes.
+      }
+      "Tsarvar"
+      {
+         "address" "ms.tsarvar.com:27010"
+         "site"    "https://tsarvar.com/"
+         "region"  "0xFF"
+      }
+   }
+}
+```
 
 ## Building
 Requirements:
