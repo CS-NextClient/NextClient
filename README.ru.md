@@ -72,9 +72,9 @@ NextClient это модификация для Counter-Strike 1.6, нацеле
 
 1. NextClient работает только с версией движка 8684, убедитесь, что вы находитесь на бета-ветви "steam_legacy - Pre-25th Anniversary Build" в Steam (⚠️ вам нужны файлы официальной игры из Steam! Вы не можете установить NextClient на пиратские клиенты!)
 2. Скопируйте всю папку Counter-Strike 1.6 (Half-Life) в отдельное место вне папки Steam
-3. Переименуйте steam_api.dll в steam_api_orig.dll
+3. Переименуйте steam_api.dll в steam_api_orig.dll (Обратите внимание, что переименовать steam_api.dll в steam_api_orig.dll необходимо перед копированием файлов NextClient!)
 4. Поместите все файлы NextClient в папку с игрой
-5. Запускайте игру через cs.exe
+5. Запускайте игру через cstrike.exe
 
 ### ⚠️ Внимание! Никогда не помещайте файлы NextClient прямо в папку установки игры в Steam! Это приведет к VAC бану! ⚠️
 
