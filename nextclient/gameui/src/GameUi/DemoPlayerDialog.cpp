@@ -199,6 +199,24 @@ void CDemoPlayerDialog::Update()
 
     if ( firstFrame && lastFrame )
     {
+        frame_t * prevFrame = NULL;
+        frame_t * nextFrame = firstFrame;
+
+        // Sync time slider range by skipping over frames before the actual start of the demo
+        // If the time gap between frames > 2s, consider the first valid frame as the actual demo start
+        while ( nextFrame )
+        {
+            // Skip frames that are too far apart (these frames are not part of the actual demo)
+            if ( prevFrame && (nextFrame->time - prevFrame->time) > 2.0f )
+            {
+                firstFrame = nextFrame; // Set the first valid frame as the real start
+                break;
+            }
+
+            prevFrame = nextFrame;
+            nextFrame = m_World->GetFrameBySeqNr(nextFrame->seqnr + 1);
+        }
+
         float range = lastFrame->time - firstFrame->time;
         m_pTimeSlider->SetRange(firstFrame->time,lastFrame->time) ;
         m_pTimeSlider->InvalidateLayout();
@@ -209,10 +227,20 @@ void CDemoPlayerDialog::Update()
 
     int sliderTime = m_pTimeSlider->GetValue();
 
-    if ( sliderTime != m_lastSliderTime )
+    if ( m_lastSliderTime > 0 && sliderTime != m_lastSliderTime )
     {
+        int tmin, tmax;
+        m_pTimeSlider->GetRange( tmin, tmax );
+
         // slider has been moved by user, apply changes to editor
-        m_DemoPlayer->SetWorldTime( sliderTime, false );
+
+        // If the slider is at the beginning, set the world time to the actual start of the demo
+        // (avoiding truncation due to integer slider values)
+        if ( firstFrame && tmin == sliderTime )
+            m_DemoPlayer->SetWorldTime( firstFrame->time, false );
+        else
+            m_DemoPlayer->SetWorldTime( sliderTime, false );
+
         if ( m_lastSliderTime > 0)
             OnPause();	// pause game while brwosing tru time
         m_lastSliderTime = sliderTime;
