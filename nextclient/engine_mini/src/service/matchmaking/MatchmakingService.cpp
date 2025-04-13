@@ -28,7 +28,40 @@ result<std::vector<MatchmakingService::ServerInfo>> MatchmakingService::RequestI
     std::shared_ptr<CancellationToken> cancellation_token
 )
 {
-    return RequestInternetServerListInternal(std::move(server_answered_callback), std::move(cancellation_token));
+    std::shared_ptr<MasterClientInterface> ms_client = internet_ms_factory_->CreateClient();
+
+    std::vector<ServerInfo> servers = co_await GetServersFromMaster(
+        ms_client,
+        [this, server_answered_callback](const ServerInfo& server_info) { server_answered_callback(server_info); },
+        cancellation_token);
+
+    if (IsServerListForcedToBeEmpty(servers))
+    {
+        co_return servers;
+    }
+
+    if (servers.empty())
+    {
+        std::shared_ptr<MasterClientInterface> ms_cache_client = internet_ms_factory_->CreateCacheClient();
+
+        co_return co_await GetServersFromMaster(
+            ms_cache_client,
+            [this, server_answered_callback](const ServerInfo& server_info) { server_answered_callback(server_info); },
+            cancellation_token);
+    }
+
+    if (!servers.empty())
+    {
+        // TODO maybe save the cache on cancel, too?
+        auto addresses = servers
+            | std::views::transform(
+                [](const ServerInfo& s) { return netadr_t(s.gameserver.m_NetAdr.GetIP(), s.gameserver.m_NetAdr.GetConnectionPort()); })
+            | std::ranges::to<std::vector>();
+
+        internet_ms_factory_->CreateCacheClient()->Save(addresses);
+    }
+
+    co_return servers;
 }
 
 result<void> MatchmakingService::RefreshServerList(
@@ -75,47 +108,6 @@ result<gameserveritem_t> MatchmakingService::RefreshServer(uint32_t ip, uint16_t
 {
     SQResponseInfo<SQ_INFO> server_info = co_await source_query_.GetInfoAsync(netadr_t(ip, port));
     co_return ConvertToGameServerItem(server_info);
-}
-
-result<std::vector<MatchmakingService::ServerInfo>> MatchmakingService::RequestInternetServerListInternal(
-    std::function<void(const ServerInfo&)> server_answered_callback,
-    std::shared_ptr<CancellationToken> cancellation_token
-)
-{
-    std::shared_ptr<MasterClientInterface> ms_client = internet_ms_factory_->CreateClient();
-
-    std::vector<ServerInfo> servers = co_await GetServersFromMaster(
-        ms_client,
-        [this, server_answered_callback](const ServerInfo& server_info) { server_answered_callback(server_info); },
-        cancellation_token);
-
-    if (IsServerListForcedToBeEmpty(servers))
-    {
-        co_return servers;
-    }
-
-    if (servers.empty())
-    {
-        std::shared_ptr<MasterClientInterface> ms_cache_client = internet_ms_factory_->CreateCacheClient();
-
-        co_return co_await GetServersFromMaster(
-            ms_cache_client,
-            [this, server_answered_callback](const ServerInfo& server_info) { server_answered_callback(server_info); },
-            cancellation_token);
-    }
-
-    if (!servers.empty())
-    {
-        // TODO maybe save the cache on cancel, too?
-        auto addresses = servers
-            | std::views::transform(
-                [](const ServerInfo& s) { return netadr_t(s.gameserver.m_NetAdr.GetIP(), s.gameserver.m_NetAdr.GetConnectionPort()); })
-            | std::ranges::to<std::vector>();
-
-        internet_ms_factory_->CreateCacheClient()->Save(addresses);
-    }
-
-    co_return servers;
 }
 
 result<std::vector<MatchmakingService::ServerInfo>> MatchmakingService::GetServersFromMaster(

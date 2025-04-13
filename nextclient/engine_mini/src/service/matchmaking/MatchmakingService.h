@@ -48,11 +48,6 @@ namespace service::matchmaking
         concurrencpp::result<gameserveritem_t> RefreshServer(uint32_t ip, uint16_t port);
 
     private:
-        concurrencpp::result<std::vector<ServerInfo>> RequestInternetServerListInternal(
-            std::function<void(const ServerInfo&)> server_answered_callback,
-            std::shared_ptr<taskcoro::CancellationToken> cancellation_token
-        );
-
         concurrencpp::result<std::vector<ServerInfo>> GetServersFromMaster(
             std::shared_ptr<MasterClientInterface> ms_client,
             std::function<void(const ServerInfo&)> server_answered_callback,
