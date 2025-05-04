@@ -1,6 +1,6 @@
 #include "Updater.h"
 #include <easylogging++.h>
-#include <magic_enum.hpp>
+#include <magic_enum/magic_enum.hpp>
 #include <updater/json_data/BranchEntry.h>
 
 #define INSTALL_FOLDER ""

@@ -1,7 +1,7 @@
 {
   "name" : "launcher",
   "version-string" : "1.0.0",
-  "builtin-baseline" : "a34c873a9717a888f58dc05268dea15592c2f0ff",
+  "builtin-baseline" : "41c447cc210dc39aa85d4a5f58b4a1b9e573b3dc",
   "vcpkg-configuration": {
     "overlay-ports": [
       "./custom-vcpkg-ports"
@@ -9,33 +9,33 @@
   },
   "dependencies" : [ {
     "name" : "magic-enum",
-    "version>=" : "0.9.5"
+    "version>=" : "0.9.7"
   }, {
     "name" : "xbyak",
-    "version>=" : "6.73"
+    "version>=" : "7.24.2"
   }, {
     "name" : "uwebsockets",
-    "version>=" : "20.45.0"
+    "version>=" : "20.74.0"
   }, {
     "name" : "gtest",
-    "version>=" : "1.14.0"
+    "version>=" : "1.16.0"
   }, {
     "name" : "sentry-native",
-    "version>=" : "0.6.6"
+    "version>=" : "0.8.4"
   }, {
     "name" : "glfw3",
-    "version>=" : "3.3.8#2"
+    "version>=" : "3.4"
   }, {
     "name" : "cmakerc",
     "version>=" : "2023-07-24"
   }, {
     "name" : "taocpp-json",
-    "version>=" : "2020-09-14#3"
+    "version>=" : "2020-09-14#4"
   }, {
     "name" : "concurrencpp",
     "version>=" : "0.1.7"
   }, {
     "name": "openssl",
-    "version>=": "3.2.1"
+    "version>=": "3.5.0"
   }]
 }

@@ -1,7 +1,7 @@
 #include "Analytics.h"
 #include <format>
 #include <easylogging++.h>
-#include <magic_enum.hpp>
+#include <magic_enum/magic_enum.hpp>
 #include <next_launcher/version.h>
 #ifdef SENTRY_ENABLE
 #include <sentry.h>

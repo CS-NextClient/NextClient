@@ -1,6 +1,6 @@
 #pragma once
 #include <concurrencpp/concurrencpp.h>
-#include <magic_enum.hpp>
+#include <magic_enum/magic_enum.hpp>
 
 #include "TaskType.h"
 #include "CancellationToken.h"

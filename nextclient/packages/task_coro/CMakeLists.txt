@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 3.21)
 project(TaskCoro)
 
 find_package(concurrencpp CONFIG REQUIRED)
+find_package(magic_enum CONFIG REQUIRED)
 
 add_library(${PROJECT_NAME} STATIC
         src/TaskCoro.cpp
@@ -17,4 +18,5 @@ target_link_libraries(${PROJECT_NAME} PUBLIC
         data_types::data_types
         SafeResult::SafeResult
         concurrencpp::concurrencpp
+        magic_enum::magic_enum
 )
