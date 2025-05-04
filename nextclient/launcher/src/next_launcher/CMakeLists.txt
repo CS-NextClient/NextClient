@@ -62,8 +62,8 @@ if (NEXT_LAUNCHER_ENABLE_UPDATER)
 endif ()
 
 if (NEXT_LAUNCHER_ENABLE_SENTRY)
-    find_package(sentry CONFIG REQUIRED)
     find_package(ZLIB REQUIRED)
+    find_package(sentry CONFIG REQUIRED)
 
     target_compile_definitions(${TARGET_NAME} PRIVATE
             SENTRY_ENABLE
@@ -79,8 +79,8 @@ if (NEXT_LAUNCHER_ENABLE_SENTRY)
 endif ()
 
 if (NEXT_LAUNCHER_ENABLE_GAMEANALYTICS)
-    find_package(CURL COMPONENTS HTTP HTTPS REQUIRED)
     find_package(ZLIB REQUIRED)
+    find_package(CURL COMPONENTS HTTP HTTPS REQUIRED)
 
     target_compile_definitions(${TARGET_NAME} PRIVATE
             GAMEANALYTICS_ENABLE

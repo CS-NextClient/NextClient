@@ -21,7 +21,8 @@
     "version>=" : "1.16.0"
   }, {
     "name" : "sentry-native",
-    "version>=" : "0.8.4"
+    "version>=" : "0.8.4",
+    "features": ["compression"]
   }, {
     "name" : "glfw3",
     "version>=" : "3.4"
@@ -37,5 +38,8 @@
   }, {
     "name": "openssl",
     "version>=": "3.5.0"
+  }, {
+    "name": "zlib",
+    "version>=": "1.3.1"
   }]
 }

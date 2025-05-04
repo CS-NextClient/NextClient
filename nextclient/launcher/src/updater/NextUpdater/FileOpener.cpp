@@ -1,7 +1,6 @@
 #include "FileOpener.h"
 #include <utils/platform.h>
 #include <easylogging++.h>
-#define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
 
 namespace fs = std::filesystem;

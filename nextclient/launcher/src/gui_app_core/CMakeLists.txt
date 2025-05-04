@@ -25,11 +25,11 @@ cmrc_add_resource_library(
 
 target_include_directories(${TARGET_NAME} PRIVATE
         ${NEXT_LAUNCHER_SOURCE_DIR}/include
-        ${NEXT_LAUNCHER_SOURCE_DIR}/dep/easyloggingpp/src
 )
 
 target_link_libraries(${TARGET_NAME} PRIVATE
         OpenGL::GL
         glfw
         ${TARGET_NAME}::rc
+        easyloggingpp::easyloggingpp
 )
