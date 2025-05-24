@@ -18,6 +18,10 @@ namespace service::matchmaking
             gameserveritem_t gameserver{};
         };
 
+        enum class ServerListSource
+        {
+            Internet
+        };
     private:
         struct SQInfoTask
         {
@@ -25,22 +29,30 @@ namespace service::matchmaking
             concurrencpp::shared_result<SQResponseInfo<SQ_INFO>> sq_task{};
         };
 
+        struct RequestServerListResult
+        {
+            std::vector<ServerInfo> server_list{};
+            bool from_cache{};
+        };
+
     private:
         const int kMaxSimultaneousSQRequests = 15;
 
+        std::shared_ptr<MultiSourceQuery> source_query_{};
         std::shared_ptr<MasterClientFactoryInterface> internet_ms_factory_{};
-        MultiSourceQuery source_query_;
+        bool internet_ms_force_use_cache_{};
 
     public:
-        explicit MatchmakingService(int32_t server_query_timeout_ms, uint8_t server_query_retries_count);
+        explicit MatchmakingService(std::shared_ptr<MultiSourceQuery> source_query);
 
-        concurrencpp::result<std::vector<ServerInfo>> RequestInternetServerList(
+        concurrencpp::result<std::vector<ServerInfo>> RequestServerList(
+            ServerListSource server_list_source,
             std::function<void(const ServerInfo&)> server_answered_callback,
             std::shared_ptr<taskcoro::CancellationToken> cancellation_token
         );
 
         concurrencpp::result<void> RefreshServerList(
-            const std::vector<ServerInfo>& server_list,
+            const std::vector<gameserveritem_t>& gameservers,
             std::function<void(const ServerInfo&)> server_answered_callback,
             std::shared_ptr<taskcoro::CancellationToken> cancellation_token
         );
@@ -48,7 +60,14 @@ namespace service::matchmaking
         concurrencpp::result<gameserveritem_t> RefreshServer(uint32_t ip, uint16_t port);
 
     private:
-        concurrencpp::result<std::vector<ServerInfo>> GetServersFromMaster(
+        concurrencpp::result<RequestServerListResult> RequestServerListWithCacheRespect(
+            std::shared_ptr<MasterClientFactoryInterface> factory,
+            bool force_use_cache,
+            std::function<void(const ServerInfo&)> server_answered_callback,
+            std::shared_ptr<taskcoro::CancellationToken> cancellation_token
+        );
+
+        concurrencpp::result<std::vector<ServerInfo>> RequestServerList(
             std::shared_ptr<MasterClientInterface> ms_client,
             std::function<void(const ServerInfo&)> server_answered_callback,
             std::shared_ptr<taskcoro::CancellationToken> cancellation_token
