@@ -17,13 +17,13 @@ protected:
         }
 
         std::string log_message = data->logMessage()->message();
-        VerboseLevel verbose_level = data->logMessage()->verboseLevel();
+        Level message_level = data->logMessage()->level();
 
-        if (verbose_level & ((VerboseLevel)Level::Trace | (VerboseLevel)Level::Debug | (VerboseLevel)Level::Verbose))
+        if (message_level == Level::Trace || message_level == Level::Debug || message_level == Level::Verbose)
         {
             Con_DPrintf(ConLogType::Info, "%s\n", log_message.c_str());
         }
-        else if (verbose_level & (VerboseLevel)Level::Error)
+        else if (message_level == Level::Error)
         {
             Con_Printf("[ERROR] %s\n", log_message.c_str());
         }
