@@ -58,7 +58,7 @@ void Con_DPrintf(ConLogType type, const char* format, ...)
 
     if (type == ConLogType::Info)
     {
-        g_GameConsole->Printf("%s%s", prefix, text);
+        g_GameConsole->DPrintf("%s%s", prefix, text);
     }
     else
     {
