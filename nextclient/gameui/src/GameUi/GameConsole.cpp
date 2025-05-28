@@ -69,6 +69,12 @@ void CGameConsole::Initialize()
     m_bInitialized = true;
 
     engine->pfnAddCommand("condump", CGameConsole::OnCmdCondump);
+
+    // This provides a 1 frame delay to display the text after the temporary buffer from the engine
+    TaskCoro::RunInMainThread([this]
+    {
+        ExecuteTempConsoleBuffer();
+    });
 }
 
 //-----------------------------------------------------------------------------
@@ -119,9 +125,6 @@ void CGameConsole::Clear()
 //-----------------------------------------------------------------------------
 void CGameConsole::Printf(const char *format, ...)
 {
-    if (!m_bInitialized)
-        return;
-
     va_list argptr;
     char msg[4096];
 
@@ -130,11 +133,40 @@ void CGameConsole::Printf(const char *format, ...)
     msg[sizeof(msg) - 1] = 0;
         va_end(argptr);
 
-    m_pConsole->Print(msg);
+    if (!m_bInitialized)
+    {
+        m_TempConsoleBuffer.emplace_back(msg, false);
+    }
+    else
+    {
+        m_pConsole->Print(msg);
+    }
 }
 
-void CGameConsole::PrintfWithoutJsEvent(const char *text) {
+void CGameConsole::PrintfWithoutJsEvent(const char *text)
+{
+    if (!m_bInitialized)
+        return;
+
     m_pConsole->Print(text, false);
+}
+
+void CGameConsole::ExecuteTempConsoleBuffer()
+{
+    for (const SavedMessageData& msg : m_TempConsoleBuffer)
+    {
+        if (msg.is_developer)
+        {
+            DPrintf("%s", msg.text.c_str());
+        }
+        else
+        {
+            Printf("%s", msg.text.c_str());
+        }
+    }
+
+    m_TempConsoleBuffer.clear();
+    m_TempConsoleBuffer.shrink_to_fit();
 }
 
 //-----------------------------------------------------------------------------
@@ -142,9 +174,6 @@ void CGameConsole::PrintfWithoutJsEvent(const char *text) {
 //-----------------------------------------------------------------------------
 void CGameConsole::DPrintf(const char *format, ...)
 {
-    if (!m_bInitialized)
-        return;
-
     va_list argptr;
     char msg[4096];
 
@@ -153,7 +182,15 @@ void CGameConsole::DPrintf(const char *format, ...)
     msg[sizeof(msg) - 1] = 0;
         va_end(argptr);
 
-    m_pConsole->DPrint(msg);
+
+    if (!m_bInitialized)
+    {
+        m_TempConsoleBuffer.emplace_back(msg, true);
+    }
+    else
+    {
+        m_pConsole->DPrint(msg);
+    }
 }
 
 //-----------------------------------------------------------------------------

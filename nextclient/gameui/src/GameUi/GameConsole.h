@@ -20,6 +20,17 @@ class CGameConsoleDialog;
 //-----------------------------------------------------------------------------
 class CGameConsole : public IGameConsole
 {
+    struct SavedMessageData
+    {
+        std::string text;
+        bool is_developer;
+
+        explicit SavedMessageData(const std::string& text, bool is_developer) :
+            text(text),
+            is_developer(is_developer)
+        { }
+    };
+
 public:
     CGameConsole();
     ~CGameConsole();
@@ -48,9 +59,14 @@ public:
     static void OnCmdCondump();
 
     void PrintfWithoutJsEvent(const char *text);
+
+private:
+    void ExecuteTempConsoleBuffer();
+
 private:
     bool m_bInitialized;
     CGameConsoleDialog *m_pConsole;
+    std::vector<SavedMessageData> m_TempConsoleBuffer;
 };
 
 extern CGameConsole &GameConsole();

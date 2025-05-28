@@ -29,8 +29,21 @@ class CGameConsoleNext : public IGameConsoleNext
         {}
     };
 
-    bool initialized_ = false;
-    CGameConsoleDialog *console_dialog_ = nullptr;
+    struct SavedMessageData
+    {
+        Color color;
+        std::wstring text;
+
+        explicit SavedMessageData(Color color, const std::wstring& text) :
+            text(text),
+            color(color)
+        { }
+    };
+
+private:
+    bool initialized_{};
+    CGameConsoleDialog* console_dialog_{};
+    std::vector<SavedMessageData> temp_console_buffer_{};
 
 public:
     void Initialize(CGameConsoleDialog *console_dialog);
@@ -41,6 +54,9 @@ public:
     void PrintfExWide(const wchar_t *format, ...) override;
 
 private:
+    void ExecuteTempConsoleBuffer();
+    static std::wstring Utf8ToWstring(const char* str);
+
     template<Char T>
     void Printf(const T* msg)
     {
