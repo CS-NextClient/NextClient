@@ -35,6 +35,7 @@ NextClientVersion g_NextClientVersion;
 
 nitroapi::NitroApiInterface* g_NitroApi;
 std::shared_ptr<nitro_utils::ConfigProviderInterface> g_SettingGuard;
+std::shared_ptr<nitro_utils::ConfigProviderInterface> g_UserConfig;
 IFileSystem* g_pFileSystem;
 IFileSystemNext* g_pFileSystemNext;
 AnalyticsInterface* g_Analytics;
@@ -152,6 +153,7 @@ static void EngineMiniUninitialize()
 
     g_NitroApi = nullptr;
     g_SettingGuard = nullptr;
+    g_UserConfig = nullptr;
     g_pFileSystem = nullptr;
     g_pFileSystemNext = nullptr;
     g_pGameUi = nullptr;
@@ -286,7 +288,8 @@ static void OnGameInitializing(void* mainwindow, HDC* pmaindc, HGLRC* pbaseRC, c
     if (v.Validate(eng()->cldll_func, GET_VARIABLE_NAME(cl_funcs)))
         std::memcpy(&cl_funcs, eng()->cldll_func, sizeof(cl_funcs));
 
-    v.Assign(g_SettingGuard, GET_VARIABLE_NAME(g_Config), std::make_shared<nitro_utils::FileConfigProvider>("setting_guard.ini"));
+    v.Assign(g_SettingGuard, GET_VARIABLE_NAME(g_SettingGuard), std::make_shared<nitro_utils::FileConfigProvider>("setting_guard.ini"));
+    v.Assign(g_UserConfig, GET_VARIABLE_NAME(g_UserConfig), std::make_shared<nitro_utils::FileConfigProvider>("user_game_config.ini"));
     v.Assign(net_message, GET_VARIABLE_NAME(net_message), eng()->net_message);
     v.Assign(net_from, GET_VARIABLE_NAME(net_from), eng()->net_from);
     v.Assign(pMsg_readcount, GET_VARIABLE_NAME(pMsg_readcount), eng()->msg_readcount);
@@ -457,7 +460,11 @@ static void OnGameInitializing(void* mainwindow, HDC* pmaindc, HGLRC* pbaseRC, c
         AppendTEntity_Subscriber(ent);
     });
 
-    g_Unsubs.emplace_back(eng()->GL_Init += GL_Init_Subscriber);
+    g_Unsubs.emplace_back(eng()->GL_Init |= [](const auto& next) {
+        GL_Init_Pre();
+        next->Invoke();
+        GL_Init_Post();
+    });
 
     g_Unsubs.emplace_back(eng()->Con_MessageMode_f += []() {
         if (*p_key_dest == key_message)
@@ -522,7 +529,6 @@ static void OnGameInitialized()
     v.Assign(r_drawentities, GET_VARIABLE_NAME(r_drawentities), g_engfuncs.pfnCVarGetPointer("r_drawentities"));
     v.Assign(r_norefresh, GET_VARIABLE_NAME(r_norefresh), g_engfuncs.pfnCVarGetPointer("r_norefresh"));
     v.Assign(r_speeds, GET_VARIABLE_NAME(r_speeds), g_engfuncs.pfnCVarGetPointer("r_speeds"));
-
     v.Assign(sys_timescale, GET_VARIABLE_NAME(sys_timescale), eng()->sys_timescale);
     sys_timescale->flags |= FCVAR_CHEAT;
     g_engfuncs.pfnCvar_RegisterVariable(sys_timescale);

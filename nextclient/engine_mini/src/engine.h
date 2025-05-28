@@ -12,6 +12,7 @@ extern NextClientVersion g_NextClientVersion;
 
 extern nitroapi::NitroApiInterface* g_NitroApi;
 extern std::shared_ptr<nitro_utils::ConfigProviderInterface> g_SettingGuard;
+extern std::shared_ptr<nitro_utils::ConfigProviderInterface> g_UserConfig;
 extern IFileSystem* g_pFileSystem;
 extern IFileSystemNext* g_pFileSystemNext;
 extern AnalyticsInterface* g_Analytics;

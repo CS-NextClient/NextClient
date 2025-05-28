@@ -13,7 +13,8 @@ extern int TEXTURE1_SGIS;
 extern int TEXTURE2_SGIS;
 
 void GL_SetMode_Subscriber(void* mainwindow, HDC* pmaindc, HGLRC* pbaseRC, const char* pszDriver, const char* pszCmdLine, bool result);
-void GL_Init_Subscriber();
+void GL_Init_Pre();
+void GL_Init_Post();
 
 //
 // gl_draw.cpp

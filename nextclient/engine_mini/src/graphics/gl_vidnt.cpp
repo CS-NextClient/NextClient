@@ -1,5 +1,6 @@
 #include "../engine.h"
 #include <Windows.h>
+
 #include "gl_local.h"
 #include "../console/console.h"
 #include "../common/sys_dll.h"
@@ -9,6 +10,8 @@ const char *gl_extensions;
 int TEXTURE0_SGIS;
 int TEXTURE1_SGIS;
 int TEXTURE2_SGIS;
+
+bool gDisableMultitexture = false;
 
 void CheckTextureExtensions()
 {
@@ -41,6 +44,12 @@ void CheckTextureExtensions()
 
 void CheckMultiTextureExtensions()
 {
+    if (gDisableMultitexture)
+    {
+        Con_DPrintf(ConLogType::Info, "Multitexture is disabled.\n");
+        return;
+    }
+
     if (gl_extensions && Q_strstr(gl_extensions, "GL_ARB_multitexture "))
     {
         Con_DPrintf(ConLogType::Info, "ARB Multitexture extensions found.\n");
@@ -102,7 +111,17 @@ void GL_SetMode_Subscriber(void* mainwindow, HDC* pmaindc, HGLRC* pbaseRC, const
     gl_extensions = (const char*)qglGetString(GL_EXTENSIONS);
 }
 
-void GL_Init_Subscriber()
+void GL_Init_Pre()
+{
+    gDisableMultitexture = g_UserConfig->get_value_int("disable_multitexture", 0);
+
+    if (gDisableMultitexture)
+    {
+        V_strcpy_safe(*eng()->data_arb_multitexture, "fake_extension 0000 ");
+    }
+}
+
+void GL_Init_Post()
 {
     CheckMultiTextureExtensions();
     CheckTextureExtensions();

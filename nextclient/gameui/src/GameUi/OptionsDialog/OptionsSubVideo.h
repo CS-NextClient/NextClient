@@ -14,6 +14,7 @@
 #include <vgui_controls/Panel.h>
 #include <vgui_controls/ComboBox.h>
 #include <vgui_controls/PropertyPage.h>
+#include <nitro_utils/config/FileConfigProvider.h>
 #include "VideoAdvancedDialog.h"
 #include "igameuifuncs.h"
 
@@ -52,8 +53,11 @@ private:
         int			hdmodels;
         int			addons_folder;
         int			vid_level;
+        int			disable_multitexture;
         char		renderer[ 128 ];
     };
+
+    std::shared_ptr<nitro_utils::FileConfigProvider> m_pUserConfig;
 
     CVidSettings		m_OrigSettings;
     CVidSettings		m_CurrentSettings;
@@ -79,6 +83,7 @@ private:
     vgui2::CheckButton *m_pHDModels;
     vgui2::CheckButton *m_pAddonsFolder;
     vgui2::CheckButton *m_pLowVideoDetail;
+    vgui2::CheckButton *m_pDisableMultitexture;
 
     CCvarSlider		*m_pBrightnessSlider;
     CCvarSlider		*m_pGammaSlider;

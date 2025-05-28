@@ -31,6 +31,8 @@ inline bool IsWideScreen ( int width, int height )
 //-----------------------------------------------------------------------------
 COptionsSubVideo::COptionsSubVideo(vgui2::Panel *parent) : PropertyPage(parent, NULL)
 {
+    m_pUserConfig = std::make_shared<nitro_utils::FileConfigProvider>("user_game_config.ini");
+
     memset( &m_OrigSettings, 0, sizeof( m_OrigSettings ) );
     memset( &m_CurrentSettings, 0, sizeof( m_CurrentSettings ) );
 
@@ -101,6 +103,10 @@ COptionsSubVideo::COptionsSubVideo(vgui2::Panel *parent) : PropertyPage(parent, 
     m_pLowVideoDetail = new vgui2::CheckButton( this, "LowVideoDetail", "#GameUI_LowVideoDetail" );
     m_pLowVideoDetail->SetSelected(m_CurrentSettings.vid_level == 0);
     m_pLowVideoDetail->SetVisible(true);
+
+    m_pDisableMultitexture = new vgui2::CheckButton( this, "DisableMultitexture", "#GameUI_DisableMultitexture" );
+    m_pDisableMultitexture->SetSelected(m_CurrentSettings.disable_multitexture != 0);
+    m_pDisableMultitexture->SetVisible(true);
 
     LoadControlSettings("Resource\\OptionsSubVideo.res");
     PrepareResolutionList();
@@ -229,6 +235,7 @@ void COptionsSubVideo::OnResetData()
     m_pHDModels->SetSelected(m_CurrentSettings.hdmodels);
     m_pAddonsFolder->SetSelected(m_CurrentSettings.addons_folder);
     m_pLowVideoDetail->SetSelected(m_CurrentSettings.vid_level);
+    m_pDisableMultitexture->SetSelected(m_CurrentSettings.disable_multitexture);
     m_pDetailTextures->Reset();
     m_pVsync->Reset();
 
@@ -367,6 +374,12 @@ void COptionsSubVideo::ApplyVidSettings(bool bForceRefresh)
         m_CurrentSettings.vid_level = checked ? 1 : 0;
     }
 
+    if ( m_pDisableMultitexture )
+    {
+        bool checked = m_pDisableMultitexture->IsSelected();
+        m_CurrentSettings.disable_multitexture = checked ? 1 : 0;
+    }
+
     if ( memcmp( &m_OrigSettings, &m_CurrentSettings, sizeof( CVidSettings ) ) == 0 && !bForceRefresh)
     {
         return;
@@ -388,6 +401,9 @@ void COptionsSubVideo::ApplyVidSettings(bool bForceRefresh)
     engine->pfnClientCmd(szCmd);
     sprintf( szCmd, "_set_vid_level %d\n", p->vid_level );
     engine->pfnClientCmd(szCmd);
+
+    m_pUserConfig->set_value("", "disable_multitexture", std::to_string(p->disable_multitexture), true);
+
 
     // Force restart of entire engine
     engine->pfnClientCmd("fmod stop\n");
@@ -429,6 +445,14 @@ void COptionsSubVideo::OnButtonChecked(KeyValues *data)
     if (pPanel == m_pLowVideoDetail)
     {
         if (state != m_CurrentSettings.vid_level)
+        {
+            OnDataChanged();
+        }
+    }
+
+    if (pPanel == m_pDisableMultitexture)
+    {
+        if (state != m_CurrentSettings.disable_multitexture)
         {
             OnDataChanged();
         }
