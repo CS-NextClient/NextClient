@@ -303,6 +303,7 @@ void COptionsSubVideo::GetVidSettings()
 
     g_pGameUIFuncs->GetCurrentVideoMode( &p->w, &p->h, &p->bpp );
     g_pGameUIFuncs->GetCurrentRenderer(p->renderer, 128, &p->windowed, &p->hdmodels, &p->addons_folder, &p->vid_level);
+    p->disable_multitexture = m_pUserConfig->get_value_int("disable_multitexture", 0);
 
     strlwr( p->renderer );
 
