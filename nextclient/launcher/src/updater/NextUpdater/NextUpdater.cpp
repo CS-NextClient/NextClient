@@ -4,7 +4,10 @@
 #include <nitro_utils/string_utils.h>
 #include <data_encoding/md5.h>
 #include <utils/platform.h>
+#include <saferesult/Result.h>
 #include "http_download/HttpFileDownloader.h"
+
+#define LOG_TAG "[NextUpdater] "
 
 using namespace std::chrono;
 using namespace std::chrono_literals;
@@ -31,58 +34,63 @@ NextUpdaterResult NextUpdater::Start()
     if (restoreFromBackupResult == RestoreFromBackupResult::ClearBackupFolderError)
         return NextUpdaterResult::Error;
 
-    logger_->info("Requesting file list from server");
+    logger_->info(LOG_TAG "Requesting file list from server");
     SetStateAndRaiseEvent(NextUpdaterState::RequestingFileList);
-    ResultT<UpdateEntry> update_entry = SendUpdateFilesRequest();
+    ResultT<UpdateEntry, UpdateError> update_entry = SendUpdateFilesRequest();
     if (update_entry.has_error())
     {
-        logger_->error("Requesting file list error: %v", update_entry.get_error());
-        SetErrorAndRaiseEvent(update_entry.get_error());
-        return NextUpdaterResult::Error;
+        logger_->error(LOG_TAG "Requesting file list error: %v", update_entry.error_str());
+        SetErrorAndRaiseEvent(update_entry.error_str());
+
+        NextUpdaterResult error_type = update_entry.error().GetType() == UpdateErrorType::ConnectionError ?
+            NextUpdaterResult::ConnectionError :
+            NextUpdaterResult::Error;
+
+        return error_type;
     }
 
     std::vector<UpdaterFileInfo> file_infos = CreateUpdaterFileInfos(update_entry->files);
 
     SetStateAndRaiseEvent(NextUpdaterState::GatheringFilesToUpdate);
-    logger_->info("Gathering files that need to be updated");
-    ResultT<std::unordered_map<std::string, UpdaterFileInfo>> files_to_update = GetFilesToUpdate(file_infos);
+    logger_->info(LOG_TAG "Gathering files that need to be updated");
+    ResultT<std::unordered_map<std::string, UpdaterFileInfo>, UpdateError> files_to_update = GetFilesToUpdate(file_infos);
     if (files_to_update.has_error())
     {
-        logger_->error("Gathering files to update error: %v", files_to_update.get_error());
-        SetErrorAndRaiseEvent(files_to_update.get_error());
+        logger_->error(LOG_TAG "Gathering files to update error: %v", files_to_update.error_str());
+        SetErrorAndRaiseEvent(files_to_update.error_str());
         return NextUpdaterResult::Error;
     }
 
     if (files_to_update->empty())
     {
-        logger_->info("  nothing to update");
+        logger_->info(LOG_TAG "  nothing to update");
         SetStateAndRaiseEvent(NextUpdaterState::Done);
         return NextUpdaterResult::NothingToUpdate;
     }
     else
     {
-        logger_->info("  files to update:");
+        logger_->info(LOG_TAG "  files to update:");
         for (auto& [filename, file] : *files_to_update)
-            logger_->info("  %v", file.get_install_path().string());
+            logger_->info(LOG_TAG "  %v", file.get_install_path().string());
     }
 
-    logger_->info("Creating a backup");
+    logger_->info(LOG_TAG "Creating a backup");
     SetStateAndRaiseEvent(NextUpdaterState::Backuping);
-    Result backup_files_result = BackupFiles(*files_to_update | std::views::values);
+    Result<UpdateError> backup_files_result = BackupFiles(*files_to_update | std::views::values);
     if (backup_files_result.has_error())
     {
-        logger_->error("Backup error: %v", backup_files_result.get_error());
-        SetErrorAndRaiseEvent(backup_files_result.get_error());
+        logger_->error(LOG_TAG "Backup error: %v", backup_files_result.error_str());
+        SetErrorAndRaiseEvent(backup_files_result.error_str());
         return NextUpdaterResult::Error;
     }
 
-    logger_->info("Opening files to install");
+    logger_->info(LOG_TAG "Opening files to install");
     SetStateAndRaiseEvent(NextUpdaterState::OpeningFilesToInstall);
     FileOpener fo_install(*files_to_update | std::views::transform([](const auto& item){ return item.second.get_install_path(); }), std::ios::out | std::ios::binary);
     std::string open_files_to_install_error;
     if (!fo_install.IsAllFilesOpened(FileOpenerErrorFlags::None, open_files_to_install_error))
     {
-        logger_->error("Open files to install error: %v", open_files_to_install_error);
+        logger_->error(LOG_TAG "Open files to install error: %v", open_files_to_install_error);
         SetErrorAndRaiseEvent(open_files_to_install_error);
 
         fo_install.CloseAllFiles();
@@ -90,60 +98,60 @@ NextUpdaterResult NextUpdater::Start()
         return NextUpdaterResult::Error;
     }
 
-    logger_->info("Downloading an update");
-#if defined(_DEBUG) || defined(LAUNCHER_BUILD_TESTS)
-    logger_->info("  base url: %v", update_entry->hostname);
-#endif
-    SetStateAndRaiseEvent(NextUpdaterState::Downloading);
-    ResultT<std::vector<HttpFileResult>> download_results = DownloadFilesToUpdate(*files_to_update | std::views::values, update_entry->hostname,
-        [this](cpr::cpr_off_t total, cpr::cpr_off_t downloaded, cpr::cpr_off_t speed) {
-            SetStateProgressAndRaiseEvent((float)downloaded / (float)total);
-            return canceled_.load();
-        });
-
-    if (download_results.has_error())
+    if (SetCanceledStateIfNeeded())
     {
-        logger_->error("Download update error: %v", download_results.get_error());
-        SetErrorAndRaiseEvent(download_results.get_error());
-
-        fo_install.CloseAllFiles();
-        RestoreFromBackup();
-        return NextUpdaterResult::Error;
-    }
-
-    if (canceled_)
-    {
-        logger_->info("Download of the update is canceled by user");
-        SetStateAndRaiseEvent(NextUpdaterState::CanceledByUser);
-
         fo_install.CloseAllFiles();
         RestoreFromBackup();
         return NextUpdaterResult::CanceledByUser;
     }
 
-    logger_->info("Installing an update");
+    logger_->info(LOG_TAG "Downloading an update");
+#if defined(_DEBUG) || defined(LAUNCHER_BUILD_TESTS)
+    logger_->info(LOG_TAG "  base url: %v", update_entry->hostname);
+#endif
+    SetStateAndRaiseEvent(NextUpdaterState::Downloading);
+    ResultT<std::vector<HttpFileResult>, UpdateError> download_results = DownloadFilesToUpdate(*files_to_update | std::views::values, update_entry->hostname,
+        [this](cpr::cpr_off_t total, cpr::cpr_off_t downloaded, cpr::cpr_off_t speed) {
+            SetStateProgressAndRaiseEvent((float)downloaded / (float)total);
+            return is_canceled_.load();
+        });
+
+    if (download_results.has_error())
+    {
+        logger_->error(LOG_TAG "Download update error: %v", download_results.error_str());
+        SetErrorAndRaiseEvent(download_results.error_str());
+
+        fo_install.CloseAllFiles();
+        RestoreFromBackup();
+
+        NextUpdaterResult error_type = download_results.error().GetType() == UpdateErrorType::ConnectionError ?
+            NextUpdaterResult::ConnectionError :
+            NextUpdaterResult::Error;
+
+        return error_type;
+    }
+
+    logger_->info(LOG_TAG "Installing an update");
     SetStateAndRaiseEvent(NextUpdaterState::Installing);
     std::string install_error;
     Result install_result = InstallFiles(fo_install, *download_results, *files_to_update);
     if (install_result.has_error())
     {
-        logger_->error("Install update error: %v", install_result.get_error());
-        SetErrorAndRaiseEvent(install_result.get_error());
+        logger_->error(LOG_TAG "Install update error: %v", install_result.error_str());
+        SetErrorAndRaiseEvent(install_result.error_str());
 
         fo_install.CloseAllFiles();
         RestoreFromBackup();
         return NextUpdaterResult::Error;
     }
 
-    // TODO validate installation
-
-    logger_->info("Clearing backup folder");
+    logger_->info(LOG_TAG "Clearing backup folder");
     SetStateAndRaiseEvent(NextUpdaterState::ClearingBackupFolder);
     Result clear_backup_folder_result = ClearBackupFolder();
     if (clear_backup_folder_result.has_error())
     {
-        logger_->error("Clearing backup folder error: %v", clear_backup_folder_result.get_error());
-        SetErrorAndRaiseEvent(clear_backup_folder_result.get_error());
+        logger_->error(LOG_TAG "Clearing backup folder error: %v", clear_backup_folder_result.error_str());
+        SetErrorAndRaiseEvent(clear_backup_folder_result.error_str());
         return NextUpdaterResult::Error;
     }
 
@@ -153,12 +161,20 @@ NextUpdaterResult NextUpdater::Start()
 
 void NextUpdater::Cancel()
 {
-    canceled_ = true;
+    is_canceled_ = true;
 }
 
-[[nodiscard]] bool NextUpdater::IsCanceled() const
+bool NextUpdater::SetCanceledStateIfNeeded()
 {
-    return canceled_;
+    if (!is_canceled_)
+    {
+        return false;
+    }
+
+    logger_->info(LOG_TAG "Download of the update is canceled by user. State: %v", magic_enum::enum_name(state_.load()));
+    SetStateAndRaiseEvent(NextUpdaterState::CanceledByUser);
+
+    return true;
 }
 
 void NextUpdater::SetStateAndRaiseEvent(NextUpdaterState state)
@@ -180,30 +196,30 @@ void NextUpdater::SetStateProgressAndRaiseEvent(float progress)
 
 NextUpdater::RestoreFromBackupResult NextUpdater::RestoreFromBackup(RestoreFromBackupBehaviour behaviour)
 {
-    logger_->info("Restoring from backup");
+    logger_->info(LOG_TAG "Restoring from backup");
     SetStateAndRaiseEvent(NextUpdaterState::RestoringFromBackup);
 
     ResultT<int> restore_backup_result = RestoreFilesFromBackup();
     if (restore_backup_result.has_error())
-        logger_->error("Restore from backup error: %v", restore_backup_result.get_error());
+        logger_->error(LOG_TAG "Restore from backup error: %v", restore_backup_result.error_str());
     else if (*restore_backup_result == 0)
-        logger_->info("  nothing to do");
+        logger_->info(LOG_TAG "  nothing to do");
     else
-        logger_->info("  restored %v files", *restore_backup_result);
+        logger_->info(LOG_TAG "  restored %v files", *restore_backup_result);
 
     if (!restore_backup_result.has_error() || behaviour == RestoreFromBackupBehaviour::ClearBackupFolderEvenIfRestoreFail)
     {
         if (restore_backup_result.has_error() && behaviour == RestoreFromBackupBehaviour::ClearBackupFolderEvenIfRestoreFail)
-            SetErrorAndRaiseEvent(restore_backup_result.get_error());
+            SetErrorAndRaiseEvent(restore_backup_result.error_str());
 
-        logger_->info("Clearing backup folder");
+        logger_->info(LOG_TAG "Clearing backup folder");
         SetStateAndRaiseEvent(NextUpdaterState::ClearingBackupFolder);
 
         Result clear_backup_folder_result = ClearBackupFolder();
         if (clear_backup_folder_result.has_error())
         {
-            logger_->error("Clearing backup folder error: %v", clear_backup_folder_result.get_error());
-            SetErrorAndRaiseEvent(clear_backup_folder_result.get_error());
+            logger_->error(LOG_TAG "Clearing backup folder error: %v", clear_backup_folder_result.error_str());
+            SetErrorAndRaiseEvent(clear_backup_folder_result.error_str());
             return RestoreFromBackupResult::ClearBackupFolderError;
         }
     }
@@ -247,11 +263,23 @@ std::vector<UpdaterFileInfo> NextUpdater::CreateUpdaterFileInfos(const std::vect
     return files;
 }
 
-ResultT<UpdateEntry> NextUpdater::SendUpdateFilesRequest()
+ResultT<UpdateEntry, UpdateError> NextUpdater::SendUpdateFilesRequest()
 {
-    HttpResponse response = http_service_->Post("launcher_update", "null");
+    HttpResponse response = http_service_->Post("launcher_update", "null", [this](cpr::cpr_off_t total, cpr::cpr_off_t downloaded)
+    {
+        return !is_canceled_.load();
+    });
+
     if (response.has_error())
-        return ResultError(std::format("Can't get files list from server, http code: {}; error: {}", response.status_code, response.error.message));
+    {
+        std::string error_message = std::format("Can't get files list from server, http code: {}; error: {}", response.status_code, response.error.message);
+
+        UpdateErrorType error_type = response.has_connection_error() ?
+            UpdateErrorType::ConnectionError :
+            UpdateErrorType::NetworkError;
+
+        return UpdateError(error_type, error_message);
+    }
 
     try
     {
@@ -260,22 +288,22 @@ ResultT<UpdateEntry> NextUpdater::SendUpdateFilesRequest()
     }
     catch (const std::runtime_error& e)
     {
-        return ResultError(std::format("Files list deserialization exception: {}", e.what()));
+        return UpdateError(UpdateErrorType::DeserializationError, std::format("Files list deserialization exception: {}", e.what()));
     }
     catch (...)
     {
-        return ResultError("Files list deserialization exception");
+        return UpdateError(UpdateErrorType::DeserializationError, "Files list deserialization exception");
     }
 }
 
-ResultT<std::vector<HttpFileResult>> NextUpdater::DownloadFilesToUpdate(auto files, const std::string& hostname, std::function<bool(cpr::cpr_off_t total, cpr::cpr_off_t downloaded, cpr::cpr_off_t speed)> progress)
+ResultT<std::vector<HttpFileResult>, UpdateError> NextUpdater::DownloadFilesToUpdate(auto files, const std::string& hostname, std::function<bool(cpr::cpr_off_t total, cpr::cpr_off_t downloaded, cpr::cpr_off_t speed)> progress)
 {
     std::vector<HttpFileRequest> files_to_download;
     cpr::cpr_off_t total_bytes_to_download = 0;
 
     for (const auto& file: files)
     {
-        auto file_entry = file.get_remote_file();
+        auto& file_entry = file.get_remote_file();
         files_to_download.emplace_back(HttpFileRequest(file_entry.filename, file_entry.hash, file_entry.size));
         total_bytes_to_download += file.get_remote_file().size;
     }
@@ -294,12 +322,12 @@ ResultT<std::vector<HttpFileResult>> NextUpdater::DownloadFilesToUpdate(auto fil
 
     nitro_utils::trim(error_str);
     if (!error_str.empty())
-        return ResultError(error_str);
+        return UpdateError(UpdateErrorType::NetworkError, error_str);
 
     return download_results;
 }
 
-ResultT<std::unordered_map<std::string, UpdaterFileInfo>> NextUpdater::GetFilesToUpdate(const std::vector<UpdaterFileInfo>& files)
+ResultT<std::unordered_map<std::string, UpdaterFileInfo>, UpdateError> NextUpdater::GetFilesToUpdate(const std::vector<UpdaterFileInfo>& files)
 {
     FileOpener fo(std::ios::in | std::ios::binary);
     for (const auto& item: files)
@@ -307,7 +335,7 @@ ResultT<std::unordered_map<std::string, UpdaterFileInfo>> NextUpdater::GetFilesT
 
     std::string open_files_error;
     if (!fo.IsAllFilesOpened(FileOpenerErrorFlags::IgnoreNotExists, open_files_error))
-        return ResultError("Open files error: " + open_files_error);
+        return UpdateError(UpdateErrorType::FileOperationError, "Open files error: " + open_files_error);
 
     std::unordered_map<std::string, UpdaterFileInfo> files_to_update;
     for (const auto& file : files)
@@ -327,7 +355,7 @@ ResultT<std::unordered_map<std::string, UpdaterFileInfo>> NextUpdater::GetFilesT
     return files_to_update;
 }
 
-Result NextUpdater::InstallFiles(FileOpener& file_opener, const std::vector<HttpFileResult>& downloaded_files, const std::unordered_map<std::string, UpdaterFileInfo>& updating_file_info)
+Result<> NextUpdater::InstallFiles(FileOpener& file_opener, const std::vector<HttpFileResult>& downloaded_files, const std::unordered_map<std::string, UpdaterFileInfo>& updating_file_info)
 {
     std::string error;
     for (const auto& download_result : downloaded_files)
@@ -355,7 +383,7 @@ Result NextUpdater::InstallFiles(FileOpener& file_opener, const std::vector<Http
     return {};
 }
 
-Result NextUpdater::ClearBackupFolder()
+Result<> NextUpdater::ClearBackupFolder()
 {
     std::error_code ec_exists;
     std::error_code ec_is_empty;
@@ -382,7 +410,7 @@ Result NextUpdater::ClearBackupFolder()
     return {};
 }
 
-Result NextUpdater::BackupFiles(auto files)
+Result<UpdateError> NextUpdater::BackupFiles(auto files)
 {
     std::string error;
 
@@ -420,7 +448,7 @@ Result NextUpdater::BackupFiles(auto files)
 
     nitro_utils::trim(error);
     if (!error.empty())
-        return ResultError(error);
+        return UpdateError(UpdateErrorType::FileOperationError, error);
 
     return {};
 }

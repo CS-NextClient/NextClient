@@ -2,53 +2,64 @@
 #include <string>
 #include <gui_app_core/imgui/imgui.h>
 
-const std::unordered_map<NextUpdaterState, std::string> UpdaterView::state_string_ru_
+const std::unordered_map<UpdaterViewState, std::string> UpdaterView::state_string_ru_
 {
-    { NextUpdaterState::Initialization,         "Инициализация..." },
-    { NextUpdaterState::RestoringFromBackup,    "Восстановление из резервной копии" },
-    { NextUpdaterState::ClearingBackupFolder,   "Удаление резервной копии" },
-    { NextUpdaterState::RequestingFileList,     "Запрос к серверу обновлений" },
-    { NextUpdaterState::GatheringFilesToUpdate, "Проверка файлов" },
-    { NextUpdaterState::Backuping,              "Создание резервной копии" },
-    { NextUpdaterState::OpeningFilesToInstall,  "Открытие файлов для установки" },
-    { NextUpdaterState::Downloading,            "Загрузка обновлений" },
-    { NextUpdaterState::Installing,             "Установка обновлений" },
-    { NextUpdaterState::CanceledByUser,         "Отменено пользователем" },
-    { NextUpdaterState::Done,                   "Готово" }
+    { UpdaterViewState::Initialization,         "Инициализация..." },
+    { UpdaterViewState::RequestingRemoteConfig, "Запрос конфигурации" },
+    { UpdaterViewState::RestoringFromBackup,    "Восстановление из резервной копии" },
+    { UpdaterViewState::ClearingBackupFolder,   "Удаление резервной копии" },
+    { UpdaterViewState::RequestingFileList,     "Запрос к серверу обновлений" },
+    { UpdaterViewState::GatheringFilesToUpdate, "Проверка файлов" },
+    { UpdaterViewState::Backuping,              "Создание резервной копии" },
+    { UpdaterViewState::OpeningFilesToInstall,  "Открытие файлов для установки" },
+    { UpdaterViewState::Downloading,            "Загрузка обновлений" },
+    { UpdaterViewState::Installing,             "Установка обновлений" },
+    { UpdaterViewState::RequestingBranchList,   "Запрос к серверу обновлений" },
+    { UpdaterViewState::CanceledByUser,         "Отменено пользователем" },
+    { UpdaterViewState::Done,                   "Готово" }
 };
 
-const std::unordered_map<NextUpdaterState, std::string> UpdaterView::state_string_en_
+const std::unordered_map<UpdaterViewState, std::string> UpdaterView::state_string_en_
 {
-    { NextUpdaterState::Initialization,         "Initialization..." },
-    { NextUpdaterState::RestoringFromBackup,    "Restoring from backup" },
-    { NextUpdaterState::ClearingBackupFolder,   "Deleting a backup" },
-    { NextUpdaterState::RequestingFileList,     "Requesting an update server" },
-    { NextUpdaterState::GatheringFilesToUpdate, "Checking files" },
-    { NextUpdaterState::Backuping,              "Creating a backup" },
-    { NextUpdaterState::OpeningFilesToInstall,  "Opening files for installation" },
-    { NextUpdaterState::Downloading,            "Downloading updates" },
-    { NextUpdaterState::Installing,             "Installing updates" },
-    { NextUpdaterState::CanceledByUser,         "Canceled by user" },
-    { NextUpdaterState::Done,                   "Done" }
+    { UpdaterViewState::Initialization,         "Initialization..." },
+    { UpdaterViewState::RequestingRemoteConfig, "Configuration request" },
+    { UpdaterViewState::RestoringFromBackup,    "Restoring from backup" },
+    { UpdaterViewState::ClearingBackupFolder,   "Deleting a backup" },
+    { UpdaterViewState::RequestingFileList,     "Requesting an update server" },
+    { UpdaterViewState::GatheringFilesToUpdate, "Checking files" },
+    { UpdaterViewState::Backuping,              "Creating a backup" },
+    { UpdaterViewState::OpeningFilesToInstall,  "Opening files for installation" },
+    { UpdaterViewState::Downloading,            "Downloading updates" },
+    { UpdaterViewState::Installing,             "Installing updates" },
+    { UpdaterViewState::RequestingBranchList,   "Requesting an update server" },
+    { UpdaterViewState::CanceledByUser,         "Canceled by user" },
+    { UpdaterViewState::Done,                   "Done" }
 };
 
-const std::unordered_map<NextUpdaterState, float> UpdaterView::state_progress_
+const std::unordered_map<UpdaterViewState, float> UpdaterView::state_progress_
 {
-    { NextUpdaterState::Initialization,         0.f },
-    { NextUpdaterState::RestoringFromBackup,    0.01f },
-    { NextUpdaterState::ClearingBackupFolder,   0.02f },
-    { NextUpdaterState::RequestingFileList,     0.03f },
-    { NextUpdaterState::GatheringFilesToUpdate, 0.07f },
-    { NextUpdaterState::Backuping,              0.08f },
-    { NextUpdaterState::OpeningFilesToInstall,  0.09f },
-    { NextUpdaterState::Downloading,            0.1f },
-    { NextUpdaterState::Installing,             0.9f },
-    { NextUpdaterState::CanceledByUser,         1.f },
-    { NextUpdaterState::Done,                   1.f }
+    { UpdaterViewState::Initialization,         0.f },
+    { UpdaterViewState::RequestingRemoteConfig, 0.01f },
+    { UpdaterViewState::RestoringFromBackup,    0.02f },
+    { UpdaterViewState::ClearingBackupFolder,   0.03f },
+    { UpdaterViewState::RequestingFileList,     0.04f },
+    { UpdaterViewState::GatheringFilesToUpdate, 0.07f },
+    { UpdaterViewState::Backuping,              0.08f },
+    { UpdaterViewState::OpeningFilesToInstall,  0.09f },
+    { UpdaterViewState::Downloading,            0.1f },
+    { UpdaterViewState::Installing,             0.9f },
+    { UpdaterViewState::RequestingBranchList,   0.95f },
+    { UpdaterViewState::CanceledByUser,         1.f },
+    { UpdaterViewState::Done,                   1.f }
 };
 
 UpdaterView::UpdaterView(std::string language) :
     language_(std::move(language))
+{
+
+}
+
+void UpdaterView::OnStart()
 {
 
 }
@@ -74,7 +85,7 @@ void UpdaterView::OnGui()
         exit_callback_();
 }
 
-void UpdaterView::SetState(NextUpdaterState state)
+void UpdaterView::SetState(UpdaterViewState state)
 {
     state_ = state;
 }
@@ -101,8 +112,8 @@ std::tuple<int, int> UpdaterView::GetWindowSize()
 
 float UpdaterView::GetOverallProgress()
 {
-    if (state_ == NextUpdaterState::Downloading)
-        return state_progress_.at(NextUpdaterState::Downloading) + progress_ * (state_progress_.at(NextUpdaterState::Installing) - state_progress_.at(NextUpdaterState::Downloading));
+    if (state_ == UpdaterViewState::Downloading)
+        return state_progress_.at(UpdaterViewState::Downloading) + progress_ * (state_progress_.at(UpdaterViewState::Installing) - state_progress_.at(UpdaterViewState::Downloading));
 
     return state_progress_.at(state_);
 }

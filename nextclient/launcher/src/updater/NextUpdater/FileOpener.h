@@ -106,6 +106,6 @@ public:
 
 private:
     static void OpenSingleFileInternal(const std::filesystem::path& filepath, std::ios_base::openmode openmode, bool delete_new_empty_file_on_close, OpenerFile& open_info);
-    static saferesult::ResultT<FileOpener::RemoveWriteProtectAttributesResult> RemoveWriteProtectAttributes(const std::filesystem::path& filepath);
-    static saferesult::Result SetAttributes(const std::filesystem::path& filepath, DWORD attributes);
+    static saferesult::ResultT<RemoveWriteProtectAttributesResult> RemoveWriteProtectAttributes(const std::filesystem::path& filepath);
+    static saferesult::Result<> SetAttributes(const std::filesystem::path& filepath, DWORD attributes);
 };

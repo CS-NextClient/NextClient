@@ -3,8 +3,8 @@
 #include <easylogging++.h>
 #include <Windows.h>
 
-namespace fs = std::filesystem;
 using namespace saferesult;
+namespace fs = std::filesystem;
 
 OpenerFile::OpenerFile(std::filesystem::path filepath, std::fstream&& stream, std::string error, DWORD file_attributes_to_restore, OpenerFileFlags::Value flags) :
         filepath(std::move(filepath)),
@@ -53,9 +53,9 @@ void OpenerFile::Close()
 
     if (file_attributes_to_restore_ != INVALID_FILE_ATTRIBUTES)
     {
-        Result result = FileOpener::SetAttributes(filepath, file_attributes_to_restore_);
+        Result<> result = FileOpener::SetAttributes(filepath, file_attributes_to_restore_);
         if (result.has_error())
-            LOG(ERROR) << "OpenerFile::Close | " << filepath.string() << ": can't restore attributes " << file_attributes_to_restore_ << ": " << result.get_error();
+            LOG(ERROR) << "OpenerFile::Close | " << filepath.string() << ": can't restore attributes " << file_attributes_to_restore_ << ": " << result.error_str();
     }
 
     if (ec_is_empty)
@@ -218,7 +218,7 @@ void FileOpener::OpenSingleFileInternal(const std::filesystem::path& filepath, s
         {
             auto remove_attr_result = RemoveWriteProtectAttributes(filepath);
             if (remove_attr_result.has_error())
-                return file_error("can't remove write-protect attributes: " + remove_attr_result.get_error());
+                return file_error("can't remove write-protect attributes: " + remove_attr_result.error_str());
 
             file_attributes_to_restore = remove_attr_result->old_attributes;
         }
@@ -236,7 +236,7 @@ void FileOpener::OpenSingleFileInternal(const std::filesystem::path& filepath, s
         {
             Result restore_attrib_result = SetAttributes(filepath, file_attributes_to_restore);
             if (restore_attrib_result.has_error())
-                open_error += std::format("; restore attributes ({}) error: {}", file_attributes_to_restore, restore_attrib_result.get_error());
+                open_error += std::format("; restore attributes ({}) error: {}", file_attributes_to_restore, restore_attrib_result.error_str());
         }
 
         return file_error(open_error);
@@ -272,7 +272,7 @@ ResultT<FileOpener::RemoveWriteProtectAttributesResult> FileOpener::RemoveWriteP
     return RemoveWriteProtectAttributesResult { old_attributes, new_attributes };
 }
 
-Result FileOpener::SetAttributes(const std::filesystem::path& filepath, DWORD attributes)
+Result<> FileOpener::SetAttributes(const std::filesystem::path& filepath, DWORD attributes)
 {
     DWORD result = SetFileAttributesW(filepath.c_str(), attributes);
     if (result == 0)

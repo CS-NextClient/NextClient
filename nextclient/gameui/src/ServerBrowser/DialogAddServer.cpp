@@ -18,6 +18,7 @@
 
 using namespace vgui2;
 
+// prevent windows macros from messing with the class
 #undef PostMessage
 #undef MessageBox
 

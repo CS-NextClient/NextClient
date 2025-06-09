@@ -30,6 +30,10 @@ void RunGuiApp(std::shared_ptr<GuiAppInterface> gui_app)
 {
     GuiAppStartUpInfo startup_info = gui_app->OnStart();
 
+    GuiAppState gui_app_state;
+    gui_app_state.should_exit = false;
+    gui_app_state.windows_state_hidden = startup_info.window_state_hidden;
+
     std::string window_name = startup_info.window_name;
     int window_width = startup_info.window_width;
     int window_height = startup_info.window_height;
@@ -56,7 +60,10 @@ void RunGuiApp(std::shared_ptr<GuiAppInterface> gui_app)
     const GLFWvidmode* mode = glfwGetVideoMode(glfwGetPrimaryMonitor());
     glfwSetWindowPos(window, (mode->width - window_width) / 2, (mode->height - window_height) / 2);
 
-    glfwShowWindow(window);
+    if (!startup_info.window_state_hidden)
+    {
+        glfwShowWindow(window);
+    }
 
     glfwMakeContextCurrent(window);
     glfwSwapInterval(1); // Enable vsync
@@ -66,7 +73,6 @@ void RunGuiApp(std::shared_ptr<GuiAppInterface> gui_app)
     ImGui::CreateContext();
     ImGuiIO& io = ImGui::GetIO(); (void)io;
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
-    io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
 
     // Setup Dear ImGui style
     ImGui::StyleColorsDark();
@@ -119,9 +125,28 @@ void RunGuiApp(std::shared_ptr<GuiAppInterface> gui_app)
             ImGui::SetWindowPos(IMGUI_WINDOW_NAME, ImVec2(0.0f, 0.0f));
             ImGui::SetWindowSize(IMGUI_WINDOW_NAME, ImVec2(window_width, window_height));
 
-            done = !gui_app->OnUpdate();
-            if (done)
+            GuiAppState state_to_pass = gui_app_state;
+            gui_app->OnUpdate(state_to_pass);
+
+            if (state_to_pass.should_exit)
+            {
+                done = true;
                 gui_app->OnExit();
+            }
+
+            if (state_to_pass.windows_state_hidden != gui_app_state.windows_state_hidden)
+            {
+                gui_app_state.windows_state_hidden = state_to_pass.windows_state_hidden;
+
+                if (state_to_pass.windows_state_hidden)
+                {
+                    glfwHideWindow(window);
+                }
+                else
+                {
+                    glfwShowWindow(window);
+                }
+            }
 
             ImGui::End();
         }

@@ -8,7 +8,6 @@
 #include <next_launcher/version.h>
 #include "NextUpdaterHttpServiceConfig.h"
 
-using namespace concurrencpp;
 using namespace std::chrono_literals;
 
 NextUpdaterHttpService::NextUpdaterHttpService(std::string service_url, int connect_timeout_ms, std::shared_ptr<next_launcher::UserInfoClient> user_info) :
@@ -21,44 +20,13 @@ NextUpdaterHttpService::NextUpdaterHttpService(std::string service_url, int conn
     headers_["Branch"] = user_info_->GetUpdateBranch();
     headers_["LaunchGameCount"] = std::to_string(user_info_->GetLaunchGameCount());
     headers_["BuildVersion"] = NEXT_CLIENT_BUILD_VERSION;
-
-    thread_executor_ = cc_runtime_.make_executor<thread_pool_executor>("HttpService thread pool", 2, 1min);
-    update_executor_ = cc_runtime_.make_manual_executor();
 }
 
-HttpResponse NextUpdaterHttpService::Post(const std::string &method, const std::string& data)
-{
-    return PostInternal(method, data);
-}
-
-std::shared_ptr<CancelationToken> NextUpdaterHttpService::PostAsync(const std::string &method, const std::string& data, const std::function<void(const HttpResponse&)>& callback)
-{
-    auto cancelation_token = std::make_shared<CancelationToken>();
-    auto data_reader = [data](){ return data; };
-
-    thread_executor_->post([this, method, data_reader, cancelation_token, cb = callback]() { return PostCoroutine(method, data_reader, cancelation_token, cb); });
-
-    return cancelation_token;
-}
-
-void NextUpdaterHttpService::Update()
-{
-    update_executor_->loop_once();
-}
-
-result<void> NextUpdaterHttpService::PostCoroutine(std::string method, std::function<std::string()> data_reader_threaded, std::shared_ptr<CancelationToken> cancelation_token, std::function<void(const HttpResponse&)> callback)
-{
-    HttpResponse result = PostInternal(method, data_reader_threaded());
-
-    co_await resume_on(update_executor_);
-    if (cancelation_token->IsCanceled())
-        co_return;
-
-    if (callback)
-        callback(result);
-}
-
-HttpResponse NextUpdaterHttpService::PostInternal(const std::string &method, const std::string& data)
+HttpResponse NextUpdaterHttpService::Post(
+    const std::string& method,
+    const std::string& data,
+    std::function<bool(cpr::cpr_off_t total, cpr::cpr_off_t downloaded)> progress,
+    int timeout_ms)
 {
     std::string str = data;
     str.insert(0, "{\"method\": \"" + method + "\", \"data\": ");
@@ -70,6 +38,14 @@ HttpResponse NextUpdaterHttpService::PostInternal(const std::string &method, con
     headers_["Client-Time"] = std::to_string(std::time(nullptr));
     session.SetHeader(headers_);
     session.SetConnectTimeout(connect_timeout_ms_);
+    session.SetTimeout(timeout_ms);
+    if (progress)
+    {
+        session.SetProgressCallback(cpr::ProgressCallback([progress](cpr::cpr_pf_arg_t download_total, cpr::cpr_pf_arg_t download_now, cpr::cpr_pf_arg_t, cpr::cpr_pf_arg_t, intptr_t)
+        {
+            return progress(download_total, download_now);
+        }));
+    }
 
     auto result = session.Post();
 

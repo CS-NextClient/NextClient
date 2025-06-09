@@ -5,7 +5,7 @@
 
 enum class NextUpdaterState
 {
-    Initialization,
+    Idle,
     RestoringFromBackup,
     ClearingBackupFolder,
     RequestingFileList,

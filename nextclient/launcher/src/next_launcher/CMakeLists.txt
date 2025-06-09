@@ -11,7 +11,6 @@ file(GLOB_RECURSE LAUNCHER_SOURCES
         "*.h"
         "resources.rc"
         "app.manifest"
-        "${NEXT_LAUNCHER_SOURCE_DIR}/dep/easyloggingpp/src/easylogging++.cc"
 )
 
 add_executable(${TARGET_NAME} WIN32

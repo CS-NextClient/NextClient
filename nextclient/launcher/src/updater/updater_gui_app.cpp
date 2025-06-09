@@ -12,9 +12,9 @@ std::tuple<UpdaterDoneStatus, std::vector<BranchEntry>> RunUpdaterGuiApp(
     auto updater_service = std::make_shared<NextUpdaterHttpService>(service_url, 5000, user_info);
 
     auto updater_view = std::make_shared<UpdaterView>(language);
-    auto updater_app = std::make_shared<Updater>(updater_service, updater_view, logger, error_event_callback);
+    auto updater_app = std::make_shared<Updater>(updater_service, updater_view, logger, error_event_callback, UpdaterFlags::Updater);
 
     RunGuiApp(updater_app);
 
-    return {updater_app->DoneStatus(), updater_app->Branches()};
+    return {updater_app->GetResult().status, updater_app->Branches()};
 }

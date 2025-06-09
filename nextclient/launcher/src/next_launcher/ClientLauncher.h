@@ -24,9 +24,15 @@
 class ClientLauncher
 {
     static constexpr char kEngineDll[] = "hw.dll";
+    static constexpr char kErrorTitle[] = "Counter-Strike Launcher";
+    static constexpr char kNextClientRegistry[] = "Software\\Valve\\Half-Life\\nextclient";
+    static constexpr char kHlRegistry[] = "Software\\Valve\\Half-Life\\Settings";
+    const int kMinWidth = 640;
+    const int kMinHeight = 480;
+    const int kDefaultWidth = 800;
+    const int kDefaultHeight = 600;
 
     NextClientVersion next_client_version_;
-
     std::shared_ptr<next_launcher::IUserStorage> user_storage_;
     std::shared_ptr<next_launcher::IUserInfo> user_info_;
     std::shared_ptr<next_launcher::UserInfoClient> user_info_client_;
@@ -79,7 +85,7 @@ private:
     {
         auto raise_error = [this](const std::string& error) {
             analytics_->SendCrashMonitoringEvent("LoadModule Error", error.c_str(), true);
-            MessageBoxA(NULL, error.c_str(), "cs.exe", MB_OK | MB_ICONERROR | MB_DEFAULT_DESKTOP_ONLY);
+            MessageBoxA(NULL, error.c_str(), kErrorTitle, MB_OK | MB_ICONERROR | MB_DEFAULT_DESKTOP_ONLY);
         };
 
         CSysModule* module = Sys_LoadModule(module_name);

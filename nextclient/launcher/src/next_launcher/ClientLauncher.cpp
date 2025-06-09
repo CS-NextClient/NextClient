@@ -32,34 +32,22 @@
 #include "RegistryUserStorage.h"
 #include "EngineCommons.h"
 
-INITIALIZE_EASYLOGGINGPP
-
-using namespace saferesult;
-namespace fs = std::filesystem;
-
-#define ERROR_TITLE "Counter-Strike Launcher"
-
-const int MIN_WIDTH = 640;
-const int MIN_HEIGHT = 480;
-
-const int DEFAULT_WIDTH = 800;
-const int DEFAULT_HEIGHT = 600;
-
-using namespace nitro_utils;
-using namespace std::chrono_literals;
-
 ClientLauncher::ClientLauncher(HINSTANCE module_instance, const char* cmd_line) :
     module_instance_(module_instance)
 {
-    next_client_version_ = { NEXT_CLIENT_BUILD_VERSION_MAJOR, NEXT_CLIENT_BUILD_VERSION_MINOR, NEXT_CLIENT_BUILD_VERSION_PATCH, NEXT_CLIENT_BUILD_VERSION_PRERELEASE };
+    next_client_version_ = {
+        NEXT_CLIENT_BUILD_VERSION_MAJOR,
+        NEXT_CLIENT_BUILD_VERSION_MINOR,
+        NEXT_CLIENT_BUILD_VERSION_PATCH,
+        NEXT_CLIENT_BUILD_VERSION_PRERELEASE };
 
-    user_storage_ = std::make_shared<RegistryUserStorage>("Software\\Valve\\Half-Life\\nextclient");
+    user_storage_ = std::make_shared<RegistryUserStorage>(kNextClientRegistry);
     user_info_ = std::make_shared<DefaultUserInfo>(user_storage_);
     user_info_client_ = std::make_shared<next_launcher::UserInfoClient>(user_info_.get());
     analytics_ = std::make_shared<Analytics>();
-    config_provider_ = std::make_shared<FileConfigProvider>("user_game_config.ini");
+    config_provider_ = std::make_shared<nitro_utils::FileConfigProvider>("user_game_config.ini");
 
-    hl_registry_ = std::make_shared<CRegistry>("Software\\Valve\\Half-Life\\Settings");
+    hl_registry_ = std::make_shared<CRegistry>(kHlRegistry);
     hl_registry_->Init();
 
     cmd_line_ = std::make_shared<CCommandLine>();
@@ -91,7 +79,13 @@ void ClientLauncher::Run()
     DWORD dwMutexResult = WaitForSingleObject(global_mutex_, 0);
     if (dwMutexResult != WAIT_OBJECT_0 && dwMutexResult != WAIT_ABANDONED && !cmd_line_->CheckParm("-hijack"))
     {
-        MessageBoxA(NULL, "The game could not be started because it is already running. \nIf it is not, then end the process in the task manager.", ERROR_TITLE, MB_OK | MB_ICONERROR | MB_DEFAULT_DESKTOP_ONLY);
+        MessageBoxA(
+            NULL,
+            "The game could not be started because it is already running.\n"
+            "If it is not, then end the process in the task manager.",
+            kErrorTitle,
+            MB_OK | MB_ICONERROR | MB_DEFAULT_DESKTOP_ONLY);
+
         UninitializeAnalytics();
         UninitializeSentry();
         return;
@@ -155,13 +149,19 @@ void ClientLauncher::RunEngine()
     {
         hl_registry_->WriteInt("CrashInitializingVideoMode", 0);
 
-        if (MessageBoxA(NULL, "It looks like a previous attempt to run the game failed due to a rendering subsystem error.\nReset the game resolution settings and run the game again?",
-                        ERROR_TITLE, MB_OKCANCEL | MB_ICONERROR | MB_ICONQUESTION | MB_DEFAULT_DESKTOP_ONLY) != IDOK)
+        if (MessageBoxA(
+            NULL,
+            "It looks like a previous attempt to run the game failed due to a rendering subsystem error.\n"
+            "Reset the game resolution settings and run the game again?",
+            kErrorTitle,
+            MB_OKCANCEL | MB_ICONERROR | MB_ICONQUESTION | MB_DEFAULT_DESKTOP_ONLY) != IDOK)
+        {
             return;
+        }
 
         hl_registry_->WriteInt("ScreenBPP", 32);
-        hl_registry_->WriteInt("ScreenHeight", DEFAULT_WIDTH);
-        hl_registry_->WriteInt("ScreenWidth", DEFAULT_HEIGHT);
+        hl_registry_->WriteInt("ScreenHeight", kDefaultWidth);
+        hl_registry_->WriteInt("ScreenWidth", kDefaultHeight);
     }
 
     while (bRunEngine)
@@ -192,17 +192,20 @@ void ClientLauncher::RunEngine()
         if (steam_proxy_module == nullptr)
         {
             std::string error = "Module steam_api.dll not found";
+
             analytics_->SendCrashMonitoringEvent("LoadModule Error", error.c_str(), true);
-            MessageBoxA(NULL, error.c_str(), ERROR_TITLE, MB_OK | MB_ICONERROR | MB_DEFAULT_DESKTOP_ONLY);
+            MessageBoxA(NULL, error.c_str(), kErrorTitle, MB_OK | MB_ICONERROR | MB_DEFAULT_DESKTOP_ONLY);
             break;
         }
 
         auto steam_proxy_set_seh = (NextSteamProxy_SetSEHFunc)GetProcAddress((HMODULE)steam_proxy_module, "NextSteamProxy_SetSEH");
         if (steam_proxy_set_seh == nullptr)
         {
-            std::string error = "NextSteamProxy_SetSEH not found in steam_api.dll.\nMake sure you use the steam_api.dll from NextClient and not the original steam_api.dll";
+            std::string error = "NextSteamProxy_SetSEH not found in steam_api.dll.\n"
+                                "Make sure you use the steam_api.dll from NextClient and not the original steam_api.dll";
+
             analytics_->SendCrashMonitoringEvent("LoadModule Error", error.c_str(), true);
-            MessageBoxA(NULL, error.c_str(), ERROR_TITLE, MB_OK | MB_ICONERROR | MB_DEFAULT_DESKTOP_ONLY);
+            MessageBoxA(NULL, error.c_str(), kErrorTitle, MB_OK | MB_ICONERROR | MB_DEFAULT_DESKTOP_ONLY);
             break;
         }
         steam_proxy_set_seh(ExceptionHandler);
@@ -336,7 +339,7 @@ std::tuple<UpdaterDoneStatus, std::vector<BranchEntry>> ClientLauncher::RunUpdat
     auto result = RunUpdaterGuiApp(
         UPDATER_SERVICE_URL,
         user_info_client_,
-        el::Loggers::getLogger(ELPP_DEFAULT_LOGGER),
+        el::Loggers::getLogger(el::base::consts::kDefaultLoggerId),
         config_provider_->get_value_string("language", "english"),
         [this](NextUpdaterEvent event) {
             analytics_->SendAnalyticsLog(AnalyticsLogType::Error, std::format("updater error, state: {}, error: {}", magic_enum::enum_name(event.state), event.error_description).c_str());
@@ -347,50 +350,6 @@ std::tuple<UpdaterDoneStatus, std::vector<BranchEntry>> ClientLauncher::RunUpdat
     return result;
 }
 #endif
-
-ResultT<bool> FinishLauncherUpdate()
-{
-    auto current_path = GetCurrentProcessPath();
-
-    std::string filename = current_path.filename().string();
-
-    if (filename.ends_with("_new.exe"))
-    {
-        std::string new_filename = filename;
-        nitro_utils::replace_all(new_filename, "_new.exe", ".exe");
-
-        auto copy_to_path = current_path;
-        copy_to_path.replace_filename(new_filename);
-
-        // do a few tries to copy cs_new.exe to cs.exe because cs.exe may not be closed immediately after it runs new_cs.exe
-        std::error_code ec_copy_file;
-        for (int i = 0; i < 5; i++)
-        {
-            if (fs::copy_file(current_path, copy_to_path, std::filesystem::copy_options::overwrite_existing, ec_copy_file))
-                break;
-
-            std::this_thread::sleep_for(200ms);
-        }
-
-        if (ec_copy_file)
-            return ResultError(std::format("Can't copy {} to {}: {}", current_path.string(), copy_to_path.string(), ec_copy_file.message()));
-    }
-    else
-    {
-        std::string filename_to_delete = current_path.filename().replace_extension("").string() + "_new.exe";
-
-        std::error_code ec_remove_file;
-        if (!fs::remove(filename_to_delete, ec_remove_file))
-        {
-            if (ec_remove_file)
-                return ResultError(std::format("Can't delete {}: {}", filename_to_delete, ec_remove_file.message()));
-
-            return false;
-        }
-    }
-
-    return true;
-}
 
 void ClientLauncher::CreateConsoleWindowAndRedirectOutput()
 {
@@ -403,28 +362,32 @@ void ClientLauncher::CreateConsoleWindowAndRedirectOutput()
     FILE* dummy_file;
     freopen_s(&dummy_file, "CONOUT$", "w", stdout);
     freopen_s(&dummy_file, "CONOUT$", "w", stderr);
-    //freopen_s(&dummy_file, "CONIN$", "r", stdin);
 }
 
 bool ClientLauncher::OnVideoModeFailed()
 {
     hl_registry_->WriteInt("ScreenBPP", 32);
-    hl_registry_->WriteInt("ScreenWidth", DEFAULT_WIDTH);
-    hl_registry_->WriteInt("ScreenHeight", DEFAULT_HEIGHT);
+    hl_registry_->WriteInt("ScreenWidth", kDefaultWidth);
+    hl_registry_->WriteInt("ScreenHeight", kDefaultHeight);
     hl_registry_->WriteString("EngineDLL", "hw.dll");
 
-    return MessageBoxA(NULL, "The specified rendering mode is not supported.\nRestart the game?", ERROR_TITLE, MB_OKCANCEL | MB_ICONERROR | MB_ICONQUESTION | MB_DEFAULT_DESKTOP_ONLY) == IDOK;
+    return MessageBoxA(
+        NULL,
+        "The specified rendering mode is not supported.\n"
+        "Restart the game?",
+        kErrorTitle,
+        MB_OKCANCEL | MB_ICONERROR | MB_ICONQUESTION | MB_DEFAULT_DESKTOP_ONLY) == IDOK;
 }
 
 void ClientLauncher::FixScreenResolution()
 {
-    int w = hl_registry_->ReadInt("ScreenWidth", DEFAULT_WIDTH);
-    int h = hl_registry_->ReadInt("ScreenHeight", DEFAULT_HEIGHT);
+    int w = hl_registry_->ReadInt("ScreenWidth", kDefaultWidth);
+    int h = hl_registry_->ReadInt("ScreenHeight", kDefaultHeight);
 
-    if (w < MIN_WIDTH || h < MIN_HEIGHT)
+    if (w < kMinWidth || h < kMinHeight)
     {
-        hl_registry_->WriteInt("ScreenWidth", DEFAULT_WIDTH);
-        hl_registry_->WriteInt("ScreenHeight", DEFAULT_HEIGHT);
+        hl_registry_->WriteInt("ScreenWidth", kDefaultWidth);
+        hl_registry_->WriteInt("ScreenHeight", kDefaultHeight);
     }
 }
 
@@ -432,16 +395,15 @@ void ClientLauncher::FixScreenResolution()
 
 void ClientLauncher::InitializeAnalytics()
 {
-
     std::string client_uid = user_info_client_->GetClientUid();
     std::string branch = user_info_client_->GetUpdateBranch();
 
-    gameanalytics::StringVector dimensions01;
-    dimensions01.add(branch.c_str());
+    gameanalytics::StringVector dimensions01_branch;
+    dimensions01_branch.add(branch.c_str());
 
     gameanalytics::GameAnalytics::setEnabledErrorReporting(false);
     gameanalytics::GameAnalytics::disableDeviceInfo();
-    gameanalytics::GameAnalytics::configureAvailableCustomDimensions01(dimensions01);
+    gameanalytics::GameAnalytics::configureAvailableCustomDimensions01(dimensions01_branch);
     gameanalytics::GameAnalytics::configureUserId(client_uid.c_str());
     gameanalytics::GameAnalytics::configureBuild(NEXT_CLIENT_BUILD_VERSION);
     gameanalytics::GameAnalytics::initialize(GAMEANALYTICS_GAME_KEY, GAMEANALYTICS_SECRET_KEY);
@@ -550,38 +512,4 @@ std::string ClientLauncher::CreateVersionsString(nitroapi::NitroApiInterface* ni
                nitroapi_version, LAUNCHER_VERSION, engine_mini_version, client_mini_version, gameui_version);
 
     return versions;
-}
-
-int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ PWSTR lpCmdLine, _In_ int nCmdShow)
-{
-    el::Configurations defaultConf;
-    defaultConf.setToDefault();
-    defaultConf.set(el::Level::Global, el::ConfigurationType::MaxLogFileSize, std::to_string(MAX_LOGFILE_SIZE));
-    el::Loggers::reconfigureLogger(ELPP_DEFAULT_LOGGER, defaultConf);
-
-    LOG(INFO) << "-----------------------------------------------";
-    LOG(INFO) << "Start " << GetCurrentProcessPath().filename();
-    LOG(INFO) << "Version: " << NEXT_CLIENT_BUILD_VERSION;
-
-    setlocale(LC_CTYPE, "");
-    setlocale(LC_TIME, "");
-    setlocale(LC_COLLATE, "");
-    setlocale(LC_MONETARY, "");
-
-#ifdef UPDATER_ENABLE
-    LOG(INFO) << "Finishing launcher update";
-    ResultT<bool> finish_update_result = FinishLauncherUpdate();
-    if (finish_update_result.has_error())
-        LOG(WARNING) << "Finish launcher update error: " << finish_update_result.get_error();
-    else
-        LOG(INFO) << "Finishing launcher update: " << (*finish_update_result ? "done" : "nothing to do");
-#endif
-
-    {
-        auto launcher = std::make_unique<ClientLauncher>(hInstance, GetCommandLineA());
-        launcher->Run();
-    }
-
-    LOG(INFO) << "Exit";
-    return EXIT_SUCCESS;
 }

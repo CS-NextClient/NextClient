@@ -14,7 +14,6 @@ add_compile_definitions(
         ELPP_WINSOCK2
         ELPP_THREAD_SAFE
         ELPP_DISABLE_DEFAULT_CRASH_HANDLING
-        ELPP_DEFAULT_LOGGER="launcher"
         ELPP_DEFAULT_LOG_FILE="launcher.log"
 )
 

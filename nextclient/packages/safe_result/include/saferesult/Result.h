@@ -6,6 +6,13 @@
 
 namespace saferesult
 {
+    class ResultErrorInterface
+    {
+    public:
+        virtual ~ResultErrorInterface() = default;
+        virtual std::string to_string() const = 0;
+    };
+
     class ResultErrorException : public std::runtime_error
     {
     public:
@@ -14,7 +21,7 @@ namespace saferesult
         { }
     };
 
-    class ResultError
+    class ResultError : public ResultErrorInterface
     {
         std::string error_;
 
@@ -23,20 +30,27 @@ namespace saferesult
             error_(std::move(error))
         { }
 
-        [[nodiscard]] const std::string& get_error() const
+        [[nodiscard]] const std::string& description() const
+        {
+            return error_;
+        }
+
+        std::string to_string() const override
         {
             return error_;
         }
     };
 
+    template<class TError = ResultError>
+        requires std::derived_from<TError, ResultErrorInterface>
     class Result
     {
-        std::optional<ResultError> error_;
+        std::optional<TError> error_;
 
     public:
         Result() = default;
 
-        Result(ResultError&& error) :
+        Result(TError&& error) :
             error_(std::move(error))
         { }
 
@@ -45,51 +59,62 @@ namespace saferesult
             return error_.has_value();
         }
 
-        [[nodiscard]] const std::string& get_error() const
+        [[nodiscard]] const TError& error() const
         {
-            return error_.value().get_error();
+            return error_.value();
+        }
+
+        [[nodiscard]] std::string error_str() const
+        {
+            return error_.value().to_string();
         }
 
         Result& throw_if_error()
         {
             if (has_error())
             {
-                throw ResultErrorException(get_error());
+                throw ResultErrorException(error_->to_string());
             }
 
             return *this;
         }
     };
 
-    template<class T>
+    template<class T, class TError = ResultError>
+        requires std::derived_from<TError, ResultErrorInterface>
     class ResultT
     {
-        std::variant<T, ResultError> value_;
+        std::variant<T, TError> value_;
 
     public:
         ResultT(T&& value) :
             value_(std::forward<T>(value))
         { }
 
-        ResultT(ResultError&& error) :
+        ResultT(TError&& error) :
             value_(std::move(error))
         { }
 
         [[nodiscard]] bool has_error() const
         {
-            return std::holds_alternative<ResultError>(value_);
+            return std::holds_alternative<TError>(value_);
         }
 
-        [[nodiscard]] const std::string& get_error() const
+        [[nodiscard]] const TError& error() const
         {
-            return std::get<ResultError>(value_).get_error();
+            return std::get<TError>(value_);
+        }
+
+        [[nodiscard]] std::string error_str() const
+        {
+            return error().to_string();
         }
 
         ResultT& throw_if_error()
         {
             if (has_error())
             {
-                throw ResultErrorException(get_error());
+                throw ResultErrorException(error().to_string());
             }
 
             return *this;
