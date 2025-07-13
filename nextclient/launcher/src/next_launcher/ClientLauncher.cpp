@@ -333,7 +333,7 @@ void ClientLauncher::RunEngine()
 #ifdef UPDATER_ENABLE
 std::tuple<UpdaterDoneStatus, std::vector<BranchEntry>> ClientLauncher::RunUpdater()
 {
-    LOG(INFO) << "Run updater";
+    LOG(INFO) << "Start the Updater GUI App";
     analytics_->SendAnalyticsEvent("startup_run_updater");
 
     auto result = RunUpdaterGuiApp(
@@ -345,7 +345,7 @@ std::tuple<UpdaterDoneStatus, std::vector<BranchEntry>> ClientLauncher::RunUpdat
             analytics_->SendAnalyticsLog(AnalyticsLogType::Error, std::format("updater error, state: {}, error: {}", magic_enum::enum_name(event.state), event.error_description).c_str());
         });
 
-    LOG(INFO) << "Updater done: " << magic_enum::enum_name(std::get<0>(result));
+    LOG(INFO) << "Updater GUI App result: " << magic_enum::enum_name(std::get<0>(result));
 
     return result;
 }
