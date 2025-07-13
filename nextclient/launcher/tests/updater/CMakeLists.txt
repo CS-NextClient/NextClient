@@ -5,6 +5,7 @@ find_package(CURL REQUIRED)
 find_package(taocpp-json CONFIG REQUIRED)
 find_package(libuv CONFIG REQUIRED)
 find_package(GTest CONFIG REQUIRED)
+find_package(magic_enum CONFIG REQUIRED)
 
 find_path(UWEBSOCKETS_INCLUDE_DIR NAMES uwebsockets/WebSocket.h REQUIRED)
 find_path(USOCKETS_INCLUDE_DIR NAMES libusockets.h REQUIRED)
@@ -46,9 +47,12 @@ target_link_libraries(${TARGET_NAME} PRIVATE
         CURL::libcurl
         ZLIB::ZLIB
         taocpp::json
+        easyloggingpp::easyloggingpp
         next_launcher::gui_app_core
         data_encoding::data_encoding
         next_launcher::utils
+        NextClient::engine_mini
+        SafeResult::SafeResult
         # for tests
         GTest::gtest
         GTest::gtest_main

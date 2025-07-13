@@ -5,7 +5,11 @@ HttpServiceMock::HttpServiceMock(std::unordered_map<std::string, HttpResponse> m
 {
 }
 
-HttpResponse HttpServiceMock::Post(const std::string& method, const std::string& data)
+HttpResponse HttpServiceMock::Post(
+    const std::string& method,
+    const std::string& data,
+    std::function<bool(cpr::cpr_off_t total, cpr::cpr_off_t downloaded)> progress,
+    int timeout_ms)
 {
     if (method_response_map_.contains(method))
         return method_response_map_[method];

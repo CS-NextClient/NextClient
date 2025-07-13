@@ -8,5 +8,9 @@ class HttpServiceMock : public HttpServiceInterface
 public:
     explicit HttpServiceMock(std::unordered_map<std::string, HttpResponse> method_response_map);
 
-    HttpResponse Post(const std::string& method, const std::string& data) override;
+    HttpResponse Post(
+        const std::string& method,
+        const std::string& data,
+        std::function<bool(cpr::cpr_off_t total, cpr::cpr_off_t downloaded)> progress,
+        int timeout_ms) override;
 };
