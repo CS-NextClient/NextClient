@@ -405,7 +405,7 @@ namespace MetaAudio
         if (!output.empty())
         {
           output.append("----(" + std::to_string(total) + ")----\n");
-          gEngfuncs.Con_Printf(const_cast<char*>(output.c_str()));
+          Con_Printf(const_cast<char*>(output.c_str()));
         }
       }
     }
@@ -463,13 +463,13 @@ namespace MetaAudio
 
     if (entchannel == CHAN_STREAM && pitch != 100)
     {
-      gEngfuncs.Con_DPrintf("Warning: pitch shift ignored on stream sound %s\n", sfx->name);
+      Con_DPrintf(ConLogType::Warning, "pitch shift ignored on stream sound %s\n", sfx->name);
       pitch = 100;
     }
 
     if (fvol > 1.0f)
     {
-      gEngfuncs.Con_DPrintf("%s: %s fvolume > 1.0", _function_name, sfx->name);
+      Con_DPrintf(ConLogType::Info, "%s: %s fvolume > 1.0", _function_name, sfx->name);
     }
 
     fpitch = pitch / 100.0f;
@@ -485,7 +485,7 @@ namespace MetaAudio
 
     if (pitch == 0)
     {
-      gEngfuncs.Con_DPrintf("Warning: %s Ignored, called with pitch 0", _function_name);
+      Con_DPrintf(ConLogType::Warning, "%s Ignored, called with pitch 0", _function_name);
       return;
     }
 
@@ -546,7 +546,18 @@ namespace MetaAudio
       }
       else
       {
-        ch->sound_source = SoundSourceFactory::GetStreamingSource(sc->decoder, al_context->createSource(), 4096, 4);
+        alure::SharedPtr<alure::Decoder> decoder;
+        if (!sc->decoder)
+        {
+          Con_DPrintf(ConLogType::Warning, "Decoder is null. name: %s, entchannel: %d\n", sfx->name, ch->entchannel);
+          decoder = al_context->createDecoder(sc->buffer.getName());
+        }
+        else
+        {
+          decoder = sc->decoder;
+        }
+
+        ch->sound_source = SoundSourceFactory::GetStreamingSource(decoder, al_context->createSource(), 4096, 4);
       }
     }
     else
@@ -688,11 +699,11 @@ namespace MetaAudio
   {
     if (openal_started)
     {
-      gEngfuncs.Con_Printf("OpenAL Version: %d.%d\nOpenAL Device: %s\n Sample rate: %dHz\n", al_device_minorversion, al_device_majorversion, al_device_name, al_device->getFrequency());
+      Con_Printf("OpenAL Version: %d.%d\nOpenAL Device: %s\n Sample rate: %dHz\n", al_device_minorversion, al_device_majorversion, al_device_name, al_device->getFrequency());
     }
     else
     {
-      gEngfuncs.Con_Printf("Failed to initalize OpenAL device.\n", al_device_name, al_device_majorversion, al_device_minorversion);
+      Con_Printf("Failed to initalize OpenAL device.\n", al_device_name, al_device_majorversion, al_device_minorversion);
     }
   }
 
@@ -713,10 +724,10 @@ namespace MetaAudio
     {
       devices = al_dev_manager.enumerate(alure::DeviceEnumeration::Full);
     }
-    gEngfuncs.Con_Printf("Available OpenAL devices:\n");
+    Con_Printf("Available OpenAL devices:\n");
     for (const alure::String& device : devices)
     {
-      gEngfuncs.Con_Printf("  %s\n", device.c_str());
+      Con_Printf("  %s\n", device.c_str());
     }
   }
 

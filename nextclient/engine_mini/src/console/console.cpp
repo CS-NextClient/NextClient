@@ -50,6 +50,10 @@ void Con_DPrintf(ConLogType type, const char* format, ...)
     {
         V_strcpy_safe(prefix, "Error: ");
     }
+    else if (type == ConLogType::Warning)
+    {
+        V_strcpy_safe(prefix, "Warning: ");
+    }
 
     Sys_Printf("%s%s", prefix, text);
 

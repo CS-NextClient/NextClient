@@ -135,18 +135,10 @@ nitroapi::SDL2Data* sdl2() { return g_NitroApi->GetSDL2Data(); }
 static void EngineMiniUninitialize()
 {
     CL_DeleteHttpDownloadManager();
-    JSAPI_Shutdown();
-    AUDIO_Shutdown();
-    CL_CvarsSandboxShutdown();
-    PROTECTOR_Shutdown();
-
     KV_UninitializeKeyValuesSystem();
 
     g_pMatchmakingServers = nullptr;
-
-    for (auto &unsubscriber : g_Unsubs)
-        unsubscriber->Unsubscribe();
-    g_Unsubs.clear();
+    JSAPI_Shutdown();
 
     taskcoro::TaskCoro::UnInitialize();
     g_pTaskCoroImpl = nullptr;
@@ -251,6 +243,17 @@ static void EngineMiniInitialize(nitroapi::NitroApiInterface* nitro_api, NextCli
     g_Analytics = analytics;
 
     g_pMatchmakingServers = std::make_unique<service::matchmaking::MatchmakingSteamComp>();
+}
+
+static void OnGameUninitializing()
+{
+    AUDIO_Shutdown();
+    PROTECTOR_Shutdown();
+    CL_CvarsSandboxShutdown();
+
+    for (auto &unsubscriber : g_Unsubs)
+        unsubscriber->Unsubscribe();
+    g_Unsubs.clear();
 }
 
 static void OnGameInitializing(void* mainwindow, HDC* pmaindc, HGLRC* pbaseRC, const char* pszDriver, const char* pszCmdLine, bool result)
@@ -553,7 +556,8 @@ static void OnGameInitialized()
 
 class EngineMini : public EngineMiniInterface
 {
-    std::vector<std::shared_ptr<nitroapi::Unsubscriber>> unsubs_;
+    std::vector<std::shared_ptr<nitroapi::Unsubscriber>> unsubs_{};
+    bool is_uninitializing_{};
     std::unique_ptr<service::matchmaking::MatchmakingSteamComp> matchmaking_steam_comp_;
 
 public:
@@ -564,17 +568,32 @@ public:
 
         EngineMiniInitialize(nitro_api, client_version, analytics);
 
-        unsubs_.emplace_back(nitro_api->GetEngineData()->COM_InitArgv |= [](int argc, char** argv, const auto& next) {
+        nitroapi::EngineData* engine_data = nitro_api->GetEngineData();
+
+        unsubs_.emplace_back(engine_data->COM_InitArgv |= [](int argc, char** argv, const auto& next) {
             COM_InitArgv(argc, argv);
             next->Invoke(argc, argv);
         });
 
-        unsubs_.emplace_back(nitro_api->GetEngineData()->GL_SetMode += [](void* mainwindow, HDC* pmaindc, HGLRC* pbaseRC, const char* pszDriver, const char* pszCmdLine, bool result) {
+        unsubs_.emplace_back(engine_data->GL_SetMode += [](void* mainwindow, HDC* pmaindc, HGLRC* pbaseRC, const char* pszDriver, const char* pszCmdLine, bool result) {
             OnGameInitializing(mainwindow, pmaindc, pbaseRC, pszDriver, pszCmdLine, result);
         });
 
-        unsubs_.emplace_back(nitro_api->GetEngineData()->Sys_InitGame += [](char* lpOrgCmdLine, char* pBaseDir, void* pwnd, int bIsDedicated, bool ret) {
+        unsubs_.emplace_back(engine_data->Sys_InitGame += [](char* lpOrgCmdLine, char* pBaseDir, void* pwnd, int bIsDedicated, bool ret) {
             OnGameInitialized();
+        });
+
+        unsubs_.emplace_back(engine_data->Host_Shutdown |= [this](const auto& next) {
+            if (is_uninitializing_)
+            {
+                next->Invoke();
+                return;
+            }
+
+            is_uninitializing_ = true;
+            OnGameUninitializing();
+
+            next->Invoke();
         });
     }
 
