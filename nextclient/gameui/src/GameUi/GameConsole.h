@@ -54,11 +54,12 @@ public:
     // activates the console after a delay
     void ActivateDelayed(float time);
 
-    void SetParent( int parent );
+    void SetParent(int parent);
 
     static void OnCmdCondump();
 
-    void PrintfWithoutJsEvent(const char *text);
+    void PrintfWithoutJsEvent(Color color, const std::string& msg);
+    void PrintfWithoutJsEvent(Color color, const std::wstring& msg);
 
 private:
     void ExecuteTempConsoleBuffer();

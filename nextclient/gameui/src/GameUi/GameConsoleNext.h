@@ -2,11 +2,15 @@
 
 #include <locale>
 #include <string>
+#include <utility>
 #include <next_gameui/IGameConsoleNext.h>
 #include "GameConsoleDialog.h"
 
-template<typename T>
-concept Char = std::is_same_v<T, char> || std::is_same_v<T, wchar_t>;
+namespace next_con
+{
+    template<typename T>
+    concept Char = std::is_same_v<T, char> || std::is_same_v<T, wchar_t>;
+}
 
 class CGameConsoleNext : public IGameConsoleNext
 {
@@ -16,7 +20,7 @@ class CGameConsoleNext : public IGameConsoleNext
         Color
     };
 
-    template<Char T>
+    template<next_con::Char T>
     struct TextRange
     {
         const T* begin;
@@ -29,13 +33,13 @@ class CGameConsoleNext : public IGameConsoleNext
         {}
     };
 
-    struct SavedMessageData
+    struct SavedText
     {
         Color color;
-        std::wstring text;
+        std::wstring wide_text;
 
-        explicit SavedMessageData(Color color, const std::wstring& text) :
-            text(text),
+        explicit SavedText(Color color, std::wstring text) :
+            wide_text(std::move(text)),
             color(color)
         { }
     };
@@ -43,7 +47,7 @@ class CGameConsoleNext : public IGameConsoleNext
 private:
     bool initialized_{};
     CGameConsoleDialog* console_dialog_{};
-    std::vector<SavedMessageData> temp_console_buffer_{};
+    std::vector<SavedText> temp_console_buffer_{};
 
 public:
     void Initialize(CGameConsoleDialog *console_dialog);
@@ -57,7 +61,7 @@ private:
     void ExecuteTempConsoleBuffer();
     static std::wstring Utf8ToWstring(const char* str);
 
-    template<Char T>
+    template<next_con::Char T>
     void Printf(const T* msg)
     {
         const int8_t kTagNameMaxLen = 10;
@@ -189,7 +193,7 @@ private:
         PrintTextRange(range);
     }
 
-    template<Char T>
+    template<next_con::Char T>
     void PrintTextRange(const TextRange<T>& text_range)
     {
         Assert(text_range.begin <= text_range.end);
@@ -210,7 +214,7 @@ private:
         }
     }
 
-    template<Char T>
+    template<next_con::Char T>
     const T* ParseColorTagParameter(const T* cur, Color& color, bool& success)
     {
         int8_t color_state = 0;

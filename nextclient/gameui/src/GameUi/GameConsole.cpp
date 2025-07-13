@@ -19,10 +19,6 @@
 // memdbgon must be the last include file in a .cpp file!!!
 #include <tier0/memdbgon.h>
 
-#ifndef min
-#define min(a,b)  (((a) < (b)) ? (a) : (b))
-#endif
-
 static CGameConsole g_GameConsole;
 //-----------------------------------------------------------------------------
 // Purpose: singleton accessor
@@ -55,6 +51,9 @@ CGameConsole::~CGameConsole()
 //-----------------------------------------------------------------------------
 void CGameConsole::Initialize()
 {
+    if (m_bInitialized)
+        return;
+
     m_pConsole = vgui2::SETUP_PANEL( new CGameConsoleDialog() ); // we add text before displaying this so set it up now!
     int swide, stall;
     //m_pConsole->SetParent(g_pTaskbar->GetVPanel());
@@ -63,7 +62,7 @@ void CGameConsole::Initialize()
     int offset = 40;
     m_pConsole->SetBounds(
         offset, offset,
-        min( swide - 2 * offset, 560 ), min( stall - 2 * offset, 400 ) );
+        std::min( swide - 2 * offset, 560 ), std::min( stall - 2 * offset, 400 ) );
 
     GameConsoleNext().Initialize(m_pConsole);
     m_bInitialized = true;
@@ -143,12 +142,28 @@ void CGameConsole::Printf(const char *format, ...)
     }
 }
 
-void CGameConsole::PrintfWithoutJsEvent(const char *text)
+void CGameConsole::PrintfWithoutJsEvent(Color color, const std::wstring& msg)
 {
     if (!m_bInitialized)
-        return;
+    {
+        // I'm lazy
+    }
+    else
+    {
+        m_pConsole->ColorPrintWithoutJsEvent(color, msg.c_str());
+    }
+}
 
-    m_pConsole->Print(text, false);
+void CGameConsole::PrintfWithoutJsEvent(Color color, const std::string& msg)
+{
+    if (!m_bInitialized)
+    {
+        m_TempConsoleBuffer.emplace_back(msg, false);
+    }
+    else
+    {
+        m_pConsole->ColorPrintWithoutJsEvent(color, msg.c_str());
+    }
 }
 
 void CGameConsole::ExecuteTempConsoleBuffer()
@@ -216,7 +231,7 @@ void CGameConsole::ActivateDelayed(float time)
     m_pConsole->PostMessage(m_pConsole, new KeyValues("Activate"), time);
 }
 
-void CGameConsole::SetParent( int parent )
+void CGameConsole::SetParent(int parent)
 {
     if (!m_bInitialized)
         return;

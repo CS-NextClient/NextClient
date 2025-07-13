@@ -70,10 +70,15 @@ ContainerExtensionGameUiApi::ContainerExtensionGameUiApi() {
 					 CefRefPtr<CefV8Value>& retval, CefString& exception) -> bool {
 				
 				if(name == "init") {
+					if (is_initialized_)
+						return true;
+
 					auto context = CefV8Context::GetCurrentContext();
 					TaskCoro::RunInMainThread([this, context] {
 						events_.push_back(std::make_unique<CExtensionGameUiApiEvents>(context));
 					});
+
+					is_initialized_ = true;
 					return true;
 				}
 				else if(name == "getShownStatus") {

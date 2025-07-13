@@ -19,19 +19,19 @@ void ConsoleCmdLogger::LogCommand(const std::string& command, const std::string&
     switch (type)
     {
         case LogCommandType::BlockedAllCommand:
-            g_GameConsoleNext->ColorPrintf(kLogR, kLogG, kLogB, "Blocked server cmd: ");
+            g_GameConsoleNext->ColorPrintfWide(kLogR, kLogG, kLogB, L"Blocked server cmd: ");
             break;
 
         case LogCommandType::BlockedDirectorCommand:
-            g_GameConsoleNext->ColorPrintf(kLogR, kLogG, kLogB, "Blocked director cmd: ");
+            g_GameConsoleNext->ColorPrintfWide(kLogR, kLogG, kLogB, L"Blocked director cmd: ");
             break;
 
         case LogCommandType::BlockedStufftextComamnd:
-            g_GameConsoleNext->ColorPrintf(kLogR, kLogG, kLogB, "Blocked stufftext cmd: ");
+            g_GameConsoleNext->ColorPrintfWide(kLogR, kLogG, kLogB, L"Blocked stufftext cmd: ");
             break;
 
         case LogCommandType::BlockedBanner:
-            g_GameConsoleNext->ColorPrintf(kLogR, kLogG, kLogB, "Blocked director banner");
+            g_GameConsoleNext->ColorPrintfWide(kLogR, kLogG, kLogB, L"Blocked director banner");
             break;
     }
 
@@ -40,14 +40,14 @@ void ConsoleCmdLogger::LogCommand(const std::string& command, const std::string&
 
     if (!value.empty())
     {
-        g_GameConsoleNext->ColorPrintf(kLogR, kLogG, kLogB, " value: ");
+        g_GameConsoleNext->ColorPrintfWide(kLogR, kLogG, kLogB, L" value: ");
         g_GameConsoleNext->PrintfEx("%s", value.c_str());
     }
 
-    g_GameConsoleNext->PrintfEx("\n");
+    g_GameConsoleNext->PrintfExWide(L"\n");
 
     if (cmd_modified)
-        g_GameConsoleNext->ColorPrintf(250, 163, 50, "(line breaks and tabulation are displayed as \\n and \\t, respectively)\n");
+        g_GameConsoleNext->ColorPrintfWide(250, 163, 50, L"(line breaks and tabulation are displayed as \\n and \\t, respectively)\n");
 }
 
 bool ConsoleCmdLogger::ReplaceInconvenientSymbols(std::string& command)

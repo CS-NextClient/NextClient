@@ -8,7 +8,7 @@
 #include <string>
 
 class CExtensionGameUiApiEvents {
-	CefRefPtr<CefV8Context> context_;
+	CefRefPtr<CefV8Context> context_{};
 
 public:
 	explicit CExtensionGameUiApiEvents(CefRefPtr<CefV8Context> context);
@@ -18,8 +18,9 @@ public:
 };
 
 class ContainerExtensionGameUiApi {
-	std::vector<std::unique_ptr<CExtensionGameUiApiEvents>> events_;
-	std::string options_page_to_open_;
+	std::vector<std::unique_ptr<CExtensionGameUiApiEvents>> events_{};
+	std::string options_page_to_open_{};
+	std::atomic_bool is_initialized_{};
 
 public:
 	ContainerExtensionGameUiApi();

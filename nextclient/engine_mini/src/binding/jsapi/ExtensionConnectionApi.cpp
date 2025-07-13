@@ -86,11 +86,15 @@ ContainerExtensionConnectionApi::ContainerExtensionConnectionApi(nitroapi::Nitro
 					return false;
 
 				if (name == "init") {
+					if (is_initialized_)
+						return true;
+
 					auto context = CefV8Context::GetCurrentContext();
 					TaskCoro::RunInMainThread<void>([this, context] {
 						events_.push_back(std::make_unique<CExtensionConnectionApiEvents>(api(), context));
 					});
 
+					is_initialized_ = true;
 					return true;
 				} 
 				else if (name == "getConnectedHost") {

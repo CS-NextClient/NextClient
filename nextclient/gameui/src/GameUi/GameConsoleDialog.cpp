@@ -265,13 +265,9 @@ void CGameConsoleDialog::Clear()
 //-----------------------------------------------------------------------------
 // Purpose: normal text print
 //-----------------------------------------------------------------------------
-void CGameConsoleDialog::Print(const char *msg, bool triggerJsEvent)
+void CGameConsoleDialog::Print(const char *msg)
 {
-    if(!triggerJsEvent || !browserExtensionConsoleApi->OnMessage(msg))
-    {
-        // js events are disabled or the extension will not handle the message sending
-        ColorPrint(m_PrintColor, msg);
-    }
+    ColorPrint(m_PrintColor, msg);
 }
 
 void CGameConsoleDialog::Print(const char *begin, const char *end)
@@ -286,20 +282,41 @@ void CGameConsoleDialog::Print(const wchar_t *begin, const wchar_t *end)
 
 void CGameConsoleDialog::ColorPrint(Color color, const char *msg)
 {
-    m_pHistory->InsertColorChange(color);
-    m_pHistory->InsertString(msg);
+    if (!browserExtensionConsoleApi->HandlePrint(color, std::string(msg)))
+    {
+        m_pHistory->InsertColorChange(color);
+        m_pHistory->InsertString(msg);
+    }
 }
 
 void CGameConsoleDialog::ColorPrint(Color color, const char *begin, const char *end)
 {
-    m_pHistory->InsertColorChange(color);
-    m_pHistory->InsertString(begin, end);
+    if (!browserExtensionConsoleApi->HandlePrint(color, std::string(begin, end)))
+    {
+        m_pHistory->InsertColorChange(color);
+        m_pHistory->InsertString(begin, end);
+    }
 }
 
 void CGameConsoleDialog::ColorPrint(Color color, const wchar_t *begin, const wchar_t *end)
 {
+    if (!browserExtensionConsoleApi->HandlePrint(color, std::wstring(begin, end)))
+    {
+        m_pHistory->InsertColorChange(color);
+        m_pHistory->InsertString(begin, end);
+    }
+}
+
+void CGameConsoleDialog::ColorPrintWithoutJsEvent(Color color, const char* msg)
+{
     m_pHistory->InsertColorChange(color);
-    m_pHistory->InsertString(begin, end);
+    m_pHistory->InsertString(msg);
+}
+
+void CGameConsoleDialog::ColorPrintWithoutJsEvent(Color color, const wchar_t* msg)
+{
+    m_pHistory->InsertColorChange(color);
+    m_pHistory->InsertString(msg);
 }
 
 //-----------------------------------------------------------------------------

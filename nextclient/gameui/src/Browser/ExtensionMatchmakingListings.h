@@ -69,4 +69,4 @@ public:
 		const CefV8ValueList& arguments, CefRefPtr<CefV8Value>& retval, CefString& exception);
 };
 
-void RegisterExtensionMatchmakingListings();
+void RegisterMatchmakingListingsJsApi();

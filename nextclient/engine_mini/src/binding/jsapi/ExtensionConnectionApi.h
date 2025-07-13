@@ -30,7 +30,7 @@
 */
 
 class CExtensionConnectionApiEvents : protected nitroapi::NitroApiHelper {
-	CefRefPtr<CefV8Context> context_;
+	CefRefPtr<CefV8Context> context_{};
 
 public:
 	explicit CExtensionConnectionApiEvents(
@@ -39,7 +39,8 @@ public:
 };
 
 class ContainerExtensionConnectionApi : protected nitroapi::NitroApiHelper {
-	std::vector<std::unique_ptr<CExtensionConnectionApiEvents>> events_;
+	std::vector<std::unique_ptr<CExtensionConnectionApiEvents>> events_{};
+	std::atomic_bool is_initialized_{};
 
 public:
 	ContainerExtensionConnectionApi(nitroapi::NitroApiInterface* nitro_api);

@@ -19,4 +19,4 @@ public:
 	);
 };
 
-void RegisterExtensionCommon(cl_enginefunc_t* engine);
+void RegisterCommonJsApi(cl_enginefunc_t* engine);

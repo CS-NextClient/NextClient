@@ -125,7 +125,7 @@ bool CExtensionMatchmakingListingsHandler::Execute(
 	return false;
 }
 
-void RegisterExtensionMatchmakingListings() {
+void RegisterMatchmakingListingsJsApi() {
 	CefString code = 
 		"if(!nextclient.matchmaking) nextclient.matchmaking = {};"
 		"(function() {"

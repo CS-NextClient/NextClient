@@ -214,10 +214,10 @@ void CGameUI::Start(cl_enginefuncs_s *engineFuncs, int interfaceVersion, void *s
         g_pServerBrowser->Reactivate();
     }
 
-    RegisterExtensionCommon(engineFuncs);
-    RegisterExtensionMatchmaking();
-    RegisterExtensionMatchmakingListings();
-    LoadAcceptedDomainsFromDisk("platform/accepted_domains.txt");
+    RegisterCommonJsApi(engineFuncs);
+    RegisterMatchmakingJsApi();
+    RegisterMatchmakingListingsJsApi();
+    LoadAcceptedDomainsForJsApiFromDisk("platform/accepted_domains.txt");
 
     browserExtensionGameUiApi = new ContainerExtensionGameUiApi();
 }

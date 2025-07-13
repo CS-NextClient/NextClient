@@ -57,13 +57,16 @@ public:
     MESSAGE_FUNC( Activate, "Activate" );
 
     // normal text print
-    void Print(const char *msg, bool triggerJsEvent = true);
+    void Print(const char *msg);
     void Print(const char *begin, const char *end);
     void Print(const wchar_t *begin, const wchar_t *end);
 
     void ColorPrint(Color color, const char *msg);
     void ColorPrint(Color color, const char *begin, const char *end);
     void ColorPrint(Color color, const wchar_t *begin, const wchar_t *end);
+
+    void ColorPrintWithoutJsEvent(Color color, const char *msg);
+    void ColorPrintWithoutJsEvent(Color color, const wchar_t *msg);
 
     // debug text print
     void DPrint(const char *msg);
@@ -193,14 +196,14 @@ private:
             return text;
         }
 
-        bool			iscommand;
-        cmdnode_t cmd;
-        CHistoryItem	*m_text;
+        bool          iscommand;
+        cmdnode_t     cmd;
+        CHistoryItem* m_text;
     };
 
 
-    CUtlVector<CompletionItem> m_CompletionList;
-    CUtlVector<CHistoryItem>	m_CommandHistory;
+    CUtlVector<CompletionItem>     m_CompletionList;
+    CUtlVector<CHistoryItem>       m_CommandHistory;
 
     class ContainerExtensionConsoleApi* browserExtensionConsoleApi;
 

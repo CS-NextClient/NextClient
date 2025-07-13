@@ -7,7 +7,7 @@
 
 std::set<std::string> acceptedDomains;
 
-size_t LoadAcceptedDomainsFromDisk(std::string fileName) {
+size_t LoadAcceptedDomainsForJsApiFromDisk(std::string fileName) {
 	std::ifstream file(fileName);
 	if(!file.is_open()) return 0;
 

@@ -140,30 +140,26 @@ static void PrintWithConsoleNext(TextRange* range, const std::wstring& print_tex
 
 static void ColorChatConsolePrint(char string[512])
 {
-    int rangeIndex;
-    TextRange *range;
-    int total_length = 0;
-
-
     if (g_sayTextLine[0].m_textRanges.Count() != 0)
     {
-        for (rangeIndex = 0; rangeIndex < g_sayTextLine[0].m_textRanges.Count(); rangeIndex++)
+        for (int rangeIndex = 0; rangeIndex < g_sayTextLine[0].m_textRanges.Count(); rangeIndex++)
         {
-            range = &g_sayTextLine[0].m_textRanges[rangeIndex];
-
+            TextRange* range = &g_sayTextLine[0].m_textRanges[rangeIndex];
             std::wstring print_text = std::wstring(&g_sayTextLine[0].m_line[range->start], range->end - range->start);
 
             if (g_GameConsoleNext)
+            {
                 PrintWithConsoleNext(range, print_text);
+            }
             else
+            {
                 PrintWithConsole(range, print_text);
+            }
         }
 
-        // Print newline char if needed
-        std::string check_string(&string[0], total_length);
-        if (check_string.find('\n') == std::string::npos)
+        if (V_strEndsWith(string, "\n"))
         {
-            g_GameConsole->Printf("%s", "\n");
+            g_GameConsole->Printf("\n");
         }
     }
 }

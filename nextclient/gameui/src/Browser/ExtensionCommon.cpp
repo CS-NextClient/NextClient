@@ -22,7 +22,7 @@ bool CExtensionCommonHandler::Execute(
 	return false;
 }
 
-void RegisterExtensionCommon(cl_enginefunc_t* engine) {
+void RegisterCommonJsApi(cl_enginefunc_t* engine) {
 	CefString code = 
 		"function makeAsEventTarget(object) {"
 		"	object.__defineGetter__('eventTarget', function() {"

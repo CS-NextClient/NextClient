@@ -119,5 +119,5 @@ public:
 		const CefV8ValueList& arguments, CefRefPtr<CefV8Value>& retval, CefString& exception);
 };
 
-void RegisterExtensionMatchmaking();
+void RegisterMatchmakingJsApi();
 CefRefPtr<CefV8Value> GameServerItemToV8Object(const gameserveritem_t& server);
