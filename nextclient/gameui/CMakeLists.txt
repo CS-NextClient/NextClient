@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.21)
-project(gameui VERSION 1.2.4)
+project(gameui VERSION 2.4.0)
 set(OUTPUT_NAME "GameUI")
 
 find_package(concurrencpp CONFIG REQUIRED)
