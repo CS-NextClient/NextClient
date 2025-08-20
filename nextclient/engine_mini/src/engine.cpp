@@ -26,7 +26,6 @@
 #include "client/cl_parsefn.h"
 #include "client/cl_game.h"
 #include "binding/jsapi/jsapi.h"
-#include "audio/include/metaaudio.h"
 #include "common/cvar.h"
 #include "console/console.h"
 #include "console/protector.h"
@@ -97,6 +96,8 @@ int* p_cszrawsentences;
 char *(*p_rgpszrawsentence)[CVOXFILESENTENCEMAX];
 float* p_scr_con_current;
 keydest_t* p_key_dest;
+sfx_t** p_known_sfx;
+int* p_num_sfx;
 
 cvar_t* fs_startup_timings;
 cvar_t* fs_lazy_precache;
@@ -202,6 +203,8 @@ static void EngineMiniUninitialize()
     p_rgpszrawsentence = nullptr;
     p_scr_con_current = nullptr;
     p_key_dest = nullptr;
+    p_known_sfx = nullptr;
+    p_num_sfx = nullptr;
 
     fs_startup_timings = nullptr;
     fs_lazy_precache = nullptr;
@@ -247,7 +250,6 @@ static void EngineMiniInitialize(nitroapi::NitroApiInterface* nitro_api, NextCli
 
 static void OnGameUninitializing()
 {
-    AUDIO_Shutdown();
     PROTECTOR_Shutdown();
     CL_CvarsSandboxShutdown();
 
@@ -342,6 +344,8 @@ static void OnGameInitializing(void* mainwindow, HDC* pmaindc, HGLRC* pbaseRC, c
     v.Assign(p_cmd_argv, GET_VARIABLE_NAME(p_cmd_argv), eng()->cmd_argv);
     v.Assign(p_cvar_vars, GET_VARIABLE_NAME(p_cvar_vars), eng()->cvar_vars);
     v.Assign(p_key_dest, GET_VARIABLE_NAME(p_key_dest), eng()->key_dest);
+    v.Assign(p_known_sfx, GET_VARIABLE_NAME(p_known_sfx), eng()->known_sfx);
+    v.Assign(p_num_sfx, GET_VARIABLE_NAME(p_num_sfx), eng()->num_sfx);
 
     if (v.HasNullPtr())
     {
@@ -502,8 +506,6 @@ static void OnGameInitializing(void* mainwindow, HDC* pmaindc, HGLRC* pbaseRC, c
     });
 
     GL_SetMode_Subscriber(mainwindow, pmaindc, pbaseRC, pszDriver, pszCmdLine, result);
-
-    AUDIO_Init();
 }
 
 static void OnGameInitialized()
@@ -549,7 +551,6 @@ static void OnGameInitialized()
 
     CL_CreateHttpDownloadManager(g_pGameUi, g_pLocalize, g_SettingGuard);
     JSAPI_Init();
-    AUDIO_RegisterCommands();
     CL_CvarsSandboxInit();
     PROTECTOR_Init(g_SettingGuard);
 }

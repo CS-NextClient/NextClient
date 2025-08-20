@@ -4,7 +4,7 @@ NextClient
 ==========
 
 NextClient is a modification for Counter-Strike 1.6 aimed at introducing new functionality for both players and developers of server modifications on amxmodx.
-NextClient has integrated some features from [csldr](https://github.com/mikkokko/csldr), as well as integrated [MetaAudio](https://github.com/LAGonauta/MetaAudio).
+NextClient has integrated some features from [csldr](https://github.com/mikkokko/csldr).
 
 ### Main features:
  - Protector - protects the client from malicious commands from the server
@@ -135,7 +135,7 @@ Note that only Ninja and NMake Makefiles generators are supported. So if you wan
 - [Nordic Warrior](https://github.com/Nord1cWarr1or) - for the huge amount of feedback and bug reports
 - [fl0werD](https://github.com/fl0werD) - for development of Sprite API
 - [Mikko Kokko](https://github.com/mikkokko) - for the project [csldr](https://github.com/mikkokko/csldr), which features we have integrated into NextClient
-- [Felipe](https://github.com/LAGonauta) - for the project [MetaAudio](https://github.com/LAGonauta/MetaAudio), which we have integrated into NextClient
+- [Felipe](https://github.com/LAGonauta) - for the project [MetaAudio](https://github.com/LAGonauta/MetaAudio)
 - [MoeMod](https://github.com/MoeMod) - for the project [Thanatos-Launcher](https://github.com/MoeMod/Thanatos-Launcher), it helped a lot when implementing GameUI and VGUI2
 - [tmp64](https://github.com/tmp64) - for the project [hl1_source_sdk](https://github.com/tmp64/hl1_source_sdk)
 - [TsarVar](https://tsarvar.com) - for the idea of a JS API for gameui

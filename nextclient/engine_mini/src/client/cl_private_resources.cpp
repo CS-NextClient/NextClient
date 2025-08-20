@@ -1,4 +1,3 @@
-#include <metaaudio.h>
 #include <resource/ResourceDescriptor.h>
 #include <common/com_strings.h>
 #include <common/filesystem.h>
@@ -13,6 +12,7 @@
 #include "../common/zone.h"
 #include "../common/model.h"
 #include "../client/spriteapi.h"
+#include "../client/cl_sound.h"
 #include "download.h"
 #include "cl_private_resources.h"
 
@@ -222,12 +222,12 @@ void PrivateRes_UnloadResources()
         return client_stateex.privateResources.contains(model->name);
     });
 
-    std::vector<std::string> sounds;
+    std::unordered_set<std::string> sounds;
     for (const auto& [path, res] : client_stateex.privateResources)
     {
         if (nitro_utils::start_with(path, DEFAULT_SOUNDPATH, nitro_utils::CompareOptions::RegisterIndependent))
         {
-            sounds.emplace_back(path);
+            sounds.emplace(path);
         }
     }
 

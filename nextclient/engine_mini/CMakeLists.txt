@@ -13,41 +13,8 @@ set(CMAKE_CXX_STANDARD 23)
 # common options
 set(BUILD_SHARED_LIBS OFF)
 
-#openal options
-#set(ALSOFT_UTILS OFF)
-#set(ALSOFT_EXAMPLES OFF)
-#set(ALSOFT_INSTALL OFF)
-#set(ALSOFT_INSTALL_CONFIG OFF)
-#set(ALSOFT_INSTALL_HRTF_DATA OFF)
-#set(ALSOFT_INSTALL_AMBDEC_PRESETS OFF)
-#set(ALSOFT_INSTALL_EXAMPLES OFF)
-#set(ALSOFT_INSTALL_UTILS OFF)
-#set(ALSOFT_UPDATE_BUILD_VERSION OFF)
-#set(FORCE_STATIC_VCRT ON)
-
-#alure options
-set(ALURE_BUILD_SHARED OFF)
-set(ALURE_BUILD_STATIC ON)
-set(ALURE_ENABLE_MINIMP3 OFF)
-set(ALURE_ENABLE_WAVE OFF)
-set(ALURE_ENABLE_OPUS OFF)
-set(ALURE_ENABLE_VORBIS OFF)
-set(ALURE_ENABLE_FLAC OFF)
-set(ALURE_INSTALL OFF)
-set(ALURE_BUILD_EXAMPLES OFF)
-
-
 # explicit dependencies
-# TODO maybe get from vcpkg
-set(OPENAL_LIBRARY ${CMAKE_CURRENT_SOURCE_DIR}/dep/OpenAL-SDK/libs/Win32/OpenAL32.lib)
-set(OPENAL_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/dep/OpenAL-SDK/include)
-set(SNDFILE_LIBRARY ${CMAKE_CURRENT_SOURCE_DIR}/dep/libsndfile/lib/sndfile.lib)
-set(SNDFILE_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/dep/libsndfile/include)
-
 add_subdirectory(dep/bzip2)
-add_subdirectory(dep/alure)
-set_property(TARGET alure2_s PROPERTY CXX_STANDARD ${CMAKE_CXX_STANDARD})
-target_compile_options(alure2_s PUBLIC "/Zc:__cplusplus")
 
 file(GLOB_RECURSE ENGINE_MINI_SOURCES
         LIST_DIRECTORIES FALSE
@@ -62,7 +29,6 @@ add_library(${PROJECT_NAME} SHARED
 target_include_directories(${PROJECT_NAME} PRIVATE
         dep/optic/include
         dep/bzip2
-        src/audio/include
         include
         src
 )
@@ -81,7 +47,6 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
         OpenSSL::SSL
         OpenSSL::Crypto
         concurrencpp::concurrencpp
-        alure2_s
         bzip2
 )
 
