@@ -10,12 +10,10 @@
 // memdbgon must be the last include file in a .cpp file!!!
 #include "tier0/memdbgon.h"
 
-static const int MAX_CVAR_TEXT = 64;
-
-CSetinfoTextEntry::CSetinfoTextEntry(Panel *parent, const char *panelName, char const *cvarname)
+CSetinfoTextEntry::CSetinfoTextEntry(Panel *parent, const char *panelName, char const *setinfoName)
     : TextEntry(parent, panelName)
 {
-    m_pszSetinfoName = cvarname ? strdup(cvarname) : NULL;
+    m_pszSetinfoName = setinfoName ? V_strdup(setinfoName) : nullptr;
     m_pszStartValue[0] = 0;
 
     if (m_pszSetinfoName)
@@ -28,18 +26,15 @@ CSetinfoTextEntry::CSetinfoTextEntry(Panel *parent, const char *panelName, char 
 
 CSetinfoTextEntry::~CSetinfoTextEntry()
 {
-    if (m_pszSetinfoName)
-    {
-        free(m_pszSetinfoName);
-    }
+    delete[] m_pszSetinfoName;
 }
 
 void CSetinfoTextEntry::ApplySchemeSettings(vgui2::IScheme *pScheme)
 {
     BaseClass::ApplySchemeSettings(pScheme);
-    if (GetMaximumCharCount() < 0 || GetMaximumCharCount() > MAX_CVAR_TEXT)
+    if (GetMaximumCharCount() < 0 || GetMaximumCharCount() > MAX_SETINFO_TEXT)
     {
-        SetMaximumCharCount(MAX_CVAR_TEXT - 1);
+        SetMaximumCharCount(MAX_SETINFO_TEXT - 1);
     }
 }
 
@@ -48,32 +43,29 @@ void CSetinfoTextEntry::ApplyChanges()
     if (!m_pszSetinfoName)
         return;
 
-    char szText[MAX_CVAR_TEXT];
-    GetText(szText, MAX_CVAR_TEXT);
-
-    if (!szText[0])
-        return;
+    char szText[MAX_SETINFO_TEXT];
+    GetText(szText, MAX_SETINFO_TEXT);
 
     engine->PlayerInfo_SetValueForKey(m_pszSetinfoName, szText);
-    strcpy(m_pszStartValue, szText);
+    V_strcpy_safe(m_pszStartValue, szText);
 }
 
 void CSetinfoTextEntry::Reset()
 {
-    auto value = engine->LocalPlayerInfo_ValueForKey("_pw");
-    if (value && value[0])
+    auto value = engine->LocalPlayerInfo_ValueForKey(m_pszSetinfoName);
+    if (value)
     {
         SetText(value);
-        strcpy(m_pszStartValue, value);
+        V_strcpy_safe(m_pszStartValue, value);
     }
 }
 
 bool CSetinfoTextEntry::HasBeenModified()
 {
-    char szText[MAX_CVAR_TEXT];
-    GetText(szText, MAX_CVAR_TEXT);
+    char szText[MAX_SETINFO_TEXT];
+    GetText(szText, MAX_SETINFO_TEXT);
 
-    return stricmp(szText, m_pszStartValue);
+    return V_stricmp(szText, m_pszStartValue);
 }
 
 

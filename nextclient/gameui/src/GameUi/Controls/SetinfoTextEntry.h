@@ -4,8 +4,10 @@
 
 class CSetinfoTextEntry : public vgui2::TextEntry
 {
+    static const int MAX_SETINFO_TEXT = 64;
+
 public:
-    CSetinfoTextEntry(vgui2::Panel *parent, const char *panelName, char const *cvarname);
+    CSetinfoTextEntry(vgui2::Panel *parent, const char *panelName, char const *setinfoName);
     ~CSetinfoTextEntry();
 
     void			OnTextChanged();
@@ -20,5 +22,5 @@ private:
     typedef vgui2::TextEntry BaseClass;
 
     char			*m_pszSetinfoName;
-    char			m_pszStartValue[64];
+    char			m_pszStartValue[MAX_SETINFO_TEXT];
 };
