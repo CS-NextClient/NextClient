@@ -1110,12 +1110,9 @@ void CBasePanel::OnOpenOptionsDialog(const char* tabName)
         PositionDialog(m_hOptionsDialog);
     }
 
-    if(!m_hOptionsDialog->IsVisible())
-    {
-        m_hOptionsDialog->Activate();
-    }
+    m_hOptionsDialog->Activate();
 
-    if(tabName != nullptr)
+    if (tabName != nullptr)
     {
         m_hOptionsDialog->OpenTab(tabName);
     }

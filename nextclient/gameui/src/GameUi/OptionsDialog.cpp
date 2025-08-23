@@ -94,20 +94,25 @@ void COptionsDialog::OnKeyCodeTyped(vgui2::KeyCode code)
 
 void COptionsDialog::Activate(void)
 {
+    bool was_visible = IsVisible();
+
     BaseClass::Activate();
 
-    if (m_pOptionsSubMultiplayer)
+    if (!was_visible)
     {
-        if (GetActivePage() != m_pOptionsSubMultiplayer)
-            GetPropertySheet()->SetActivePage(m_pOptionsSubMultiplayer);
+        if (m_pOptionsSubMultiplayer)
+        {
+            if (GetActivePage() != m_pOptionsSubMultiplayer)
+                GetPropertySheet()->SetActivePage(m_pOptionsSubMultiplayer);
+        }
+        else
+        {
+            if (GetActivePage() != m_pOptionsSubKeyboard)
+                GetPropertySheet()->SetActivePage(m_pOptionsSubKeyboard);
+        }
+        ResetAllData();
+        EnableApplyButton(false);
     }
-    else
-    {
-        if (GetActivePage() != m_pOptionsSubKeyboard)
-            GetPropertySheet()->SetActivePage(m_pOptionsSubKeyboard);
-    }
-    ResetAllData();
-    EnableApplyButton(false);
 }
 
 void COptionsDialog::OpenTab(const char* tabName) {
