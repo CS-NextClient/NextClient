@@ -550,7 +550,6 @@ void COptionsSubMultiplayer::OnPageShow(void)
     m_pNameTextEntry->GotoTextEnd();
     m_pPasswordTextEntry->Reset();
     m_pPasswordTextEntry->GotoTextEnd();
-    m_pPasswordTextEntry->SetTextHidden(true);
 }
 
 void COptionsSubMultiplayer::OnResetData(void)
@@ -559,7 +558,6 @@ void COptionsSubMultiplayer::OnResetData(void)
     m_pNameTextEntry->GotoTextEnd();
     m_pPasswordTextEntry->Reset();
     m_pPasswordTextEntry->GotoTextEnd();
-    m_pPasswordTextEntry->SetTextHidden(true);
     m_pLogoList->Reset();
     m_pColorList->Reset();
     m_pHighQualityModelCheckBox->Reset();

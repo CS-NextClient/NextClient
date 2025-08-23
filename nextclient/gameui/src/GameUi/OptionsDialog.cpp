@@ -121,12 +121,6 @@ void COptionsDialog::OpenTab(const char* tabName) {
     }
 }
 
-void COptionsDialog::Run(void)
-{
-    SetTitle("#GameUI_Options", true);
-    Activate();
-}
-
 void COptionsDialog::OnClose(void)
 {
     BaseClass::OnClose();

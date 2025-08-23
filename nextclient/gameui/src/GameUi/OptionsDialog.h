@@ -18,7 +18,6 @@ public:
     void OpenTab(const char* tabName);
 
 public:
-    void Run(void);
     void Activate(void);
 
 public:
