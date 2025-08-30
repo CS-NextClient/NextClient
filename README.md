@@ -71,9 +71,9 @@ NextClient has integrated some features from [csldr](https://github.com/mikkokko
 ## Installation
 
 1. NextClient only works with engine version 8684, make sure you are on the beta branch "steam_legacy - Pre-25th Anniversary Build" in Steam (⚠️ Note: you need the official game files from Steam! You cannot install NextClient on pirate clients!)
-2. Copy the entire Counter-Strike 1.6 (Half-Life) folder to a separate location outside the Steam folder
-3. Rename steam_api.dll to steam_api_orig.dll (Note that you need to rename steam_api.dll to steam_api_orig.dll before copying the NextClient files!)
-4. Place all NextClient files in the game folder
+2. Copy the entire Counter-Strike 1.6 (Half-Life) folder to a separate folder outside of the Steam folder
+3. Go to the folder where you just copied all the CS 1.6 files and rename steam_api.dll to steam_api_orig.dll
+4. Copy all NextClient files to the folder where you copied all the CS 1.6 files
 6. Run the game via cstrike.exe
 
 ### ⚠️ Warning! Never put NextClient files directly into the game installation folder in Steam! This will lead to VAC ban! ⚠️
