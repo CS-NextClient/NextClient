@@ -11,10 +11,11 @@ SourceQueryRules::SourceQueryRules(SOCKET socket) :
 result<SQResponseInfo<SQ_RULES>> SourceQueryRules::SendRulesQuery(netadr_t addr)
 {
     response_promise_ = std::move(result_promise<SQResponseInfo<SQ_RULES>>());
+    result<SQResponseInfo<SQ_RULES>> task = response_promise_.get_result();
 
     Send(addr);
 
-    return response_promise_.get_result();
+    return task;
 }
 
 void SourceQueryRules::Send(netadr_t addr)

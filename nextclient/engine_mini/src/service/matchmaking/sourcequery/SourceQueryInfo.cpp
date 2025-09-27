@@ -11,10 +11,11 @@ SourceQueryInfo::SourceQueryInfo(SOCKET socket) :
 result<SQResponseInfo<SQ_INFO>> SourceQueryInfo::SendInfoQuery(netadr_t addr)
 {
     response_promise_ = std::move(result_promise<SQResponseInfo<SQ_INFO>>());
+    result<SQResponseInfo<SQ_INFO>> task = response_promise_.get_result();
 
     Send(addr);
 
-    return response_promise_.get_result();
+    return task;
 }
 
 void SourceQueryInfo::Send(netadr_t addr)

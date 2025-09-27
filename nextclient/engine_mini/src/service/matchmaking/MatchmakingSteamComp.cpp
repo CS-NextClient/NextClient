@@ -22,12 +22,12 @@ HServerListRequest MatchmakingSteamComp::RequestInternetServerList(
 {
     auto request_id = (HServerListRequest)++server_list_request_counter_;
 
-    auto servers_request_data = ServerListRequestData(request_id, response_callback);
-    auto ct = servers_request_data.cancellation_token;
+    auto ct = CancellationToken::Create();
+    auto servers_request_data = ServerListRequestData(request_id, response_callback, ct);
 
     server_requests_.emplace(request_id, std::move(servers_request_data));
 
-    TaskCoro::RunInMainThread<void>([this, request_id, response_callback, ct] () -> result<void>
+    TaskCoro::RunInMainThread([this, request_id, response_callback, ct] () -> result<void>
     {
         ct->ThrowIfCancelled();
         co_await RequestServerList(request_id, MatchmakingService::ServerListSource::Internet, response_callback, ct);
@@ -215,7 +215,7 @@ void MatchmakingSteamComp::RefreshQuery(HServerListRequest request_id)
     request_data.cancellation_token = CancellationToken::Create();
     request_data.in_progress = true;
 
-    TaskCoro::RunInMainThread<void>([this, request_id, ct = request_data.cancellation_token] () -> result<void>
+    TaskCoro::RunInMainThread([this, request_id, ct = request_data.cancellation_token] () -> result<void>
     {
         ct->ThrowIfCancelled();
 
@@ -280,7 +280,7 @@ void MatchmakingSteamComp::RefreshServer(HServerListRequest request_id, int serv
 
     auto& request_data = std::get<ServerListRequestData>(server_requests_[request_id]);
 
-    TaskCoro::RunInMainThread<void>([this](HServerListRequest request_id, int server_id, std::shared_ptr<CancellationToken> ct) -> result<void>
+    TaskCoro::RunInMainThread([this](HServerListRequest request_id, int server_id, std::shared_ptr<CancellationToken> ct) -> result<void>
     {
         ct->ThrowIfCancelled();
 
@@ -289,6 +289,8 @@ void MatchmakingSteamComp::RefreshServer(HServerListRequest request_id, int serv
 
         gameserveritem_t gameserver = co_await matchmaking_service_->RefreshServer(net_addr.GetIP(), net_addr.GetQueryPort());
         ct->ThrowIfCancelled();
+
+        request_data = std::get<ServerListRequestData>(server_requests_[request_id]);
 
         if (gameserver.m_bHadSuccessfulResponse)
         {
@@ -379,13 +381,15 @@ void MatchmakingSteamComp::ServerAnsweredHandler(
     {
         auto& request_data = std::get<ServerListRequestData>(request);
 
-        if (server_info.server_index >= request_data.servers.size())
+        size_t server_count = request_data.servers.size();
+
+        if (server_info.server_index >= server_count)
         {
             request_data.servers.resize(server_info.server_index + 1);
 
-            for (gameserveritem_t& server : request_data.servers)
+            for (size_t i = server_count; i < request_data.servers.size(); ++i)
             {
-                InitEmptyGameServerItem(server, 0, 0);
+                InitEmptyGameServerItem(request_data.servers[i], 0, 0);
             }
         }
 

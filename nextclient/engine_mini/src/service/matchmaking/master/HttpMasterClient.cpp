@@ -25,7 +25,7 @@ result<std::vector<netadr_t>> HttpMasterClient::GetServerAddressesAsync(
     std::shared_ptr<CancellationToken> cancellation_token
 )
 {
-    Response response = co_await TaskCoro::RunIO<Response>([this, cancellation_token]
+    Response response = co_await TaskCoro::RunIO([this, cancellation_token]
     {
         Header header;
         for (auto& [key, value] : headers_)

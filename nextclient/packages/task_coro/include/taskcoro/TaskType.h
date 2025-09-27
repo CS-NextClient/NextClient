@@ -4,7 +4,7 @@ namespace taskcoro
 {
     enum class TaskType
     {
-        Regular,
+        ThreadPool,
         NewThread,
         MainThread,
         IO,

@@ -9,6 +9,7 @@
 #include <service/matchmaking/MatchmakingSteamComp.h>
 #include <tier2/tier2.h>
 #include <taskcoro/TaskCoro.h>
+#include <taskcoro/impl/TaskCoroImpl.h>
 #include <easylogging++.h>
 
 #include "common/common.h"

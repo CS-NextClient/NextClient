@@ -7,11 +7,17 @@
 #include <taskcoro/TaskCoro.h>
 #include <data_types/ByteBuffer.h>
 #include <netadr.h>
+#include <taskcoro/impl/SynchronizationContextManual.h>
 
 #include "SourceQueryInterface.h"
 #include "SQResponseInfo.h"
 #include "source_query_types.h"
 #include "netadr_hasher.h"
+
+namespace service::matchmaking
+{
+    class MatchmakingService;
+}
 
 class MultiSourceQuery
 {
@@ -22,7 +28,8 @@ class MultiSourceQuery
     const int kMaxBufferHoldsTimeMs = 5000;
     const int kSocketLifeTimeMs = 5000;
 
-    taskcoro::SynchronizationContext sync_ctx_;
+    std::shared_ptr<taskcoro::SynchronizationContextManual> manual_sync_ctx_;
+    std::shared_ptr<taskcoro::SynchronizationContext> sync_ctx_;
     std::shared_ptr<taskcoro::CancellationToken> cancellation_token_;
     std::atomic_bool main_loop_done_{};
 
@@ -37,9 +44,9 @@ public:
     explicit MultiSourceQuery(int32_t timeout, uint8_t retries);
     ~MultiSourceQuery();
 
-    [[nodiscard]] concurrencpp::result<SQResponseInfo<SQ_INFO>> GetInfoAsync(const netadr_t& address);
-    [[nodiscard]] concurrencpp::result<SQResponseInfo<SQ_RULES>> GetRulesAsync(const netadr_t& address);
-    [[nodiscard]] concurrencpp::result<SQResponseInfo<SQ_PLAYERS>> GetPlayersAsync(const netadr_t& address);
+    [[nodiscard]] concurrencpp::result<SQResponseInfo<SQ_INFO>> GetInfoAsync(netadr_t address);
+    [[nodiscard]] concurrencpp::result<SQResponseInfo<SQ_RULES>> GetRulesAsync(netadr_t address);
+    [[nodiscard]] concurrencpp::result<SQResponseInfo<SQ_PLAYERS>> GetPlayersAsync(netadr_t address);
 
     concurrencpp::result<void> SwitchToNewSocket(bool broadcast = false);
 

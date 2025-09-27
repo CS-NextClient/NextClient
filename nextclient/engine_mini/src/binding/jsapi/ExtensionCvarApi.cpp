@@ -23,7 +23,7 @@ void RegisterExtensionCvarApi() {
 					std::optional<std::string> result;
 
 					auto cvar_name = arguments[0]->GetStringValue();
-					auto task = TaskCoro::RunInMainThread<std::optional<std::string>>([cvar_name] {
+					auto task = TaskCoro::RunInMainThread([cvar_name] {
 						cvar_t* cvar = gEngfuncs.pfnGetCvarPointer(cvar_name.c_str());
 						return cvar ? std::string(cvar->string) : std::optional<std::string>{};
 					});

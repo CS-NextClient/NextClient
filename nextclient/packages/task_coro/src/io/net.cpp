@@ -48,6 +48,6 @@ namespace taskcoro::async_io
 
     result<ByteBuffer> SendAndRecv(SOCKET sock, timeval timeout, const ByteBuffer& send_data, sockaddr_in address)
     {
-        return TaskCoro::RunIO<ByteBuffer>(&SendAndRecvInternal, sock, timeout, ByteBuffer(send_data), address);
+        return TaskCoro::RunIO(&SendAndRecvInternal, sock, timeout, send_data, address);
     }
 }

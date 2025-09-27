@@ -90,7 +90,7 @@ ContainerExtensionConnectionApi::ContainerExtensionConnectionApi(nitroapi::Nitro
 						return true;
 
 					auto context = CefV8Context::GetCurrentContext();
-					TaskCoro::RunInMainThread<void>([this, context] {
+					TaskCoro::RunInMainThread([this, context] {
 						events_.push_back(std::make_unique<CExtensionConnectionApiEvents>(api(), context));
 					});
 
@@ -100,7 +100,7 @@ ContainerExtensionConnectionApi::ContainerExtensionConnectionApi(nitroapi::Nitro
 				else if (name == "getConnectedHost") {
 					GetConnectedHostData result;
 
-					auto task = TaskCoro::RunInMainThread<GetConnectedHostData>([this] {
+					auto task = TaskCoro::RunInMainThread([this] {
 						GetConnectedHostData result{};
 
 						auto address = cls()->servername;

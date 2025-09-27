@@ -20,7 +20,10 @@ MultiSourceQuery::MultiSourceQuery(int32_t timeout, uint8_t retries) :
     timeout_ms_(timeout),
     retries_(retries)
 {
-    TaskCoro::RunInNewThread<void>([this]
+    manual_sync_ctx_ = std::make_shared<SynchronizationContextManual>();
+    sync_ctx_ = std::make_shared<SynchronizationContext>(manual_sync_ctx_);
+
+    TaskCoro::RunInNewThread([this]
     {
         OPTICK_THREAD("MultiSourceQuery");
         MainLoop();
@@ -37,66 +40,83 @@ MultiSourceQuery::~MultiSourceQuery()
     }
 }
 
-result<SQResponseInfo<SQ_INFO>> MultiSourceQuery::GetInfoAsync(const netadr_t& address)
+result<SQResponseInfo<SQ_INFO>> MultiSourceQuery::GetInfoAsync(netadr_t address)
 {
-    auto response = co_await sync_ctx_.Run<result<SQResponseInfo<SQ_INFO>>>(
-        [this, address]
-        {
-            CreateSocketIfNeeded(address.GetType() == NA_BROADCAST);
+    std::shared_ptr<SynchronizationContext> caller_ctx = SynchronizationContext::Current();
 
-            auto query = std::make_unique<SourceQueryInfo>(sockets_.back().socket);
-            auto response = query->SendInfoQuery(address);
+    co_await sync_ctx_->SwitchTo();
 
-            queries_[address].emplace_back(std::move(query), high_resolution_clock::now());
+    CreateSocketIfNeeded(address.GetType() == NA_BROADCAST);
 
-            return response;
-        });
+    auto query = std::make_unique<SourceQueryInfo>(sockets_.back().socket);
+    auto response = query->SendInfoQuery(address);
+    queries_[address].emplace_back(std::move(query), high_resolution_clock::now());
 
-    co_return co_await response;
+    SQResponseInfo<SQ_INFO> result = co_await response;
+
+    if (caller_ctx)
+    {
+        co_await caller_ctx->SwitchTo();
+    }
+
+    co_return result;
 }
 
-result<SQResponseInfo<SQ_RULES>> MultiSourceQuery::GetRulesAsync(const netadr_t& address)
+result<SQResponseInfo<SQ_RULES>> MultiSourceQuery::GetRulesAsync(netadr_t address)
 {
-    auto response = co_await sync_ctx_.Run<result<SQResponseInfo<SQ_RULES>>>(
-        [this, address]
-        {
-            CreateSocketIfNeeded(address.GetType() == NA_BROADCAST);
+    std::shared_ptr<SynchronizationContext> caller_ctx = SynchronizationContext::Current();
 
-            auto query = std::make_unique<SourceQueryRules>(sockets_.back().socket);
-            auto response = query->SendRulesQuery(address);
+    co_await sync_ctx_->SwitchTo();
 
-            queries_[address].emplace_back(std::move(query), high_resolution_clock::now());
+    CreateSocketIfNeeded(address.GetType() == NA_BROADCAST);
 
-            return response;
-        });
+    auto query = std::make_unique<SourceQueryRules>(sockets_.back().socket);
+    auto response = query->SendRulesQuery(address);
+    queries_[address].emplace_back(std::move(query), high_resolution_clock::now());
 
-    co_return co_await response;
+    SQResponseInfo<SQ_RULES> result = co_await response;
+
+    if (caller_ctx)
+    {
+        co_await caller_ctx->SwitchTo();
+    }
+
+    co_return result;
 }
 
-result<SQResponseInfo<SQ_PLAYERS>> MultiSourceQuery::GetPlayersAsync(const netadr_t& address)
+result<SQResponseInfo<SQ_PLAYERS>> MultiSourceQuery::GetPlayersAsync(netadr_t address)
 {
-    auto response = co_await sync_ctx_.Run<result<SQResponseInfo<SQ_PLAYERS>>>(
-        [this, address]
-        {
-            CreateSocketIfNeeded(address.GetType() == NA_BROADCAST);
+    std::shared_ptr<SynchronizationContext> caller_ctx = SynchronizationContext::Current();
 
-            auto query = std::make_unique<SourceQueryPlayers>(sockets_.back().socket);
-            auto response = query->SendPlayersQuery(address);
+    co_await sync_ctx_->SwitchTo();
 
-            queries_[address].emplace_back(std::move(query), high_resolution_clock::now());
+    CreateSocketIfNeeded(address.GetType() == NA_BROADCAST);
 
-            return response;
-        });
+    auto query = std::make_unique<SourceQueryPlayers>(sockets_.back().socket);
+    auto response = query->SendPlayersQuery(address);
+    queries_[address].emplace_back(std::move(query), high_resolution_clock::now());
 
-    co_return co_await response;
+    SQResponseInfo<SQ_PLAYERS> result = co_await response;
+
+    if (caller_ctx)
+    {
+        co_await caller_ctx->SwitchTo();
+    }
+
+    co_return result;
 }
 
 result<void> MultiSourceQuery::SwitchToNewSocket(bool broadcast)
 {
-    co_await sync_ctx_.Run<void>([this, broadcast]
+    std::shared_ptr<SynchronizationContext> caller_ctx = SynchronizationContext::Current();
+    co_await sync_ctx_->SwitchTo();
+
+    CreateSocket(broadcast);
+
+    if (caller_ctx)
     {
-        CreateSocket(broadcast);
-    });
+        co_await caller_ctx->SwitchTo();
+    }
 }
 
 void MultiSourceQuery::MainLoop()
@@ -113,15 +133,15 @@ void MultiSourceQuery::MainLoop()
         CloseExpiredSockets(current_time);
 
         {
-            OPTICK_EVENT("RunCallbacks")
-            sync_ctx_.RunCallbacks();
+            OPTICK_EVENT("Update")
+            manual_sync_ctx_->Update();
         }
 
-        std::this_thread::yield();
+        // TODO make conditional variable
+        std::this_thread::sleep_for(5ms);
     }
 
     main_loop_done_ = true;
-    // TODO cancel all operations
 }
 
 void MultiSourceQuery::AssembleBuffer(ByteBuffer& buffer, netadr_t from_addr)

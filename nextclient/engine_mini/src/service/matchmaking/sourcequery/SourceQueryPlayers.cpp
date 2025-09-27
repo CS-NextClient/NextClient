@@ -11,10 +11,11 @@ SourceQueryPlayers::SourceQueryPlayers(SOCKET socket) :
 result<SQResponseInfo<SQ_PLAYERS>> SourceQueryPlayers::SendPlayersQuery(netadr_t addr)
 {
     response_promise_ = std::move(result_promise<SQResponseInfo<SQ_PLAYERS>>());
+    result<SQResponseInfo<SQ_PLAYERS>> task = response_promise_.get_result();
 
     Send(addr);
 
-    return response_promise_.get_result();
+    return task;
 }
 
 void SourceQueryPlayers::Send(netadr_t addr)

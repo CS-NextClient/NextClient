@@ -21,7 +21,7 @@ result<std::vector<netadr_t>> FileMasterClient::GetServerAddressesAsync(
     std::shared_ptr<CancellationToken> cancellation_token
 )
 {
-    std::vector<netadr_t> addresses = co_await TaskCoro::RunIO<std::vector<netadr_t>>([this] { return ReadFromFile(file_name_); });
+    std::vector<netadr_t> addresses = co_await TaskCoro::RunIO([this] { return ReadFromFile(file_name_); });
 
     if (address_received_callback)
     {

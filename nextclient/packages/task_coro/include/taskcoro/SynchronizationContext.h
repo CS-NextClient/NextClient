@@ -1,79 +1,40 @@
 #pragma once
-#include <functional>
-#include <queue>
-#include <mutex>
+#include <utility>
 
 #include <concurrencpp/concurrencpp.h>
+
+#include "SynchronizationContextImplInterface.h"
+#include "ContinuationContextType.h"
 
 namespace taskcoro
 {
     class SynchronizationContext
     {
-        std::queue<std::function<void()>> callbacks_queue_;
-        std::recursive_mutex mutex_;
+        friend class TaskCoro;
+
+        std::shared_ptr<SynchronizationContextImplInterface> sync_ctx_impl_;
+
+        thread_local static std::shared_ptr<SynchronizationContext> current_;
 
     public:
-        void RunCallbacks()
-        {
-            std::lock_guard lock_guard(mutex_);
+        SynchronizationContext() = delete;
+        SynchronizationContext(SynchronizationContext&) = delete;
+        SynchronizationContext& operator=(SynchronizationContext&) = delete;
 
-            std::queue<std::function<void()>> callbacks_queue;
-            callbacks_queue_.swap(callbacks_queue);
+        explicit SynchronizationContext(
+            std::shared_ptr<SynchronizationContextImplInterface> sync_ctx_impl
+        );
 
-            while (!callbacks_queue.empty())
-            {
-                auto& callback = callbacks_queue.front();
-                callback();
+        template<class TCallable, class... TArgs>
+        void Run(TCallable&& callable, TArgs&&... arguments);
 
-                callbacks_queue.pop();
-            }
-        }
+        concurrencpp::result<void> SwitchTo();
 
-        template <class TReturn>
-            requires !std::is_void_v<TReturn>
-        concurrencpp::result<TReturn> Run(const std::function<TReturn()>& function)
-        {
-            std::shared_ptr<concurrencpp::result_promise<TReturn>> promise = std::make_shared<concurrencpp::result_promise<TReturn>>();
+        static std::shared_ptr<SynchronizationContext> Current();
 
-            {
-                std::lock_guard lock_guard(mutex_);
-
-                callbacks_queue_.emplace([function, promise]
-                {
-                    promise->set_result(function());
-                });
-            }
-
-            std::thread::id invoke_thread_id = std::this_thread::get_id();
-
-            auto result = co_await promise->get_result();
-
-            co_await TaskCoro::TrySwitchToThread(invoke_thread_id);
-
-            co_return result;
-        }
-
-        template<class TReturn>
-            requires std::is_void_v<TReturn>
-        concurrencpp::result<TReturn> Run(const std::function<TReturn()>& function)
-        {
-            std::shared_ptr<concurrencpp::result_promise<void>> promise = std::make_shared<concurrencpp::result_promise<void>>();
-
-            {
-                std::lock_guard lock_guard(mutex_);
-
-                callbacks_queue_.emplace([function, promise]
-                {
-                    function();
-                    promise->set_result();
-                });
-            }
-
-            std::thread::id invoke_thread_id = std::this_thread::get_id();
-
-            co_await promise->get_result();
-
-            co_await TaskCoro::TrySwitchToThread(invoke_thread_id);
-        }
+    private:
+        static void SetCurrent(std::shared_ptr<SynchronizationContext> sync_ctx);
     };
 }
+
+#include "SynchronizationContext.tpp"

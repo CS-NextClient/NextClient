@@ -1,12 +1,18 @@
 cmake_minimum_required(VERSION 3.21)
 project(TaskCoro)
 
+set(CMAKE_CXX_STANDARD 23)
+
 find_package(concurrencpp CONFIG REQUIRED)
 find_package(magic_enum CONFIG REQUIRED)
 
 add_library(${PROJECT_NAME} STATIC
         src/TaskCoro.cpp
+        src/SynchronizationContext.cpp
         src/io/net.cpp
+        src/impl/TaskCoroImpl.cpp
+        src/impl/SynchronizationContextImpl.cpp
+        src/impl/SynchronizationContextManual.cpp
 )
 add_library(TaskCoro::TaskCoro ALIAS ${PROJECT_NAME})
 

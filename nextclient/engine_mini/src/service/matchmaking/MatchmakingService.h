@@ -67,13 +67,27 @@ namespace service::matchmaking
             std::shared_ptr<taskcoro::CancellationToken> cancellation_token
         );
 
+        concurrencpp::result<std::vector<ServerInfo>> RequestServerListThreaded(
+            std::shared_ptr<MasterClientInterface> ms_client,
+            std::function<void(const ServerInfo&)> server_answered_callback,
+            std::shared_ptr<taskcoro::CancellationToken> cancellation_token,
+            std::shared_ptr<taskcoro::SynchronizationContext> caller_ctx
+        );
+
+        concurrencpp::result<void> RefreshServerListThreaded(
+            std::vector<gameserveritem_t> gameservers,
+            std::function<void(const ServerInfo&)> server_answered_callback,
+            std::shared_ptr<taskcoro::CancellationToken> cancellation_token,
+            std::shared_ptr<taskcoro::SynchronizationContext> caller_ctx
+        );
+
         concurrencpp::result<std::vector<ServerInfo>> RequestServerList(
             std::shared_ptr<MasterClientInterface> ms_client,
             std::function<void(const ServerInfo&)> server_answered_callback,
             std::shared_ptr<taskcoro::CancellationToken> cancellation_token
         );
 
-        static concurrencpp::result<ServerInfo> WaitAndProcessAnySQTask(
+        static concurrencpp::result<std::vector<ServerInfo>> WaitAnySQTaskAndProcess(
             std::shared_ptr<std::vector<SQInfoTask>> active_tasks,
             std::shared_ptr<taskcoro::CancellationToken> cancellation_token
         );
