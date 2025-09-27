@@ -162,7 +162,7 @@ void CServerList::UpdateServerItem(bool successful_response, int iServer)
 {
     auto server_details = EngineMini()->GetSteamMatchmakingServers()->GetServerDetails(server_list_request_, iServer);
 
-    if (servers_.count(iServer))
+    if (servers_.contains(iServer))
     {
         servers_.at(iServer).gs = *server_details;
         servers_.at(iServer).hadSuccessfulResponse = successful_response;
