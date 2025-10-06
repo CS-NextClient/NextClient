@@ -2,6 +2,7 @@
 #include "MasterClientFactoryInterface.h"
 #include "HttpMasterClient.h"
 #include "MasterRegionCode.h"
+#include "constants.h"
 
 class MasterClientFactory : public MasterClientFactoryInterface
 {
@@ -17,6 +18,9 @@ class MasterClientFactory : public MasterClientFactoryInterface
         MsClientType ms_client_type = MsClientType::SourceQuery;
         MasterRegionCode region_code = MasterRegionCode::Europe;
         bool cache_enabled{};
+        std::chrono::milliseconds next_request_delay = kDefaultNextRequestDelay;
+        std::chrono::milliseconds query_delay = kDefaultQueryDelay;
+        std::chrono::milliseconds query_timeout = kDefaultQueryTimeout;
     };
 
 private:

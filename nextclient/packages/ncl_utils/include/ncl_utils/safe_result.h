@@ -4,7 +4,7 @@
 #include <variant>
 #include <string>
 
-namespace saferesult
+namespace ncl_utils
 {
     class ResultErrorInterface
     {

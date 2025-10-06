@@ -4,5 +4,18 @@
 
 namespace taskcoro::async_io
 {
-    concurrencpp::result<ByteBuffer> SendAndRecv(SOCKET sock, timeval timeout, const ByteBuffer& send_data, sockaddr_in address);
+    enum class SendAndRecvStatus
+    {
+        Success,
+        Timeout,
+        Error,
+    };
+
+    concurrencpp::result<std::tuple<SendAndRecvStatus, ByteBuffer>> SendAndRecv(
+        SOCKET sock,
+        std::chrono::milliseconds timeout,
+        ByteBuffer send_data,
+        sockaddr_in address,
+        std::shared_ptr<CancellationToken> cancellation_token = nullptr
+    );
 }

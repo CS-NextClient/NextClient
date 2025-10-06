@@ -40,6 +40,8 @@ namespace service::matchmaking
 
         std::shared_ptr<MultiSourceQuery> source_query_{};
         std::shared_ptr<MasterClientFactoryInterface> internet_ms_factory_{};
+        std::shared_ptr<MasterClientInterface> internet_ms_client_{};
+        std::shared_ptr<MasterClientCacheInterface> internet_ms_cache_client_{};
         bool internet_ms_force_use_cache_{};
 
     public:
@@ -61,7 +63,8 @@ namespace service::matchmaking
 
     private:
         concurrencpp::result<RequestServerListResult> RequestServerListWithCacheRespect(
-            std::shared_ptr<MasterClientFactoryInterface> factory,
+            std::shared_ptr<MasterClientInterface> ms_client,
+            std::shared_ptr<MasterClientCacheInterface> ms_cache,
             bool force_use_cache,
             std::function<void(const ServerInfo&)> server_answered_callback,
             std::shared_ptr<taskcoro::CancellationToken> cancellation_token
@@ -88,7 +91,7 @@ namespace service::matchmaking
         );
 
         static concurrencpp::result<std::vector<ServerInfo>> WaitAnySQTaskAndProcess(
-            std::shared_ptr<std::vector<SQInfoTask>> active_tasks,
+            std::vector<SQInfoTask>& active_tasks,
             std::shared_ptr<taskcoro::CancellationToken> cancellation_token
         );
 

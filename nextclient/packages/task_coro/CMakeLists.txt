@@ -22,7 +22,6 @@ target_include_directories(${PROJECT_NAME} PUBLIC
 
 target_link_libraries(${PROJECT_NAME} PUBLIC
         data_types::data_types
-        SafeResult::SafeResult
         concurrencpp::concurrencpp
         magic_enum::magic_enum
 )

@@ -2,11 +2,11 @@
 
 #include <optick.h>
 #include <ranges>
-#include <queue>
 #include <utility>
 
+#include <ppl.h>
+#include <concurrent_queue.h>
 #include <strtools.h>
-#include <nitro_utils/net_utils.h>
 #include <taskcoro/TaskCoro.h>
 
 #include "master/MasterClientFactory.h"
@@ -18,7 +18,7 @@ using namespace concurrencpp;
 using namespace taskcoro;
 
 MatchmakingService::MatchmakingService(std::shared_ptr<MultiSourceQuery> source_query) :
-    source_query_(source_query)
+    source_query_(std::move(source_query))
 {
     internet_ms_factory_ = std::make_shared<MasterClientFactory>();
 }
@@ -36,13 +36,23 @@ result<std::vector<MatchmakingService::ServerInfo>> MatchmakingService::RequestS
     {
         default:
         case ServerListSource::Internet:
-            factory = internet_ms_factory_;
+            if (internet_ms_client_ == nullptr)
+            {
+                internet_ms_client_ = internet_ms_factory_->CreateClient();
+            }
+
+            if (internet_ms_cache_client_ == nullptr)
+            {
+                internet_ms_cache_client_ = internet_ms_factory_->CreateCacheClient();
+            }
+
             force_use_cache = &internet_ms_force_use_cache_;
             break;
     }
 
     RequestServerListResult result = co_await RequestServerListWithCacheRespect(
-        factory,
+        internet_ms_client_,
+        internet_ms_cache_client_,
         *force_use_cache,
         server_answered_callback,
         cancellation_token);
@@ -76,13 +86,12 @@ result<gameserveritem_t> MatchmakingService::RefreshServer(uint32_t ip, uint16_t
 }
 
 result<MatchmakingService::RequestServerListResult> MatchmakingService::RequestServerListWithCacheRespect(
-    std::shared_ptr<MasterClientFactoryInterface> factory,
+    std::shared_ptr<MasterClientInterface> ms_client,
+    std::shared_ptr<MasterClientCacheInterface> ms_cache,
     bool force_use_cache,
     std::function<void(const ServerInfo&)> server_answered_callback,
     std::shared_ptr<CancellationToken> cancellation_token)
 {
-    std::shared_ptr<MasterClientInterface> ms_client = factory->CreateClient();
-
     std::vector<ServerInfo> servers;
 
     if (!force_use_cache)
@@ -100,10 +109,8 @@ result<MatchmakingService::RequestServerListResult> MatchmakingService::RequestS
 
     if (servers.empty())
     {
-        std::shared_ptr<MasterClientInterface> ms_cache_client = factory->CreateCacheClient();
-
         servers = co_await RequestServerList(
-            ms_cache_client,
+            ms_cache,
             [server_answered_callback](const ServerInfo& server_info) { server_answered_callback(server_info); },
             cancellation_token);
 
@@ -116,7 +123,7 @@ result<MatchmakingService::RequestServerListResult> MatchmakingService::RequestS
             [](const ServerInfo& s) { return netadr_t(s.gameserver.m_NetAdr.GetIP(), s.gameserver.m_NetAdr.GetConnectionPort()); })
         | std::ranges::to<std::vector>();
 
-    factory->CreateCacheClient()->Save(addresses);
+    ms_cache->Save(addresses);
 
     co_return RequestServerListResult { servers, false };
 }
@@ -130,32 +137,30 @@ result<std::vector<MatchmakingService::ServerInfo>> MatchmakingService::RequestS
 {
     std::vector<ServerInfo> servers;
 
-    std::shared_ptr<std::queue<netadr_s>> addresses_to_process = std::make_shared<std::queue<netadr_t>>();
-    std::shared_ptr<std::vector<SQInfoTask>> server_info_tasks = std::make_shared<std::vector<SQInfoTask>>();
+    std::shared_ptr<concurrency::concurrent_queue<netadr_s>> addresses_to_process = std::make_shared<concurrency::concurrent_queue<netadr_s>>();
+    std::vector<SQInfoTask> server_info_tasks{};
     size_t server_index = 0;
 
     result<std::vector<netadr_t>> addresses_task =
         ms_client->GetServerAddressesAsync([addresses_to_process](const netadr_t& server_address)
         {
-            addresses_to_process->emplace(server_address);
+            addresses_to_process->push(server_address);
         }, cancellation_token);
 
     co_await source_query_->SwitchToNewSocket();
 
-    while (addresses_task.status() == result_status::idle || !server_info_tasks->empty() || !addresses_to_process->empty())
+    while (addresses_task.status() == result_status::idle || !server_info_tasks.empty() || !addresses_to_process->empty())
     {
         cancellation_token->ThrowIfCancelled();
 
-        while (server_info_tasks->size() < kMaxSimultaneousSQRequests && !addresses_to_process->empty())
+        netadr_t server_address{};
+        while (server_info_tasks.size() < kMaxSimultaneousSQRequests && addresses_to_process->try_pop(server_address))
         {
-            netadr_t server_address = addresses_to_process->front();
-            addresses_to_process->pop();
-
             result<SQResponseInfo<SQ_INFO>> sq_task = source_query_->GetInfoAsync(server_address);
-            server_info_tasks->emplace_back(server_index++, std::move(sq_task));
+            server_info_tasks.emplace_back(server_index++, std::move(sq_task));
         }
 
-        if (!server_info_tasks->empty())
+        if (!server_info_tasks.empty())
         {
             std::vector<ServerInfo> answered_servers = co_await WaitAnySQTaskAndProcess(server_info_tasks, cancellation_token);
             servers.append_range(answered_servers);
@@ -184,7 +189,7 @@ result<void> MatchmakingService::RefreshServerListThreaded(
     std::shared_ptr<SynchronizationContext> caller_ctx
 )
 {
-    std::shared_ptr<std::vector<SQInfoTask>> server_info_tasks = std::make_shared<std::vector<SQInfoTask>>();
+    std::vector<SQInfoTask> server_info_tasks{};
     size_t current_server_index = 0;
     size_t answered_servers_count = 0;
 
@@ -195,7 +200,7 @@ result<void> MatchmakingService::RefreshServerListThreaded(
     {
         cancellation_token->ThrowIfCancelled();
 
-        while (server_info_tasks->size() < kMaxSimultaneousSQRequests && current_server_index < gameservers.size())
+        while (server_info_tasks.size() < kMaxSimultaneousSQRequests && current_server_index < gameservers.size())
         {
             const servernetadr_t& server_net_adr = gameservers[current_server_index].m_NetAdr;
             netadr_t server_address(server_net_adr.GetIP(), server_net_adr.GetQueryPort());
@@ -208,10 +213,10 @@ result<void> MatchmakingService::RefreshServerListThreaded(
             }
 
             result<SQResponseInfo<SQ_INFO>> sq_task = source_query_->GetInfoAsync(server_address);
-            server_info_tasks->emplace_back(current_server_index++, std::move(sq_task));
+            server_info_tasks.emplace_back(current_server_index++, std::move(sq_task));
         }
 
-        if (!server_info_tasks->empty())
+        if (!server_info_tasks.empty())
         {
             std::vector<ServerInfo> answered_servers = co_await WaitAnySQTaskAndProcess(server_info_tasks, cancellation_token);
             answered_servers_count += answered_servers.size();
@@ -246,26 +251,26 @@ result<std::vector<MatchmakingService::ServerInfo>> MatchmakingService::RequestS
 }
 
 result<std::vector<MatchmakingService::ServerInfo>> MatchmakingService::WaitAnySQTaskAndProcess(
-    std::shared_ptr<std::vector<SQInfoTask>> active_tasks,
+    std::vector<SQInfoTask>& active_tasks,
     std::shared_ptr<CancellationToken> cancellation_token
 )
 {
     std::vector<ServerInfo> servers;
 
-    if (active_tasks->empty())
+    if (active_tasks.empty())
     {
         co_return servers;
     }
 
-    auto tasks = *active_tasks | std::views::transform([](const SQInfoTask& req) { return req.sq_task; });
+    auto tasks = active_tasks | std::views::transform([](const SQInfoTask& req) { return req.sq_task; });
     co_await TaskCoro::WhenAny(tasks, true, cancellation_token);
 
-    for (auto it = active_tasks->begin(); it != active_tasks->end(); )
+    for (auto it = active_tasks.begin(); it != active_tasks.end(); )
     {
         if (it->sq_task.status() != result_status::idle)
         {
             servers.emplace_back(it->server_index, ConvertToGameServerItem(it->sq_task.get()));
-            it = active_tasks->erase(it);
+            it = active_tasks.erase(it);
         }
         else
         {

@@ -11,6 +11,7 @@
 #include "FileMasterClient.h"
 #include "MasterServerQueryClient.h"
 #include "NullCacheMasterClient.h"
+#include "constants.h"
 
 std::shared_ptr<MasterClientInterface> MasterClientFactory::CreateClient()
 {
@@ -29,7 +30,16 @@ std::shared_ptr<MasterClientInterface> MasterClientFactory::CreateClient()
                 int appid = SteamUtils()->GetAppID();
                 const char* gamedir = gEngfuncs.pfnGetGameDirectory();
 
-                return std::make_shared<MasterServerQueryClient>(addr, config_.region_code, appid, gamedir);
+                std::shared_ptr<MasterServerQueryClient> ms_client = std::make_shared<MasterServerQueryClient>(
+                    addr,
+                    config_.region_code,
+                    appid,
+                    gamedir,
+                    config_.next_request_delay,
+                    config_.query_delay,
+                    config_.query_timeout);
+
+                return ms_client;
             }
 
         case MsClientType::Http:
@@ -100,6 +110,27 @@ void MasterClientFactory::LoadConfigIfNeeded()
     config_.address = selected_server->GetString("address", config_.address.c_str());
     config_.region_code = (MasterRegionCode)selected_server->GetInt("region", (int)config_.region_code);
     config_.cache_enabled = config->GetBool("CacheServers", config_.cache_enabled);
+
     config_.ms_client_type =
-        start_with(config_.address, "http", nitro_utils::CompareOptions::RegisterIndependent) ? MsClientType::Http : MsClientType::SourceQuery;
+        start_with(config_.address, "http", nitro_utils::CompareOptions::RegisterIndependent) ?
+            MsClientType::Http :
+            MsClientType::SourceQuery;
+
+    int next_request_delay = selected_server->GetInt("NextRequestDelay", -1);
+    if (next_request_delay >= 0)
+    {
+        config_.next_request_delay = std::chrono::milliseconds(next_request_delay);
+    }
+
+    int query_delay = selected_server->GetInt("QueryDelay", -1);
+    if (query_delay >= 0)
+    {
+        config_.query_delay = std::chrono::milliseconds(query_delay);
+    }
+
+    int query_timeout = selected_server->GetInt("QueryTimeout", -1);
+    if (query_timeout >= 0)
+    {
+        config_.query_timeout = std::chrono::milliseconds(query_timeout);
+    }
 }

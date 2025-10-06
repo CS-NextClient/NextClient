@@ -45,19 +45,20 @@ set(CPR_ENABLE_SSL ON)
 set(CPR_USE_SYSTEM_CURL ON)
 
 # gameanalytics configuration
-if (VCPKG_TARGET_TRIPLET STREQUAL "x86-windows-static")
-    set(PLATFORM "win32-vc141-mt-static")
-else ()
-    set(PLATFORM "win32-vc141-static")
-endif ()
-set(NO_SQLITE_SRC "NO")
+if (NEXT_LAUNCHER_ENABLE_GAMEANALYTICS)
+    if (VCPKG_TARGET_TRIPLET STREQUAL "x86-windows-static")
+        set(PLATFORM "win32-vc141-mt-static")
+    else ()
+        set(PLATFORM "win32-vc141-static")
+    endif ()
+    set(NO_SQLITE_SRC "NO")
 
-# explicit dependencies
-add_subdirectory(dep/gs-sdk/build/cmake/gameanalytics)
-target_compile_options(GameAnalytics PRIVATE
-        /Zc:strictStrings-
-)
-add_subdirectory(dep/gs-sdk/build/cmake/sqlite)
+    add_subdirectory(dep/gs-sdk/build/cmake/gameanalytics)
+    target_compile_options(GameAnalytics PRIVATE
+            /Zc:strictStrings-
+    )
+    add_subdirectory(dep/gs-sdk/build/cmake/sqlite)
+endif ()
 
 # launcher subprojects
 add_subdirectory(src)

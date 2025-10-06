@@ -33,5 +33,5 @@ target_link_libraries(${TARGET_NAME} PRIVATE
         taocpp::json
         concurrencpp::concurrencpp
         easyloggingpp::easyloggingpp
-        SafeResult::SafeResult
+        ncl_utils::ncl_utils
 )

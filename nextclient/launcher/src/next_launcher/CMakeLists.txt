@@ -28,7 +28,7 @@ target_link_libraries(${TARGET_NAME} PRIVATE
         NextClient::gameui
         NextClient::steam_api_proxy
         data_encoding::data_encoding
-        SafeResult::SafeResult
+        ncl_utils::ncl_utils
         next_launcher::utils
         magic_enum::magic_enum
         easyloggingpp::easyloggingpp

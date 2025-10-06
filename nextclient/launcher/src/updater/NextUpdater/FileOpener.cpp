@@ -3,7 +3,7 @@
 #include <easylogging++.h>
 #include <Windows.h>
 
-using namespace saferesult;
+using namespace ncl_utils;
 namespace fs = std::filesystem;
 
 OpenerFile::OpenerFile(std::filesystem::path filepath, std::fstream&& stream, std::string error, DWORD file_attributes_to_restore, OpenerFileFlags::Value flags) :

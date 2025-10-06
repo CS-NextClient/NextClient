@@ -139,7 +139,6 @@ static void EngineMiniUninitialize()
     CL_DeleteHttpDownloadManager();
     KV_UninitializeKeyValuesSystem();
 
-    g_pMatchmakingServers = nullptr;
     JSAPI_Shutdown();
 
     taskcoro::TaskCoro::UnInitialize();
@@ -251,6 +250,8 @@ static void EngineMiniInitialize(nitroapi::NitroApiInterface* nitro_api, NextCli
 
 static void OnGameUninitializing()
 {
+    g_pMatchmakingServers = nullptr;
+
     PROTECTOR_Shutdown();
     CL_CvarsSandboxShutdown();
 
@@ -560,7 +561,6 @@ class EngineMini : public EngineMiniInterface
 {
     std::vector<std::shared_ptr<nitroapi::Unsubscriber>> unsubs_{};
     bool is_uninitializing_{};
-    std::unique_ptr<service::matchmaking::MatchmakingSteamComp> matchmaking_steam_comp_;
 
 public:
     void Init(nitroapi::NitroApiInterface* nitro_api, NextClientVersion client_version, AnalyticsInterface* analytics) override

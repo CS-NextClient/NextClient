@@ -374,10 +374,19 @@ void MultiSourceQuery::ReceiveAndAssembleBuffers()
             sockaddr from_addr {};
             int from_len = sizeof(from_addr);
 
-            ByteBuffer buffer(65535);
-            buffer.Seek(0);
+            u_long pending = 0;
+            bool pending_ok = ioctlsocket(socket, FIONREAD, &pending) == 0;
+            size_t recv_capacity = 65535;
 
-            int bytes_received = recvfrom(socket, (char*)buffer.GetBuffer(), (int)buffer.Size(), 0, &from_addr, &from_len);
+            if (pending_ok && pending > 0)
+            {
+                recv_capacity = (size_t)std::min<u_long>(pending, 65535);
+            }
+
+            ByteBuffer recv_buffer(recv_capacity);
+            recv_buffer.Seek(0);
+
+            int bytes_received = recvfrom(socket, (char*)recv_buffer.GetBuffer(), (int)recv_buffer.Size(), 0, &from_addr, &from_len);
             if (bytes_received == SOCKET_ERROR)
             {
                 LOG(DEBUG) << "[MultiSourceQuery] recvfrom completed with error: " << WSAGetLastError();
@@ -389,8 +398,8 @@ void MultiSourceQuery::ReceiveAndAssembleBuffers()
                 netadr_t netadr{};
                 netadr.SetFromSockadr(&from_addr);
 
-                buffer.Resize(bytes_received);
-                AssembleBuffer(buffer, netadr);
+                recv_buffer.Resize(bytes_received);
+                AssembleBuffer(recv_buffer, netadr);
             }
 
             total_bytes_received += bytes_received;

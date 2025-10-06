@@ -33,5 +33,5 @@ endif()
 
 add_subdirectory(data_encoding)
 add_subdirectory(data_types)
-add_subdirectory(safe_result)
+add_subdirectory(ncl_utils)
 add_subdirectory(task_coro)

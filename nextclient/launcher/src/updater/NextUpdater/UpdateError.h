@@ -1,7 +1,7 @@
 #pragma once
 #include <string>
 #include <magic_enum/magic_enum.hpp>
-#include <saferesult/Result.h>
+#include <ncl_utils/safe_result.h>
 
 enum class UpdateErrorType
 {
@@ -12,7 +12,7 @@ enum class UpdateErrorType
     UnknownError
 };
 
-class UpdateError : public saferesult::ResultErrorInterface
+class UpdateError : public ncl_utils::ResultErrorInterface
 {
     std::string message_;
     UpdateErrorType type_;

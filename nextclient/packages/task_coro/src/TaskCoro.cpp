@@ -56,21 +56,47 @@ concurrencpp::result<void> TaskCoro::Yield_()
 {
     assert(task_impl_ != nullptr);
 
+    auto caller_ctx = SynchronizationContext::Current();
+
     co_await task_impl_->Yield_();
+
+    if (caller_ctx)
+    {
+        co_await caller_ctx->SwitchTo();
+    }
 }
 
-concurrencpp::result<void> TaskCoro::WaitForMs(std::chrono::milliseconds ms)
+concurrencpp::result<void> TaskCoro::WaitForMs(std::chrono::milliseconds ms, std::shared_ptr<CancellationToken> cancellation_token)
 {
     assert(task_impl_ != nullptr);
 
-    return task_impl_->WaitForMs(ms);
+    auto caller_ctx = SynchronizationContext::Current();
+
+    co_await task_impl_->WaitForMs(ms);
+
+    if (caller_ctx)
+    {
+        co_await caller_ctx->SwitchTo();
+    }
+
+    if (cancellation_token)
+    {
+        cancellation_token->ThrowIfCancelled();
+    }
 }
 
 concurrencpp::result<void> TaskCoro::WaitForNextFrame()
 {
     assert(task_impl_ != nullptr);
 
-    return task_impl_->WaitForNextFrame();
+    auto caller_ctx = SynchronizationContext::Current();
+
+    co_await task_impl_->WaitForNextFrame();
+
+    if (caller_ctx)
+    {
+        co_await caller_ctx->SwitchTo();
+    }
 }
 
 concurrencpp::result<void> TaskCoro::WaitWhile(std::function<bool()> condition,
@@ -85,7 +111,7 @@ concurrencpp::result<void> TaskCoro::WaitWhile(std::function<bool()> condition,
             cancellation_token->ThrowIfCancelled();
         }
 
-        co_await task_impl_->Yield_();
+        co_await Yield_();
     }
 }
 
@@ -101,6 +127,6 @@ concurrencpp::result<void> TaskCoro::WaitUntil(std::function<bool()> condition,
             cancellation_token->ThrowIfCancelled();
         }
 
-        co_await task_impl_->Yield_();
+        co_await Yield_();
     }
 }

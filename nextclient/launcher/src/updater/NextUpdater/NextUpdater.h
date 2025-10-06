@@ -8,7 +8,7 @@
 #include <utils/bitmask.h>
 #include <updater/NextUpdater/NextUpdaterEvent.h>
 #include <updater/json_data/UpdateEntry.h>
-#include <saferesult/Result.h>
+#include <ncl_utils/safe_result.h>
 
 #include "NextUpdaterHttpService.h"
 #include "http_download/HttpFileResult.h"
@@ -70,19 +70,19 @@ private:
 
     RestoreFromBackupResult RestoreFromBackup(RestoreFromBackupBehaviour behaviour = RestoreFromBackupBehaviour::None);
 
-    saferesult::ResultT<UpdateEntry, UpdateError> SendUpdateFilesRequest();
+    ncl_utils::ResultT<UpdateEntry, UpdateError> SendUpdateFilesRequest();
     std::vector<UpdaterFileInfo> CreateUpdaterFileInfos(const std::vector<FileEntry>& remote_files);
     // key is remote file name
-    static saferesult::ResultT<std::unordered_map<std::string, UpdaterFileInfo>, UpdateError> GetFilesToUpdate(const std::vector<UpdaterFileInfo>& files);
-    static saferesult::ResultT<std::vector<HttpFileResult>, UpdateError> DownloadFilesToUpdate(auto files, const std::string& hostname, std::function<bool(cpr::cpr_off_t total, cpr::cpr_off_t downloaded, cpr::cpr_off_t speed)> progress);
+    static ncl_utils::ResultT<std::unordered_map<std::string, UpdaterFileInfo>, UpdateError> GetFilesToUpdate(const std::vector<UpdaterFileInfo>& files);
+    static ncl_utils::ResultT<std::vector<HttpFileResult>, UpdateError> DownloadFilesToUpdate(auto files, const std::string& hostname, std::function<bool(cpr::cpr_off_t total, cpr::cpr_off_t downloaded, cpr::cpr_off_t speed)> progress);
 
-    static saferesult::Result<> InstallFiles(FileOpener& file_opener, const std::vector<HttpFileResult>& downloaded_files, const std::unordered_map<std::string, UpdaterFileInfo>& updating_file_info);
+    static ncl_utils::Result<> InstallFiles(FileOpener& file_opener, const std::vector<HttpFileResult>& downloaded_files, const std::unordered_map<std::string, UpdaterFileInfo>& updating_file_info);
 
     // backup functions
-    saferesult::Result<> ClearBackupFolder();
-    saferesult::Result<UpdateError> BackupFiles(auto files);
-    saferesult::ResultT<int> RestoreFilesFromBackup(auto files);
-    saferesult::ResultT<int> RestoreFilesFromBackup();
+    ncl_utils::Result<> ClearBackupFolder();
+    ncl_utils::Result<UpdateError> BackupFiles(auto files);
+    ncl_utils::ResultT<int> RestoreFilesFromBackup(auto files);
+    ncl_utils::ResultT<int> RestoreFilesFromBackup();
 
     // utils
     static std::string GetStreamMd5(std::fstream& stream);

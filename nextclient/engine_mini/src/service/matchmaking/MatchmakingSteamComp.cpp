@@ -13,6 +13,14 @@ MatchmakingSteamComp::MatchmakingSteamComp()
     matchmaking_service_ = std::make_shared<MatchmakingService>(source_query_);
 }
 
+MatchmakingSteamComp::~MatchmakingSteamComp()
+{
+    for (auto& [request_id, request] : server_requests_)
+    {
+        MatchmakingSteamComp::CancelQuery(request_id);
+    }
+}
+
 HServerListRequest MatchmakingSteamComp::RequestInternetServerList(
     AppId_t iApp,
     MatchMakingKeyValuePair_t** ppchFilters,
@@ -335,8 +343,6 @@ result<void> MatchmakingSteamComp::RequestServerList(
     std::shared_ptr<CancellationToken> ct
 )
 {
-    EMatchMakingServerResponse response_code = eServerResponded;
-
     co_await matchmaking_service_->RequestServerList(
         server_list_source,
         [this, request_id, response_callback] (const MatchmakingService::ServerInfo& server_info)
@@ -345,7 +351,7 @@ result<void> MatchmakingSteamComp::RequestServerList(
         }, ct);
 
     OPTICK_EVENT("MatchmakingSteamComp::RequestServerList - response_callback->RefreshComplete")
-    response_callback->RefreshComplete(request_id, response_code);
+    response_callback->RefreshComplete(request_id, eServerResponded);
 }
 
 result<void> MatchmakingSteamComp::RefreshServerList(
@@ -355,8 +361,6 @@ result<void> MatchmakingSteamComp::RefreshServerList(
     std::shared_ptr<CancellationToken> ct
 )
 {
-    EMatchMakingServerResponse response_code = eServerResponded;
-
     co_await matchmaking_service_->RefreshServerList(
         gameservers,
         [this, request_id, response_callback] (const MatchmakingService::ServerInfo& server_info)
@@ -365,7 +369,7 @@ result<void> MatchmakingSteamComp::RefreshServerList(
         }, ct);
 
     OPTICK_EVENT("MatchmakingSteamComp::RefreshServerList - response_callback->RefreshComplete")
-    response_callback->RefreshComplete(request_id, response_code);
+    response_callback->RefreshComplete(request_id, eServerResponded);
 }
 
 void MatchmakingSteamComp::ServerAnsweredHandler(

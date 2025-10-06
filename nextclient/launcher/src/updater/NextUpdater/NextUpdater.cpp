@@ -4,14 +4,15 @@
 #include <nitro_utils/string_utils.h>
 #include <data_encoding/md5.h>
 #include <utils/platform.h>
-#include <saferesult/Result.h>
+#include <ncl_utils/safe_result.h>
+
 #include "http_download/HttpFileDownloader.h"
 
 #define LOG_TAG "[NextUpdater] "
 
 using namespace std::chrono;
 using namespace std::chrono_literals;
-using namespace saferesult;
+using namespace ncl_utils;
 namespace fs = std::filesystem;
 
 NextUpdater::NextUpdater(std::filesystem::path install_path,

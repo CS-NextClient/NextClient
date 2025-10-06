@@ -3,7 +3,7 @@
 #include <easylogging++.h>
 #include <next_launcher/version.h>
 #include <nitro_utils/string_utils.h>
-#include <saferesult/Result.h>
+#include <ncl_utils/safe_result.h>
 #include <utils/platform.h>
 
 #include "ClientLauncher.h"
@@ -11,7 +11,7 @@
 INITIALIZE_EASYLOGGINGPP
 
 using namespace std::chrono_literals;
-using namespace saferesult;
+using namespace ncl_utils;
 
 static void SetupLogger()
 {

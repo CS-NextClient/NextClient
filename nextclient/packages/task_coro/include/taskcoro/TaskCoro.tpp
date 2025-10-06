@@ -93,47 +93,57 @@ namespace taskcoro
             }
         };
 
-        auto caller_context = SynchronizationContext::Current();
+        auto caller_ctx = SynchronizationContext::Current();
         auto task = result_promise->get_result();
 
         task_impl_->RunTask(task_type, std::move(task_lambda));
 
-        if constexpr (std::is_void_v<TResult>)
+        if constexpr (is_coro_result)
         {
-            if (caller_context && continuation_context == ContinuationContextType::Caller)
-            {
-                co_await caller_context->SwitchTo();
-            }
+            TResult result = co_await task;
 
+            if constexpr (std::is_void_v<TUnwrapped>)
+            {
+                co_await std::move(result);
+
+                if (caller_ctx && continuation_context == ContinuationContextType::Caller)
+                {
+                    co_await caller_ctx->SwitchTo();
+                }
+
+                co_return;
+            }
+            else
+            {
+                auto value = co_await std::move(result);
+
+                if (caller_ctx && continuation_context == ContinuationContextType::Caller)
+                {
+                    co_await caller_ctx->SwitchTo();
+                }
+
+                co_return value;
+            }
+        }
+        else if constexpr (std::is_void_v<TResult>)
+        {
             co_await task;
-            co_return;
+
+            if (caller_ctx && continuation_context == ContinuationContextType::Caller)
+            {
+                co_await caller_ctx->SwitchTo();
+            }
         }
         else
         {
             TResult result = co_await task;
 
-            if (caller_context && continuation_context == ContinuationContextType::Caller)
+            if (caller_ctx && continuation_context == ContinuationContextType::Caller)
             {
-                co_await caller_context->SwitchTo();
+                co_await caller_ctx->SwitchTo();
             }
 
-            if constexpr (is_coro_result)
-            {
-                if constexpr (std::is_void_v<TUnwrapped>)
-                {
-                    co_await std::move(result);
-                    co_return;
-                }
-                else
-                {
-                    auto value = co_await std::move(result);
-                    co_return value;
-                }
-            }
-            else
-            {
-                co_return result;
-            }
+            co_return result;
         }
     }
 

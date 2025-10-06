@@ -19,6 +19,7 @@ namespace service::matchmaking
 
     public:
         explicit MatchmakingSteamComp();
+        ~MatchmakingSteamComp();
 
         // ISteamMatchmakingServers
         HServerListRequest RequestInternetServerList(AppId_t iApp, MatchMakingKeyValuePair_t** ppchFilters, uint32 nFilters, ISteamMatchmakingServerListResponse* response_callback) override;

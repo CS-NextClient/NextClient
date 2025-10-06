@@ -5,6 +5,7 @@
 
 #include <concurrencpp/concurrencpp.h>
 
+#include "CancellationToken.h"
 #include "TaskType.h"
 #include "SynchronizationContextImplInterface.h"
 

@@ -73,7 +73,7 @@ namespace taskcoro
          *
          * This method never blocks the calling thread.
          */
-        static concurrencpp::result<void> WaitForMs(std::chrono::milliseconds ms);
+        static concurrencpp::result<void> WaitForMs(std::chrono::milliseconds ms, std::shared_ptr<CancellationToken> cancellation_token = nullptr);
 
         /**
          * Suspends the execution of the current task until the next frame update.

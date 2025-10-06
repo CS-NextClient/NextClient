@@ -23,7 +23,6 @@
 #include <nitro_utils/config_utils.h>
 #include <nitro_utils/string_utils.h>
 #include <utils/platform.h>
-#include <saferesult/Result.h>
 #include <next_launcher/version.h>
 
 #include "Analytics.h"

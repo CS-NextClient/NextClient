@@ -9,6 +9,8 @@
 			"address"		"hl1master.steampowered.com:27011"
 			"site"		""
 			"region"		"0x03" // see region codes here https://developer.valvesoftware.com/wiki/Master_Server_Query_Protocol#Region_codes
+			"QueryDelay"		"2500" // this ms is very sensitive to sending requests with small delays, so increased delays are used
+			"NextRequestDelay"		"2500"
 		}
 		"Tsarvar"
 		{

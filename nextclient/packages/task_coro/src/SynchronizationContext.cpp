@@ -19,6 +19,11 @@ SynchronizationContext::SynchronizationContext(
 
 result<void> SynchronizationContext::SwitchTo()
 {
+    if (current_ != nullptr && current_->sync_ctx_impl_ == sync_ctx_impl_)
+    {
+        co_return;
+    }
+
     result_promise<void> promise;
     result<void> task = promise.get_result();
 
