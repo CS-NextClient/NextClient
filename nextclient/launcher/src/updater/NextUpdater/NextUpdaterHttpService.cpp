@@ -32,11 +32,13 @@ HttpResponse NextUpdaterHttpService::Post(
     str.insert(0, "{\"method\": \"" + method + "\", \"data\": ");
     str.append("}");
 
+    cpr::Header headers = headers_;
+    headers["Client-Time"] = std::to_string(std::time(nullptr));
+
     cpr::Session session;
     session.SetUrl(cpr::Url(service_url_));
     session.SetBody(SerializeAes(str));
-    headers_["Client-Time"] = std::to_string(std::time(nullptr));
-    session.SetHeader(headers_);
+    session.SetHeader(headers);
     session.SetConnectTimeout(connect_timeout_ms_);
     session.SetTimeout(timeout_ms);
     if (progress)
