@@ -108,6 +108,10 @@ COptionsSubVideo::COptionsSubVideo(vgui2::Panel *parent) : PropertyPage(parent, 
     m_pDisableMultitexture->SetSelected(m_CurrentSettings.disable_multitexture != 0);
     m_pDisableMultitexture->SetVisible(true);
 
+    m_pStretchAspect = new vgui2::CheckButton( this, "StretchAspect", "#GameUI_StretchAspect" );
+    m_pStretchAspect->SetSelected(m_CurrentSettings.stretch_aspect != 0);
+    m_pStretchAspect->SetVisible(true);
+
     LoadControlSettings("Resource\\OptionsSubVideo.res");
     PrepareResolutionList();
 
@@ -236,6 +240,7 @@ void COptionsSubVideo::OnResetData()
     m_pAddonsFolder->SetSelected(m_CurrentSettings.addons_folder);
     m_pLowVideoDetail->SetSelected(m_CurrentSettings.vid_level);
     m_pDisableMultitexture->SetSelected(m_CurrentSettings.disable_multitexture);
+    m_pStretchAspect->SetSelected(m_CurrentSettings.stretch_aspect);
     m_pDetailTextures->Reset();
     m_pVsync->Reset();
 
@@ -304,6 +309,7 @@ void COptionsSubVideo::GetVidSettings()
     g_pGameUIFuncs->GetCurrentVideoMode( &p->w, &p->h, &p->bpp );
     g_pGameUIFuncs->GetCurrentRenderer(p->renderer, 128, &p->windowed, &p->hdmodels, &p->addons_folder, &p->vid_level);
     p->disable_multitexture = m_pUserConfig->get_value_int("disable_multitexture", 0);
+    p->stretch_aspect = m_pUserConfig->get_value_int("stretch_aspect", 0);
 
     strlwr( p->renderer );
 
@@ -381,6 +387,12 @@ void COptionsSubVideo::ApplyVidSettings(bool bForceRefresh)
         m_CurrentSettings.disable_multitexture = checked ? 1 : 0;
     }
 
+    if ( m_pStretchAspect )
+    {
+        bool checked = m_pStretchAspect->IsSelected();
+        m_CurrentSettings.stretch_aspect = checked ? 1 : 0;
+    }
+
     if ( memcmp( &m_OrigSettings, &m_CurrentSettings, sizeof( CVidSettings ) ) == 0 && !bForceRefresh)
     {
         return;
@@ -404,7 +416,7 @@ void COptionsSubVideo::ApplyVidSettings(bool bForceRefresh)
     engine->pfnClientCmd(szCmd);
 
     m_pUserConfig->set_value("", "disable_multitexture", std::to_string(p->disable_multitexture), true);
-
+    m_pUserConfig->set_value("", "stretch_aspect", std::to_string(p->stretch_aspect), true);
 
     // Force restart of entire engine
     engine->pfnClientCmd("fmod stop\n");
@@ -454,6 +466,14 @@ void COptionsSubVideo::OnButtonChecked(KeyValues *data)
     if (pPanel == m_pDisableMultitexture)
     {
         if (state != m_CurrentSettings.disable_multitexture)
+        {
+            OnDataChanged();
+        }
+    }
+
+    if (pPanel == m_pStretchAspect)
+    {
+        if (state != m_CurrentSettings.stretch_aspect)
         {
             OnDataChanged();
         }

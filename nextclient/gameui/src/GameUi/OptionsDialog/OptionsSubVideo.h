@@ -54,6 +54,7 @@ private:
         int			addons_folder;
         int			vid_level;
         int			disable_multitexture;
+        int			stretch_aspect;
         char		renderer[ 128 ];
     };
 
@@ -84,6 +85,7 @@ private:
     vgui2::CheckButton *m_pAddonsFolder;
     vgui2::CheckButton *m_pLowVideoDetail;
     vgui2::CheckButton *m_pDisableMultitexture;
+    vgui2::CheckButton *m_pStretchAspect;
 
     CCvarSlider		*m_pBrightnessSlider;
     CCvarSlider		*m_pGammaSlider;

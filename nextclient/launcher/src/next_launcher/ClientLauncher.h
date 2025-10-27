@@ -72,6 +72,10 @@ private:
     void InitializeSentry();
     void UninitializeSentry();
 
+    void InitializeCmdLine(const char* cmd_line);
+    void ModifyCmdLineAfterRestart(const char* cmd_line);
+    void CheckVideoModeCrash();
+
     void Sys_ErrorHandler(const char* error);
 
     static void LogLoadedModulesWarn(nitroapi::NitroApiInterface* nitro_api);

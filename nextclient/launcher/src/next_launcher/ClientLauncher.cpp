@@ -49,8 +49,7 @@ ClientLauncher::ClientLauncher(HINSTANCE module_instance, const char* cmd_line) 
     hl_registry_ = std::make_shared<CRegistry>(kHlRegistry);
     hl_registry_->Init();
 
-    cmd_line_ = std::make_shared<CCommandLine>();
-    cmd_line_->CreateCmdLine(std::format("{} {}", cmd_line, config_provider_->get_value_string("launch_parameters", "")).c_str());
+    InitializeCmdLine(cmd_line);
 
     global_mutex_ = CreateMutexA(nullptr, FALSE, "ValveHalfLifeLauncherMutex");
     g_SaveFullDumps = cmd_line_->CheckParm("-fulldump");
@@ -131,8 +130,8 @@ void ClientLauncher::RunEngine()
 {
     analytics_->SendAnalyticsEvent("startup_run_engine");
 
-    char szPostRestartCmdLineArgs[4096] = { '\0' };
-    bool bRunEngine = true;
+    char post_restart_cmd_line[4096] = { '\0' };
+    bool is_engine_running = true;
 
     if (!cmd_line_->CheckParm("-game"))
         cmd_line_->AppendParm("-game", "cstrike");
@@ -144,26 +143,9 @@ void ClientLauncher::RunEngine()
     if (!cmd_line_->CheckParm("-num_edicts"))
         cmd_line_->AppendParm("-num_edicts", "4096");
 
-    if (hl_registry_->ReadInt("CrashInitializingVideoMode", 0))
-    {
-        hl_registry_->WriteInt("CrashInitializingVideoMode", 0);
+    CheckVideoModeCrash();
 
-        if (MessageBoxA(
-            NULL,
-            "It looks like a previous attempt to run the game failed due to a rendering subsystem error.\n"
-            "Reset the game resolution settings and run the game again?",
-            kErrorTitle,
-            MB_OKCANCEL | MB_ICONERROR | MB_ICONQUESTION | MB_DEFAULT_DESKTOP_ONLY) != IDOK)
-        {
-            return;
-        }
-
-        hl_registry_->WriteInt("ScreenBPP", 32);
-        hl_registry_->WriteInt("ScreenHeight", kDefaultWidth);
-        hl_registry_->WriteInt("ScreenWidth", kDefaultHeight);
-    }
-
-    while (bRunEngine)
+    while (is_engine_running)
     {
         auto [nitro_api, nitro_api_module] = LoadModule<nitroapi::NitroApiInterface>("nitro_api2.dll", NITROAPI_INTERFACE_VERSION);
         if (nitro_api == nullptr)
@@ -253,7 +235,7 @@ void ClientLauncher::RunEngine()
             module_instance_,
             "",
             cmd_line_->GetCmdLine(),
-            szPostRestartCmdLineArgs,
+            post_restart_cmd_line,
             Sys_GetFactoryThis(),
             Sys_GetFactory(filesystem_module));
 
@@ -286,44 +268,34 @@ void ClientLauncher::RunEngine()
         {
             case ENGRUN_QUITTING:
             {
-                bRunEngine = false;
+                is_engine_running = false;
                 break;
             }
             case ENGRUN_UNSUPPORTED_VIDEOMODE:
             {
-                bRunEngine = OnVideoModeFailed();
+                is_engine_running = OnVideoModeFailed();
                 break;
             }
             default:
             {
-                bRunEngine = true;
+                is_engine_running = true;
                 break;
             }
         }
 
-        static const char* szRemoveParams[] = { "-sw", "-startwindowed", "-windowed", "-window", "-full", "-fullscreen", "-soft", "-software", "-gl", "-w", "-width", "-h", "-height", "+connect" };
+        config_provider_->ReloadFromFile();
 
-        for (int i = 0; i < sizeof(szRemoveParams) / sizeof(szRemoveParams[0]); i++)
-            cmd_line_->RemoveParm(szRemoveParams[i]);
-        cmd_line_->SetParm("-novid", nullptr);
-
-        if (strstr(szPostRestartCmdLineArgs, "-game"))
-            cmd_line_->RemoveParm("-game");
-
-        if (strstr(szPostRestartCmdLineArgs, "+load"))
-            cmd_line_->RemoveParm("+load");
-
-        cmd_line_->AppendParm(szPostRestartCmdLineArgs, nullptr);
+        ModifyCmdLineAfterRestart(post_restart_cmd_line);
 
 #ifdef UPDATER_ENABLE
-        if (bRunEngine && !cmd_line_->CheckParm("-noupdate"))
+        if (is_engine_running && !cmd_line_->CheckParm("-noupdate"))
         {
             auto result = RunUpdater();
             UpdaterDoneStatus updater_done = std::get<0>(result);
             available_branches_ = std::get<1>(result);
 
             // in case of RunNewGame just closing the game, because need more complicated logic to support this
-            bRunEngine = updater_done == UpdaterDoneStatus::RunGame;
+            is_engine_running = updater_done == UpdaterDoneStatus::RunGame;
         }
 #endif
     }
@@ -468,6 +440,91 @@ void ClientLauncher::UninitializeSentry()
 
 void ClientLauncher::InitializeSentry() { }
 void ClientLauncher::UninitializeSentry() { }
+
+void ClientLauncher::InitializeCmdLine(const char* cmd_line)
+{
+    std::string launch_parameters = config_provider_->get_value_string("launch_parameters", "");
+
+    cmd_line_ = std::make_shared<CCommandLine>();
+    cmd_line_->CreateCmdLine(std::format("{} {}", cmd_line, launch_parameters).c_str());
+
+    if (config_provider_->get_value_int("stretch_aspect", 0))
+    {
+        cmd_line_->AppendParm("-stretchaspect", nullptr);
+    }
+}
+
+void ClientLauncher::ModifyCmdLineAfterRestart(const char* cmd_line)
+{
+    static const char* kRemoveParams[] = {
+        "-sw",
+        "-startwindowed",
+        "-windowed",
+        "-window",
+        "-full",
+        "-fullscreen",
+        "-soft",
+        "-software",
+        "-gl",
+        "-w",
+        "-width",
+        "-h",
+        "-height",
+        "+connect"
+    };
+
+    for (const auto& param : kRemoveParams)
+    {
+        cmd_line_->RemoveParm(param);
+    }
+
+    if (strstr(cmd_line, "-game"))
+    {
+        cmd_line_->RemoveParm("-game");
+    }
+
+    if (strstr(cmd_line, "+load"))
+    {
+        cmd_line_->RemoveParm("+load");
+    }
+
+    if (config_provider_->get_value_int("stretch_aspect", 0))
+    {
+        cmd_line_->AppendParm("-stretchaspect", nullptr);
+    }
+    else
+    {
+        cmd_line_->RemoveParm("-stretchaspect");
+    }
+
+    cmd_line_->SetParm("-novid", nullptr);
+
+    cmd_line_->AppendParm(cmd_line, nullptr);
+}
+
+void ClientLauncher::CheckVideoModeCrash()
+{
+    if (hl_registry_->ReadInt("CrashInitializingVideoMode", 0) == 0)
+    {
+        return;
+    }
+
+    hl_registry_->WriteInt("CrashInitializingVideoMode", 0);
+
+    if (MessageBoxA(
+        NULL,
+        "It looks like a previous attempt to run the game failed due to a rendering subsystem error.\n"
+        "Reset the game resolution settings and run the game again?",
+        kErrorTitle,
+        MB_OKCANCEL | MB_ICONERROR | MB_ICONQUESTION | MB_DEFAULT_DESKTOP_ONLY) != IDOK)
+    {
+        return;
+    }
+
+    hl_registry_->WriteInt("ScreenBPP", 32);
+    hl_registry_->WriteInt("ScreenHeight", kDefaultWidth);
+    hl_registry_->WriteInt("ScreenWidth", kDefaultHeight);
+}
 
 #endif
 
