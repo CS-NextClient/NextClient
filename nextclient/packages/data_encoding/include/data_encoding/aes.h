@@ -18,7 +18,7 @@
   #define ECB 1
 #endif
 
-
+#define AES128_KEY_LEN 16
 
 #if defined(ECB) && ECB
 

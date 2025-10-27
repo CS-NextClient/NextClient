@@ -74,7 +74,7 @@ HttpResponse NextUpdaterHttpService::Post(
 std::string NextUpdaterHttpService::SerializeAes(const std::string &json_str)
 {
     size_t data_len = json_str.size() + 1; // \0 at end
-    size_t cipher_length = ((data_len / 16) + ((data_len % 16) > 0 ? 1 : 0)) * 16; // 16 for 128bit AES
+    size_t cipher_length = ((data_len / AES128_KEY_LEN) + ((data_len % AES128_KEY_LEN) > 0 ? 1 : 0)) * AES128_KEY_LEN;
 
     auto input_data = std::make_unique<uint8_t[]>(cipher_length);
     SecureZeroMemory(input_data.get(), cipher_length);
@@ -84,11 +84,11 @@ std::string NextUpdaterHttpService::SerializeAes(const std::string &json_str)
 
     strcpy_s(reinterpret_cast<char*>(input_data.get()), data_len, json_str.c_str());
 
-    auto iv = nitro_utils::GenerateRandomBytesSecure(16); // for aes
+    auto iv = nitro_utils::GenerateRandomBytesSecure(AES128_KEY_LEN);
     AES128_CBC_encrypt_buffer(output_data.get(), input_data.get(), cipher_length, kHttpServiceCipherKey, iv.data());
 
     auto data_base64 = base64_encode(output_data.get(), cipher_length);
-    auto iv_base64 = base64_encode(iv.data(), 16);
+    auto iv_base64 = base64_encode(iv.data(), AES128_KEY_LEN);
 
     tao::json::value v = {
         { "iv", iv_base64 },
@@ -121,15 +121,15 @@ std::string NextUpdaterHttpService::DeserializeAes(const std::string &json_str)
     auto data = base64_decode(*data_base64);
     auto iv = base64_decode(*iv_base64);
 
-    if (iv.size() != 16)
+    if (iv.size() != AES128_KEY_LEN)
         return "";
 
-    if (data.size() < 16)
+    if (data.size() < AES128_KEY_LEN)
         return "";
 
     std::vector<uint8_t> decrypted_data(data.size());
     ZeroMemory(decrypted_data.data(), decrypted_data.size());
-    AES128_CBC_decrypt_buffer(decrypted_data.data(), (uint8_t*)data.data(), data.size(), kHttpServiceCipherKey, (uint8_t*)iv.data());
+    AES128_CBC_decrypt_buffer(decrypted_data.data(), data.data(), data.size(), kHttpServiceCipherKey, iv.data());
     decrypted_data.push_back('\0');
 
     return reinterpret_cast<const char *>(decrypted_data.data());
