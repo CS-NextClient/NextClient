@@ -11,22 +11,11 @@ CmdChecker::CmdChecker(std::shared_ptr<CommandLoggerInterface> cmd_logger,
 {
 }
 
-std::string CmdChecker::GetFilteredCmd(const std::string& text, bool from_server, bool from_stufftext)
+std::string CmdChecker::GetFilteredCmd(const std::string_view& text, CommandSource command_source)
 {
-    if (text.length() == 0)
+    if (text.empty())
     {
         return "";
-    }
-
-    if (from_server)
-    {
-        // partial command check;
-        char last_char = text[text.length() - 1];
-        if (last_char != '\n' && last_char != ';')
-        {
-            // LOG server try send partial command
-            return "";
-        }
     }
 
     if (text.length() == 1 && text[0] == '\n')
@@ -34,10 +23,16 @@ std::string CmdChecker::GetFilteredCmd(const std::string& text, bool from_server
         return "\n";
     }
 
-    return GetFilteredCmdInternal(text, from_server, from_stufftext);
+    if (IsCommandFromServer(command_source) &&
+        !text.ends_with('\n') && !text.ends_with(';'))
+    {
+        return GetFilteredCmdInternal(std::string(text) + ';', command_source);
+    }
+
+    return GetFilteredCmdInternal(text, command_source);
 }
 
-std::string CmdChecker::GetFilteredCmdInternal(const std::string& text, bool from_server, bool from_stufftext)
+std::string CmdChecker::GetFilteredCmdInternal(const std::string_view& text, CommandSource command_source)
 {
     std::string filtered_cmd;
     auto cmds = SplitToCmds(text);
@@ -48,7 +43,7 @@ std::string CmdChecker::GetFilteredCmdInternal(const std::string& text, bool fro
         if (cmd.empty())
             continue;
 
-        FilterCmdResult filter_cmd_result = FilterCmd(cmd, from_server, from_stufftext);
+        FilterCmdResult filter_cmd_result = FilterCmd(cmd, command_source);
 
         std::string_view log_cmd_name;
         std::string_view log_cmd_value;
@@ -70,7 +65,7 @@ std::string CmdChecker::GetFilteredCmdInternal(const std::string& text, bool fro
                 filtered_cmd.append(std::string(1, cmd_data.delimiter));
             }
 
-            if (from_server && !log_cmd_name.empty())
+            if (IsCommandFromServer(command_source) && !log_cmd_name.empty())
             {
                 cmd_logger_->LogCommand(std::string(log_cmd_name), std::string(log_cmd_value), LogCommandType::AllowServerCommand);
             }
@@ -79,7 +74,8 @@ std::string CmdChecker::GetFilteredCmdInternal(const std::string& text, bool fro
         {
             if (!log_cmd_name.empty())
             {
-                cmd_logger_->LogCommand(std::string(log_cmd_name), std::string(log_cmd_value), from_stufftext ? LogCommandType::BlockedStufftextComamnd : LogCommandType::BlockedAllCommand);
+                LogCommandType log_command = GetLogCommandType(command_source);
+                cmd_logger_->LogCommand(std::string(log_cmd_name), std::string(log_cmd_value), log_command);
             }
         }
     }
@@ -87,7 +83,7 @@ std::string CmdChecker::GetFilteredCmdInternal(const std::string& text, bool fro
     return filtered_cmd;
 }
 
-CmdChecker::FilterCmdResult CmdChecker::FilterCmd(const std::string_view& cmd, bool from_server, bool from_stufftext)
+CmdChecker::FilterCmdResult CmdChecker::FilterCmd(const std::string_view& cmd, CommandSource command_source)
 {
     auto cmd_tokens = SplitCmdToTokens(cmd);
 
@@ -116,10 +112,10 @@ CmdChecker::FilterCmdResult CmdChecker::FilterCmd(const std::string_view& cmd, b
         if (type == CmdBlockType::Any)
             return FilterCmdResult(false);
 
-        if (type == CmdBlockType::OnlyServer && from_server)
+        if (type == CmdBlockType::OnlyServer && IsCommandFromServer(command_source))
             return FilterCmdResult(false);
 
-        if (type == CmdBlockType::BindSpecial && from_server && blocked_bind_keys_option)
+        if (type == CmdBlockType::BindSpecial && IsCommandFromServer(command_source) && blocked_bind_keys_option)
         {
             if (cmd_tokens.size() != 3)
             {
@@ -139,7 +135,7 @@ CmdChecker::FilterCmdResult CmdChecker::FilterCmd(const std::string_view& cmd, b
                 return FilterCmdResult(false); // This bind is blocked
 
             // Recursion checking
-            std::string filtered_bind_value = GetFilteredCmdInternal(value, from_server, from_stufftext);
+            std::string filtered_bind_value = GetFilteredCmdInternal(value, command_source);
 
             if (filtered_bind_value.empty())
                 return FilterCmdResult(false); // All bind command was banned
@@ -156,15 +152,15 @@ bool CmdChecker::GetNextSplitToken(
     const std::string_view& text,
     const std::function<bool(char)>& is_delim,
     size_t* cur_pos,
-    CmdChecker::SplitData& cmd_split_data)
+    SplitData& cmd_split_data)
 {
     size_t text_length = text.length();
 
-    size_t token_start;
-    size_t token_length;
+    size_t token_start = 0;
+    size_t token_length = 0;
 
     char delimiter = 0;
-    size_t i;
+    size_t i = 0;
 
     for (i = *cur_pos; i < text_length;)
     {
@@ -263,4 +259,31 @@ bool CmdChecker::TokenizeCmdForLogger(const std::string_view &text, std::string_
     }
 
     return false;
+}
+
+LogCommandType CmdChecker::GetLogCommandType(CommandSource command_source)
+{
+    LogCommandType log_command;
+
+    switch (command_source)
+    {
+    case CommandSource::Stufftext:
+        log_command = LogCommandType::BlockedStufftextComamnd;
+        break;
+
+    case CommandSource::Director:
+        log_command = LogCommandType::BlockedDirectorCommand;
+        break;
+
+    default:
+        log_command = LogCommandType::BlockedAllCommand;
+        break;
+    }
+
+    return log_command;
+}
+
+bool CmdChecker::IsCommandFromServer(CommandSource command_source)
+{
+    return command_source != CommandSource::Console;
 }

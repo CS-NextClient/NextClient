@@ -12,8 +12,7 @@ static std::shared_ptr<CmdLoggerAggregator> g_CmdLogger;
 static std::unique_ptr<CmdChecker> g_CmdChecker;
 static std::vector<std::shared_ptr<nitroapi::Unsubscriber>> g_Unsubs;
 
-static bool g_CommandFromServer;
-static bool g_CommandFromStufftext;
+static CommandSource g_CommandSource;
 static bool g_Cbuf_AddText_called;
 
 // TODO It is necessary to restore the code of functions on which hooks are now created. And get rid of this file.
@@ -22,15 +21,14 @@ static char* Cbuf_AddTextHandler(const char *text, sizebuf_t *buf, nitroapi::Nex
 {
     g_Cbuf_AddText_called = true;
 
-    // if empty command do nothing
     if (text == nullptr || text[0] == '\0')
         return next->Invoke(text, buf);
 
-    std::string cmd = text;
+    std::string_view cmd = text;
     if (cmd.starts_with(kPrivateResourceMsgMarker))
         return kEmpty;
 
-    std::string filtered_cmd = g_CmdChecker->GetFilteredCmd(cmd, g_CommandFromServer, g_CommandFromStufftext);
+    std::string filtered_cmd = g_CmdChecker->GetFilteredCmd(cmd, g_CommandSource);
     if (!filtered_cmd.empty())
         return next->Invoke(filtered_cmd.c_str(), buf);
 
@@ -58,9 +56,9 @@ static void CL_ConnectionlessPacket(nitroapi::NextHandlerInterface<void>* next)
         return;
     }
 
-    g_CommandFromServer = true;
+    g_CommandSource = CommandSource::ConnectionlessPacket;
     next->Invoke();
-    g_CommandFromServer = false;
+    g_CommandSource = CommandSource::Console;
 }
 
 static void SVC_StufftextHandler(nitroapi::NextHandlerInterface<void>* next)
@@ -71,13 +69,10 @@ static void SVC_StufftextHandler(nitroapi::NextHandlerInterface<void>* next)
 
     g_Cbuf_AddText_called = false;
 
-    g_CommandFromServer = true;
-    g_CommandFromStufftext = true;
+    g_CommandSource = CommandSource::Stufftext;
     next->Invoke();
-    g_CommandFromStufftext = false;
-    g_CommandFromServer = false;
+    g_CommandSource = CommandSource::Console;
 
-    // This can happen when the command is blocked by the engine, for example, when cl_filterstuffcmd 1 is enabled
     if (!g_Cbuf_AddText_called)
     {
         g_CmdLogger->LogCommand(cmd, "", LogCommandType::BlockedStufftextComamnd);
@@ -88,15 +83,9 @@ static void SVC_DirectorHandler(nitroapi::NextHandlerInterface<void>* next)
 {
     int read_count = *pMsg_readcount;
 
-    int size_command = MSG_ReadByte();
+    MSG_ReadByte(); // command_size
     int direct_type = MSG_ReadByte();
-    const char* direct_command = MSG_ReadString();
-
-    if (direct_type == DRC_CMD_STUFFTEXT)
-    {
-        g_CmdLogger->LogCommand(direct_command, "", LogCommandType::BlockedDirectorCommand);
-        return;
-    }
+    const char* cmd = MSG_ReadString();
 
     if (direct_type == DRC_CMD_BANNER) // block spectator banner left-upper corner
     {
@@ -106,7 +95,23 @@ static void SVC_DirectorHandler(nitroapi::NextHandlerInterface<void>* next)
 
     *pMsg_readcount = read_count;
 
-    next->Invoke();
+    if (direct_type == DRC_CMD_STUFFTEXT)
+    {
+        g_Cbuf_AddText_called = false;
+
+        g_CommandSource = CommandSource::Director;
+        next->Invoke();
+        g_CommandSource = CommandSource::Console;
+
+        if (!g_Cbuf_AddText_called)
+        {
+            g_CmdLogger->LogCommand(cmd, "", LogCommandType::BlockedDirectorCommand);
+        }
+    }
+    else
+    {
+        next->Invoke();
+    }
 }
 
 static void SVC_DisconnectHandler(nitroapi::NextHandlerInterface<void>* next)
@@ -133,9 +138,8 @@ static void SVC_ResourceLocationHandler(nitroapi::NextHandlerInterface<void>* ne
 
 void PROTECTOR_Init(std::shared_ptr<nitro_utils::ConfigProviderInterface> config_provider)
 {
-    g_CommandFromServer = false;
-    g_CommandFromStufftext = false;
     g_Cbuf_AddText_called = false;
+    g_CommandSource = CommandSource::Console;
 
     if (g_CmdLogger == nullptr)
         g_CmdLogger = std::make_shared<CmdLoggerAggregator>();

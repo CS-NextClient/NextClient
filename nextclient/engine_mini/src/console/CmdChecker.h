@@ -11,6 +11,13 @@
 #include <nitro_utils/config_utils.h>
 #include <next_engine_mini/CommandLoggerInterface.h>
 
+enum class CommandSource
+{
+    Console,
+    Director,
+    Stufftext,
+    ConnectionlessPacket,
+};
 
 enum class CmdBlockType
 {
@@ -51,8 +58,8 @@ class CmdChecker
     std::shared_ptr<CommandLoggerInterface> cmd_logger_;
     std::shared_ptr<nitro_utils::ConfigProviderInterface> config_provider_;
 
-    std::string GetFilteredCmdInternal(const std::string& text, bool from_server, bool from_stufftext);
-    FilterCmdResult FilterCmd(const std::string_view& cmd, bool from_server, bool from_stufftext);
+    std::string GetFilteredCmdInternal(const std::string_view& text, CommandSource command_source);
+    FilterCmdResult FilterCmd(const std::string_view& cmd, CommandSource command_source);
 
     // TODO move to any utils
     static bool GetNextSplitToken(const std::string_view& text, const std::function<bool(char)>& is_delim, size_t* cur_pos, CmdChecker::SplitData& cmd_split_data);
@@ -60,10 +67,12 @@ class CmdChecker
     static std::vector<SplitData> SplitToCmds(const std::string_view& text);
     static std::vector<SplitData> SplitCmdToTokens(const std::string_view& text);
     static bool TokenizeCmdForLogger(const std::string_view &text, std::string_view& name, std::string_view& value);
+    static LogCommandType GetLogCommandType(CommandSource command_source);
+    static bool IsCommandFromServer(CommandSource command_source);
 
 public:
     explicit CmdChecker(std::shared_ptr<CommandLoggerInterface> cmd_logger,
                         std::shared_ptr<nitro_utils::ConfigProviderInterface> config_provider);
 
-    std::string GetFilteredCmd(const std::string& text, bool from_server, bool from_stufftext);
+    std::string GetFilteredCmd(const std::string_view& text, CommandSource command_source);
 };
