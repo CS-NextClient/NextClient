@@ -6,6 +6,8 @@ NextClient
 NextClient is a modification for Counter-Strike 1.6 aimed at introducing new functionality for both players and developers of server modifications on amxmodx.
 NextClient has integrated some features from [csldr](https://github.com/mikkokko/csldr).
 
+*Please note that the official version of NextClient does not include an emulator. Next21 team is not developing a Steam emulator. You still need to have Steam running and a purchased copy of Cs 1.6 to play on the NextClient version from GitHub.*
+
 ### Main features:
  - Protector - protects the client from malicious commands from the server
  - Ability to change the master server (the default ms is [tsarvar.com](https://tsarvar.com))
