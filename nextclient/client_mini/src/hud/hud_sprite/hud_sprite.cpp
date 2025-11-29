@@ -21,6 +21,7 @@ void HudSprite::Draw() const
     ta->Color4f(getColor().red, getColor().green, getColor().blue, getCurrentAlpha());
     ta->CullFace(TRI_NONE);
     if (isFullScreen()) {
+        ta->Begin(TRI_QUADS);
         ta->TexCoord2f(0, 0);
         ta->Vertex3f(0, 0, 0);
         ta->TexCoord2f(0, 1);
