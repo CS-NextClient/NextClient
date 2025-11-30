@@ -616,7 +616,7 @@ static int V_ViewModelFx_MSG(const char *pszName, int iSize, void *pbuf)
     }
     else if (mode_color == SET_MODE::RESET)
     {
-        viewmodel_overrides.skin_override = false;
+        viewmodel_overrides.color_override = false;
     }
 
     if (mode_skin == SET_MODE::SET)
