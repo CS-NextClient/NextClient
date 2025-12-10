@@ -1,34 +1,60 @@
-// Dear ImGui: standalone example application for GLFW + OpenGL2, using legacy fixed pipeline
-// (GLFW is a cross-platform general purpose library for handling windows, inputs, OpenGL/Vulkan/Metal graphics context creation, etc.)
-// If you are new to Dear ImGui, read documentation from the docs/ folder + read the top of imgui.cpp.
-// Read online: https://github.com/ocornut/imgui/tree/master/docs
-
-// **DO NOT USE THIS CODE IF YOUR CODE/ENGINE IS USING MODERN OPENGL (SHADERS, VBO, VAO, etc.)**
-// **Prefer using the code in the example_glfw_opengl2/ folder**
-// See imgui_impl_glfw.cpp for details.
-
 #include <memory>
+#include <stacktrace>
 #include <GLFW/glfw3.h>
 #include <cmrc/cmrc.hpp>
 #include <easylogging++.h>
+#include <taskcoro/TaskCoro.h>
 #include <gui_app_core/imgui/imgui.h>
 #include <gui_app_core/imgui/imgui_impl_glfw.h>
 #include <gui_app_core/imgui/imgui_impl_opengl2.h>
 #include <gui_app_core/GuiAppInterface.h>
+#include <taskcoro/impl/TaskCoroImpl.h>
 
 CMRC_DECLARE(gui_app_core_rc);
 
+static const char* LOG_TAG = "[gui_app_core] ";
 static const char* IMGUI_WINDOW_NAME = "main";
 
-static void glfw_error_callback(int error, const char* description)
+static void UnhandledExceptionHandler(const std::exception& ex)
 {
-    LOG(ERROR) << "GLFW Error " << error << ": " << description;
+    auto trace = std::stacktrace::current();
+
+    LOG(ERROR) << LOG_TAG << "Unhandled exception: " << ex.what();
+
+    for (const std::stacktrace_entry& entry : trace)
+    {
+        LOG(ERROR) << LOG_TAG << entry.description();
+    }
 }
 
-// Main code
-void RunGuiApp(std::shared_ptr<GuiAppInterface> gui_app)
+static void InvokeOnUpdateSafe(const std::function<void(GuiAppState&)>& on_update, GuiAppState& state)
 {
-    GuiAppStartUpInfo startup_info = gui_app->OnStart();
+    try { on_update(state); }
+    catch (const std::exception& ex) { UnhandledExceptionHandler(ex); }
+}
+
+static void InvokeOnExitSafe(const std::function<void()>& on_exit)
+{
+    try { on_exit(); }
+    catch (const std::exception& ex) { UnhandledExceptionHandler(ex); }
+}
+
+void RunGuiAppImpl(
+    const std::function<GuiAppStartUpInfo()>& on_start,
+    const std::function<void(GuiAppState&)>& on_update,
+    const std::function<void()>& on_exit)
+{
+    GuiAppStartUpInfo startup_info;
+
+    try
+    {
+        startup_info = on_start();
+    }
+    catch (const std::exception& ex)
+    {
+        UnhandledExceptionHandler(ex);
+        return;
+    }
 
     GuiAppState gui_app_state;
     gui_app_state.should_exit = false;
@@ -38,14 +64,18 @@ void RunGuiApp(std::shared_ptr<GuiAppInterface> gui_app)
     int window_width = startup_info.window_width;
     int window_height = startup_info.window_height;
 
-    glfwSetErrorCallback(glfw_error_callback);
+    glfwSetErrorCallback([](int error, const char* description)
+    {
+        LOG(ERROR) << LOG_TAG << "GLFW Error " << error << ": " << description;
+    });
+
     if (!glfwInit())
     {
-        gui_app->OnExit();
+        InvokeOnExitSafe(on_exit);
         return;
     }
 
-    // Create window with graphics context
+    // Create a window with graphics context
     glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
     glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
     glfwWindowHint(GLFW_DECORATED, GLFW_FALSE);
@@ -53,7 +83,7 @@ void RunGuiApp(std::shared_ptr<GuiAppInterface> gui_app)
     GLFWwindow* window = glfwCreateWindow(window_width, window_height, window_name.c_str(), nullptr, nullptr);
     if (window == nullptr)
     {
-        gui_app->OnExit();
+        InvokeOnExitSafe(on_exit);
         return;
     }
 
@@ -66,17 +96,16 @@ void RunGuiApp(std::shared_ptr<GuiAppInterface> gui_app)
     }
 
     glfwMakeContextCurrent(window);
-    glfwSwapInterval(1); // Enable vsync
+    glfwSwapInterval(1);
 
     // Setup Dear ImGui context
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
     ImGuiIO& io = ImGui::GetIO(); (void)io;
-    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
+    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
 
     // Setup Dear ImGui style
     ImGui::StyleColorsDark();
-    //ImGui::StyleColorsLight();
 
     // Setup Platform/Renderer backends
     ImGui_ImplGlfw_InitForOpenGL(window, true);
@@ -104,7 +133,7 @@ void RunGuiApp(std::shared_ptr<GuiAppInterface> gui_app)
     {
         if (glfwWindowShouldClose(window))
         {
-            gui_app->OnExit();
+            InvokeOnExitSafe(on_exit);
             break;
         }
 
@@ -126,12 +155,12 @@ void RunGuiApp(std::shared_ptr<GuiAppInterface> gui_app)
             ImGui::SetWindowSize(IMGUI_WINDOW_NAME, ImVec2(window_width, window_height));
 
             GuiAppState state_to_pass = gui_app_state;
-            gui_app->OnUpdate(state_to_pass);
+            InvokeOnUpdateSafe(on_update, state_to_pass);
 
             if (state_to_pass.should_exit)
             {
                 done = true;
-                gui_app->OnExit();
+                InvokeOnExitSafe(on_exit);
             }
 
             if (state_to_pass.windows_state_hidden != gui_app_state.windows_state_hidden)

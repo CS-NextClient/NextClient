@@ -8,7 +8,10 @@ find_package(magic_enum CONFIG REQUIRED)
 
 add_library(${PROJECT_NAME} STATIC
         src/TaskCoro.cpp
+        src/TaskTracker.cpp
         src/SynchronizationContext.cpp
+        src/CancellationToken.cpp
+        src/LinkedCancellationToken.cpp
         src/io/net.cpp
         src/impl/TaskCoroImpl.cpp
         src/impl/SynchronizationContextImpl.cpp

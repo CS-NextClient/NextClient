@@ -1,7 +1,7 @@
 #pragma once
 
 #include <filesystem>
-#include <updater/json_data/FileEntry.h>
+#include <updater_gui_app/json_data/FileEntry.h>
 
 class UpdaterFileInfo
 {

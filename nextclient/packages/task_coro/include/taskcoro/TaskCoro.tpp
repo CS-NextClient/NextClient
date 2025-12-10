@@ -49,6 +49,18 @@ namespace taskcoro
         using TUnwrapped = unwrap_result_t<TResult>;
         constexpr bool is_coro_result = unwrap_result<TResult>::is;
 
+        if (task_type == TaskType::MainThread && !task_impl_->IsMainThreadAvailable())
+        {
+            throw TaskCoroRuntimeException("TaskCoro::RunTask: MainThread is not available");
+        }
+
+        if (continuation_context == ContinuationContextType::Caller &&
+            !task_impl_->IsMainThreadAvailable() &&
+            task_impl_->IsMainThread())
+        {
+            throw TaskCoroRuntimeException("TaskCoro::RunTask: MainThread is not available. (ContinuationContextType::Caller is not availbale)");
+        }
+
         auto result_promise = std::make_shared<concurrencpp::result_promise<TResult>>();
 
         auto bound_call = [task_type,
@@ -98,57 +110,79 @@ namespace taskcoro
 
         task_impl_->RunTask(task_type, std::move(task_lambda));
 
-        if constexpr (is_coro_result)
+        std::exception_ptr exception_ptr;
+        try
         {
-            TResult result = co_await task;
-
-            if constexpr (std::is_void_v<TUnwrapped>)
+            if constexpr (is_coro_result)
             {
-                co_await std::move(result);
+                TResult result = co_await task;
+
+                if constexpr (std::is_void_v<TUnwrapped>)
+                {
+                    co_await std::move(result);
+
+                    if (caller_ctx && continuation_context == ContinuationContextType::Caller)
+                    {
+                        co_await caller_ctx->SwitchTo();
+                    }
+
+                    co_return;
+                }
+                else
+                {
+                    auto value = co_await std::move(result);
+
+                    if (caller_ctx && continuation_context == ContinuationContextType::Caller)
+                    {
+                        co_await caller_ctx->SwitchTo();
+                    }
+
+                    co_return value;
+                }
+            }
+            else if constexpr (std::is_void_v<TResult>)
+            {
+                co_await task;
 
                 if (caller_ctx && continuation_context == ContinuationContextType::Caller)
                 {
                     co_await caller_ctx->SwitchTo();
                 }
-
-                co_return;
             }
             else
             {
-                auto value = co_await std::move(result);
+                TResult result = co_await task;
 
                 if (caller_ctx && continuation_context == ContinuationContextType::Caller)
                 {
                     co_await caller_ctx->SwitchTo();
                 }
 
-                co_return value;
+                co_return result;
             }
         }
-        else if constexpr (std::is_void_v<TResult>)
+        catch (...)
         {
-            co_await task;
-
-            if (caller_ctx && continuation_context == ContinuationContextType::Caller)
-            {
-                co_await caller_ctx->SwitchTo();
-            }
+            exception_ptr = std::current_exception();
         }
-        else
-        {
-            TResult result = co_await task;
 
+        if (exception_ptr)
+        {
             if (caller_ctx && continuation_context == ContinuationContextType::Caller)
             {
                 co_await caller_ctx->SwitchTo();
             }
 
-            co_return result;
+            std::rethrow_exception(exception_ptr);
         }
     }
 
-    template <typename Range> requires std::ranges::range<Range>
-    concurrencpp::result<void> TaskCoro::WhenAll(Range& range, bool supress_tasks_exceptions, std::shared_ptr<CancellationToken> cancellation_token)
+    template <typename Range>
+        requires std::ranges::range<Range>
+    concurrencpp::result<void> TaskCoro::WhenAll(
+        Range& range,
+        bool supress_tasks_exceptions,
+        std::shared_ptr<CancellationToken> cancellation_token)
     {
         assert(task_impl_ != nullptr);
 
@@ -194,10 +228,13 @@ namespace taskcoro
         }
     }
 
-    template <typename Range> requires std::ranges::range<Range>
-    concurrencpp::result<std::ranges::range_difference_t<Range>> TaskCoro::WhenAny(const Range& range,
-    bool supress_tasks_exceptions,
-    std::shared_ptr<CancellationToken> cancellation_token)
+    template <typename Range>
+        requires std::ranges::range<Range>
+    concurrencpp::result<std::ranges::range_difference_t<Range>> TaskCoro::WhenAny(
+        Range& range,
+        bool supress_tasks_exceptions,
+        std::shared_ptr<CancellationToken> cancellation_token,
+        std::chrono::milliseconds timeout)
     {
         assert(task_impl_ != nullptr);
 
@@ -206,11 +243,18 @@ namespace taskcoro
             throw std::runtime_error("Range is empty");
         }
 
+        auto deadline = std::chrono::steady_clock::now() + timeout;
+
         while (true)
         {
             if (cancellation_token)
             {
                 cancellation_token->ThrowIfCancelled();
+            }
+
+            if (timeout != std::chrono::milliseconds{0} && std::chrono::steady_clock::now() >= deadline)
+            {
+                throw OperationTimeoutException("Operation timed out");
             }
 
             for (auto it = range.begin(); it != range.end(); ++it)
@@ -232,6 +276,82 @@ namespace taskcoro
             }
 
             co_await task_impl_->Yield_();
+        }
+    }
+
+    template<ResultLike TTask>
+    auto TaskCoro::WithCancellation(
+        TTask task,
+        std::shared_ptr<CancellationToken> cancellation_token
+    ) -> concurrencpp::result<std::decay_t<decltype(task.get())>>
+    {
+        assert(task_impl_ != nullptr);
+
+        if (!cancellation_token)
+        {
+            co_return co_await task;
+        }
+
+        while (true)
+        {
+            cancellation_token->ThrowIfCancelled();
+
+            if (task.status() != concurrencpp::result_status::idle)
+            {
+                co_return task.get();
+            }
+
+            co_await task_impl_->Yield_();
+        }
+    }
+
+    template<ResultLike TTask>
+    auto TaskCoro::WithTimeout(
+        TTask task,
+        std::chrono::milliseconds timeout,
+        std::shared_ptr<CancellationToken> cancellation_token
+    ) -> concurrencpp::result<std::decay_t<decltype(task.get())>>
+    {
+        // TODO use concurrencpp timer
+        assert(task_impl_ != nullptr);
+
+        auto deadline = std::chrono::steady_clock::now() + timeout;
+
+        while (true)
+        {
+            if (cancellation_token)
+            {
+                cancellation_token->ThrowIfCancelled();
+            }
+
+            if (timeout != std::chrono::milliseconds{0} && std::chrono::steady_clock::now() >= deadline)
+            {
+                throw OperationTimeoutException("Operation timed out");
+            }
+
+            if (task.status() != concurrencpp::result_status::idle)
+            {
+                task.get();
+            }
+
+            co_await task_impl_->Yield_();
+        }
+    }
+
+    template<ResultLike TTask>
+    auto TaskCoro::SupressException(
+        TTask task
+    ) -> concurrencpp::result<std::variant<std::decay_t<decltype(task.get())>, std::exception>>
+    {
+        assert(task_impl_ != nullptr);
+
+        try
+        {
+            co_return co_await task;
+        }
+        catch (std::runtime_error& ex)
+        {
+            co_return ex;
         }
     }
 }

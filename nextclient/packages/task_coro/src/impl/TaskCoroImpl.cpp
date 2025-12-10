@@ -10,8 +10,9 @@
 
 using namespace taskcoro;
 
-TaskCoroImpl::TaskCoroImpl(std::thread::id main_thread_id):
-    main_thread_id_(main_thread_id)
+TaskCoroImpl::TaskCoroImpl(std::thread::id main_thread_id, bool is_main_thead_available):
+    main_thread_id_(main_thread_id),
+    is_main_thead_available_(is_main_thead_available)
 {
     ccruntime_ = std::make_unique<concurrencpp::runtime>();
     update_executor_ = ccruntime_->make_manual_executor();
@@ -22,10 +23,18 @@ TaskCoroImpl::TaskCoroImpl(std::thread::id main_thread_id):
 
 TaskCoroImpl::~TaskCoroImpl()
 {
+    // The update executor must shut down first, otherwise, if the threaded executors shutdown first,
+    // they may be blocked by the update executor for which the client code has stopped calling Update.
+    update_executor_->shutdown();
+
     thread_pool_io_executor_->shutdown();
     thread_pool_executor_->shutdown();
     thread_executor_->shutdown();
-    update_executor_->shutdown();
+}
+
+bool TaskCoroImpl::IsMainThreadAvailable()
+{
+    return is_main_thead_available_;
 }
 
 bool TaskCoroImpl::IsMainThread()

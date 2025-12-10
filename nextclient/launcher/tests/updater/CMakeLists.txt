@@ -52,7 +52,7 @@ target_link_libraries(${TARGET_NAME} PRIVATE
         data_encoding::data_encoding
         next_launcher::utils
         NextClient::engine_mini
-        SafeResult::SafeResult
+        ncl_utils::ncl_utils
         # for tests
         GTest::gtest
         GTest::gtest_main

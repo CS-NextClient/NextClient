@@ -14,22 +14,24 @@
 #endif
 
 #ifdef UPDATER_ENABLE
-#include <updater/updater_gui_app.h>
+#include <updater_gui_app/updater_gui_app.h>
 #endif
 
 #include <engine_launcher_api.h>
 #include <nitroapi/NitroApiInterface.h>
-#include <steam_api_proxy/next_steam_api_proxy.h>
 #include <nitro_utils/config_utils.h>
 #include <nitro_utils/string_utils.h>
 #include <utils/platform.h>
 #include <next_launcher/version.h>
+#include <steam_api_proxy/next_steam_api_proxy.h>
 
 #include "Analytics.h"
 #include "DefaultUserInfo.h"
 #include "exception_handler.h"
 #include "RegistryUserStorage.h"
 #include "EngineCommons.h"
+
+static const char* NITRO_API_LOG_TAG = "launcher";
 
 ClientLauncher::ClientLauncher(HINSTANCE module_instance, const char* cmd_line) :
     module_instance_(module_instance)
@@ -43,7 +45,8 @@ ClientLauncher::ClientLauncher(HINSTANCE module_instance, const char* cmd_line) 
     user_storage_ = std::make_shared<RegistryUserStorage>(kNextClientRegistry);
     user_info_ = std::make_shared<DefaultUserInfo>(user_storage_);
     user_info_client_ = std::make_shared<next_launcher::UserInfoClient>(user_info_.get());
-    analytics_ = std::make_shared<Analytics>();
+    backend_address_resolver_ = std::make_shared<BackendAddressResolver>(user_info_client_);
+    analytics_ = std::make_shared<Analytics>(user_info_client_, backend_address_resolver_);
     config_provider_ = std::make_shared<nitro_utils::FileConfigProvider>("user_game_config.ini");
 
     hl_registry_ = std::make_shared<CRegistry>(kHlRegistry);
@@ -51,14 +54,14 @@ ClientLauncher::ClientLauncher(HINSTANCE module_instance, const char* cmd_line) 
 
     InitializeCmdLine(cmd_line);
 
-    global_mutex_ = CreateMutexA(nullptr, FALSE, "ValveHalfLifeLauncherMutex");
+    global_win_mutex_ = CreateMutexA(nullptr, FALSE, "ValveHalfLifeLauncherMutex");
     g_SaveFullDumps = cmd_line_->CheckParm("-fulldump");
 }
 
 ClientLauncher::~ClientLauncher()
 {
-    ReleaseMutex(global_mutex_);
-    CloseHandle(global_mutex_);
+    ReleaseMutex(global_win_mutex_);
+    CloseHandle(global_win_mutex_);
 }
 
 void ClientLauncher::Run()
@@ -74,8 +77,7 @@ void ClientLauncher::Run()
 
     analytics_->SendAnalyticsEvent("startup_init");
 
-    DWORD dwMutexResult = WaitForSingleObject(global_mutex_, 0);
-    if (dwMutexResult != WAIT_OBJECT_0 && dwMutexResult != WAIT_ABANDONED && !cmd_line_->CheckParm("-hijack"))
+    if (!GlobalMutexCheck())
     {
         MessageBoxA(
             NULL,
@@ -92,14 +94,11 @@ void ClientLauncher::Run()
     analytics_->SendAnalyticsEvent("startup_init_post_mutex");
 
 #ifdef UPDATER_ENABLE
-    UpdaterDoneStatus updater_done = UpdaterDoneStatus::RunGame;
+    UpdaterFlags updater_flags{};
+    updater_flags |= cmd_line_->CheckParm("-noupdate") ? UpdaterFlags::None : UpdaterFlags::Updater;
 
-    if (!cmd_line_->CheckParm("-noupdate"))
-    {
-        auto result = RunUpdater();
-        updater_done = std::get<0>(result);
-        available_branches_ = std::get<1>(result);
-    }
+    auto [updater_done, available_branches] = RunUpdater(updater_flags);
+    available_branches_ = available_branches;
 
     if (updater_done == UpdaterDoneStatus::RunGame)
         RunEngine();
@@ -113,17 +112,37 @@ void ClientLauncher::Run()
 #ifdef UPDATER_ENABLE
     if (updater_done == UpdaterDoneStatus::RunNewGame)
     {
-        cmd_line_->AppendParm("-noupdate", nullptr);
-
-        std::string process_name = GetCurrentProcessPath().filename().replace_extension("").string() + "_new.exe";
-
-        PROCESS_INFORMATION process_information;
-        STARTUPINFOA startupinfo;
-        ZeroMemory(&startupinfo, sizeof(startupinfo));
-        bool result = CreateProcessA(process_name.c_str(), (char *) cmd_line_->GetCmdLine(), nullptr, nullptr, false, NORMAL_PRIORITY_CLASS, nullptr, nullptr, &startupinfo, &process_information);
-        LOG_IF(!result, ERROR) << "Can't CreateProcessA for new launcher: " << process_name << ". Error: " << GetWinErrorString(GetLastError());
+        RunNewGame();
     }
 #endif
+}
+
+void ClientLauncher::RunNewGame()
+{
+    cmd_line_->AppendParm("-noupdate", nullptr);
+
+    std::string process_name = GetCurrentProcessPath()
+        .filename()
+        .replace_extension("")
+        .string() + "_new.exe";
+
+    PROCESS_INFORMATION process_information;
+    STARTUPINFOA startupinfo;
+    ZeroMemory(&startupinfo, sizeof(startupinfo));
+
+    bool result = CreateProcessA(
+        process_name.c_str(),
+        (char*) cmd_line_->GetCmdLine(),
+        nullptr,
+        nullptr,
+        false,
+        NORMAL_PRIORITY_CLASS,
+        nullptr,
+        nullptr,
+        &startupinfo,
+        &process_information);
+
+    LOG_IF(!result, ERROR) << "Can't CreateProcessA for new launcher: " << process_name << ". Error: " << GetWinErrorString(GetLastError());
 }
 
 void ClientLauncher::RunEngine()
@@ -131,8 +150,161 @@ void ClientLauncher::RunEngine()
     analytics_->SendAnalyticsEvent("startup_run_engine");
 
     char post_restart_cmd_line[4096] = { '\0' };
-    bool is_engine_running = true;
 
+    PrepareEngineCommandLine();
+    CheckVideoModeCrash();
+
+    while (true)
+    {
+        EngineSessionResult result = RunEngineSession(post_restart_cmd_line);
+
+        if (result == EngineSessionResult::Exit)
+        {
+            return;
+        }
+    }
+}
+
+ClientLauncher::EngineSessionResult ClientLauncher::RunEngineSession(char* post_restart_cmd_line)
+{
+    std::vector<std::shared_ptr<nitroapi::Unsubscriber>> unsubscribers;
+
+    LogLoadedModules();
+
+    auto [nitro_api, nitro_api_module] = LoadModule<nitroapi::NitroApiInterface>("nitro_api2.dll", NITROAPI_INTERFACE_VERSION);
+    if (nitro_api == nullptr)
+        return EngineSessionResult::Exit;
+
+    auto [filesystem, filesystem_module] = LoadModule<IFileSystem>("filesystem_proxy.dll", FILESYSTEM_INTERFACE_VERSION);
+    if (filesystem == nullptr)
+        return EngineSessionResult::Exit;
+
+    auto [engine_mini, engine_mini_module] = LoadModule<EngineMiniInterface>("next_engine_mini.dll", ENGINE_MINI_INTERFACE_VERSION);
+    if (engine_mini == nullptr)
+        return EngineSessionResult::Exit;
+
+    auto [client_mini, client_mini_module] = LoadModule<ClientMiniInterface>("cstrike\\cl_dlls\\client_mini.dll", CLIENT_MINI_INTERFACE_VERSION);
+    if (client_mini == nullptr)
+        return EngineSessionResult::Exit;
+
+    auto [gameui_next, gameui_next_module] = LoadModule<IGameUINext>("cstrike\\cl_dlls\\gameui.dll", GAMEUI_NEXT_INTERFACE_VERSION);
+    if (gameui_next == nullptr)
+        return EngineSessionResult::Exit;
+
+    CSysModule* steam_proxy_module = Sys_LoadModule("steam_api.dll");
+    if (steam_proxy_module == nullptr)
+    {
+        std::string error = "Module steam_api.dll not found";
+
+        analytics_->SendCrashMonitoringEvent("LoadModule Error", error.c_str(), true);
+        MessageBoxA(NULL, error.c_str(), kErrorTitle, MB_OK | MB_ICONERROR | MB_DEFAULT_DESKTOP_ONLY);
+        return EngineSessionResult::Exit;
+    }
+
+    auto steam_proxy_set_seh = (NextSteamProxy_SetSEHFunc)GetProcAddress((HMODULE)steam_proxy_module, "NextSteamProxy_SetSEH");
+    if (steam_proxy_set_seh == nullptr)
+    {
+        std::string error = "NextSteamProxy_SetSEH not found in steam_api.dll.\n"
+                            "Make sure you use the steam_api.dll from NextClient and not the original steam_api.dll";
+
+        analytics_->SendCrashMonitoringEvent("LoadModule Error", error.c_str(), true);
+        MessageBoxA(NULL, error.c_str(), kErrorTitle, MB_OK | MB_ICONERROR | MB_DEFAULT_DESKTOP_ONLY);
+        return EngineSessionResult::Exit;
+    }
+    steam_proxy_set_seh(ExceptionHandler);
+
+    filesystem->Mount();
+    filesystem->AddSearchPath("", "ROOT");
+
+    nitro_api->WriteLog(NITRO_API_LOG_TAG, sentry_init_log_.c_str());
+    nitro_api->SetSEHCallback(ExceptionHandler);
+    nitro_api->Initialize(cmd_line_.get(), filesystem, hl_registry_.get());
+
+    unsubscribers.emplace_back(nitro_api->GetEngineData()->Sys_Error |= [this](const char* error, const auto& next) {
+        Sys_ErrorHandler(error);
+        next->Invoke(error);
+    });
+
+    unsubscribers.emplace_back(nitro_api->GetSDL2Data()->SDL_DestroyWindowFunc += [this, nitro_api](void*) {
+        SDL_DestroyWindowHandler(nitro_api);
+    });
+
+    unsubscribers.emplace_back(nitro_api->GetClientData()->HUD_Init += [this] {
+        HUD_InitHandler();
+    });
+
+    auto [engine, engine_module] = LoadModule<IEngineAPI>(kEngineDll, VENGINE_LAUNCHER_API_VERSION);
+    if (engine == nullptr)
+        return EngineSessionResult::Exit;
+
+    std::string versions = CreateVersionsString(nitro_api, engine_mini, client_mini, gameui_next);
+    nitro_api->WriteLog(NITRO_API_LOG_TAG, versions.c_str());
+
+    client_mini->Init(nitro_api);
+    engine_mini->Init(nitro_api, next_client_version_, analytics_.get());
+
+    LOG(INFO) << "IEngineAPI::Run";
+    analytics_->AddBreadcrumb("Info", "IEngineAPI::Run");
+
+    EngineCommons::Init(nitro_api, user_info_client_, versions, available_branches_);
+
+    EngineRunResult engine_run_result = engine->Run(
+        module_instance_,
+        "",
+        cmd_line_->GetCmdLine(),
+        post_restart_cmd_line,
+        Sys_GetFactoryThis(),
+        Sys_GetFactory(filesystem_module));
+
+    EngineCommons::Reset();
+
+    LOG(INFO) << "IEngineAPI::Run done";
+    analytics_->AddBreadcrumb("Info", std::format("IEngineAPI::Run done, result: {}", (int)engine_run_result).c_str());
+
+    client_mini->Uninitialize();
+    Sys_UnloadModule(client_mini_module);
+
+    engine_mini->Uninitialize();
+    Sys_UnloadModule(engine_mini_module);
+
+    Sys_UnloadModule(engine_module);
+    Sys_UnloadModule(gameui_next_module);
+
+    filesystem->Unmount();
+    Sys_UnloadModule(filesystem_module);
+
+    for (auto& unsub : unsubscribers)
+        unsub->Unsubscribe();
+
+    nitro_api->UnInitialize();
+    Sys_UnloadModule(nitro_api_module);
+
+    EngineSessionResult engine_session_result{};
+
+    switch (engine_run_result)
+    {
+        case ENGRUN_QUITTING:
+            engine_session_result = EngineSessionResult::Exit;
+            break;
+
+        case ENGRUN_UNSUPPORTED_VIDEOMODE:
+            engine_session_result = OnVideoModeFailed() ? EngineSessionResult::Exit : EngineSessionResult::Restart;
+            break;
+
+        default:
+            engine_session_result = EngineSessionResult::Restart;
+            break;
+    }
+
+    config_provider_->ReloadFromFile();
+
+    ModifyCmdLineAfterRestart(post_restart_cmd_line);
+
+    return engine_session_result;
+}
+
+void ClientLauncher::PrepareEngineCommandLine()
+{
     if (!cmd_line_->CheckParm("-game"))
         cmd_line_->AppendParm("-game", "cstrike");
 
@@ -142,181 +314,26 @@ void ClientLauncher::RunEngine()
 
     if (!cmd_line_->CheckParm("-num_edicts"))
         cmd_line_->AppendParm("-num_edicts", "4096");
-
-    CheckVideoModeCrash();
-
-    while (is_engine_running)
-    {
-        auto [nitro_api, nitro_api_module] = LoadModule<nitroapi::NitroApiInterface>("nitro_api2.dll", NITROAPI_INTERFACE_VERSION);
-        if (nitro_api == nullptr)
-            break;
-
-        LogLoadedModulesWarn(nitro_api);
-
-        auto [filesystem, filesystem_module] = LoadModule<IFileSystem>("filesystem_proxy.dll", FILESYSTEM_INTERFACE_VERSION);
-        if (filesystem == nullptr)
-            break;
-
-        auto [engine_mini, engine_mini_module] = LoadModule<EngineMiniInterface>("next_engine_mini.dll", ENGINE_MINI_INTERFACE_VERSION);
-        if (engine_mini == nullptr)
-            break;
-
-        auto [client_mini, client_mini_module] = LoadModule<ClientMiniInterface>("cstrike\\cl_dlls\\client_mini.dll", CLIENT_MINI_INTERFACE_VERSION);
-        if (client_mini == nullptr)
-            break;
-
-        auto [gameui_next, gameui_next_module] = LoadModule<IGameUINext>("cstrike\\cl_dlls\\gameui.dll", GAMEUI_NEXT_INTERFACE_VERSION);
-        if (gameui_next == nullptr)
-            break;
-
-        CSysModule* steam_proxy_module = Sys_LoadModule("steam_api.dll");
-        if (steam_proxy_module == nullptr)
-        {
-            std::string error = "Module steam_api.dll not found";
-
-            analytics_->SendCrashMonitoringEvent("LoadModule Error", error.c_str(), true);
-            MessageBoxA(NULL, error.c_str(), kErrorTitle, MB_OK | MB_ICONERROR | MB_DEFAULT_DESKTOP_ONLY);
-            break;
-        }
-
-        auto steam_proxy_set_seh = (NextSteamProxy_SetSEHFunc)GetProcAddress((HMODULE)steam_proxy_module, "NextSteamProxy_SetSEH");
-        if (steam_proxy_set_seh == nullptr)
-        {
-            std::string error = "NextSteamProxy_SetSEH not found in steam_api.dll.\n"
-                                "Make sure you use the steam_api.dll from NextClient and not the original steam_api.dll";
-
-            analytics_->SendCrashMonitoringEvent("LoadModule Error", error.c_str(), true);
-            MessageBoxA(NULL, error.c_str(), kErrorTitle, MB_OK | MB_ICONERROR | MB_DEFAULT_DESKTOP_ONLY);
-            break;
-        }
-        steam_proxy_set_seh(ExceptionHandler);
-
-        filesystem->Mount();
-        filesystem->AddSearchPath("", "ROOT");
-
-        nitro_api->WriteLog(LOG_TAG, sentry_init_log_.c_str());
-        nitro_api->SetSEHCallback(ExceptionHandler);
-        nitro_api->Initialize(cmd_line_.get(), filesystem, hl_registry_.get());
-
-        std::vector<std::shared_ptr<nitroapi::Unsubscriber>> unsubscribers;
-
-        unsubscribers.emplace_back(nitro_api->GetEngineData()->Sys_Error |= [this](const char* error, const auto& next) { Sys_ErrorHandler(error); next->Invoke(error); });
-
-        auto [engine, engine_module] = LoadModule<IEngineAPI>(kEngineDll, VENGINE_LAUNCHER_API_VERSION);
-        if (engine == nullptr)
-            break;
-
-        std::string versions = CreateVersionsString(nitro_api, engine_mini, client_mini, gameui_next);
-        nitro_api->WriteLog(LOG_TAG, versions.c_str());
-
-        client_mini->Init(nitro_api);
-        engine_mini->Init(nitro_api, next_client_version_, analytics_.get());
-
-        //hangs on exit fix
-        unsubscribers.emplace_back(nitro_api->GetSDL2Data()->SDL_DestroyWindowFunc += [this, napi = nitro_api](void* window)
-        {
-            nitroapi::IEngine* eng = napi->GetEngineData()->eng;
-            if (eng->GetQuitting() == nitroapi::IEngine::QUIT_NOTQUITTING)
-            {
-                eng->SetQuitting(nitroapi::IEngine::QUIT_TODESKTOP);
-                napi->WriteLog(LOG_TAG, "[Repair] Hangs on exit");
-                analytics_->SendCrashMonitoringEvent("launcher", "hangs_on_exit", false);
-            }
-        });
-
-        unsubscribers.emplace_back(nitro_api->GetClientData()->HUD_Init += [this]() { analytics_->SendAnalyticsEvent("startup_hud_init_post"); });
-
-        LOG(INFO) << "IEngineAPI::Run";
-        analytics_->AddBreadcrumb("Info", "IEngineAPI::Run");
-
-        EngineCommons::Init(nitro_api, user_info_client_, versions, available_branches_);
-
-        EngineRunResult eRunResult = engine->Run(
-            module_instance_,
-            "",
-            cmd_line_->GetCmdLine(),
-            post_restart_cmd_line,
-            Sys_GetFactoryThis(),
-            Sys_GetFactory(filesystem_module));
-
-        EngineCommons::Reset();
-
-        LOG(INFO) << "IEngineAPI::Run done";
-        analytics_->AddBreadcrumb("Info", std::format("IEngineAPI::Run done, result: {}", (int)eRunResult).c_str());
-
-        Sys_UnloadModule(steam_proxy_module);
-
-        client_mini->Uninitialize();
-        Sys_UnloadModule(client_mini_module);
-
-        engine_mini->Uninitialize();
-        Sys_UnloadModule(engine_mini_module);
-
-        Sys_UnloadModule(engine_module);
-        Sys_UnloadModule(gameui_next_module);
-
-        filesystem->Unmount();
-        Sys_UnloadModule(filesystem_module);
-
-        for (auto& unsub : unsubscribers)
-            unsub->Unsubscribe();
-
-        nitro_api->UnInitialize();
-        Sys_UnloadModule(nitro_api_module);
-
-        switch (eRunResult)
-        {
-            case ENGRUN_QUITTING:
-            {
-                is_engine_running = false;
-                break;
-            }
-            case ENGRUN_UNSUPPORTED_VIDEOMODE:
-            {
-                is_engine_running = OnVideoModeFailed();
-                break;
-            }
-            default:
-            {
-                is_engine_running = true;
-                break;
-            }
-        }
-
-        config_provider_->ReloadFromFile();
-
-        ModifyCmdLineAfterRestart(post_restart_cmd_line);
-
-#ifdef UPDATER_ENABLE
-        if (is_engine_running && !cmd_line_->CheckParm("-noupdate"))
-        {
-            auto result = RunUpdater();
-            UpdaterDoneStatus updater_done = std::get<0>(result);
-            available_branches_ = std::get<1>(result);
-
-            // in case of RunNewGame just closing the game, because need more complicated logic to support this
-            is_engine_running = updater_done == UpdaterDoneStatus::RunGame;
-        }
-#endif
-    }
 }
 
 #ifdef UPDATER_ENABLE
-std::tuple<UpdaterDoneStatus, std::vector<BranchEntry>> ClientLauncher::RunUpdater()
+UpdaterResult ClientLauncher::RunUpdater(UpdaterFlags updater_flags)
 {
     LOG(INFO) << "Start the Updater GUI App";
     analytics_->SendAnalyticsEvent("startup_run_updater");
 
-    auto result = RunUpdaterGuiApp(
-        UPDATER_SERVICE_URL,
+    UpdaterResult result = RunUpdaterGuiApp(
         user_info_client_,
-        el::Loggers::getLogger(el::base::consts::kDefaultLoggerId),
+        user_storage_,
+        analytics_,
+        updater_flags,
         config_provider_->get_value_string("language", "english"),
         [this](NextUpdaterEvent event) {
             analytics_->SendAnalyticsLog(AnalyticsLogType::Error, std::format("updater error, state: {}, error: {}", magic_enum::enum_name(event.state), event.error_description).c_str());
-        });
+        },
+        backend_address_resolver_);
 
-    LOG(INFO) << "Updater GUI App result: " << magic_enum::enum_name(std::get<0>(result));
+    LOG(INFO) << "Updater GUI App result: " << magic_enum::enum_name(result.done_status);
 
     return result;
 }
@@ -362,24 +379,34 @@ void ClientLauncher::FixScreenResolution()
     }
 }
 
+bool ClientLauncher::GlobalMutexCheck()
+{
+    DWORD result = WaitForSingleObject(global_win_mutex_, 0);
+    if (result != WAIT_OBJECT_0 &&
+        result != WAIT_ABANDONED &&
+        !cmd_line_->CheckParm("-hijack"))
+    {
+        return false;
+    }
+
+    return true;
+}
+
 #ifdef GAMEANALYTICS_ENABLE
 
 void ClientLauncher::InitializeAnalytics()
 {
     std::string client_uid = user_info_client_->GetClientUid();
-    std::string branch = user_info_client_->GetUpdateBranch();
-
-    gameanalytics::StringVector dimensions01_branch;
-    dimensions01_branch.add(branch.c_str());
 
     gameanalytics::GameAnalytics::setEnabledErrorReporting(false);
     gameanalytics::GameAnalytics::disableDeviceInfo();
-    gameanalytics::GameAnalytics::configureAvailableCustomDimensions01(dimensions01_branch);
     gameanalytics::GameAnalytics::configureUserId(client_uid.c_str());
     gameanalytics::GameAnalytics::configureBuild(NEXT_CLIENT_BUILD_VERSION);
     gameanalytics::GameAnalytics::initialize(GAMEANALYTICS_GAME_KEY, GAMEANALYTICS_SECRET_KEY);
 
-    gameanalytics::GameAnalytics::setCustomDimension01(branch.c_str());
+    analytics_->SendBranchEvent();
+    analytics_->SendPrimaryBackendEvent();
+    analytics_->SendActualBackendEvent();
 }
 
 void ClientLauncher::UninitializeAnalytics()
@@ -415,6 +442,7 @@ void ClientLauncher::InitializeSentry()
     sentry_options_add_attachment(options, "setting_guard.ini");
     sentry_options_add_attachment(options, "user_game_config.ini");
     sentry_options_add_attachment(options, "launcher.log");
+    sentry_options_add_attachment(options, "platform\\config\\backend.json");
 
     int result = sentry_init(options);
 
@@ -440,6 +468,24 @@ void ClientLauncher::UninitializeSentry()
 
 void ClientLauncher::InitializeSentry() { }
 void ClientLauncher::UninitializeSentry() { }
+
+#endif
+
+void ClientLauncher::SDL_DestroyWindowHandler(nitroapi::NitroApiInterface* nitro_api)
+{
+    nitroapi::IEngine* eng = nitro_api->GetEngineData()->eng;
+    if (eng->GetQuitting() == nitroapi::IEngine::QUIT_NOTQUITTING)
+    {
+        eng->SetQuitting(nitroapi::IEngine::QUIT_TODESKTOP);
+        nitro_api->WriteLog(NITRO_API_LOG_TAG, "[Repair] Hangs on exit");
+        analytics_->SendCrashMonitoringEvent("launcher", "hangs_on_exit", false);
+    }
+}
+
+void ClientLauncher::HUD_InitHandler()
+{
+    analytics_->SendAnalyticsEvent("startup_hud_init_post");
+}
 
 void ClientLauncher::InitializeCmdLine(const char* cmd_line)
 {
@@ -526,18 +572,19 @@ void ClientLauncher::CheckVideoModeCrash()
     hl_registry_->WriteInt("ScreenWidth", kDefaultHeight);
 }
 
-#endif
-
 void ClientLauncher::Sys_ErrorHandler(const char* error)
 {
     analytics_->SendCrashMonitoringEvent("Sys_Error", error, true);
 }
 
-void ClientLauncher::LogLoadedModulesWarn(nitroapi::NitroApiInterface* nitro_api)
+void ClientLauncher::LogLoadedModules()
 {
-    auto write_line = [nitro_api](const char* module) {
+    auto write_line = [](const char* module)
+    {
         if (GetModuleHandleA(module) != nullptr)
-            nitro_api->WriteLog(LOG_TAG, std::format("Suspicious state, the module is already in memory: {}", module).c_str());
+        {
+            LOG(WARNING) << "Module " << module << " already loaded.";
+        }
     };
 
     write_line("hw.dll");

@@ -17,4 +17,5 @@ public:
     virtual void SetProgress(float progress) = 0;
     virtual void SetExitCallback(std::function<void()> callback) = 0;
     virtual std::tuple<int, int> GetWindowSize() = 0;
+    virtual UpdaterViewState GetState() = 0;
 };

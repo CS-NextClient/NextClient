@@ -1,6 +1,8 @@
 set(TARGET_NAME "next_launcher")
 set(OUTPUT_NAME "cstrike")
 
+find_package(ZLIB REQUIRED)
+find_package(CURL REQUIRED)
 find_package(OpenGL REQUIRED)
 find_package(magic_enum CONFIG REQUIRED)
 
@@ -32,12 +34,15 @@ target_link_libraries(${TARGET_NAME} PRIVATE
         next_launcher::utils
         magic_enum::magic_enum
         easyloggingpp::easyloggingpp
+        TaskCoro::TaskCoro
+        cpr::cpr
+        CURL::libcurl
+        ZLIB::ZLIB
         Dbghelp.lib
 )
 
 target_compile_definitions(${TARGET_NAME} PRIVATE
         MAX_LOGFILE_SIZE=524288 #bytes
-        LOG_TAG="launcher"
 )
 
 set_target_properties(${TARGET_NAME} PROPERTIES
@@ -50,13 +55,13 @@ set_target_properties(${TARGET_NAME} PROPERTIES
 if (NEXT_LAUNCHER_ENABLE_UPDATER)
     target_compile_definitions(${TARGET_NAME} PRIVATE
             UPDATER_ENABLE
-            UPDATER_SERVICE_URL="${NEXT_LAUNCHER_UPDATER_SERVICE_URL}"
     )
 
     target_link_libraries(${TARGET_NAME} PRIVATE
             next_launcher::gui_app_core
             next_launcher::updater
             CURL::libcurl
+            cpr::cpr
     )
 endif ()
 
@@ -99,3 +104,13 @@ if (NEXT_LAUNCHER_ENABLE_GAMEANALYTICS)
             Sqlite
     )
 endif ()
+
+#-----------------------------------------------------------------
+# Export library headers
+#-----------------------------------------------------------------
+add_library(next_launcher_export INTERFACE)
+add_library(NextClient::next_launcher ALIAS next_launcher_export)
+
+target_include_directories(next_launcher_export INTERFACE
+        ${NEXT_LAUNCHER_SOURCE_DIR}/include/next_launcher
+)

@@ -2,13 +2,14 @@
 #include "ServerBrowserDialog.h"
 #include "DialogGameInfo.h"
 
+#undef CreateDialog
+#undef PostMessage
+
 #include <tier2/tier2.h>
 #include <vgui/ILocalize.h>
 #include <vgui/IPanel.h>
 #include <vgui/IVGui.h>
 #include <KeyValues.h>
-
-#undef CreateDialog
 
 CServerBrowser g_ServerBrowserSingleton;
 
@@ -29,10 +30,10 @@ CServerBrowser::~CServerBrowser()
 
 void CServerBrowser::CreateDialog()
 {
-    if (!m_hInternetDlg.Get())
+    if (!server_browser_dialog_.Get())
     {
-        m_hInternetDlg = new CServerBrowserDialog(NULL);
-        m_hInternetDlg->Initialize();
+        server_browser_dialog_ = new CServerBrowserDialog(NULL);
+        server_browser_dialog_->Initialize();
     }
 }
 
@@ -47,79 +48,79 @@ bool CServerBrowser::Initialize(CreateInterfaceFn *factorylist, int factoryCount
 void CServerBrowser::ActiveGameName(const char *szGameName, const char *szGameDir)
 {
     vgui2::VPANEL panel = ServerBrowserDialog().GetVPanel();
-    vgui2::ivgui()->PostMessage(panel, new KeyValues("ActiveGameName", "game", szGameName, "name", szGameDir), panel, 0.0);
+    vgui2::ivgui()->PostMessage(panel, new KeyValues("ActiveGameName", "game", szGameName, "name", szGameDir), panel, 0.0f);
 }
 
 void CServerBrowser::ConnectToGame(int ip, int connectionport)
 {
     vgui2::VPANEL panel = ServerBrowserDialog().GetVPanel();
-    vgui2::ivgui()->PostMessage(panel, new KeyValues("ConnectedToGame", "ip", ip, "connectionport", connectionport), panel, 0.0);
+    vgui2::ivgui()->PostMessage(panel, new KeyValues("ConnectedToGame", "ip", ip, "connectionport", connectionport), panel, 0.0f);
 }
 
 void CServerBrowser::DisconnectFromGame()
 {
     vgui2::VPANEL panel = ServerBrowserDialog().GetVPanel();
-    vgui2::ivgui()->PostMessage(panel, new KeyValues("DisconnectedFromGame"), panel, 0.0);
+    vgui2::ivgui()->PostMessage(panel, new KeyValues("DisconnectedFromGame"), panel, 0.0f);
 }
 
 bool CServerBrowser::Activate()
 {
-    m_hInternetDlg->Open();
+    server_browser_dialog_->Open();
     return true;
 }
 
 bool CServerBrowser::Activate(ServerBrowserTab tab)
 {
-    m_hInternetDlg->Open();
-    m_hInternetDlg->ActivateTab(tab);
+    server_browser_dialog_->Open();
+    server_browser_dialog_->ActivateTab(tab);
     return true;
 }
 
 void CServerBrowser::Deactivate()
 {
-    if (m_hInternetDlg.Get())
-        m_hInternetDlg->SaveUserData();
+    if (server_browser_dialog_.Get())
+        server_browser_dialog_->SaveUserData();
 }
 
 void CServerBrowser::Reactivate()
 {
-    if (m_hInternetDlg.Get())
+    if (server_browser_dialog_.Get())
     {
-        m_hInternetDlg->LoadUserData();
+        server_browser_dialog_->LoadUserData();
 
-        if (m_hInternetDlg->IsVisible())
-            m_hInternetDlg->RefreshCurrentPage();
+        if (server_browser_dialog_->IsVisible())
+            server_browser_dialog_->RefreshCurrentPage();
     }
 }
 
 vgui2::VPANEL CServerBrowser::GetPanel()
 {
-    return m_hInternetDlg.Get() ? m_hInternetDlg->GetVPanel() : NULL;
+    return server_browser_dialog_.Get() ? server_browser_dialog_->GetVPanel() : NULL;
 }
 
 void CServerBrowser::SetParent(vgui2::VPANEL parent)
 {
-    if (m_hInternetDlg.Get())
-        m_hInternetDlg->SetParent(parent);
+    if (server_browser_dialog_.Get())
+        server_browser_dialog_->SetParent(parent);
 }
 
 void CServerBrowser::Shutdown()
 {
-    if (m_hInternetDlg.Get())
+    if (server_browser_dialog_.Get())
     {
-        m_hInternetDlg->Close();
-        m_hInternetDlg->MarkForDeletion();
+        server_browser_dialog_->Close();
+        server_browser_dialog_->MarkForDeletion();
     }
 }
 
 void CServerBrowser::CloseAllGameInfoDialogs()
 {
-    if (m_hInternetDlg.Get())
-        m_hInternetDlg->CloseAllGameInfoDialogs();
+    if (server_browser_dialog_.Get())
+        server_browser_dialog_->CloseAllGameInfoDialogs();
 }
 
 bool CServerBrowser::JoinGame(unsigned int gameIP, unsigned int gamePort, const char *userName)
 {
-    m_hInternetDlg->JoinGame(gameIP, gamePort, userName);
+    server_browser_dialog_->JoinGame(gameIP, gamePort, userName);
     return true;
 }

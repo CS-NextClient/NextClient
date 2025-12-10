@@ -110,6 +110,11 @@ std::tuple<int, int> UpdaterView::GetWindowSize()
     return { kWindowWidth, kWindowHeight };
 }
 
+UpdaterViewState UpdaterView::GetState()
+{
+    return state_;
+}
+
 float UpdaterView::GetOverallProgress()
 {
     if (state_ == UpdaterViewState::Downloading)

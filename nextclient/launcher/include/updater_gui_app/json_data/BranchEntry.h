@@ -6,9 +6,9 @@
 
 struct BranchEntry
 {
-    std::string name;
-    std::string desc;
-    bool visible;
+    std::string name{};
+    std::string desc{};
+    bool visible{};
 };
 
 template<>

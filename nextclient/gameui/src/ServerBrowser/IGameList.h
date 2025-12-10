@@ -28,6 +28,7 @@ public:
         Other             = 5
     };
 
+    virtual ~IGameList() = default;
     virtual bool SupportsItem(InterfaceItem item) = 0;
     virtual void StartRefresh() = 0;
     virtual void GetNewServerList() = 0;

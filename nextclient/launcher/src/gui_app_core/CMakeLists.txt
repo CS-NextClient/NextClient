@@ -30,6 +30,8 @@ target_include_directories(${TARGET_NAME} PRIVATE
 target_link_libraries(${TARGET_NAME} PRIVATE
         OpenGL::GL
         glfw
-        ${TARGET_NAME}::rc
+        TaskCoro::TaskCoro
+        ncl_utils::ncl_utils
         easyloggingpp::easyloggingpp
+        ${TARGET_NAME}::rc
 )

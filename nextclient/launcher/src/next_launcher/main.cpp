@@ -4,6 +4,8 @@
 #include <next_launcher/version.h>
 #include <nitro_utils/string_utils.h>
 #include <ncl_utils/safe_result.h>
+#include <taskcoro/TaskCoro.h>
+#include <taskcoro/impl/TaskCoroImpl.h>
 #include <utils/platform.h>
 
 #include "ClientLauncher.h"
@@ -12,6 +14,8 @@ INITIALIZE_EASYLOGGINGPP
 
 using namespace std::chrono_literals;
 using namespace ncl_utils;
+
+std::shared_ptr<taskcoro::TaskCoroImpl> g_TaskCoroImpl;
 
 static void SetupLogger()
 {
@@ -28,6 +32,18 @@ static void SetupLocale()
     setlocale(LC_TIME, "");
     setlocale(LC_COLLATE, "");
     setlocale(LC_MONETARY, "");
+}
+
+static void SetupTaskCoro()
+{
+    g_TaskCoroImpl = std::make_shared<taskcoro::TaskCoroImpl>(std::this_thread::get_id(), false);
+    taskcoro::TaskCoro::Initialize(g_TaskCoroImpl);
+}
+
+static void ReleaseTaskCoro()
+{
+    taskcoro::TaskCoro::UnInitialize();
+    g_TaskCoroImpl = nullptr;
 }
 
 static void FinishLauncherUpdate()
@@ -93,6 +109,7 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, 
     LOG(INFO) << "Start " << GetCurrentProcessPath().filename();
     LOG(INFO) << "Version: " << NEXT_CLIENT_BUILD_VERSION;
 
+    SetupTaskCoro();
     SetupLocale();
 
 #ifdef UPDATER_ENABLE
@@ -103,6 +120,8 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, 
         auto launcher = std::make_unique<ClientLauncher>(hInstance, GetCommandLineA());
         launcher->Run();
     }
+
+    ReleaseTaskCoro();
 
     LOG(INFO) << "Exit";
 

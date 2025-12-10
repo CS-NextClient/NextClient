@@ -1,4 +1,4 @@
-set(TARGET_NAME "updater")
+set(TARGET_NAME "updater_gui_app")
 
 find_package(ZLIB REQUIRED)
 find_package(CURL REQUIRED)
@@ -6,7 +6,8 @@ find_package(taocpp-json CONFIG REQUIRED)
 find_package(magic_enum CONFIG REQUIRED)
 find_package(concurrencpp CONFIG REQUIRED)
 
-configure_file(${NEXT_LAUNCHER_SOURCE_DIR}/src/updater/NextUpdater/NextUpdaterHttpServiceConfig.h.in ${NEXT_LAUNCHER_SOURCE_DIR}/src/updater/NextUpdater/NextUpdaterHttpServiceConfig.h)
+configure_file(${NEXT_LAUNCHER_SOURCE_DIR}/src/updater_gui_app/NextUpdater/NextUpdaterHttpServiceConfig.h.in
+               ${NEXT_LAUNCHER_SOURCE_DIR}/src/updater_gui_app/NextUpdater/NextUpdaterHttpServiceConfig.h)
 
 file(GLOB_RECURSE UPDATER_SOURCES
         LIST_DIRECTORIES FALSE
@@ -34,4 +35,5 @@ target_link_libraries(${TARGET_NAME} PRIVATE
         concurrencpp::concurrencpp
         easyloggingpp::easyloggingpp
         ncl_utils::ncl_utils
+        TaskCoro::TaskCoro
 )

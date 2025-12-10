@@ -10,6 +10,9 @@
 #include "../IServerBrowserEx.h"
 #include "vgui_controls/ImagePanel.h"
 
+// prevent windows macros from messing with the class
+#undef MessageBox
+
 OptionsSubMiscellaneous::OptionsSubMiscellaneous(vgui2::Panel *parent) :
     PropertyPage(parent, nullptr)
 {

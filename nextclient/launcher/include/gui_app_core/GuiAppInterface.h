@@ -1,5 +1,4 @@
 #pragma once
-
 #include <string>
 
 struct GuiAppStartUpInfo
@@ -16,6 +15,7 @@ struct GuiAppState
     bool windows_state_hidden{};
 };
 
+template <class TResult>
 class GuiAppInterface
 {
 public:
@@ -23,5 +23,5 @@ public:
 
     virtual GuiAppStartUpInfo OnStart() = 0;
     virtual void OnUpdate(GuiAppState& state) = 0;
-    virtual void OnExit() = 0;
+    virtual TResult OnExit() = 0;
 };

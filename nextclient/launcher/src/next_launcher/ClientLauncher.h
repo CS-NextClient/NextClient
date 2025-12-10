@@ -9,6 +9,7 @@
 #include "Registry.h"
 #include "CommandLine.h"
 #include "Analytics.h"
+#include "BackendAddressResolver.h"
 
 #include <next_launcher/IUserInfo.h>
 #include <next_launcher/IUserStorage.h>
@@ -18,11 +19,19 @@
 #include <next_client_mini/client_mini.h>
 #include <next_engine_mini/engine_mini.h>
 #include <next_gameui/IGameUINext.h>
-#include <updater/json_data/BranchEntry.h>
-#include <updater/UpdaterDoneStatus.h>
+#include <updater_gui_app/json_data/BranchEntry.h>
+#include <updater_gui_app/UpdaterDoneStatus.h>
+#include <updater_gui_app/UpdaterFlags.h>
+#include <updater_gui_app/UpdaterResult.h>
 
 class ClientLauncher
 {
+    enum class EngineSessionResult
+    {
+        Exit,
+        Restart,
+    };
+
     static constexpr char kEngineDll[] = "hw.dll";
     static constexpr char kErrorTitle[] = "Counter-Strike Launcher";
     static constexpr char kNextClientRegistry[] = "Software\\Valve\\Half-Life\\nextclient";
@@ -38,6 +47,7 @@ class ClientLauncher
     std::shared_ptr<next_launcher::UserInfoClient> user_info_client_;
     std::shared_ptr<Analytics> analytics_;
     std::shared_ptr<nitro_utils::FileConfigProvider> config_provider_;
+    std::shared_ptr<BackendAddressResolver> backend_address_resolver_;
 
     std::shared_ptr<CRegistry> hl_registry_;
     std::shared_ptr<CCommandLine> cmd_line_;
@@ -47,7 +57,7 @@ class ClientLauncher
     std::vector<BranchEntry> available_branches_;
 
     HINSTANCE module_instance_;
-    HANDLE global_mutex_;
+    HANDLE global_win_mutex_;
 
 public:
     explicit ClientLauncher(HINSTANCE module_instance, const char* cmd_line);
@@ -57,20 +67,26 @@ public:
 
 private:
 #ifdef UPDATER_ENABLE
-    std::tuple<UpdaterDoneStatus, std::vector<BranchEntry>> RunUpdater();
+    UpdaterResult RunUpdater(UpdaterFlags updater_flags);
 #endif
 
+    void PrepareEngineCommandLine();
     void RunEngine();
+    EngineSessionResult RunEngineSession(char* post_restart_cmd_line);
+    void RunNewGame();
 
     void CreateConsoleWindowAndRedirectOutput();
 
     bool OnVideoModeFailed();
     void FixScreenResolution();
+    bool GlobalMutexCheck();
 
     void InitializeAnalytics();
     void UninitializeAnalytics();
     void InitializeSentry();
     void UninitializeSentry();
+    void SDL_DestroyWindowHandler(nitroapi::NitroApiInterface* nitro_api);
+    void HUD_InitHandler();
 
     void InitializeCmdLine(const char* cmd_line);
     void ModifyCmdLineAfterRestart(const char* cmd_line);
@@ -78,7 +94,7 @@ private:
 
     void Sys_ErrorHandler(const char* error);
 
-    static void LogLoadedModulesWarn(nitroapi::NitroApiInterface* nitro_api);
+    static void LogLoadedModules();
     static std::string CreateVersionsString(nitroapi::NitroApiInterface* nitro_api,
                                             EngineMiniInterface* engine_mini,
                                             ClientMiniInterface* client_mini,

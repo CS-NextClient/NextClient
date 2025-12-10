@@ -6,8 +6,8 @@
 #include <easylogging++.h>
 #include <cpr/cpr.h>
 #include <utils/bitmask.h>
-#include <updater/NextUpdater/NextUpdaterEvent.h>
-#include <updater/json_data/UpdateEntry.h>
+#include <updater_gui_app/NextUpdater/NextUpdaterEvent.h>
+#include <updater_gui_app/json_data/UpdateEntry.h>
 #include <ncl_utils/safe_result.h>
 
 #include "NextUpdaterHttpService.h"
@@ -43,23 +43,22 @@ class NextUpdater
     std::filesystem::path install_path_;
     std::filesystem::path backup_path_;
     std::shared_ptr<HttpServiceInterface> http_service_;
-    el::Logger* logger_;
     std::function<void(NextUpdaterEvent)> updater_event_callback_;
 
     std::atomic<NextUpdaterState> state_ = NextUpdaterState::Idle;
     float state_progress_ = 0;
-    std::atomic_bool is_canceled_ = false;
+
+    std::shared_ptr<taskcoro::CancellationToken> ct_;
 
 public:
     explicit NextUpdater(std::filesystem::path install_path,
                          std::filesystem::path backup_path,
-                         el::Logger* logger,
                          std::shared_ptr<HttpServiceInterface> http_service,
                          std::function<void(NextUpdaterEvent)> updater_event_callback);
     NextUpdaterResult Start();
     void Cancel();
 
-    [[nodiscard]] bool is_canceled() const { return is_canceled_; }
+    [[nodiscard]] bool is_canceled() const { return ct_->IsCanceled(); }
     [[nodiscard]] NextUpdaterState get_state() const { return state_; }
 
 private:

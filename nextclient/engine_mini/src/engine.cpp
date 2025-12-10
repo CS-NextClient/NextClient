@@ -250,8 +250,6 @@ static void EngineMiniInitialize(nitroapi::NitroApiInterface* nitro_api, NextCli
 
 static void OnGameUninitializing()
 {
-    g_pMatchmakingServers = nullptr;
-
     PROTECTOR_Shutdown();
     CL_CvarsSandboxShutdown();
 
@@ -603,6 +601,8 @@ public:
     {
         if (g_Analytics)
             g_Analytics->AddBreadcrumb("info", BREADCRUMBS_TAG " EngineMini::Uninitialize");
+
+        g_pMatchmakingServers = nullptr;
 
         for (auto &unsubscriber : unsubs_)
             unsubscriber->Unsubscribe();

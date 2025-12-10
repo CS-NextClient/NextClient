@@ -1,12 +1,11 @@
 #pragma once
-
 #include <memory>
 #include <next_gameui/IGameConsoleNext.h>
 #include <next_launcher/UserInfoClient.h>
 #include <nitroapi/NitroApiInterface.h>
 #include <nitroapi/NitroApiHelper.h>
 #include <vgui/ILocalize.h>
-#include <updater/json_data/BranchEntry.h>
+#include <updater_gui_app/json_data/BranchEntry.h>
 
 class EngineCommons : public nitroapi::NitroApiHelper
 {

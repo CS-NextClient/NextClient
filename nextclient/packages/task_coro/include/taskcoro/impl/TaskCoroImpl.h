@@ -17,12 +17,15 @@ namespace taskcoro
         std::shared_ptr<concurrencpp::thread_pool_executor> thread_pool_io_executor_;
 
         std::thread::id main_thread_id_;
+        bool is_main_thead_available_;
 
     public:
-        explicit TaskCoroImpl(std::thread::id main_thread_id);
+        explicit TaskCoroImpl(std::thread::id main_thread_id, bool is_main_thead_available = true);
+        explicit TaskCoroImpl();
         ~TaskCoroImpl() override;
 
         bool IsMainThread() override;
+        bool IsMainThreadAvailable() override;
         concurrencpp::result<void> SwitchTo(TaskType task_type) override;
         concurrencpp::result<void> Yield_() override;
         concurrencpp::result<void> WaitForMs(std::chrono::milliseconds ms) override;

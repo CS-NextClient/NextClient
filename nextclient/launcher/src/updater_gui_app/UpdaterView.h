@@ -31,6 +31,7 @@ public:
     void SetProgress(float progress) override;
     void SetExitCallback(std::function<void()> callback) override;
     std::tuple<int, int> GetWindowSize() override;
+    UpdaterViewState GetState() override;
 
 private:
     float GetOverallProgress();

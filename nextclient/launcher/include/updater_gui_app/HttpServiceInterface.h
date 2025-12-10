@@ -1,7 +1,7 @@
 #pragma once
-
 #include <string>
 #include <cpr/cpr.h>
+#include <taskcoro/TaskCoro.h>
 
 struct HttpResponse
 {
@@ -18,13 +18,17 @@ struct HttpResponse
     }
 };
 
+using RequestCallback = std::function<void(const HttpResponse&)>;
+
 class HttpServiceInterface
 {
 public:
     virtual ~HttpServiceInterface() = default;
-    virtual HttpResponse Post(
-        const std::string& method,
-        const std::string& data,
-        std::function<bool(cpr::cpr_off_t total, cpr::cpr_off_t downloaded)> progress = nullptr,
-        int timeout_ms = 0) = 0;
+
+    virtual concurrencpp::result<HttpResponse> PostAsync(
+        std::string method,
+        std::string data,
+        std::shared_ptr<taskcoro::CancellationToken> cancellation_token) = 0;
+
+    virtual concurrencpp::result<void> ShutdownAsync() = 0;
 };

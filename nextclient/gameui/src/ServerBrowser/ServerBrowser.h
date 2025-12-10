@@ -36,9 +36,8 @@ public:
     virtual void CreateDialog();
 
 private:
-    vgui2::DHANDLE<CServerBrowserDialog> m_hInternetDlg;
-
-    bool m_bFirstActivatePassed;
+    vgui2::DHANDLE<CServerBrowserDialog> server_browser_dialog_{};
+    bool first_activate_passed_{};
 };
 
 CServerBrowser &ServerBrowser();

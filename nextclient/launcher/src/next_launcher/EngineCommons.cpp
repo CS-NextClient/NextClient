@@ -23,10 +23,11 @@ EngineCommons& EngineCommons::Instance()
     return *instance_;
 }
 
-EngineCommons& EngineCommons::Init(nitroapi::NitroApiInterface* nitro_api,
-                                               std::shared_ptr<next_launcher::UserInfoClient> user_info,
-                                               std::string versions,
-                                               std::vector<BranchEntry> branches)
+EngineCommons& EngineCommons::Init(
+    nitroapi::NitroApiInterface* nitro_api,
+    std::shared_ptr<next_launcher::UserInfoClient> user_info,
+    std::string versions,
+    std::vector<BranchEntry> branches)
 {
     Reset();
 

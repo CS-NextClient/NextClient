@@ -16,6 +16,7 @@ namespace taskcoro
     public:
         virtual ~TaskCoroImplInterface() = default;
 
+        virtual bool IsMainThreadAvailable() = 0;
         virtual bool IsMainThread() = 0;
         virtual concurrencpp::result<void> SwitchTo(TaskType task_type) = 0;
         virtual concurrencpp::result<void> Yield_() = 0;

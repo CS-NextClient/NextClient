@@ -224,16 +224,19 @@ void CGameUI::Start(cl_enginefuncs_s *engineFuncs, int interfaceVersion, void *s
 
 void CGameUI::Shutdown(void)
 {
-    task_run_impl_->OnShutdown();
-    TaskCoro::UnInitialize();
-
     vgui2::system()->SaveUserConfigFile();
 
     if (g_pServerBrowser)
     {
         g_pServerBrowser->Deactivate();
         g_pServerBrowser->Shutdown();
+
+        // Extra frame so that all MarkForDeletion are executed
+        vgui2::ivgui()->RunFrame();
     }
+
+    task_run_impl_->OnShutdown();
+    TaskCoro::UnInitialize();
 
     ModInfo().FreeModInfo();
 
