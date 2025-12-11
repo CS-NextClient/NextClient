@@ -84,6 +84,7 @@ HttpResponse NextUpdaterHttpService::PostInternal(
     session.SetBody(SerializeAes(request_body));
     session.SetHeader(GetHeadersForRequest());
     session.SetConnectTimeout(kConnectTimeout);
+    session.SetTimeout(kTimeout);
     session.SetProgressCallback(cpr::ProgressCallback(
         [cancellation_token]
         (cpr::cpr_pf_arg_t, cpr::cpr_pf_arg_t, cpr::cpr_pf_arg_t, cpr::cpr_pf_arg_t, intptr_t)

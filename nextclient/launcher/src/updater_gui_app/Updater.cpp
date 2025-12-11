@@ -19,7 +19,7 @@ Updater::Updater(
     std::shared_ptr<next_launcher::IBackendAddressResolver> backend_address_resolver,
     std::shared_ptr<next_launcher::IUserStorage> user_storage,
     std::shared_ptr<next_launcher::UserInfoClient> user_info,
-    const std::string& language,
+    std::string language,
     UpdaterFlags flags,
     std::function<void(NextUpdaterEvent)> error_event_callback)
 :
@@ -27,7 +27,7 @@ Updater::Updater(
     backend_address_resolver_(std::move(backend_address_resolver)),
     user_storage_(std::move(user_storage)),
     user_info_(std::move(user_info)),
-    language_(language),
+    language_(std::move(language)),
     flags_(flags),
     error_event_callback_(std::move(error_event_callback))
 {
@@ -51,7 +51,7 @@ GuiAppStartUpInfo Updater::OnStart()
     ui_thread_manual_sync_ctx_ = std::make_shared<SynchronizationContextManual>();
     ui_thread_ctx_ = std::make_shared<SynchronizationContext>(ui_thread_manual_sync_ctx_);
 
-    working_thread_task_ = TaskCoro::RunTask(TaskType::NewThread, ContinuationContextType::Callee, &Updater::RunWorkingThread, this);
+    updater_task_ = TaskCoro::RunTask(TaskType::ThreadPool, ContinuationContextType::Callee, &Updater::RunUpdater, this);
 
     show_window_delay_timeout_.start();
 
@@ -81,7 +81,7 @@ void Updater::OnUpdate(GuiAppState& state)
 
     CheckStateTimeout();
 
-    if (working_thread_task_.status() != result_status::idle)
+    if (updater_task_.status() != result_status::idle)
     {
         state.should_exit = true;
     }
@@ -104,7 +104,7 @@ UpdaterResult Updater::OnExit()
 
     try
     {
-        result = working_thread_task_.get();
+        result = updater_task_.get();
     }
     catch (const OperationCanceledException& )
     { }
@@ -113,7 +113,6 @@ UpdaterResult Updater::OnExit()
     {
         result.done_status = (UpdaterDoneStatus)(cancellation_reason - 1);
     }
-
 
     return result;
 }
@@ -148,7 +147,7 @@ bool Updater::IsWindowShouldBeVisible()
     return is_should_be_visible;
 }
 
-result<UpdaterResult> Updater::RunWorkingThread()
+result<UpdaterResult> Updater::RunUpdater()
 {
     UpdaterResult result{};
 
@@ -169,7 +168,7 @@ result<bool> Updater::ProcessNextUpdater(UpdaterResult& status_out)
         co_return true;
     }
 
-    NextUpdaterResult next_updater_result = next_updater_->Start();
+    NextUpdaterResult next_updater_result = co_await next_updater_->Start();
 
     status_out.done_status = GetDoneStatusByUpdaterResult(next_updater_result);
 
@@ -197,7 +196,7 @@ void Updater::OnUpdaterEvent(const NextUpdaterEvent& event)
             event.state == NextUpdaterState::GatheringFilesToUpdate ||
             event.state == NextUpdaterState::OpeningFilesToInstall;
 
-        SetViewStateThreadSafe(GetViewStateByUpdaterState(event.state), !is_transient_state);
+        SetViewStateThreadSafe(GetViewStateByUpdaterState(event.state), is_transient_state);
     }
 
     if (event.flags & NextUpdaterEventFlags::ProgressChanged)

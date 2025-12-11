@@ -14,6 +14,7 @@ using DataReader = std::function<std::string()>;
 class NextUpdaterHttpService : public HttpServiceInterface
 {
     static constexpr std::chrono::milliseconds kConnectTimeout{5000};
+    static constexpr std::chrono::milliseconds kTimeout{5000};
 
     std::shared_ptr<next_launcher::UserInfoClient> user_info_;
     std::shared_ptr<next_launcher::IBackendAddressResolver> backend_address_resolver_;

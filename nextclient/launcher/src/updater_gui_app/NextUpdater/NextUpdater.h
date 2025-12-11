@@ -5,6 +5,7 @@
 
 #include <easylogging++.h>
 #include <cpr/cpr.h>
+#include <taskcoro/TaskCoro.h>
 #include <utils/bitmask.h>
 #include <updater_gui_app/NextUpdater/NextUpdaterEvent.h>
 #include <updater_gui_app/json_data/UpdateEntry.h>
@@ -55,7 +56,7 @@ public:
                          std::filesystem::path backup_path,
                          std::shared_ptr<HttpServiceInterface> http_service,
                          std::function<void(NextUpdaterEvent)> updater_event_callback);
-    NextUpdaterResult Start();
+    concurrencpp::result<NextUpdaterResult> Start();
     void Cancel();
 
     [[nodiscard]] bool is_canceled() const { return ct_->IsCanceled(); }
@@ -69,7 +70,7 @@ private:
 
     RestoreFromBackupResult RestoreFromBackup(RestoreFromBackupBehaviour behaviour = RestoreFromBackupBehaviour::None);
 
-    ncl_utils::ResultT<UpdateEntry, UpdateError> SendUpdateFilesRequest();
+    concurrencpp::result<ncl_utils::ResultT<UpdateEntry, UpdateError>> SendUpdateFilesRequest();
     std::vector<UpdaterFileInfo> CreateUpdaterFileInfos(const std::vector<FileEntry>& remote_files);
     // key is remote file name
     static ncl_utils::ResultT<std::unordered_map<std::string, UpdaterFileInfo>, UpdateError> GetFilesToUpdate(const std::vector<UpdaterFileInfo>& files);

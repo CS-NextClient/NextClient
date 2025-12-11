@@ -21,7 +21,7 @@
 class Updater : public GuiAppInterface<UpdaterResult>
 {
     static constexpr std::chrono::seconds kWindowShowDelay{2};
-    static constexpr std::chrono::seconds kSpecificStatesTimeout{10};
+    static constexpr std::chrono::seconds kSpecificStatesTimeout{8};
     static constexpr char kInstallFolder[] = "";
     static constexpr char kBackupFolder[] = "update\\backup_v3";
 
@@ -36,7 +36,7 @@ class Updater : public GuiAppInterface<UpdaterResult>
     std::shared_ptr<taskcoro::CancellationToken> ct_;
     std::shared_ptr<taskcoro::SynchronizationContext> ui_thread_ctx_;
     std::shared_ptr<taskcoro::SynchronizationContextManual> ui_thread_manual_sync_ctx_;
-    concurrencpp::result<UpdaterResult> working_thread_task_;
+    concurrencpp::result<UpdaterResult> updater_task_;
     std::shared_ptr<HttpServiceInterface> http_service_;
     std::shared_ptr<UpdaterViewInterface> view_;
     std::unique_ptr<NextUpdater> next_updater_;
@@ -49,7 +49,7 @@ public:
                      std::shared_ptr<next_launcher::IBackendAddressResolver> backend_address_resolver,
                      std::shared_ptr<next_launcher::IUserStorage> user_storage,
                      std::shared_ptr<next_launcher::UserInfoClient> user_info,
-                     const std::string& language,
+                     std::string language,
                      UpdaterFlags flags,
                      std::function<void(NextUpdaterEvent)> error_event_callback);
     ~Updater() override;
@@ -64,7 +64,7 @@ private:
     void CheckStateTimeout();
     bool IsWindowShouldBeVisible();
 
-    concurrencpp::result<UpdaterResult> RunWorkingThread();
+    concurrencpp::result<UpdaterResult> RunUpdater();
     concurrencpp::result<bool> ProcessNextUpdater(UpdaterResult& status_out);
     concurrencpp::result<void> ProcessBranchList(UpdaterResult& status_out);
     void OnUpdaterEvent(const NextUpdaterEvent& event);

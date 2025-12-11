@@ -13,6 +13,8 @@ static const char* LOG_TAG = "[NextUpdater] ";
 using namespace std::chrono;
 using namespace std::chrono_literals;
 using namespace ncl_utils;
+using namespace concurrencpp;
+using namespace taskcoro;
 namespace fs = std::filesystem;
 
 NextUpdater::NextUpdater(std::filesystem::path install_path,
@@ -24,23 +26,23 @@ NextUpdater::NextUpdater(std::filesystem::path install_path,
     http_service_(std::move(http_service)),
     updater_event_callback_(std::move(updater_event_callback))
 {
-    ct_ = taskcoro::CancellationToken::Create();
+    ct_ = CancellationToken::Create();
 }
 
-NextUpdaterResult NextUpdater::Start()
+result<NextUpdaterResult> NextUpdater::Start()
 {
     if (ct_->IsCanceled())
     {
-        return NextUpdaterResult::CanceledByUser;
+        co_return NextUpdaterResult::CanceledByUser;
     }
 
     auto restoreFromBackupResult = RestoreFromBackup(RestoreFromBackupBehaviour::ClearBackupFolderEvenIfRestoreFail);
     if (restoreFromBackupResult == RestoreFromBackupResult::ClearBackupFolderError)
-        return NextUpdaterResult::Error;
+        co_return NextUpdaterResult::Error;
 
     LOG(INFO) << LOG_TAG << "Requesting file list from server";
     SetStateAndRaiseEvent(NextUpdaterState::RequestingFileList);
-    ResultT<UpdateEntry, UpdateError> update_entry = SendUpdateFilesRequest();
+    ResultT<UpdateEntry, UpdateError> update_entry = co_await SendUpdateFilesRequest();
     if (update_entry.has_error())
     {
         LOG(ERROR) << LOG_TAG << "Requesting file list error: " << update_entry.error_str();
@@ -50,7 +52,7 @@ NextUpdaterResult NextUpdater::Start()
             NextUpdaterResult::ConnectionError :
             NextUpdaterResult::Error;
 
-        return error_type;
+        co_return error_type;
     }
 
     std::vector<UpdaterFileInfo> file_infos = CreateUpdaterFileInfos(update_entry->files);
@@ -62,14 +64,14 @@ NextUpdaterResult NextUpdater::Start()
     {
         LOG(ERROR) << LOG_TAG << "Gathering files to update error: " << files_to_update.error_str();
         SetErrorAndRaiseEvent(files_to_update.error_str());
-        return NextUpdaterResult::Error;
+        co_return NextUpdaterResult::Error;
     }
 
     if (files_to_update->empty())
     {
         LOG(INFO) << LOG_TAG << "  nothing to update";
         SetStateAndRaiseEvent(NextUpdaterState::Done);
-        return NextUpdaterResult::NothingToUpdate;
+        co_return NextUpdaterResult::NothingToUpdate;
     }
     else
     {
@@ -85,7 +87,7 @@ NextUpdaterResult NextUpdater::Start()
     {
         LOG(INFO) << LOG_TAG << "Backup error: " << backup_files_result.error_str();
         SetErrorAndRaiseEvent(backup_files_result.error_str());
-        return NextUpdaterResult::Error;
+        co_return NextUpdaterResult::Error;
     }
 
     LOG(INFO) << LOG_TAG << "Opening files to install";
@@ -99,14 +101,14 @@ NextUpdaterResult NextUpdater::Start()
 
         fo_install.CloseAllFiles();
         RestoreFromBackup();
-        return NextUpdaterResult::Error;
+        co_return NextUpdaterResult::Error;
     }
 
     if (SetCanceledStateIfNeeded())
     {
         fo_install.CloseAllFiles();
         RestoreFromBackup();
-        return NextUpdaterResult::CanceledByUser;
+        co_return NextUpdaterResult::CanceledByUser;
     }
 
     LOG(INFO) << LOG_TAG << "Downloading an update";
@@ -132,7 +134,7 @@ NextUpdaterResult NextUpdater::Start()
             NextUpdaterResult::ConnectionError :
             NextUpdaterResult::Error;
 
-        return error_type;
+        co_return error_type;
     }
 
     LOG(INFO) << LOG_TAG << "Installing an update";
@@ -146,7 +148,7 @@ NextUpdaterResult NextUpdater::Start()
 
         fo_install.CloseAllFiles();
         RestoreFromBackup();
-        return NextUpdaterResult::Error;
+        co_return NextUpdaterResult::Error;
     }
 
     LOG(INFO) << LOG_TAG << "Clearing backup folder";
@@ -156,11 +158,11 @@ NextUpdaterResult NextUpdater::Start()
     {
         LOG(ERROR) << LOG_TAG << "Clearing backup folder error: " << clear_backup_folder_result.error_str();
         SetErrorAndRaiseEvent(clear_backup_folder_result.error_str());
-        return NextUpdaterResult::Error;
+        co_return NextUpdaterResult::Error;
     }
 
     SetStateAndRaiseEvent(NextUpdaterState::Done);
-    return files_to_update->contains("cs.exe") ? NextUpdaterResult::UpdatedIncludingLauncher : NextUpdaterResult::Updated;
+    co_return files_to_update->contains("cs.exe") ? NextUpdaterResult::UpdatedIncludingLauncher : NextUpdaterResult::Updated;
 }
 
 void NextUpdater::Cancel()
@@ -267,15 +269,15 @@ std::vector<UpdaterFileInfo> NextUpdater::CreateUpdaterFileInfos(const std::vect
     return files;
 }
 
-ResultT<UpdateEntry, UpdateError> NextUpdater::SendUpdateFilesRequest()
+result<ResultT<UpdateEntry, UpdateError>> NextUpdater::SendUpdateFilesRequest()
 {
     HttpResponse response;
 
     try
     {
-        response = http_service_->PostAsync("launcher_update", "null", ct_).get();
+        response = co_await http_service_->PostAsync("launcher_update", "null", ct_);
     }
-    catch (taskcoro::OperationCanceledException&)
+    catch (OperationCanceledException&)
     {
         cpr::Error error;
         error.message = "Operation cancelled";
@@ -291,21 +293,21 @@ ResultT<UpdateEntry, UpdateError> NextUpdater::SendUpdateFilesRequest()
             UpdateErrorType::ConnectionError :
             UpdateErrorType::NetworkError;
 
-        return UpdateError(error_type, error_message);
+        co_return UpdateError(error_type, error_message);
     }
 
     try
     {
         auto v = tao::json::basic_from_string<UpdaterJsonTraits>(response.data);
-        return v.as<UpdateEntry>();
+        co_return v.as<UpdateEntry>();
     }
     catch (const std::runtime_error& e)
     {
-        return UpdateError(UpdateErrorType::DeserializationError, std::format("Files list deserialization exception: {}", e.what()));
+        co_return UpdateError(UpdateErrorType::DeserializationError, std::format("Files list deserialization exception: {}", e.what()));
     }
     catch (...)
     {
-        return UpdateError(UpdateErrorType::DeserializationError, "Files list deserialization exception");
+        co_return UpdateError(UpdateErrorType::DeserializationError, "Files list deserialization exception");
     }
 }
 
