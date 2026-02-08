@@ -225,10 +225,6 @@ ClientLauncher::EngineSessionResult ClientLauncher::RunEngineSession(char* post_
         next->Invoke(error);
     });
 
-    unsubscribers.emplace_back(nitro_api->GetSDL2Data()->SDL_DestroyWindowFunc += [this, nitro_api](void*) {
-        SDL_DestroyWindowHandler(nitro_api);
-    });
-
     unsubscribers.emplace_back(nitro_api->GetClientData()->HUD_Init += [this] {
         HUD_InitHandler();
     });
@@ -470,17 +466,6 @@ void ClientLauncher::InitializeSentry() { }
 void ClientLauncher::UninitializeSentry() { }
 
 #endif
-
-void ClientLauncher::SDL_DestroyWindowHandler(nitroapi::NitroApiInterface* nitro_api)
-{
-    nitroapi::IEngine* eng = nitro_api->GetEngineData()->eng;
-    if (eng->GetQuitting() == nitroapi::IEngine::QUIT_NOTQUITTING)
-    {
-        eng->SetQuitting(nitroapi::IEngine::QUIT_TODESKTOP);
-        nitro_api->WriteLog(NITRO_API_LOG_TAG, "[Repair] Hangs on exit");
-        analytics_->SendCrashMonitoringEvent("launcher", "hangs_on_exit", false);
-    }
-}
 
 void ClientLauncher::HUD_InitHandler()
 {

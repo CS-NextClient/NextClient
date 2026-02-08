@@ -85,7 +85,6 @@ private:
     void UninitializeAnalytics();
     void InitializeSentry();
     void UninitializeSentry();
-    void SDL_DestroyWindowHandler(nitroapi::NitroApiInterface* nitro_api);
     void HUD_InitHandler();
 
     void InitializeCmdLine(const char* cmd_line);
