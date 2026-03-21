@@ -108,10 +108,17 @@ model_t* Mod_FindName(qboolean trackCRC, const char* name)
             mod = avail;
             Mod_FillInCRCInfo(trackCRC, avail - mod_known);
         }
-        Q_strncpy(mod->name, name, MAX_MODEL_NAME);
 
-        if (mod->needload != NL_CLIENT)
-            mod->needload = NL_NEEDS_LOADED;
+        if (mod->type == mod_studio || mod->type == mod_alias)
+        {
+            if (Cache_Check(&mod->cache))
+                Cache_Free(&mod->cache);
+        }
+
+        Q_memset(mod, 0, sizeof(model_t));
+        
+        Q_strncpy(mod->name, name, MAX_MODEL_NAME);
+        mod->needload = NL_NEEDS_LOADED;
     }
 
     return mod;
@@ -238,12 +245,14 @@ void Mod_LoadSpriteModel(model_t *mod, void *buffer)
 
 	int numframes = LittleLong(pin->numframes);
 	int palcolorsnum = *(uint16_t*) &pin[1];
-	int size = sizeof(msprite_t) + (numframes - 1) * sizeof(msprite_t::frames) + sizeof(uint16_t) + 8 * palcolorsnum;
+	int palsize = 3 * palcolorsnum + 2;
+	int size = sizeof(msprite_t) + (numframes - 1) * sizeof(msprite_t::frames) + palsize;
 
 	gSpriteTextureFormat = LittleLong(pin->texFormat);
 
 	msprite_t* psprite = (msprite_t*) Hunk_AllocName(size, loadname);
 	psprite->type = LittleLong(pin->type);
+	psprite->texFormat = (short) gSpriteTextureFormat;
 	psprite->maxwidth = LittleLong(pin->width);
 	psprite->maxheight = LittleLong(pin->height);
 	psprite->beamlength = LittleFloat(&pin->beamlength, &pin->beamlength);
@@ -259,7 +268,9 @@ void Mod_LoadSpriteModel(model_t *mod, void *buffer)
 	mod->maxs[2] = float(psprite->maxheight / 2);
 	mod->cache.data = psprite;
 
-	pspritepal = (unsigned char*) (&pin[1]) + sizeof(uint16_t); // header + palette size
+	psprite->paloffset = 8 * numframes + 30;
+	pspritepal = (unsigned char*) &psprite->frames[numframes];
+	Q_memcpy(&psprite->frames[numframes], (char*) (pin + 1) + 2, palsize);
 
 	//
 	// load the frames
@@ -507,7 +518,7 @@ void Mod_UnloadFiltered(const std::function<bool(model_t*)>& filter)
 
         Con_DPrintf(ConLogType::Info, "%s: unloading \"%s\"\n", __func__, mod->name);
 
-        if (mod->type == mod_studio)
+        if (mod->type == mod_studio || mod->type == mod_alias)
         {
             if (Cache_Check(&mod->cache))
                 Cache_Free(&mod->cache);
@@ -538,30 +549,5 @@ void Mod_ClearAll()
             if (mod->type == mod_sprite)
                 mod->cache.data = nullptr;
         }
-    }
-}
-
-void Mod_ChangeGame()
-{
-    OPTICK_EVENT();
-
-    int i;
-    model_t* mod;
-    mod_known_info_t* p;
-
-    for (i = 0; i < mod_numknown; i++)
-    {
-        mod = &mod_known[i];
-
-        if (mod->type == mod_studio)
-        {
-            if (Cache_Check(&mod->cache))
-                Cache_Free(&mod->cache);
-        }
-
-        p = &mod_known_info[i];
-
-        p->firstCRCDone = FALSE;
-        p->initialCRC = 0;
     }
 }
