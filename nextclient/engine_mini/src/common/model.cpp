@@ -1,13 +1,17 @@
-#include "../engine.h"
+#include "engine.h"
+
 #include <optick.h>
+
 #include <model.h>
 #include <studio.h>
-#include "model.h"
-#include "zone.h"
-#include "sys_dll.h"
-#include "../console/console.h"
-#include "../l_studio.h"
-#include "../graphics/gl_local.h"
+
+#include "console/console.h"
+#include "graphics/gl_local.h"
+#include "graphics/detailtexture.h"
+#include "common/model.h"
+#include "common/sys_dll.h"
+#include "common/zone.h"
+#include "l_studio.h"
 
 char loadname[32];
 model_t mod_known[MAX_KNOWN_MODELS];
@@ -30,13 +34,6 @@ void Mod_LoadBrushModel(model_t* mod, void* buffer)
     OPTICK_EVENT();
 
     eng()->Mod_LoadBrushModel.InvokeChained(mod, buffer);
-}
-
-void DT_LoadDetailMapFile(char* levelName)
-{
-    OPTICK_EVENT();
-
-    eng()->DT_LoadDetailMapFile.InvokeChained(levelName);
 }
 
 void* Mod_Extradata(model_t *mod)
@@ -187,9 +184,9 @@ void* Mod_LoadSpriteFrame(void* pin, mspriteframe_t** ppframe, int framenum)
 	Q_memcpy(palette, pspritepal, sizeof(palette));
 
 	if (gSpriteMipMap)
-		pspriteframe->gl_texturenum = GL_LoadTexture(texture_id, GLT_SPRITE_0, width, height, (uint8_t*)pin + sizeof(dspriteframe_t), gSpriteMipMap, iType, palette);
+		pspriteframe->gl_texturenum = GL_LoadTexture(texture_id, GLT_SPRITE, width, height, (uint8_t*)pin + sizeof(dspriteframe_t), gSpriteMipMap, iType, palette);
 	else
-		pspriteframe->gl_texturenum = GL_LoadTexture(texture_id, GLT_HUDSPRITE_0, width, height, (uint8_t*)pin + sizeof(dspriteframe_t), 0, iType, palette);
+		pspriteframe->gl_texturenum = GL_LoadTexture(texture_id, GLT_HUDSPRITE, width, height, (uint8_t*)pin + sizeof(dspriteframe_t), 0, iType, palette);
 
 	return (uint8_t*) pinframe + sizeof(dspriteframe_t) + size;
 }
@@ -320,7 +317,7 @@ void Mod_LoadStudioModel(model_t* mod, void* buffer)
                 V_snprintf(texture_id, sizeof(texture_id), "%s%s", mod->name, ptexture->name);
 
                ptexture->index = GL_LoadTexture(texture_id,
-                   GLT_STUDIO_0,
+                   GLT_STUDIO,
                    ptexture->width,
                    ptexture->height,
                    (uint8_t*)buffer + ptexture->index,

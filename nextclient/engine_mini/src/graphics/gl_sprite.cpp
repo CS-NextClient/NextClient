@@ -1,8 +1,10 @@
-#include "../engine.h"
+#include "engine.h"
+
 #include <optick.h>
 #include <model.h>
-#include "../console/console.h"
-#include "../graphics/gl_local.h"
+
+#include "console/console.h"
+#include "graphics/gl_local.h"
 
 mspriteframe_t* R_GetSpriteFrame(msprite_t* pSprite, int frame)
 {

@@ -1,16 +1,18 @@
 #include "engine.h"
 
 #include <IGameConsole.h>
+#include <Registry.h>
+#include <easylogging++.h>
+#include <graphics/gl_draw.h>
+#include <next_engine_mini/engine_mini.h>
+#include <nitro_utils/PtrValidator.h>
 #include <nitro_utils/poor_reflection_utils.h>
 #include <nitro_utils/string_utils.h>
-#include <nitro_utils/PtrValidator.h>
-#include <next_engine_mini/engine_mini.h>
 #include <service/matchmaking/MatchmakingService.h>
 #include <service/matchmaking/MatchmakingSteamComp.h>
-#include <tier2/tier2.h>
 #include <taskcoro/TaskCoro.h>
 #include <taskcoro/impl/TaskCoroImpl.h>
-#include <easylogging++.h>
+#include <tier2/tier2.h>
 
 #include "common/common.h"
 #include "common/net_chan.h"
@@ -19,6 +21,7 @@
 #include "common/host.h"
 #include "common/sys_dll.h"
 #include "graphics/gl_local.h"
+#include "graphics/detailtexture.h"
 #include "client/client.h"
 #include "client/cl_main.h"
 #include "client/download.h"
@@ -30,12 +33,14 @@
 #include "common/cvar.h"
 #include "console/console.h"
 #include "console/protector.h"
+#include "cstrike_hack.h"
 
 NextClientVersion g_NextClientVersion;
 
 nitroapi::NitroApiInterface* g_NitroApi;
 std::shared_ptr<nitro_utils::ConfigProviderInterface> g_SettingGuard;
 std::shared_ptr<nitro_utils::ConfigProviderInterface> g_UserConfig;
+IRegistry* registry;
 IFileSystem* g_pFileSystem;
 IFileSystemNext* g_pFileSystemNext;
 AnalyticsInterface* g_Analytics;
@@ -74,10 +79,9 @@ int* p_loadsize;
 qboolean* p_host_initialized;
 cl_enginefunc_dst_t* p_g_engdstAddrs;
 nitroapi::viddef_t* p_vid;
-int* p_gl_mtexable;
 int* p_currenttexture;
 cl_entity_t** p_currententity;
-GLfloat* p_r_blend;
+float* p_r_blend;
 vec3_t* p_r_entorigin;
 qboolean* p_g_bUserFogOn;
 int* p_numTransObjs;
@@ -99,10 +103,13 @@ float* p_scr_con_current;
 keydest_t* p_key_dest;
 sfx_t** p_known_sfx;
 int* p_num_sfx;
+int* p_gHostSpawnCount;
+void* p_gGLPalette;
 
 cvar_t* fs_startup_timings;
 cvar_t* fs_lazy_precache;
 cvar_t* fs_precache_timings;
+cvar_t* fs_perf_warnings;
 cvar_t* cl_download_ingame;
 cvar_t* cl_shownet;
 cvar_t* cl_timeout;
@@ -110,11 +117,14 @@ cvar_t* scr_downloading;
 cvar_t* host_framerate;
 cvar_t* sys_ticrate;
 cvar_t* gl_vsync;
+cvar_t* snd_show;
+cvar_t* chase_active;
 cvar_t* fps_override;
 cvar_t* fps_max;
 cvar_t* sys_timescale;
 cvar_t* developer;
 cvar_t* sv_cheats;
+cvar_t* gl_dither_cvar;
 cvar_t* gl_spriteblend;
 cvar_t* r_drawentities;
 cvar_t* r_norefresh;
@@ -180,7 +190,6 @@ static void EngineMiniUninitialize()
     p_host_initialized = nullptr;
     p_g_engdstAddrs = nullptr;
     p_vid = nullptr;
-    p_gl_mtexable = nullptr;
     p_currenttexture = nullptr;
     p_currententity = nullptr;
     p_r_blend = nullptr;
@@ -205,6 +214,8 @@ static void EngineMiniUninitialize()
     p_key_dest = nullptr;
     p_known_sfx = nullptr;
     p_num_sfx = nullptr;
+    p_gHostSpawnCount = nullptr;
+    p_gGLPalette = nullptr;
 
     fs_startup_timings = nullptr;
     fs_lazy_precache = nullptr;
@@ -246,6 +257,9 @@ static void EngineMiniInitialize(nitroapi::NitroApiInterface* nitro_api, NextCli
     g_Analytics = analytics;
 
     g_pMatchmakingServers = std::make_unique<service::matchmaking::MatchmakingSteamComp>();
+    
+    registry = new CRegistry("Software\\Valve\\Half-Life\\Settings");
+    registry->Init();
 }
 
 static void OnGameUninitializing()
@@ -265,7 +279,6 @@ static void OnGameInitializing(void* mainwindow, HDC* pmaindc, HGLRC* pbaseRC, c
 
     nitro_utils::PtrValidator v;
 
-    v.Assign(p_gl_mtexable, GET_VARIABLE_NAME(p_gl_mtexable), eng()->gl_mtexable);
     v.Assign(p_currenttexture, GET_VARIABLE_NAME(p_currenttexture), eng()->currenttexture);
     v.Assign(cl, GET_VARIABLE_NAME(cl), eng()->client_state);
     v.Assign(cls, GET_VARIABLE_NAME(cls), eng()->client_static);
@@ -346,6 +359,8 @@ static void OnGameInitializing(void* mainwindow, HDC* pmaindc, HGLRC* pbaseRC, c
     v.Assign(p_key_dest, GET_VARIABLE_NAME(p_key_dest), eng()->key_dest);
     v.Assign(p_known_sfx, GET_VARIABLE_NAME(p_known_sfx), eng()->known_sfx);
     v.Assign(p_num_sfx, GET_VARIABLE_NAME(p_num_sfx), eng()->num_sfx);
+    v.Assign(p_gHostSpawnCount, GET_VARIABLE_NAME(p_gHostSpawnCount), eng()->gHostSpawnCount);
+    v.Assign(p_gGLPalette, GET_VARIABLE_NAME(p_gGLPalette), eng()->gGLPalette);
 
     if (v.HasNullPtr())
     {
@@ -357,6 +372,7 @@ static void OnGameInitializing(void* mainwindow, HDC* pmaindc, HGLRC* pbaseRC, c
     }
 
     Con_Init();
+    SetCStrikeFlags();
 
     //
     // Hooks that completely replace engine functions
@@ -396,9 +412,25 @@ static void OnGameInitializing(void* mainwindow, HDC* pmaindc, HGLRC* pbaseRC, c
     g_Unsubs.emplace_back(eng()->SetCrosshair                |= [](HSPRITE_t hspr, wrect_t rc, int r, int g, int b, const auto& next)  { SetCrosshair(hspr, rc, r, g, b); });
     g_Unsubs.emplace_back(eng()->DrawCrosshair               |= [](int x, int y, const auto& next)                                     { DrawCrosshair(x, y); });
     g_Unsubs.emplace_back(eng()->R_RenderView                |= [](const auto& next)                                                   { R_RenderView(); });
+    g_Unsubs.emplace_back(eng()->GL_Init                     |= [](const auto& next)                                                   { GL_Init(); next->Invoke(); });
+    g_Unsubs.emplace_back(eng()->GL_Config                   |= [](const auto& next)                                                   { GL_Config(); });
     g_Unsubs.emplace_back(eng()->GL_SelectTexture            |= [](GLenum target, const auto& next)                                    { GL_SelectTexture(target); });
     g_Unsubs.emplace_back(eng()->CL_ConnectClient            |= [](const auto& next)                                                   { CL_ConnectClient(); });
     g_Unsubs.emplace_back(eng()->CL_ClearClientState         |= [](const auto& next)                                                   { CL_ClearClientState(); });
+    g_Unsubs.emplace_back(eng()->GL_LoadTexture              |= [](const char* identifier, int textureType, int width, int height, uint8_t* data, int mipmap, int iType, uint8_t* pPal, const auto& next)  { return GL_LoadTexture(identifier, (GL_TEXTURETYPE)textureType, width, height, data, mipmap, iType, pPal); });
+    g_Unsubs.emplace_back(eng()->GL_LoadTexture2             |= [](const char* identifier, int textureType, int width, int height, uint8_t* data, int mipmap, int iType, uint8_t* pPal, int filter, const auto& next)  { return GL_LoadTexture2(identifier, (GL_TEXTURETYPE)textureType, width, height, data, mipmap, iType, pPal, filter); });
+    g_Unsubs.emplace_back(eng()->GL_UnloadTextures           |= [](const auto& next)                                                   { GL_UnloadTextures(); });
+    g_Unsubs.emplace_back(eng()->GL_UnloadTexture            |= [](const char* identifier, const auto& next)                           { GL_UnloadTexture(identifier); });
+    g_Unsubs.emplace_back(eng()->GL_Bind                     |= [](int texnum, const auto& next)                                       { GL_Bind(texnum); });
+    g_Unsubs.emplace_back(eng()->Draw_Init                   |= [](const auto& next)                                                   { Draw_Init(); });
+    g_Unsubs.emplace_back(eng()->Draw_Shutdown               |= [](const auto& next)                                                   { Draw_Shutdown(); });
+    g_Unsubs.emplace_back(eng()->Draw_PicFromWad             |= [](const char* name, const auto& next)                                 { return Draw_PicFromWad(name); });
+    g_Unsubs.emplace_back(eng()->V_UpdatePalette             |= [](const auto& next)                                                   { V_UpdatePalette(); });
+    g_Unsubs.emplace_back(eng()->V_CheckGamma                |= [](const auto& next)                                                   { return V_CheckGamma(); });
+    g_Unsubs.emplace_back(eng()->BuildGammaTable             |= [](float g, const auto& next)                                          { next->Invoke(g); BuildGammaTable(g); });
+    g_Unsubs.emplace_back(eng()->DT_SetRenderState           |= [](int diffuseId, const auto& next)                                    { return DT_SetRenderState(diffuseId); });
+    g_Unsubs.emplace_back(eng()->DT_LoadDetailTexture        |= [](const char *diffuseName, int diffuseId, const auto& next)           { DT_LoadDetailTexture(diffuseName, diffuseId); });
+    g_Unsubs.emplace_back(eng()->R_ForceCVars                |= [](qboolean mp, const auto& next)                                      { R_ForceCVars(mp); });
 
     //
     // The rest of the hooks and subscribers
@@ -467,12 +499,6 @@ static void OnGameInitializing(void* mainwindow, HDC* pmaindc, HGLRC* pbaseRC, c
         AppendTEntity_Subscriber(ent);
     });
 
-    g_Unsubs.emplace_back(eng()->GL_Init |= [](const auto& next) {
-        GL_Init_Pre();
-        next->Invoke();
-        GL_Init_Post();
-    });
-
     g_Unsubs.emplace_back(eng()->Con_MessageMode_f += []() {
         if (*p_key_dest == key_message)
         {
@@ -521,22 +547,27 @@ static void OnGameInitialized()
     v.Assign(fs_startup_timings, GET_VARIABLE_NAME(fs_startup_timings), g_engfuncs.pfnCVarGetPointer("fs_startup_timings"));
     v.Assign(fs_lazy_precache, GET_VARIABLE_NAME(fs_lazy_precache), g_engfuncs.pfnCVarGetPointer("fs_lazy_precache"));
     v.Assign(fs_precache_timings, GET_VARIABLE_NAME(fs_precache_timings), g_engfuncs.pfnCVarGetPointer("fs_precache_timings"));
+    v.Assign(fs_perf_warnings, GET_VARIABLE_NAME(fs_perf_warnings), g_engfuncs.pfnCVarGetPointer("fs_perf_warnings"));
     v.Assign(cl_download_ingame, GET_VARIABLE_NAME(cl_download_ingame), g_engfuncs.pfnCVarGetPointer("cl_download_ingame"));
     v.Assign(cl_shownet, GET_VARIABLE_NAME(cl_shownet), g_engfuncs.pfnCVarGetPointer("cl_shownet"));
     v.Assign(cl_timeout, GET_VARIABLE_NAME(cl_timeout), g_engfuncs.pfnCVarGetPointer("cl_timeout"));
     v.Assign(host_framerate, GET_VARIABLE_NAME(host_framerate), g_engfuncs.pfnCVarGetPointer("host_framerate"));
     v.Assign(sys_ticrate, GET_VARIABLE_NAME(sys_ticrate), g_engfuncs.pfnCVarGetPointer("sys_ticrate"));
-    v.Assign(gl_vsync, GET_VARIABLE_NAME(gl_vsync), g_engfuncs.pfnCVarGetPointer("gl_vsync"));
     v.Assign(fps_override, GET_VARIABLE_NAME(fps_override), g_engfuncs.pfnCVarGetPointer("fps_override"));
     v.Assign(fps_max, GET_VARIABLE_NAME(fps_max), g_engfuncs.pfnCVarGetPointer("fps_max"));
     v.Assign(sv_cheats, GET_VARIABLE_NAME(sv_cheats), g_engfuncs.pfnCVarGetPointer("sv_cheats"));
-    v.Assign(gl_spriteblend, GET_VARIABLE_NAME(gl_spriteblend), g_engfuncs.pfnCVarGetPointer("gl_spriteblend"));
     v.Assign(r_drawentities, GET_VARIABLE_NAME(r_drawentities), g_engfuncs.pfnCVarGetPointer("r_drawentities"));
     v.Assign(r_norefresh, GET_VARIABLE_NAME(r_norefresh), g_engfuncs.pfnCVarGetPointer("r_norefresh"));
     v.Assign(r_speeds, GET_VARIABLE_NAME(r_speeds), g_engfuncs.pfnCVarGetPointer("r_speeds"));
+    v.Assign(gl_dither_cvar, GET_VARIABLE_NAME(gl_dither), g_engfuncs.pfnCVarGetPointer("gl_dither"));
+    v.Assign(gl_spriteblend, GET_VARIABLE_NAME(gl_spriteblend), g_engfuncs.pfnCVarGetPointer("gl_spriteblend"));
+    v.Assign(gl_vsync, GET_VARIABLE_NAME(gl_vsync), g_engfuncs.pfnCVarGetPointer("gl_vsync"));
+    v.Assign(snd_show, GET_VARIABLE_NAME(snd_show), g_engfuncs.pfnCVarGetPointer("snd_show"));
+    v.Assign(chase_active, GET_VARIABLE_NAME(chase_active), g_engfuncs.pfnCVarGetPointer("chase_active"));
+    
     v.Assign(sys_timescale, GET_VARIABLE_NAME(sys_timescale), eng()->sys_timescale);
     sys_timescale->flags |= FCVAR_CHEAT;
-    g_engfuncs.pfnCvar_RegisterVariable(sys_timescale);
+    Cvar_RegisterVariable(sys_timescale);
 
     if (v.HasNullPtr())
     {

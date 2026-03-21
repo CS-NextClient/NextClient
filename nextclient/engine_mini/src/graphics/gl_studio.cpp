@@ -1,7 +1,9 @@
-#include "../engine.h"
+#include "engine.h"
+
 #include <optick.h>
-#include "../common/model.h"
-#include "../common/zone.h"
+
+#include "common/model.h"
+#include "common/zone.h"
 
 cache_user_t model_texture_cache[MAX_KNOWN_MODELS][32];
 

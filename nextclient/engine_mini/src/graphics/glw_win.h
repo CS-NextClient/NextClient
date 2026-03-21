@@ -35,7 +35,7 @@
 #endif
 
 #include <Windows.h>
-#include "../hlsdk.h"
+#include "hlsdk.h"
 
 struct glwstate_t
 {

@@ -10,6 +10,14 @@ qboolean Host_IsSinglePlayerGame()
 	return cl->maxclients == 1;
 }
 
+int Host_GetMaxClients()
+{
+    if (g_psv->active)
+        return g_psvs->maxclients;
+
+    return cl->maxclients;
+}
+
 qboolean Host_FilterTime(float time)
 {
 	float fps;

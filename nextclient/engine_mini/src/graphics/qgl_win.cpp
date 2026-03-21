@@ -27,10 +27,13 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 ** QGL_Init() - loads libraries, assigns function pointers, etc.
 ** QGL_Shutdown() - unloads libraries, NULLs function pointers
 */
+#include "engine.h"
+
+#include <SDL.h>
+#include <hlsdk.h>
 
 #include "gl_local.h"
 #include "glw_win.h"
-#include "../engine.h"
 
 glwstate_t glw_state;
 
@@ -3137,7 +3140,7 @@ void QGL_Shutdown(void)
 }
 
 #pragma warning(disable : 4113 4133 4047)
-#define GPA(func, name) reinterpret_cast<decltype(func)>(sdl2()->SDL_GL_GetProcAddress(name))
+#define GPA(func, name) reinterpret_cast<decltype(func)>(SDL_GL_GetProcAddress(name))
 
 /*
 ** QGL_Init
@@ -3277,8 +3280,8 @@ qboolean QGL_Init()
     qglGetTexGenfv = GPA(qglGetTexGenfv, "glGetTexGenfv");
     qglGetTexGeniv = GPA(qglGetTexGeniv, "glGetTexGeniv");
     qglGetTexImage = GPA(qglGetTexImage, "glGetTexImage");
-    qglGetTexLevelParameterfv = GPA(qglGetTexLevelParameterfv, "glGetLevelParameterfv");
-    qglGetTexLevelParameteriv = GPA(qglGetTexLevelParameteriv, "glGetLevelParameteriv");
+    qglGetTexLevelParameterfv = GPA(qglGetTexLevelParameterfv, "glGetTexLevelParameterfv");
+    qglGetTexLevelParameteriv = GPA(qglGetTexLevelParameteriv, "glGetTexLevelParameteriv");
     qglGetTexParameterfv = GPA(qglGetTexParameterfv, "glGetTexParameterfv");
     qglGetTexParameteriv = GPA(qglGetTexParameteriv, "glGetTexParameteriv");
     qglHint = GPA(qglHint, "glHint");

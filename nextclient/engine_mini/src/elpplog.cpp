@@ -25,7 +25,14 @@ protected:
         }
         else if (message_level == Level::Error)
         {
-            Con_Printf("[ERROR] %s\n", log_message.c_str());
+            if (developer->value > 0)
+            {
+                Con_DPrintf(ConLogType::Error, "%s\n", log_message.c_str());
+            }
+            else
+            {
+                Con_Printf("[ERROR] %s\n", log_message.c_str());
+            }
         }
         else
         {

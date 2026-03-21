@@ -1,6 +1,5 @@
 #pragma once
-
-#include "../engine.h"
+#include "engine.h"
 
 #ifdef _DEBUG
 #define ASSERT(exp)	if(!( exp )) Sys_Error( "assert failed at %s:%i\n", __FILE__, __LINE__ )
@@ -9,7 +8,7 @@
 #endif
 
 template<class... TArgs>
-void Sys_Error(const char* error, TArgs&&... args) { eng()->Sys_Error.GetFunc()(error, std::forward<TArgs>(args)...); }
+void Sys_Error(const char* error, TArgs&&... args) { eng()->Sys_Error.GetFunc()(error, std::forward<TArgs>(args)...); std::unreachable(); }
 
 template<class... TArgs>
 void Sys_Printf(const char* format, TArgs&&... args) { eng()->Sys_Printf.GetFunc()(format, std::forward<TArgs>(args)...); }

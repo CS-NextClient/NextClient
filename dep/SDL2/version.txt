@@ -1,0 +1,2 @@
+2.0.0
+https://github.com/libsdl-org/SDL/tree/release-2.0.0

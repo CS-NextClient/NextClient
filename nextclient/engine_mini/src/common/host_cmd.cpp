@@ -10,12 +10,12 @@
 
 void Host_InitializeGameDLL()
 {
-    eng()->Host_InitializeGameDLL.InvokeChained();
+    eng()->Host_InitializeGameDLL();
 }
 
 void Host_Map(qboolean bIsDemo, const char* mapstring, const char* mapName, qboolean loadGame)
 {
-    eng()->Host_Map.InvokeChained(bIsDemo, mapstring, mapName, loadGame);
+    eng()->Host_Map(bIsDemo, mapstring, mapName, loadGame);
 }
 
 void Host_Map_f()

@@ -37,6 +37,9 @@ set(CPR_ENABLE_SSL ON)
 # external dependencies
 add_subdirectory(dep/cpr)
 add_subdirectory(dep/easyloggingpp)
+add_subdirectory(dep/bzip2)
+add_subdirectory(dep/glad)
+add_subdirectory(dep/stb)
 
 # NextClient sub-projects
 add_subdirectory(dep/NclNitroApi)

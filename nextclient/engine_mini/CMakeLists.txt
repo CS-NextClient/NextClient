@@ -5,6 +5,10 @@ set(OUTPUT_NAME "next_engine_mini")
 find_package(OpenSSL REQUIRED)
 find_package(concurrencpp CONFIG REQUIRED)
 find_package(optic REQUIRED)
+find_package(SDL2 REQUIRED)
+find_package(imageinfo CONFIG REQUIRED)
+find_package(EASTL CONFIG REQUIRED)
+find_package(unordered_dense CONFIG REQUIRED)
 
 set(CMAKE_POLICY_DEFAULT_CMP0077 NEW)
 set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
@@ -12,9 +16,6 @@ set(CMAKE_CXX_STANDARD 23)
 
 # common options
 set(BUILD_SHARED_LIBS OFF)
-
-# explicit dependencies
-add_subdirectory(dep/bzip2)
 
 file(GLOB_RECURSE ENGINE_MINI_SOURCES
         LIST_DIRECTORIES FALSE
@@ -27,8 +28,6 @@ add_library(${PROJECT_NAME} SHARED
 )
 
 target_include_directories(${PROJECT_NAME} PRIVATE
-        dep/optic/include
-        dep/bzip2
         include
         src
 )
@@ -48,6 +47,12 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
         OpenSSL::Crypto
         concurrencpp::concurrencpp
         bzip2
+        glad::glad
+        SDL2::SDL2
+        imageinfo::imageinfo
+        stb::stb
+        EASTL
+        unordered_dense::unordered_dense
 )
 
 if (MSVC)

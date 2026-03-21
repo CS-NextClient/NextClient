@@ -1,7 +1,7 @@
 {
   "name" : "launcher",
   "version-string" : "1.0.0",
-  "builtin-baseline" : "41c447cc210dc39aa85d4a5f58b4a1b9e573b3dc",
+  "builtin-baseline" : "c21f78db5a402441bfc8052462233a2aff079ac0",
   "vcpkg-configuration": {
     "overlay-ports": [
       "./custom-vcpkg-ports"
@@ -30,8 +30,7 @@
     "name" : "cmakerc",
     "version>=" : "2023-07-24"
   }, {
-    "name" : "taocpp-json",
-    "version>=" : "2020-09-14#4"
+    "name" : "taocpp-json"
   }, {
     "name" : "concurrencpp",
     "version>=" : "0.1.7"
@@ -41,5 +40,18 @@
   }, {
     "name": "zlib",
     "version>=": "1.3.1"
+  }, {
+    "name": "imageinfo",
+    "version>=": "2024-12-02#0"
+  }, {
+    "name": "unordered-dense",
+    "version>=": "4.8.1"
+  }, {
+    "name": "eastl",
+    "version>=": "3.27.1"
+  }],
+  "overrides": [ {
+    "name": "taocpp-json",
+    "version": "1.0.0-beta.14"
   }]
 }

@@ -158,7 +158,7 @@ HttpResponse NextUpdaterHttpService::ParseResponse(const cpr::Response& response
         std::string payload = DeserializeAes(response.text);
         return HttpResponse(response.status_code, response.error, payload);
     }
-    catch (tao::json::pegtl::parse_error&)
+    catch (tao::pegtl::parse_error&)
     { }
 
     cpr::Error error;

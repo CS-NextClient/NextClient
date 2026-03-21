@@ -2,9 +2,11 @@
 #include <unordered_set>
 #include <optick.h>
 #include "gl_local.h"
+#include "gl_draw.h"
 #include "ViewmodelFrustumCalculator.h"
 #include "../console/console.h"
 #include "../common/sys_dll.h"
+#include "../common/cvar.h"
 #include "../client/cl_main.h"
 
 std::unordered_set<cl_entity_t*> g_MuzzleFlashEffects;
@@ -487,5 +489,102 @@ void R_RenderView()
             (int) ((Sys_FloatTime() - time1) * 1000.0),
             *p_c_brush_polys,
             *p_c_alias_polys);
+    }
+}
+
+void R_ForceCVars(qboolean mp)
+{
+    if (!mp)
+    {
+        return;
+    }
+
+    if (r_lightmap->value != 0.0)
+    {
+        Cvar_DirectSet(r_lightmap, "0");
+    }
+
+    if (gl_clear->value != 0.0)
+    {
+        Cvar_DirectSet(gl_clear, "0");
+    }
+
+    if (r_novis->value != 0.0)
+    {
+        Cvar_DirectSet(r_novis, "0");
+    }
+
+    if (r_fullbright->value != 0.0)
+    {
+        Cvar_DirectSet(r_fullbright, "0");
+    }
+
+    if (snd_show->value != 0.0)
+    {
+        Cvar_DirectSet(snd_show, "0");
+    }
+
+    if (chase_active->value != 0.0)
+    {
+        Cvar_DirectSet(chase_active, "0");
+    }
+
+    if (lambert_cvar->value != 1.5)
+    {
+        Cvar_DirectSet(lambert_cvar, "1.5");
+    }
+
+    if (gl_monolights->value != 0.0)
+    {
+        Cvar_DirectSet(gl_monolights, "0");
+        eng()->GL_BuildLightmaps();
+    }
+
+    if (gl_wireframe->value != 0.0)
+    {
+        Cvar_DirectSet(gl_wireframe, "0");
+    }
+
+    if (r_dynamic->value != 1.0)
+    {
+        Cvar_DirectSet(r_dynamic, "1");
+    }
+
+    if (gl_alphamin->value != 0.25)
+    {
+        Cvar_DirectSet(gl_alphamin, "0.25");
+    }
+
+    if (gl_max_size.value < 255.0)
+    {
+        Cvar_DirectSet(&gl_max_size, "255");
+    }
+
+    float value = gl_polyoffset->value;
+    if (value <= 0.0)
+    {
+        if (value < -0.001)
+        {
+            Cvar_DirectSet(gl_polyoffset, "-0.001");
+        }
+    }
+    else if (value < 0.001)
+    {
+        Cvar_DirectSet(gl_polyoffset, "0.001");
+    }
+    else if (gl_polyoffset->value > 25.0)
+    {
+        Cvar_DirectSet(gl_polyoffset, "25");
+    }
+
+    if (sv_cheats->value == 0.0 && r_drawentities->value != 1.0)
+    {
+        Cvar_DirectSet(r_drawentities, "1.0");
+    }
+
+    if (lightgamma_cvar->value < 1.8)
+    {
+        Cvar_DirectSet(lightgamma_cvar, "1.8");
+        eng()->GL_BuildLightmaps();
     }
 }

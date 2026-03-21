@@ -33,7 +33,6 @@
 #include "bzlib.h"
 
 
-
 /*-- General stuff. --*/
 
 #define BZ_VERSION  "1.0.6, 6-Sept-2010"
