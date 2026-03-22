@@ -8,12 +8,12 @@ namespace tex
 {
     PaletteManager::PaletteManager()
     {
-        for (uint32_t i = 0; i < Capacity; i++)
+        for (uint32_t i = 0; i < kCapacity; ++i)
         {
             slots[i].free_next = (int32_t)(i + 1);
         }
 
-        slots[Capacity - 1].free_next = -1;
+        slots[kCapacity - 1].free_next = -1;
         free_head = 0;
     }
 
@@ -23,7 +23,7 @@ namespace tex
 
         uint64_t hash = 0xcbf29ce484222325ULL;
 
-        for (int i = 0; i < (int)sizeof(Palette::colors); i++)
+        for (int i = 0; i < (int)sizeof(Palette::colors); ++i)
         {
             hash ^= colors[i];
             hash *= 0x100000001b3ULL;
@@ -71,7 +71,7 @@ namespace tex
     {
         OPTICK_EVENT();
 
-        if (!handle.IsValid() || handle.index >= Capacity)
+        if (!handle.IsValid() || handle.index >= kCapacity)
         {
             return nullptr;
         }
@@ -90,7 +90,7 @@ namespace tex
     {
         OPTICK_EVENT();
 
-        if (!handle.IsValid() || handle.index >= Capacity)
+        if (!handle.IsValid() || handle.index >= kCapacity)
         {
             return;
         }
@@ -119,7 +119,7 @@ namespace tex
 
         if (free_head == -1)
         {
-            Sys_Error("[PaletteManager] Palette pool exhausted (%u slots)", Capacity);
+            Sys_Error("[PaletteManager] Palette pool exhausted (%u slots)", kCapacity);
         }
 
         uint32_t index = free_head;

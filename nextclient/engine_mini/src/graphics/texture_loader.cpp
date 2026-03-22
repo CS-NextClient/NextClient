@@ -20,7 +20,6 @@ namespace tex
 {
     static ScratchAllocator<32 * 1024 * 1024> g_TempAllocator;
 
-    /// Maps a TextureFormat to the corresponding GL pixel format and sized internal format pair.
     static std::tuple<GLenum, GLenum> GL_GetFormatAndInternalFormat(TextureFormat format)
     {
         GLenum gl_format;
@@ -57,8 +56,6 @@ namespace tex
         return {gl_format, gl_internal_format};
     }
 
-    /// Dispatches texture resampling to the appropriate method based on format:
-    /// grayscale, indexed (point-sampled) or RGBA (bilinear).
     static void ResampleTexture(
         const uint8_t* data,
         int width,
@@ -83,9 +80,14 @@ namespace tex
         }
     }
 
-    /// Generates and uploads a full mipmap chain for the currently bound texture.
-    /// Uses work_buf as scratch space; copies data into it if they differ.
-    static void GenerateMipmaps(uint8_t* work_buf, const uint8_t* data, int width, int height, GLenum gl_format, GLenum gl_internal_format)
+    static void GenerateAndUploadMipmaps(
+        uint8_t* work_buf,
+        const uint8_t* data,
+        int width,
+        int height,
+        GLenum gl_format,
+        GLenum gl_internal_format
+    )
     {
         OPTICK_EVENT();
 
@@ -109,9 +111,6 @@ namespace tex
         }
     }
 
-    /// Applies min/mag filter and anisotropy parameters to the currently bound texture.
-    /// For mipmapped textures the global gl_filter_min/max values are used;
-    /// for non-mipmapped textures filter is applied to both axes.
     static void SetTextureFilters(bool mipmap, int filter)
     {
         int filter_min = mipmap ? gl_filter_min : filter;
@@ -122,42 +121,40 @@ namespace tex
         qglTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY_EXT, gl_ansio.value);
     }
 
-    /// Loads a TGA file via the engine filesystem into rgba_out as 32-bit RGBA.
-    /// Validates image dimensions against kTextureMaxSize and caps the file read
-    /// at a conservative size limit. Returns false on any I/O or decode error.
     static bool LoadTGA(const char* file, uint8_t* rgba_out, uint32_t size, int* width_out, int* height_out)
     {
         const uint32_t width_max = kTextureMaxSize;
         const uint32_t height_max = kTextureMaxSize;
         const uint32_t file_size_limit = size + 18 + 256 * 4 + 255; // TGA header (18) + max colormap (256*4) + max image ID (255)
 
-        int fileLen = 0;
+        int file_len = 0;
         FileHandle_t file_handle = nullptr;
-        unsigned char* pfilebuf = COM_LoadFileLimit(file, 0, file_size_limit, &fileLen, &file_handle);
+        unsigned char* file_buffer = COM_LoadFileLimit(file, 0, file_size_limit, &file_len, &file_handle);
 
-        if (pfilebuf == nullptr)
+        if (file_buffer == nullptr)
         {
             Con_Printf("Failed to load file: %s.\n", file);
             return false;
         }
 
-        // if (!FS_EndOfFile(pfilebuf))
+        // if (!FS_EndOfFile(file_buffer))
         // {
         //     Con_Printf("Failed to load file: %s. File is too large.\n", file);
         //     FS_Close(file_handle);
         //     return false;
         // }
 
-        ImageInfo info = imageinfo::parse<RawDataReader>(RawData(pfilebuf, fileLen), {kFormatTga}, true);
-        if (!info.ok())
+        ImageInfo image_info = imageinfo::parse<RawDataReader>(RawData(file_buffer, file_len), {kFormatTga}, true);
+
+        if (!image_info.ok())
         {
-            Con_Printf("Failed to parse image info: %s. Error: %s\n", file, info.error());
+            Con_Printf("Failed to parse image info: %s. Error: %s\n", file, image_info.error());
             FS_Close(file_handle);
             return false;
         }
 
-        int width = info.size().width;
-        int height = info.size().height;
+        int width = image_info.size().width;
+        int height = image_info.size().height;
 
         if (width > width_max || height > height_max)
         {
@@ -167,7 +164,7 @@ namespace tex
         }
 
         int components;
-        stbi_uc* image = stbi_load_from_memory(pfilebuf, fileLen, &width, &height, &components, STBI_rgb_alpha);
+        stbi_uc* image = stbi_load_from_memory(file_buffer, file_len, &width, &height, &components, STBI_rgb_alpha);
 
         if (image == nullptr)
         {
@@ -185,31 +182,26 @@ namespace tex
 
         return true;
     }
-    
-    bool LoadTextureFromFile(
-        Texture& texture,
-        const TexIdentifierStr& identifier,
-        const char* filename,
-        bool mipmap,
-        int filter)
+
+    bool LoadTextureFromFile(Texture& texture, const TexIdentifierStr& identifier, const char* filename, bool mipmap, int filter)
     {
         const int array_size = kTextureMaxSize * kTextureMaxSize * 4;
 
         ScratchArena arena(g_TempAllocator);
         uint8_t* data = arena.AllocateArray<uint8_t>(array_size);
 
-        char newFileName[MAX_OSPATH];
-        V_sprintf_safe(newFileName, "gfx/%s.tga", filename);
+        char new_filename[MAX_OSPATH];
+        V_sprintf_safe(new_filename, "gfx/%s.tga", filename);
 
         int width, height;
-        if (LoadTGA(newFileName, data, array_size, &width, &height))
+        if (LoadTGA(new_filename, data, array_size, &width, &height))
         {
             return LoadTexture(texture, identifier, TextureFormat::RGBA, data, width, height, mipmap, nullptr, filter);
         }
 
         return false;
     }
-    
+
     bool LoadTexture(
         Texture& texture,
         const TexIdentifierStr& identifier,
@@ -227,13 +219,21 @@ namespace tex
         if (width > kTextureMaxSize || height > kTextureMaxSize)
         {
             Con_DPrintf(
-                ConLogType::Error, "Texture %s is too big: %dx%d, max: %dx%d", identifier.c_str(), width, height, kTextureMaxSize, kTextureMaxSize
+                ConLogType::Error,
+                "Texture %s is too big: %dx%d, max: %dx%d",
+                identifier.c_str(),
+                width,
+                height,
+                kTextureMaxSize,
+                kTextureMaxSize
             );
             return false;
         }
 
         if (g_modfuncs.m_pfnTextureLoad)
+        {
             g_modfuncs.m_pfnTextureLoad(identifier.c_str(), width, height, (char*)data);
+        }
 
         // --- Texture metadata ---
 
@@ -284,7 +284,7 @@ namespace tex
             return true;
         }
 
-        // --- Working buffer (single allocation for the entire pipeline) ---
+        // --- Working buffer ---
 
         int final_w = needs_pot ? pot_width : width;
         int final_h = needs_pot ? pot_height : height;
@@ -354,7 +354,7 @@ namespace tex
 
         if (mipmap)
         {
-            GenerateMipmaps(work_buf, data, width, height, gl_format, gl_internal_format);
+            GenerateAndUploadMipmaps(work_buf, data, width, height, gl_format, gl_internal_format);
         }
 
         // --- Filter parameters ---

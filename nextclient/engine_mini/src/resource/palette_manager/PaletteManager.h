@@ -1,6 +1,5 @@
 #pragma once
 #include <cstdint>
-#include <cstring>
 #include <array>
 #include <unordered_map>
 
@@ -11,7 +10,7 @@ namespace tex
 {
     class PaletteManager
     {
-        static constexpr uint32_t Capacity = 256;
+        static constexpr uint32_t kCapacity = 256;
 
         struct PaletteSlot
         {
@@ -22,7 +21,7 @@ namespace tex
             Palette palette;
         };
 
-        std::array<PaletteSlot, Capacity> slots{};
+        std::array<PaletteSlot, kCapacity> slots{};
         std::unordered_map<uint64_t, uint32_t> hash_to_index;
         int32_t free_head = -1;
 

@@ -19,7 +19,7 @@ public:
             Sys_Error("Scratch buffer overflow! Requested: %u, Available: %u", size, BufferSize - offset_);
         }
 
-        void* ptr = static_cast<uint8_t*>(buffer_) + offset_;
+        void* ptr = (uint8_t*)(buffer_) + offset_;
         offset_ += aligned_size;
         return ptr;
     }

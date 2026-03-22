@@ -57,7 +57,7 @@ namespace tex
     {
         OPTICK_EVENT();
 
-        for (int i = 0; i < count; i++)
+        for (int i = 0; i < count; ++i)
         {
             data_out[i] = texgammatable[data[i]];
         }
@@ -74,92 +74,92 @@ namespace tex
     {
         OPTICK_EVENT();
 
-        uint32_t alpha_mask = 0xFFu << 24;
+        const uint32_t alpha_mask = 0xFFu << 24;
 
         uint32_t* out_4byte = (uint32_t*)data_out;
 
-        auto PackRGB = [](const uint8_t* pal) -> uint32_t { return pal[0] | (pal[1] << 8) | (pal[2] << 16); };
+        auto pack_rgb = [](const uint8_t* pal) -> uint32_t { return pal[0] | (pal[1] << 8) | (pal[2] << 16); };
 
         switch (format)
         {
         case TextureFormat::Opaque:
-        {
-            if ((count & 3) != 0)
             {
-                Con_DPrintf(ConLogType::Error, "ConvertIndexedToRGBA: invalid count: %d\n", count);
-                return TextureFormat::Invalid;
+                if ((count & 3) != 0)
+                {
+                    Con_DPrintf(ConLogType::Error, "ConvertIndexedToRGBA: invalid count: %d\n", count);
+                    return TextureFormat::Invalid;
+                }
+
+                if (!dither)
+                {
+                    for (int i = 0; i < count; ++i)
+                    {
+                        int pal_index = indices[i] * 3;
+                        out_4byte[i] = pack_rgb(&palette[pal_index]) | alpha_mask;
+                    }
+                }
+                else
+                {
+                    for (int i = 0; i < count; ++i)
+                    {
+                        const uint8_t* pal = &palette[3 * indices[i]];
+
+                        uint8_t r = pal[0] | (pal[0] >> 6);
+                        uint8_t g = pal[1] | (pal[1] >> 6);
+                        uint8_t b = pal[2] | (pal[2] >> 6);
+
+                        out_4byte[i] = r | (g << 8) | (b << 16) | alpha_mask;
+                    }
+                }
+                break;
             }
 
-            if (!dither)
+        case TextureFormat::Alpha:
+            {
+                bool all_opaque = true;
+                for (int i = 0; i < count; ++i)
+                {
+                    int index = indices[i];
+                    if (index == 255)
+                    {
+                        all_opaque = false;
+                        out_4byte[i] = 0;
+                        continue;
+                    }
+
+                    int pal_index = index * 3;
+                    out_4byte[i] = pack_rgb(&palette[pal_index]) | alpha_mask;
+                }
+
+                if (all_opaque)
+                {
+                    format = TextureFormat::Opaque;
+                }
+                break;
+            }
+
+        case TextureFormat::AlphaGradient:
+            {
+                const int base_index = 256 * 3 - 3;
+                uint32_t base_color = pack_rgb(&palette[base_index]);
+
+                for (int i = 0; i < count; ++i)
+                {
+                    out_4byte[i] = base_color | ((uint32_t)indices[i] << 24);
+                }
+                break;
+            }
+
+        case TextureFormat::RGBA:
             {
                 for (int i = 0; i < count; ++i)
                 {
                     int pal_index = indices[i] * 3;
-                    out_4byte[i] = PackRGB(&palette[pal_index]) | alpha_mask;
+                    uint32_t base_color = pack_rgb(&palette[pal_index]);
+                    out_4byte[i] = base_color | ((uint32_t)indices[i] << 24);
                 }
+                break;
             }
-            else
-            {
-                for (int i = 0; i < count; ++i)
-                {
-                    const uint8_t* pal = &palette[3 * indices[i]];
-
-                    uint8_t r = pal[0] | (pal[0] >> 6);
-                    uint8_t g = pal[1] | (pal[1] >> 6);
-                    uint8_t b = pal[2] | (pal[2] >> 6);
-
-                    out_4byte[i] = r | (g << 8) | (b << 16) | alpha_mask;
-                }
-            }
-            break;
-        }
-
-        case TextureFormat::Alpha:
-        {
-            int all_opaque = 1;
-            for (int i = 0; i < count; ++i)
-            {
-                int index = indices[i];
-                if (index == 255)
-                {
-                    all_opaque = 0;
-                    out_4byte[i] = 0;
-                    continue;
-                }
-
-                int pal_index = index * 3;
-                out_4byte[i] = PackRGB(&palette[pal_index]) | alpha_mask;
-            }
-
-            if (all_opaque)
-            {
-                format = TextureFormat::Opaque;
-            }
-            break;
-        }
-
-        case TextureFormat::AlphaGradient:
-        {
-            int base_index = 256 * 3 - 3;
-            uint32_t base_color = PackRGB(&palette[base_index]);
-
-            for (int i = 0; i < count; ++i)
-            {
-                out_4byte[i] = base_color | ((uint32_t)indices[i] << 24);
-            }
-            break;
-        }
-
-        case TextureFormat::RGBA:
-        {
-            for (int i = 0; i < count; ++i)
-            {
-                int pal_index = indices[i] * 3;
-                uint32_t base_color = PackRGB(&palette[pal_index]);
-                out_4byte[i] = base_color | ((uint32_t)indices[i] << 24);
-            }
-            break;
-        }
         default:
             return TextureFormat::Invalid;
         }
@@ -257,7 +257,9 @@ namespace tex
         }
 
         if (count == 0)
+        {
             count = 1;
+        }
 
         data_out[0] = sum_r / count;
         data_out[1] = sum_g / count;
@@ -409,7 +411,7 @@ namespace tex
 
         for (int index = 0; index < texels; ++index)
         {
-            const uint32_t* rgba_pixel_ptr = reinterpret_cast<const uint32_t*>(data) + index;
+            const uint32_t* rgba_pixel_ptr = (const uint32_t*)(data) + index;
 
             if (*rgba_pixel_ptr == 0)
             {
@@ -417,4 +419,4 @@ namespace tex
             }
         }
     }
-}
+} // namespace tex

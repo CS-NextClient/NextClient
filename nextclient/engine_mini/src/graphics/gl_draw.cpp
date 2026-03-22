@@ -228,8 +228,10 @@ bool V_CheckGamma()
 {
     FilterLightParams();
 
-    if (gamma_cvar->value == oldgammavalue && lightgamma_cvar->value == oldlightgamma && texgamma_cvar->value == oldtexgamma &&
-        brightness_cvar->value == oldbrightness)
+    if (gamma_cvar->value == oldgammavalue
+        && lightgamma_cvar->value == oldlightgamma
+        && texgamma_cvar->value == oldtexgamma
+        && brightness_cvar->value == oldbrightness)
     {
         return false;
     }
@@ -240,6 +242,7 @@ bool V_CheckGamma()
     oldlightgamma = lightgamma_cvar->value;
     oldtexgamma = texgamma_cvar->value;
     oldbrightness = brightness_cvar->value;
+
     vid.recalc_refdef = 1;
 
     return true;
@@ -288,7 +291,9 @@ static void AdjustSubRect(
     int bottom = std::min(*ph, prcSubRect->bottom);
 
     if (left >= right || top >= bottom)
+    {
         return;
+    }
 
     *pw = right - left;
     *ph = bottom - top;
@@ -322,7 +327,7 @@ void GL_Bind(int texnum)
     {
         return;
     }
-    
+
     Texture* texture = g_TextureManagerGlob.GetByGLId(texnum);
     if (texture == nullptr)
     {
@@ -373,7 +378,7 @@ void GL_SelectTexture(GLenum target)
 void GL_UnloadTextures()
 {
     OPTICK_EVENT();
-    
+
     g_TextureManagerGlob.ClearSession();
 }
 
@@ -415,15 +420,15 @@ int GL_LoadTexture2(
     {
         switch (textureType)
         {
-        case GLT_HUDSPRITE:
-        case GLT_STUDIO:
-        case GLT_WORLD:
-        case GLT_SPRITE:
-            lifetime = TextureLifetime::Session;
-            break;
+            case GLT_HUDSPRITE:
+            case GLT_STUDIO:
+            case GLT_WORLD:
+            case GLT_SPRITE:
+                lifetime = TextureLifetime::Session;
+                break;
 
-        default:
-            break;
+            default:
+                break;
         }
     }
 
@@ -517,15 +522,15 @@ static void FillTranslatedPixels(unsigned int* trans, int width, int height)
     const unsigned int transparent_color = 0xFF0000FF;
     const unsigned int opaque_color = 0xFFFFFFFF;
 
-    for (int tileY = 0; tileY < tile_size; tileY++)
+    for (int tile_y = 0; tile_y < tile_size; ++tile_y)
     {
-        for (int tileX = 0; tileX < tile_size; tileX++)
+        for (int tile_x = 0; tile_x < tile_size; ++tile_x)
         {
-            int srcX = (tileX * width) / tile_size;
-            int srcY = (tileY * height) / tile_size;
+            int src_x = (tile_x * width) / tile_size;
+            int src_y = (tile_y * height) / tile_size;
 
-            bool isTransparent = menuplyr_pixels[srcY * width + srcX] != 0xFF;
-            trans[tileY * tile_size + tileX] = isTransparent ? transparent_color : opaque_color;
+            bool is_transparent = menuplyr_pixels[src_y * width + src_x] != 0xFF;
+            trans[tile_y * tile_size + tile_x] = is_transparent ? transparent_color : opaque_color;
         }
     }
 }
@@ -650,7 +655,7 @@ void Draw_AlphaSubPic(int x_dest, int y_dest, int x_src, int y_src, int width, i
 {
     OPTICK_EVENT();
 
-    static const GLfloat INV_255 = 1.0f / 255.0f;
+    const GLfloat inv_255 = 1.0f / 255.0f;
 
     if (!pic)
     {
@@ -665,9 +670,9 @@ void Draw_AlphaSubPic(int x_dest, int y_dest, int x_src, int y_src, int width, i
     qglTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
 
     float alpha_factor = (float)alpha / 255.0f;
-    float r = color->r * INV_255 * alpha_factor;
-    float g = color->g * INV_255 * alpha_factor;
-    float b = color->b * INV_255 * alpha_factor;
+    float r = color->r * inv_255 * alpha_factor;
+    float g = color->g * inv_255 * alpha_factor;
+    float b = color->b * inv_255 * alpha_factor;
     qglColor4f(r, g, b, 1.0f);
 
     int texnum = *(int*)pic->data;
@@ -823,13 +828,13 @@ void Draw_Frame(mspriteframe_t* pFrame, int ix, int iy, const wrect_t* prcSubRec
 {
     OPTICK_EVENT();
 
-    float fLeft = 0.0;
-    float fRight = 1.0;
-    float fTop = 0.0;
-    float fBottom = 1.0;
+    float left = 0.0;
+    float right = 1.0;
+    float top = 0.0;
+    float bottom = 1.0;
 
-    int iWidth = pFrame->width;
-    int iHeight = pFrame->height;
+    int width = pFrame->width;
+    int height = pFrame->height;
 
     float x = (float)ix + 0.5f;
     float y = (float)iy + 0.5f;
@@ -844,7 +849,7 @@ void Draw_Frame(mspriteframe_t* pFrame, int ix, int iy, const wrect_t* prcSubRec
 
     if (prcSubRect)
     {
-        AdjustSubRect(pFrame, &fLeft, &fRight, &fTop, &fBottom, &iWidth, &iHeight, prcSubRect);
+        AdjustSubRect(pFrame, &left, &right, &top, &bottom, &width, &height, prcSubRect);
     }
 
     qglDepthMask(GL_FALSE);
@@ -852,17 +857,17 @@ void Draw_Frame(mspriteframe_t* pFrame, int ix, int iy, const wrect_t* prcSubRec
     qglTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
     qglBegin(GL_QUADS);
 
-    qglTexCoord2f(fLeft, fTop);
+    qglTexCoord2f(left, top);
     qglVertex2f(x, y);
 
-    qglTexCoord2f(fRight, fTop);
-    qglVertex2f((float)iWidth + x, y);
+    qglTexCoord2f(right, top);
+    qglVertex2f((float)width + x, y);
 
-    qglTexCoord2f(fRight, fBottom);
-    qglVertex2f((float)iWidth + x, (float)iHeight + y);
+    qglTexCoord2f(right, bottom);
+    qglVertex2f((float)width + x, (float)height + y);
 
-    qglTexCoord2f(fLeft, fBottom);
-    qglVertex2f(x, (float)iHeight + y);
+    qglTexCoord2f(left, bottom);
+    qglVertex2f(x, (float)height + y);
 
     qglEnd();
     qglDepthMask(GL_TRUE);
@@ -908,22 +913,21 @@ void DisableScissorTest()
 qpic_t* LoadTransPic(const char* pszName, qpic_t* ppic)
 {
     OPTICK_EVENT();
-    
+
     if (!ppic)
     {
         return ppic;
     }
 
-    const int width = ppic->width;
-    const int height = ppic->height;
-    const bool mipmap = false;
-    const uint8_t* pPal = ppic->data + width * height + 2;
+    int width = ppic->width;
+    int height = ppic->height;
+    uint8_t* palette = ppic->data + width * height + 2;
 
     char identifier_new[TexIdentifierStr::kMaxSize + 1];
     V_sprintf_safe(identifier_new, "%s-%dx%d", pszName, width, height);
 
     TextureHandle texture_handle = g_TextureManagerGlob.Load(
-        identifier_new, TextureLifetime::Persistent, TextureFormat::Alpha, width, height, ppic->data, mipmap, pPal, gl_filter_max
+        identifier_new, TextureLifetime::Persistent, TextureFormat::Alpha, width, height, ppic->data, false, palette, gl_filter_max
     );
 
     if (!texture_handle.IsValid())
@@ -948,7 +952,7 @@ qpic_t* LoadTransPic(const char* pszName, qpic_t* ppic)
 void Draw_CacheWadInitFromFile(FileHandle_t hFile, int len, const char* name, int cacheMax, cachewad_t* wad)
 {
     OPTICK_EVENT();
-    
+
     wadinfo_t header;
 
     FS_Read(&header, sizeof(wadinfo_t), hFile);
@@ -961,7 +965,7 @@ void Draw_CacheWadInitFromFile(FileHandle_t hFile, int len, const char* name, in
     FS_Seek(hFile, header.infotableofs, FILESYSTEM_SEEK_HEAD);
     FS_Read(wad->lumps, len - header.infotableofs, hFile);
 
-    for (int i = 0; i < header.numlumps; i++)
+    for (int i = 0; i < header.numlumps; ++i)
     {
         W_CleanupName(wad->lumps[i].name, wad->lumps[i].name);
     }
@@ -982,7 +986,7 @@ void Draw_CacheWadInitFromFile(FileHandle_t hFile, int len, const char* name, in
 void Draw_CacheWadInit(const char* name, int cacheMax, cachewad_t* wad)
 {
     OPTICK_EVENT();
-    
+
     FileHandle_t file = FS_Open(name, "rb");
     if (!file)
     {
@@ -997,7 +1001,7 @@ void Draw_CacheWadInit(const char* name, int cacheMax, cachewad_t* wad)
 void Draw_FreeWad(cachewad_t* pWad)
 {
     OPTICK_EVENT();
-    
+
     if (!pWad)
     {
         return;
@@ -1078,7 +1082,7 @@ void GL_Texels_f()
 qpic_t* LoadTransBMP(const char* name)
 {
     OPTICK_EVENT();
-    
+
     qpic_t* lump_name = (qpic_t*)W_GetLumpName(0, name);
     return LoadTransPic(name, lump_name);
 }
@@ -1086,7 +1090,7 @@ qpic_t* LoadTransBMP(const char* name)
 int GL_LoadPicTexture(qpic_t* pic, const char* pszName)
 {
     OPTICK_EVENT();
-    
+
     return GL_LoadTexture2(
         pszName,
         GLT_SYSTEM,
@@ -1103,7 +1107,7 @@ int GL_LoadPicTexture(qpic_t* pic, const char* pszName)
 qpic_t* Draw_PicFromWad(const char* name)
 {
     OPTICK_EVENT();
-    
+
     qpic_t* p;
     glpic_t* gl;
 
@@ -1122,7 +1126,7 @@ qpic_t* Draw_PicFromWad(const char* name)
 void gl_texturemode_hook_callback(cvar_t* cvar)
 {
     OPTICK_EVENT();
-    
+
     if (!cvar)
     {
         return;
