@@ -221,6 +221,14 @@ result<void> MatchmakingService::RefreshServerListThreaded(
             std::vector<ServerInfo> answered_servers = co_await WaitAnySQTaskAndProcess(server_info_tasks, cancellation_token);
             answered_servers_count += answered_servers.size();
 
+            for (ServerInfo& server : answered_servers)
+            {
+                if (server.server_index < gameservers.size())
+                {
+                    server.gameserver.m_ulTimeLastPlayed = gameservers[server.server_index].m_ulTimeLastPlayed;
+                }
+            }
+
             caller_ctx->Run([answered_servers, server_answered_callback, cancellation_token]
             {
                 cancellation_token->ThrowIfCancelled();
