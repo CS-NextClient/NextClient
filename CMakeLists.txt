@@ -2,7 +2,7 @@ set(CMAKE_TOOLCHAIN_FILE "${CMAKE_CURRENT_SOURCE_DIR}/vcpkg/scripts/buildsystems
 set(VCPKG_TARGET_TRIPLET "x86-windows-static" CACHE STRING "Vcpkg triplet")
 
 cmake_minimum_required(VERSION 3.21)
-project(NextClient VERSION 2.4.0)
+project(NextClient VERSION 2.5.0)
 
 set(NEXTCLIENT_ROOT ${CMAKE_CURRENT_SOURCE_DIR})
 
