@@ -4,6 +4,7 @@
 #include "CommandLoggerInterface.h"
 #include "AnalyticsInterface.h"
 #include "HttpDownloadManagerInterface.h"
+#include "NclmVerificatorInterface.h"
 #include "NextClientVersion.h"
 
 #ifdef NITRO_API_INCLUDED
@@ -32,7 +33,8 @@ public:
     virtual bool RemoveCmdLogger(CommandLoggerInterface* logger) = 0;
 
     virtual ISteamMatchmakingServers* GetSteamMatchmakingServers() = 0;
+    virtual void SetNclmVerificator(NclmVerificatorInterface* handler) = 0;
 };
 
-#define ENGINE_MINI_INTERFACE_VERSION "EngineMini006"
+#define ENGINE_MINI_INTERFACE_VERSION "EngineMini007"
 

@@ -2,6 +2,7 @@
 #include <nitroapi/NitroApiInterface.h>
 #include <next_engine_mini/AnalyticsInterface.h>
 #include <next_engine_mini/NextClientVersion.h>
+#include <next_engine_mini/NclmVerificatorInterface.h>
 #include <next_filesystem/IFileSystemNext.h>
 #include <next_gameui/IGameConsoleNext.h>
 #include <nitro_utils/config/ConfigProviderInterface.h>
@@ -107,6 +108,8 @@ nitroapi::NitroApiInterface* napi();
 nitroapi::EngineData* eng();
 nitroapi::ClientData* client();
 nitroapi::SDL2Data* sdl2();
+
+extern NclmVerificatorInterface* g_NclmVerificator;
 
 // elpplog.cpp
 void ConfigureEngineElppLogger();

@@ -1,11 +1,12 @@
 #pragma once
 
-#include <commonmacros.h>
+// Makes a 4-byte "packed ID" int out of 4 characters
+#define NCL_MAKEID(d,c,b,a)					( ((int)(a) << 24) | ((int)(b) << 16) | ((int)(c) << 8) | ((int)(d)) )
 
 #define clc_ncl_message						3			// clc_stringcmd
 #define SVC_NCL_MESSAGE						57			// SVC_SENDCVARVALUE
-#define NCLM_HEADER_OLD						MAKEID('n', 'c', 'l', 'a')
-#define NCLM_HEADER							MAKEID('n', 'c', 'l', 'm')
+#define NCLM_HEADER_OLD						NCL_MAKEID('n', 'c', 'l', 'a')
+#define NCLM_HEADER							NCL_MAKEID('n', 'c', 'l', 'm')
 
 constexpr size_t RSA_KEY_LENGTH =			256;
 constexpr size_t NCLM_VERIF_PAYLOAD_SIZE =	196;

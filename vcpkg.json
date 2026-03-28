@@ -35,9 +35,6 @@
     "name" : "concurrencpp",
     "version>=" : "0.1.7"
   }, {
-    "name": "openssl",
-    "version>=": "3.5.0"
-  }, {
     "name": "zlib",
     "version>=": "1.3.1"
   }, {

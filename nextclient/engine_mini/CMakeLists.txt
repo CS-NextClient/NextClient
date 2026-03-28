@@ -2,7 +2,6 @@ cmake_minimum_required(VERSION 3.21)
 project(engine_mini)
 set(OUTPUT_NAME "next_engine_mini")
 
-find_package(OpenSSL REQUIRED)
 find_package(concurrencpp CONFIG REQUIRED)
 find_package(optic REQUIRED)
 find_package(SDL2 REQUIRED)
@@ -43,8 +42,6 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
         easyloggingpp::easyloggingpp
         cpr::cpr
         optic::optic
-        OpenSSL::SSL
-        OpenSSL::Crypto
         concurrencpp::concurrencpp
         bzip2
         glad::glad

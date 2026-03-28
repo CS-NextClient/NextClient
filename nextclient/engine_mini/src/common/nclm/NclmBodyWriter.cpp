@@ -28,6 +28,12 @@ NclmBodyWriter* NclmBodyWriter::WriteString(const std::string& data)
     return this;
 }
 
+NclmBodyWriter* NclmBodyWriter::WriteString(const char* str)
+{
+    MSG_WriteString(&temp_buf_, str);
+    return this;
+}
+
 NclmBodyWriter* NclmBodyWriter::WriteLong(int32_t data)
 {
     WriteByte(data & 0xFF);
@@ -46,9 +52,13 @@ NclmBodyWriter* NclmBodyWriter::WriteShort(int16_t data)
 
 NclmBodyWriter* NclmBodyWriter::WriteBuf(const std::vector<uint8_t>& data)
 {
-    for (auto b: data)
-        WriteByte(b);
+    MSG_WriteBuf(&temp_buf_, data.size(), (void*)data.data());
+    return this;
+}
 
+NclmBodyWriter* NclmBodyWriter::WriteBuf(const uint8_t* data, size_t size)
+{
+    MSG_WriteBuf(&temp_buf_, size, (void*)data);
     return this;
 }
 
@@ -60,9 +70,7 @@ void NclmBodyWriter::Send() const
 
 std::vector<uint8_t> NclmBodyWriter::GetTempBufCurSizeSlice()
 {
-    return std::vector<unsigned char>(
-        temp_buf_data_.begin(), temp_buf_data_.begin() + temp_buf_.cursize
-    );
+    return {temp_buf_data_.begin(), temp_buf_data_.begin() + temp_buf_.cursize};
 }
 
 void NclmBodyWriter::ReplaceTempBufWithSlice(std::vector<uint8_t>& slice)

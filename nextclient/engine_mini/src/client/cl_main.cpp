@@ -1,6 +1,7 @@
 #include "cl_main.h"
 #include "../engine.h"
 #include <optick.h>
+#include <next_engine_mini/nclm_proto.h>
 
 #include "cl_private_resources.h"
 #include "spriteapi.h"
@@ -14,8 +15,6 @@
 #include "../common/com_strings.h"
 #include "../common/net_ws.h"
 #include "../common/net_chan.h"
-#include "../common/verificator.h"
-#include "../common/nclm/nclm_proto.h"
 #include "../common/nclm/NclmBodyReader.h"
 #include "../common/nclm/NclmBodyWriter.h"
 #include "../graphics/gl_local.h"
@@ -180,23 +179,30 @@ void CL_ConnectClient()
     else
         Con_Printf("Connection accepted by %s\n", NET_AdrToString(*net_from));
 
-    MSG_WriteByte(&cls->netchan.message, clc_ncl_message);
-    MSG_WriteLong(&cls->netchan.message, NCLM_HEADER);
-    NclmBodyWriter writer(&cls->netchan.message);
-    if (!VerificatorGetKeyVersion().empty())
+    sizebuf_t* msgbuf = &cls->netchan.message;
+
+    if (g_NclmVerificator != nullptr)
     {
-        writer.WriteByte((uint8_t)NCLM_C2S::VERIFICATION_REQUEST);
-        writer.WriteString(VerificatorGetKeyVersion());
+        char version[32];
+        g_NclmVerificator->GetVersion(version, sizeof(version));
+        
+        MSG_WriteByte(msgbuf, clc_ncl_message);
+        MSG_WriteLong(msgbuf, NCLM_HEADER_OLD);
+        MSG_WriteByte(msgbuf, (int)NCLM_C2S::VERIFICATION_REQUEST);
+        MSG_WriteString(msgbuf, version);
     }
     else
     {
-        writer.WriteByte((uint8_t)NCLM_C2S::DECLARE_VERSION_REQUEST);
+        MSG_WriteByte(msgbuf, clc_ncl_message);
+        MSG_WriteLong(msgbuf, NCLM_HEADER);
+        NclmBodyWriter writer(msgbuf);
+        writer.WriteByte((int)NCLM_C2S::DECLARE_VERSION_REQUEST);
         writer.WriteString(va("%d.%d.%d", g_NextClientVersion.major, g_NextClientVersion.minor, g_NextClientVersion.patch));
+        writer.Send();
     }
-    writer.Send();
 
-    MSG_WriteByte(&cls->netchan.message, clc_stringcmd);
-    MSG_WriteString(&cls->netchan.message, "new\n");
+    MSG_WriteByte(msgbuf, clc_stringcmd);
+    MSG_WriteString(msgbuf, "new\n");
 
     cls->state = ca_connected;
     cls->demonum = -1;
@@ -349,23 +355,30 @@ void CL_HandleNclMessage()
         case NCLM_S2C::VERIFICATION_PAYLOAD:
             auto encryptedPayload = body.ReadBuf(NCLM_VERIF_ENCRYPTED_PAYLOAD_SIZE);
 
-            verificator_result_t result;
-            if (!VerificatorDecrypt(encryptedPayload, result))
-                break;
+            if (g_NclmVerificator != nullptr)
+            {
+                char result[NCLM_VERIF_PAYLOAD_SIZE];
+                int written_size = g_NclmVerificator->DecryptPayload((const char*)encryptedPayload.data(), encryptedPayload.size(), result, sizeof(result));
 
-            MSG_WriteByte(&cls->netchan.message, clc_ncl_message);
-            MSG_WriteLong(&cls->netchan.message, NCLM_HEADER);
-            NclmBodyWriter writer(&cls->netchan.message);
-            writer.WriteByte((int)NCLM_C2S::VERIFICATION_RESPONSE);
-            writer.WriteString(va("%d.%d.%d", g_NextClientVersion.major, g_NextClientVersion.minor, g_NextClientVersion.patch));
-            writer.WriteBuf(result.data);
-            writer.Send();
+                if (written_size != NCLM_VERIF_PAYLOAD_SIZE)
+                {
+                    break;
+                }
+                
+                sizebuf_t* msgbuf = &cls->netchan.message;
+                MSG_WriteByte(msgbuf, clc_ncl_message);
+                MSG_WriteLong(msgbuf, NCLM_HEADER_OLD);
+                MSG_WriteByte(msgbuf, (int)NCLM_C2S::VERIFICATION_RESPONSE);
+                MSG_WriteString(msgbuf, va("%d.%d.%d", g_NextClientVersion.major, g_NextClientVersion.minor, g_NextClientVersion.patch));
+                MSG_WriteBuf(msgbuf, written_size, result);
+            }
             break;
     }
 }
 
 void CL_Send_CvarValue()
 {
+    // nclm protocol check
     int readcount = *pMsg_readcount;
     long header = MSG_ReadLong();
     if (header == NCLM_HEADER_OLD)
@@ -374,6 +387,7 @@ void CL_Send_CvarValue()
         return;
     }
     *pMsg_readcount = readcount;
+    // end nclm protocol check
 
     const char* cvar_name = MSG_ReadString();
 

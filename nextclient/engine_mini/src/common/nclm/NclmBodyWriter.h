@@ -1,8 +1,8 @@
 #pragma once
-
 #include <string>
 #include <vector>
-#include "../../hlsdk.h"
+
+#include "hlsdk.h"
 
 class NclmBodyWriter
 {
@@ -15,9 +15,11 @@ public:
 
     NclmBodyWriter* WriteByte(uint8_t data);
     NclmBodyWriter* WriteString(const std::string& data);
+    NclmBodyWriter* WriteString(const char* str);
     NclmBodyWriter* WriteLong(int32_t data);
     NclmBodyWriter* WriteShort(int16_t data);
     NclmBodyWriter* WriteBuf(const std::vector<uint8_t>& data);
+    NclmBodyWriter* WriteBuf(const uint8_t* data, size_t size);
 
     void Send() const;
 

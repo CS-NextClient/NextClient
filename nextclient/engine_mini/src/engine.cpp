@@ -144,6 +144,8 @@ nitroapi::EngineData* eng() { return g_NitroApi->GetEngineData(); }
 nitroapi::ClientData* client() { return g_NitroApi->GetClientData(); }
 nitroapi::SDL2Data* sdl2() { return g_NitroApi->GetSDL2Data(); }
 
+NclmVerificatorInterface* g_NclmVerificator;
+
 static void EngineMiniUninitialize()
 {
     CL_DeleteHttpDownloadManager();
@@ -676,6 +678,11 @@ public:
     ISteamMatchmakingServers* GetSteamMatchmakingServers() override
     {
         return g_pMatchmakingServers.get();
+    }
+    
+    void SetNclmVerificator(NclmVerificatorInterface* handler) override
+    {
+        g_NclmVerificator = handler;
     }
 };
 
