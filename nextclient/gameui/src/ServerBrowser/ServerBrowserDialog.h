@@ -99,7 +99,7 @@ private:
     CFavoriteGames *m_pFavorites;
     CHistoryGames *m_pHistory;
     CInternetGames *m_pInternetGames;
-    CUniqueGames* m_pUniqueGames;
+    //CUniqueGames* m_pUniqueGames;
     //CSpectateGames *m_pSpectateGames;
     CLanGames *m_pLanGames;
     CFriendsGames *m_pFriendsGames;

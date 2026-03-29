@@ -65,7 +65,7 @@ CServerBrowserDialog::CServerBrowserDialog(vgui2::Panel *parent) : Frame(parent,
     m_pFilterData = nullptr;
     m_pFavorites = nullptr;
     m_pHistory = nullptr;
-    m_pUniqueGames = nullptr;
+    //m_pUniqueGames = nullptr;
     m_pFriendsGames = nullptr;
 
     LoadUserData();
@@ -73,7 +73,7 @@ CServerBrowserDialog::CServerBrowserDialog(vgui2::Panel *parent) : Frame(parent,
     m_pInternetGames = new CInternetGames(this, false);
     m_pFavorites = new CFavoriteGames(this);
     m_pHistory = new CHistoryGames(this);
-    m_pUniqueGames = new CUniqueGames(this);
+    //m_pUniqueGames = new CUniqueGames(this);
     //m_pSpectateGames = new CSpectateGames(this);
     m_pLanGames = new CLanGames(this);
     m_pFriendsGames = new CFriendsGames(this);
@@ -91,7 +91,7 @@ CServerBrowserDialog::CServerBrowserDialog(vgui2::Panel *parent) : Frame(parent,
 
     m_pTabPanel->AddPage(m_pInternetGames, "#ServerBrowser_InternetTab");
     m_pTabPanel->AddPage(m_pFavorites, "#ServerBrowser_FavoritesTab");
-    m_pTabPanel->AddPage(m_pUniqueGames, "#ServerBrowser_UniqueTab");
+    //m_pTabPanel->AddPage(m_pUniqueGames, "#ServerBrowser_UniqueTab");
     m_pTabPanel->AddPage(m_pHistory, "#ServerBrowser_HistoryTab");
     //m_pTabPanel->AddPage(m_pSpectateGames, "#ServerBrowser_SpectateTab");
     m_pTabPanel->AddPage(m_pLanGames, "#ServerBrowser_LanTab");
@@ -197,8 +197,8 @@ void CServerBrowserDialog::ActivateTab(ServerBrowserTab tab)
         m_pTabPanel->SetActivePage(m_pFavorites);
     else if (tab == ServerBrowserTab::History)
         m_pTabPanel->SetActivePage(m_pHistory);
-    else if (tab == ServerBrowserTab::Unique)
-        m_pTabPanel->SetActivePage(m_pUniqueGames);
+    // else if (tab == ServerBrowserTab::Unique)
+    //     m_pTabPanel->SetActivePage(m_pUniqueGames);
     else if (tab == ServerBrowserTab::LAN)
         m_pTabPanel->SetActivePage(m_pLanGames);
     else if (m_pFriendsGames && tab == ServerBrowserTab::Friends)
@@ -211,8 +211,8 @@ void CServerBrowserDialog::SaveUserData()
         m_pSavedData->SetString("GameList", "favorites");
     else if (m_pGameList == m_pHistory)
         m_pSavedData->SetString("GameList", "history");
-    else if (m_pGameList == m_pUniqueGames)
-        m_pSavedData->SetString("GameList", "unique");
+    // else if (m_pGameList == m_pUniqueGames)
+    //     m_pSavedData->SetString("GameList", "unique");
     else if (m_pGameList == m_pLanGames)
         m_pSavedData->SetString("GameList", "lan");
     else if (m_pFriendsGames && m_pGameList == m_pFriendsGames)
@@ -388,7 +388,7 @@ void CServerBrowserDialog::ReloadFilterSettings()
     m_pFavorites->LoadFilterSettings();
     m_pLanGames->LoadFilterSettings();
     m_pHistory->LoadFilterSettings();
-    m_pUniqueGames->LoadFilterSettings();
+    //m_pUniqueGames->LoadFilterSettings();
     if (m_pFriendsGames)
         m_pFriendsGames->LoadFilterSettings();
 }
@@ -472,7 +472,7 @@ void CServerBrowserDialog::OnConnectToGame(KeyValues *pMessageValues)
     vgui2::ivgui()->PostMessage(m_pInternetGames->GetVPanel(), new KeyValues("ConnectedToGame", "ip", ip, "connectionport", connectionPort), NULL);
     vgui2::ivgui()->PostMessage(m_pFavorites->GetVPanel(), new KeyValues("ConnectedToGame", "ip", ip, "connectionport", connectionPort), NULL);
     vgui2::ivgui()->PostMessage(m_pHistory->GetVPanel(), new KeyValues("ConnectedToGame", "ip", ip, "connectionport", connectionPort), NULL);
-    vgui2::ivgui()->PostMessage(m_pUniqueGames->GetVPanel(), new KeyValues("ConnectedToGame", "ip", ip, "connectionport", connectionPort), NULL);
+    //vgui2::ivgui()->PostMessage(m_pUniqueGames->GetVPanel(), new KeyValues("ConnectedToGame", "ip", ip, "connectionport", connectionPort), NULL);
     vgui2::ivgui()->PostMessage(m_pLanGames->GetVPanel(), new KeyValues("ConnectedToGame", "ip", ip, "connectionport", connectionPort), NULL);
     if (m_pFriendsGames)
         vgui2::ivgui()->PostMessage(m_pFriendsGames->GetVPanel(), new KeyValues("ConnectedToGame", "ip", ip, "connectionport", connectionPort), NULL);
@@ -485,7 +485,7 @@ void CServerBrowserDialog::OnDisconnectFromGame()
     vgui2::ivgui()->PostMessage(m_pInternetGames->GetVPanel(), new KeyValues("DisconnectedFromGame"), NULL);
     vgui2::ivgui()->PostMessage(m_pFavorites->GetVPanel(),  new KeyValues("DisconnectedFromGame"), NULL);
     vgui2::ivgui()->PostMessage(m_pHistory->GetVPanel(),  new KeyValues("DisconnectedFromGame"), NULL);
-    vgui2::ivgui()->PostMessage(m_pUniqueGames->GetVPanel(),  new KeyValues("DisconnectedFromGame"), NULL);
+    //vgui2::ivgui()->PostMessage(m_pUniqueGames->GetVPanel(),  new KeyValues("DisconnectedFromGame"), NULL);
     vgui2::ivgui()->PostMessage(m_pLanGames->GetVPanel(),  new KeyValues("DisconnectedFromGame"), NULL);
     if (m_pFriendsGames)
         vgui2::ivgui()->PostMessage(m_pFriendsGames->GetVPanel(),  new KeyValues("DisconnectedFromGame"), NULL);

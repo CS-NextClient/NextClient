@@ -24,7 +24,7 @@ OptionsSubMiscellaneous::OptionsSubMiscellaneous(vgui2::Panel *parent) :
     server_browser_init_tab_ = new vgui2::ComboBox(this, "ServerBrowserInitTab", 5, false);
     server_browser_init_tab_->AddItem("#ServerBrowser_InternetTab", nullptr);
     server_browser_init_tab_->AddItem("#ServerBrowser_FavoritesTab", nullptr);
-    server_browser_init_tab_->AddItem("#ServerBrowser_UniqueTab", nullptr);
+    //server_browser_init_tab_->AddItem("#ServerBrowser_UniqueTab", nullptr);
     server_browser_init_tab_->AddItem("#ServerBrowser_HistoryTab", nullptr);
     server_browser_init_tab_->AddItem("#ServerBrowser_LanTab", nullptr);
     int tab = miscellaneous_settings_->GetInt(OptionsSubMiscellaneous::kServerBrowserInitialTabKey, (int)ServerBrowserTab::Internet);
