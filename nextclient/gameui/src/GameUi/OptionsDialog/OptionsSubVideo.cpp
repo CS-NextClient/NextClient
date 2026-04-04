@@ -8,6 +8,7 @@
 #include "ModInfo.h"
 #include "KeyToggleCheckButton.h"
 
+#include <vgui_controls/Tooltip.h>
 #include <vgui_controls/CheckButton.h>
 #include <vgui_controls/ComboBox.h>
 #include <KeyValues.h>
@@ -107,6 +108,8 @@ COptionsSubVideo::COptionsSubVideo(vgui2::Panel *parent) : PropertyPage(parent, 
     m_pDisableMultitexture = new vgui2::CheckButton( this, "DisableMultitexture", "#GameUI_DisableMultitexture" );
     m_pDisableMultitexture->SetSelected(m_CurrentSettings.disable_multitexture != 0);
     m_pDisableMultitexture->SetVisible(true);
+    m_pDisableMultitexture->GetTooltip()->SetTooltipFormatToNoWrap();
+    m_pDisableMultitexture->GetTooltip()->SetText("#GameUI_DisableMultitexture_Tooltip");
 
     m_pStretchAspect = new vgui2::CheckButton( this, "StretchAspect", "#GameUI_StretchAspect" );
     m_pStretchAspect->SetSelected(m_CurrentSettings.stretch_aspect != 0);

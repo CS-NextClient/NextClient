@@ -86,8 +86,6 @@ CBaseGamesPage::CBaseGamesPage(vgui2::Panel *parent, const char *name, const cha
     m_pGameList = new CGameListPanel(this, "gamelist");
     m_pGameList->SetAllowUserModificationOfColumns(true);
 
-    // TODO tooltips has bug: always shown behind all panels, fix this and uncomment tooltips code below
-
     int i = 0;
     for (const auto& type : columns)
     {
@@ -96,18 +94,18 @@ CBaseGamesPage::CBaseGamesPage(vgui2::Panel *parent, const char *name, const cha
         case GameListColumnType::Password:
             m_pGameList->AddColumnHeader(i, "Password", "#ServerBrowser_Password", 16, ListPanel::COLUMN_FIXEDSIZE | ListPanel::COLUMN_IMAGE);
             m_pGameList->SetSortFunc(i, ServerIdCompare);
-            // m_pGameList->SetColumnHeaderTooltip(i, "#ServerBrowser_PasswordColumn_Tooltip");
+            m_pGameList->SetColumnHeaderTooltip(i, "#ServerBrowser_PasswordColumn_Tooltip");
             break;
 
         case GameListColumnType::Bots:
             m_pGameList->AddColumnHeader(i, "Bots", "#ServerBrowser_Bots", 17, ListPanel::COLUMN_FIXEDSIZE | ListPanel::COLUMN_HIDDEN);
             m_pGameList->SetSortFunc(i, BotsCompare);
-            //m_pGameList->SetColumnHeaderTooltip(i, "#ServerBrowser_BotColumn_Tooltip");
+            m_pGameList->SetColumnHeaderTooltip(i, "#ServerBrowser_BotColumn_Tooltip");
             break;
         case GameListColumnType::Secure:
             m_pGameList->AddColumnHeader(i, "Secure", "#ServerBrowser_Secure", 16, ListPanel::COLUMN_FIXEDSIZE | ListPanel::COLUMN_HIDDEN);
             m_pGameList->SetSortFunc(i, SecureCompare);
-            //m_pGameList->SetColumnHeaderTooltip(i, "#ServerBrowser_SecureColumn_Tooltip");
+            m_pGameList->SetColumnHeaderTooltip(i, "#ServerBrowser_SecureColumn_Tooltip");
             break;
         case GameListColumnType::ServerName:
             m_pGameList->AddColumnHeader(i, "Name", "#ServerBrowser_Servers", 50, ListPanel::COLUMN_RESIZEWITHWINDOW | ListPanel::COLUMN_UNHIDABLE);

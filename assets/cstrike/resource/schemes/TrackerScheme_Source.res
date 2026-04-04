@@ -305,6 +305,15 @@ Scheme
 				"weight"	"0"
 			}
 		}
+		"TooltipFont"
+		{
+			"1"
+			{
+				"name"		"Tahoma"
+				"tall"		"14"
+				"weight"	"0"
+			}
+		}
 		"DefaultSmallDropShadow"
 		{
 			"1"
@@ -924,7 +933,7 @@ Scheme
 
 		ToolTipBorder
 		{
-			"inset" "0 0 1 0"
+			"inset" "1 1 2 1"
 			Left
 			{
 				"1"
