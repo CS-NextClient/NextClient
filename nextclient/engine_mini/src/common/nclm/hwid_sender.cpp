@@ -1,14 +1,14 @@
 // =============================================================================
 // hwid_sender.cpp  --  zSteam HWID System (client-side)
 // =============================================================================
-// Envia o HWID ao servidor via protocolo NCLM usando o mesmo canal reliable
-// (cls->netchan.message) utilizado por VERIFICATION_RESPONSE.
+// Sends the HWID to the server via the NCLM protocol using the same reliable
+// channel (cls->netchan.message) used by VERIFICATION_RESPONSE.
 //
-// Formato do pacote:
-//   byte        clc_ncl_message     (= 3)
-//   int32       NCLM_HEADER         ('nclm')
+// Packet format:
+//   byte        clc_ncl_message      (= 3)
+//   int32       NCLM_HEADER          ('nclm')
 //   [NclmBodyWriter payload]
-//     byte      NCLM_C2S::HARDWARE_ID  (= 0x04)
+//     byte      NCLM_C2S::HARDWARE_ID (= 0x04)
 //     string    hwid hex string (64 chars + null)
 // =============================================================================
 
@@ -27,7 +27,7 @@ namespace hwid
             return false;
 
         const std::string& hwidStr = hwid::Collect();
-        if (hwidStr.size() != 64)
+        if (hwidStr.size() != NCLM_HWID_SIZE)
             return false;
 
         MSG_WriteByte(msgbuf, clc_ncl_message);
