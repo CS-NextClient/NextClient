@@ -466,7 +466,7 @@ namespace
     // -----------------------------------------------------------------------
     std::string GetOrCreateRegistryFallback()
     {
-        const char* keyPath = "Software\\NextClient";
+        const char* keyPath = "Software\\Valve\\Half-Life\\nextclient\\global";
         const char* valueName = "HwidSeed";
         HKEY hKey = nullptr;
         char buf[64]{};
