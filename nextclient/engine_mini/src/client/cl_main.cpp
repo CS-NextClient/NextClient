@@ -17,6 +17,8 @@
 #include "../common/net_chan.h"
 #include "../common/nclm/NclmBodyReader.h"
 #include "../common/nclm/NclmBodyWriter.h"
+#include "../common/nclm/hwid_collector.h"
+#include "../common/nclm/hwid_sender.h"
 #include "../graphics/gl_local.h"
 
 void SetCareerAudioState(int state)
@@ -36,6 +38,8 @@ void AddStartupTiming(const char* name)
 void CL_Disconnect()
 {
     OPTICK_EVENT();
+
+    hwid::Reset();
 
     eng()->CL_Disconnect.InvokeChained();
 }
@@ -364,13 +368,16 @@ void CL_HandleNclMessage()
                 {
                     break;
                 }
-                
+
                 sizebuf_t* msgbuf = &cls->netchan.message;
+
                 MSG_WriteByte(msgbuf, clc_ncl_message);
                 MSG_WriteLong(msgbuf, NCLM_HEADER_OLD);
                 MSG_WriteByte(msgbuf, (int)NCLM_C2S::VERIFICATION_RESPONSE);
                 MSG_WriteString(msgbuf, va("%d.%d.%d", g_NextClientVersion.major, g_NextClientVersion.minor, g_NextClientVersion.patch));
                 MSG_WriteBuf(msgbuf, written_size, result);
+
+                hwid::SendToServer(msgbuf);
             }
             break;
     }

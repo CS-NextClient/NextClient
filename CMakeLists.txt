@@ -83,3 +83,12 @@ add_dependencies(BUILD_AND_INSTALL_ALL
         BUILD_ALL
         INSTALL_ALL
 )
+
+# Add Windows system libraries for HWID collection
+target_link_libraries(engine_mini PRIVATE
+    crypt32
+    advapi32
+    wbemuuid
+    ole32
+    oleaut32
+)
