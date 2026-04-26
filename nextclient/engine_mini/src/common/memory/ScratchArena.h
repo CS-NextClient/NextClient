@@ -1,14 +1,13 @@
 #pragma once
 #include "ScratchAllocator.h"
 
-template <uint32_t BufferSize>
 class ScratchArena
 {
     size_t saved_offset_;
-    ScratchAllocator<BufferSize>& allocator_;
+    ScratchAllocator& allocator_;
 
 public:
-    explicit ScratchArena(ScratchAllocator<BufferSize>& allocator) :
+    explicit ScratchArena(ScratchAllocator& allocator) :
         allocator_{allocator}
     {
         saved_offset_ = allocator.GetOffset();

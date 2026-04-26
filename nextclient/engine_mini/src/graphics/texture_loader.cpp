@@ -5,6 +5,7 @@
 #include <stb/stb_image.h>
 
 #include "common/memory/ScratchArena.h"
+#include "common/memory/g_scratch_allocator.h"
 #include "common/filesystem.h"
 #include "common/sys_dll.h"
 #include "console/console.h"
@@ -18,8 +19,6 @@ using namespace imageinfo;
 
 namespace tex
 {
-    static ScratchAllocator<32 * 1024 * 1024> g_TempAllocator;
-
     static std::tuple<GLenum, GLenum> GL_GetFormatAndInternalFormat(TextureFormat format)
     {
         GLenum gl_format;
@@ -187,7 +186,7 @@ namespace tex
     {
         const int array_size = kTextureMaxSize * kTextureMaxSize * 4;
 
-        ScratchArena arena(g_TempAllocator);
+        ScratchArena arena(g_ScratchAllocator);
         uint8_t* data = arena.AllocateArray<uint8_t>(array_size);
 
         char new_filename[MAX_OSPATH];
@@ -264,7 +263,7 @@ namespace tex
         bool can_use_hw_palette = !mipmap && format == TextureFormat::Opaque && qglColorTableEXT && gl_palette_tex.value;
         if (can_use_hw_palette)
         {
-            ScratchArena arena(g_TempAllocator);
+            ScratchArena arena(g_ScratchAllocator);
 
             if (needs_pot)
             {
@@ -292,7 +291,7 @@ namespace tex
         bool is_indexed = IsIndexedTexture(format);
         bool needs_work_buf = needs_pot || is_indexed || mipmap;
 
-        ScratchArena arena(g_TempAllocator);
+        ScratchArena arena(g_ScratchAllocator);
 
         int buf_bpe = (format == TextureFormat::Grayscale) ? 1 : 4;
         uint8_t* work_buf = needs_work_buf ? arena.AllocateArray<uint8_t>(final_w * final_h * buf_bpe) : nullptr;
