@@ -72,7 +72,7 @@ namespace tex
 
             Con_DPrintf(
                 ConLogType::Error,
-                "[TextureManager] Failed to load texture: %s | %dx%d | %s | %s",
+                "[TextureManager] Failed to load texture: %s | %dx%d | %s | %s\n",
                 identifier.c_str(),
                 width,
                 height,
@@ -85,7 +85,7 @@ namespace tex
 
         // Con_DPrintf(
         //     ConLogType::Info,
-        //     "[TextureManager] Loaded texture: %s | %dx%d | %s | %s | %d | slot: %u",
+        //     "[TextureManager] Loaded texture: %s | %dx%d | %s | %s | %d | slot: %u\n",
         //     identifier.c_str(),
         //     width,
         //     height,

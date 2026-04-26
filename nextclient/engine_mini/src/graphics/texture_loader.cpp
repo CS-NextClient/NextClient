@@ -155,7 +155,7 @@ namespace tex
         int width = image_info.size().width;
         int height = image_info.size().height;
 
-        if (width > width_max || height > height_max)
+        if ((int64_t)width * height > (int64_t)width_max * height_max)
         {
             Con_Printf("Image size is too large %s. Actual: %dx%d, Max: %dx%d\n", file, width, height, width_max, height_max);
             FS_Close(file_handle);
@@ -215,11 +215,11 @@ namespace tex
     {
         OPTICK_EVENT();
 
-        if (width > kTextureMaxSize || height > kTextureMaxSize)
+        if ((int64_t)width * height > (int64_t)kTextureMaxSize * kTextureMaxSize)
         {
             Con_DPrintf(
                 ConLogType::Error,
-                "Texture %s is too big: %dx%d, max: %dx%d",
+                "Texture %s is too big: %dx%d, max: %dx%d\n",
                 identifier.c_str(),
                 width,
                 height,
