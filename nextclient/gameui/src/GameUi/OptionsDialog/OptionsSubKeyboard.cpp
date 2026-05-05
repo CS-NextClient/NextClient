@@ -364,7 +364,7 @@ void COptionsSubKeyboard::OnCommand( const char *command )
     }
     else if ( !m_pKeyBindList->IsCapturing() && !stricmp( command, "ChangeKey" ) )
     {
-        m_pKeyBindList->StartCaptureMode(vgui2::dc_none);
+        m_pKeyBindList->StartCaptureMode(vgui2::dc_blank);
     }
     else if ( !m_pKeyBindList->IsCapturing() && !stricmp( command, "ClearKey" ) )
     {

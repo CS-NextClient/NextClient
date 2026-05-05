@@ -16,15 +16,6 @@ public:
     {
     }
 
-    virtual void Paint(void)
-    {
-        int x = 0, y = 0, wide, tall;
-        GetSize(wide, tall);
-
-        vgui2::surface()->DrawSetColor(255, 165, 0, 255);
-        vgui2::surface()->DrawFilledRect(x, y, x + wide, y + tall);
-    }
-
     virtual void OnKeyCodeTyped(vgui2::KeyCode code)
     {
         if (GetParent())
@@ -35,6 +26,7 @@ public:
     {
         Panel::ApplySchemeSettings(pScheme);
         SetBorder(pScheme->GetBorder("DepressedButtonBorder"));
+        SetBgColor(GetSchemeColor("TextEntry.SelectedBgColor", pScheme));
     }
 
     void OnMousePressed(vgui2::MouseCode code)
