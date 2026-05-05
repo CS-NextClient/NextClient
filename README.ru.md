@@ -114,10 +114,13 @@ NextClient это модификация для Counter-Strike 1.6, нацеле
 
 Запустите x86 Native Tools Command Prompt for VS
 
-С генератором Visual Studio 2022:
 ```
 git clone --recurse-submodules https://github.com/CS-NextClient/NextClient.git
 cd NextClient
+```
+
+С генератором Visual Studio 2022:
+```
 cmake --preset vs2022
 cmake --build --preset vs2022-release --target BUILD_ALL
 ```
@@ -130,8 +133,6 @@ cmake --build --preset vs2026-release --target BUILD_ALL
 
 Или с Ninja:
 ```
-git clone --recurse-submodules https://github.com/CS-NextClient/NextClient.git
-cd NextClient
 cmake --preset ninja
 cmake --build --preset ninja-release --target BUILD_ALL
 ```

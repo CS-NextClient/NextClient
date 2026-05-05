@@ -114,10 +114,13 @@ Requirements:
 
 Run x86 Native Tools Command Prompt for VS
 
-Using Visual Studio 2022 generator:
 ```
 git clone --recurse-submodules https://github.com/CS-NextClient/NextClient.git
 cd NextClient
+```
+
+Using Visual Studio 2022 generator:
+```
 cmake --preset vs2022
 cmake --build --preset vs2022-release --target BUILD_ALL
 ```
@@ -130,8 +133,6 @@ cmake --build --preset vs2026-release --target BUILD_ALL
 
 Or using Ninja:
 ```
-git clone --recurse-submodules https://github.com/CS-NextClient/NextClient.git
-cd NextClient
 cmake --preset ninja
 cmake --build --preset ninja-release --target BUILD_ALL
 ```
