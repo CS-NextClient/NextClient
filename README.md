@@ -108,29 +108,89 @@ The configuration file is located at the path `platform\config\MasterServer.vdf`
 
 ## Building
 Requirements:
- - The latest version of MSVC 2022
- - Cmake 3.21 or higher
- - Ninja (optional, but highly recommended, for quick build)
+ - The latest version of MSVC 2022 or later
+ - CMake 3.21 or higher
+ - Ninja (optional)
 
-Run x86 Native Tools Command Prompt for VS 2022
+Run x86 Native Tools Command Prompt for VS
+
+Using Visual Studio 2022 generator:
 ```
 git clone --recurse-submodules https://github.com/CS-NextClient/NextClient.git
 cd NextClient
-cmake -G "Ninja" -B cmake-build-release -DCMAKE_BUILD_TYPE=Release
-# or if you don't have Ninja installed: cmake -G "NMake Makefiles" -B cmake-build-release -DCMAKE_BUILD_TYPE=Release 
-cmake --build cmake-build-release -t BUILD_ALL
-
+cmake --preset vs2022
+cmake --build --preset vs2022-release --target BUILD_ALL
 ```
 
-Now you can run the INSTALL_ALL target, it will copy all the necessary files, including assets, to a separate folder
+Using Visual Studio 2026 generator:
 ```
-set NEXTCLIENT_INSTALL_DIR=<absolute path to folder>
-cmake -G "Ninja" -B cmake-build-release -DCMAKE_BUILD_TYPE=Release
-cmake --build cmake-build-release -t INSTALL_ALL
+cmake --preset vs2026
+cmake --build --preset vs2026-release --target BUILD_ALL
 ```
 
-You can also build a project from CLion, VS Code, or Visual Studio. Use the BUILD_ALL target to build.  
-Note that only Ninja and NMake Makefiles generators are supported. So if you want to build a project in Visual Studio you should change it in the settings, because Visual Studio uses Visual Studio 17 2022 generator by default.
+Or using Ninja:
+```
+git clone --recurse-submodules https://github.com/CS-NextClient/NextClient.git
+cd NextClient
+cmake --preset ninja
+cmake --build --preset ninja-release --target BUILD_ALL
+```
+
+`BUILD_ALL` also copies all built files and assets to `NEXTCLIENT_INSTALL_DIR` if the variable is set.
+You can pass it directly when configuring:
+```
+cmake --preset vs2022 -DNEXTCLIENT_INSTALL_DIR="C:/Games/CS 1.6 - NextClient"
+```
+Or create a `CMakeUserPresets.json` in the project root (gitignored) to avoid passing it every time:
+```json
+{
+  "version": 3,
+  "configurePresets": [
+    {
+      "name": "vs2022-local",
+      "inherits": "vs2022",
+      "cacheVariables": {
+        "NEXTCLIENT_INSTALL_DIR": "C:/Games/CS 1.6 - NextClient"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "vs2022-local-release",
+      "configurePreset": "vs2022-local",
+      "configuration": "Release"
+    },
+    {
+      "name": "vs2022-local-debug",
+      "configurePreset": "vs2022-local",
+      "configuration": "Debug"
+    }
+  ]
+}
+```
+Then:
+```
+cmake --preset vs2022-local
+cmake --build --preset vs2022-local-release --target BUILD_ALL
+```
+
+## Working in IDE
+
+### CLion
+ - The default toolchain must be Visual Studio x86
+ - Enable the required presets in CMake settings (Settings -> Build -> CMake), e.g. `vs2022 - vs2022-debug` and `vs2022 - vs2022-release`
+ - Build the `BUILD_ALL` target
+
+### Visual Studio
+ - Open the project folder
+ - Select build preset, e.g. `vs2022-debug` or `vs2022-release`
+ - Build the `BUILD_ALL` target
+
+### VS Code
+ - Install the `ms-vscode.cmake-tools` extension
+ - Select the `vs2022`, `vs2026`, or `ninja` configure preset and the corresponding build configuration
+ - Build the `BUILD_ALL` target
+ - For the `ninja` preset, VS Code must be launched from "x86 Native Tools Command Prompt for VS"
 
 ## Thanks
 - [Nordic Warrior](https://github.com/Nord1cWarr1or) - for the huge amount of feedback and bug reports

@@ -68,24 +68,8 @@ if (MSVC)
             /WX  # treat all warnings as error
             /EHsc # NEVER catch SEH exceptions; c functions cannot throw exceptions
     )
-
-    if (CMAKE_BUILD_TYPE MATCHES Release)
-        target_compile_options(${PROJECT_NAME} PRIVATE
-                /Zi # enables PDB generation
-                /O2 # enables maximize speed optimizations
-        )
-
-        target_link_options(${PROJECT_NAME} PRIVATE
-                /INCREMENTAL:NO  # /INCREMENTAL is not compatible with /LTCG
-                /DEBUG           # enables PDB generation
-                /OPT:REF         # eliminates functions and data that are never referenced
-                /OPT:ICF         # enables COMDAT folding
-        )
-    endif()
 else ()
-    if (CMAKE_BUILD_TYPE MATCHES Debug)
-        target_compile_options(${PROJECT_NAME} PRIVATE -g -rdynamic)
-    endif ()
+    target_compile_options(${PROJECT_NAME} PRIVATE $<$<CONFIG:Debug>:-g -rdynamic>)
 endif ()
 
 target_compile_definitions(${PROJECT_NAME} PRIVATE

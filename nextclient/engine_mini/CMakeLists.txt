@@ -50,6 +50,11 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
         stb::stb
         EASTL
         unordered_dense::unordered_dense
+        crypt32
+        advapi32
+        wbemuuid
+        ole32
+        oleaut32
 )
 
 if (MSVC)
@@ -59,21 +64,6 @@ if (MSVC)
             /EHsc # NEVER catch SEH exceptions; c functions cannot throw exceptions
     )
 
-    if (CMAKE_BUILD_TYPE MATCHES Release)
-        # TODO set back the /GL flag when zlib and curl are included in the build
-        target_compile_options(${PROJECT_NAME} PRIVATE
-                /Zi # enables PDB generation
-                /O2 # enables maximize speed optimizations
-        )
-
-        target_link_options(${PROJECT_NAME} PRIVATE
-                /LTCG            # enables whole program optimization on link-time
-                /INCREMENTAL:NO  # /INCREMENTAL is not compatible with /LTCG
-                /DEBUG           # enables PDB generation
-                /OPT:REF         # eliminates functions and data that are never referenced
-                /OPT:ICF         # enables COMDAT folding
-        )
-    endif()
 endif()
 
 target_compile_definitions(${PROJECT_NAME} PRIVATE

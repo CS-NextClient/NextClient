@@ -36,7 +36,7 @@ set(NEXT_LAUNCHER_SENTRY_UPLOAD_URL "" CACHE STRING "Sentry upload url (DSN)")
 set(NEXT_LAUNCHER_SENTRY_ENV "" CACHE STRING "Sentry environment")
 
 option(NEXT_LAUNCHER_ENABLE_UPDATER "Enable auto updater support" OFF)
-set(NEXT_LAUNCHER_UPDATER_CIPHER_KEY "" CACHE STRING "Auto updater AES cipher key")
+set(NEXT_LAUNCHER_UPDATER_CIPHER_KEY "0" CACHE STRING "Auto updater AES cipher key")
 
 # cpr configuration
 set(CPR_ENABLE_SSL ON)

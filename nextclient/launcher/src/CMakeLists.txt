@@ -23,21 +23,6 @@ add_compile_options(
         /EHsc # NEVER catch SEH exceptions; c functions cannot throw exceptions
 )
 
-if (CMAKE_BUILD_TYPE MATCHES Release)
-    add_compile_options(
-            /Zi # enables PDB generation
-            /O2 # enables maximize speed optimizations
-    )
-
-    add_link_options(
-            /LTCG            # enables whole program optimization on link-time
-            /INCREMENTAL:NO  # /INCREMENTAL is not compatible with /LTCG
-            /DEBUG           # enables PDB generation
-            /OPT:REF         # eliminates functions and data that are never referenced
-            /OPT:ICF         # enables COMDAT folding
-    )
-endif ()
-
 add_subdirectory(utils)
 add_subdirectory(gui_app_core)
 add_subdirectory(updater_gui_app)

@@ -24,8 +24,9 @@ void CMainMenuBrowser::InitializeBrowser() {
 	m_pHtml = new vgui2::HTML(this, "MainMenuBrowserHTML");
 	m_pHtml->InitializeBrowser("NextClient CEF1 Main Menu Browser", true);
 
-	std::vector<std::string> languages;
-    nitro_utils::split(SteamApps()->GetAvailableGameLanguages(), ",", languages);
+    std::vector<std::string_view> lang_views;
+    nitro_utils::split(SteamApps()->GetAvailableGameLanguages(), ",", lang_views);
+    std::vector<std::string> languages(lang_views.begin(), lang_views.end());
 
 	m_pHtml->SetLangSettings(SteamApps()->GetCurrentGameLanguage(), languages);
 	m_pHtml->SetSteamId(SteamUser()->GetSteamID().ConvertToUint64());

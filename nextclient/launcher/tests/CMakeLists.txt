@@ -20,19 +20,6 @@ add_compile_options(
         /WX  # treat all warnings as error
 )
 
-if (CMAKE_BUILD_TYPE MATCHES Release)
-    add_compile_options(
-            /O2 # enables maximize speed optimizations
-    )
-
-    add_link_options(
-            /LTCG            # enables whole program optimization on link-time
-            /INCREMENTAL:NO  # /INCREMENTAL is not compatible with /LTCG
-            /OPT:REF         # eliminates functions and data that are never referenced
-            /OPT:ICF         # enables COMDAT folding
-    )
-endif ()
-
 if (NEXT_LAUNCHER_ENABLE_UPDATER)
     add_subdirectory(updater)
 endif ()

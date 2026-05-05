@@ -1,0 +1,89 @@
+{
+  "version": 3,
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 21,
+    "patch": 0
+  },
+
+  "configurePresets": [
+    {
+      "name": "base",
+      "hidden": true,
+      "binaryDir": "${sourceDir}/build/${presetName}",
+      "cacheVariables": {
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+        "CMAKE_TOOLCHAIN_FILE": "${sourceDir}/vcpkg/scripts/buildsystems/vcpkg.cmake",
+        "VCPKG_TARGET_TRIPLET": "x86-windows-static"
+      }
+    },
+
+    {
+      "name": "vs2022",
+      "inherits": "base",
+      "generator": "Visual Studio 17 2022",
+      "architecture": {
+        "value": "Win32",
+        "strategy": "set"
+      }
+    },
+
+    {
+      "name": "vs2026",
+      "inherits": "base",
+      "generator": "Visual Studio 18 2026",
+      "architecture": {
+        "value": "Win32",
+        "strategy": "set"
+      }
+    },
+
+    {
+      "name": "ninja",
+      "inherits": "base",
+      "generator": "Ninja Multi-Config",
+      "architecture": {
+        "value": "x86",
+        "strategy": "external"
+      }
+    }
+  ],
+
+  "buildPresets": [
+    {
+      "name": "vs2022-release",
+      "configurePreset": "vs2022",
+      "configuration": "Release"
+    },
+
+    {
+      "name": "vs2022-debug",
+      "configurePreset": "vs2022",
+      "configuration": "Debug"
+    },
+
+    {
+      "name": "vs2026-release",
+      "configurePreset": "vs2026",
+      "configuration": "Release"
+    },
+
+    {
+      "name": "vs2026-debug",
+      "configurePreset": "vs2026",
+      "configuration": "Debug"
+    },
+    
+    {
+      "name": "ninja-release",
+      "configurePreset": "ninja",
+      "configuration": "Release"
+    },
+
+    {
+      "name": "ninja-debug",
+      "configurePreset": "ninja",
+      "configuration": "Debug"
+    }
+  ]
+}

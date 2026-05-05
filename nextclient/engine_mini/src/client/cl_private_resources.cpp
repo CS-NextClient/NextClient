@@ -100,32 +100,28 @@ void PrivateRes_ParseList(const char* data, int len)
 {
     std::stringstream data_stream(data);
     std::string line;
-    std::vector<std::string> tokens;
+    std::array<std::string_view, 5> tokens;
 
     int line_num = 1;
     while (std::getline(data_stream, line))
     {
-        tokens.clear();
-
         nitro_utils::trim(line);
 
         if (line.empty())
             continue;
 
-        nitro_utils::split(line, ":", tokens);
-
-        if (tokens.size() != 5)
+        if (nitro_utils::split(line, ":", tokens) != 5)
         {
             Con_DPrintf(ConLogType::Info, "PrivateRes_ParseList: can't tokenize line %d, skipping...\n", line_num);
             continue;
         }
 
         bool must_be_replaced = tokens[0][0] == '1';
-        const std::string& filepath = tokens[1];
-        const std::string& ncl_filepath = tokens[2];
+        std::string filepath(tokens[1]);
+        std::string ncl_filepath(tokens[2]);
 
         unsigned int uiCrc32;
-        try { uiCrc32 = std::stoul(tokens[3], nullptr, 16); }
+        try { uiCrc32 = std::stoul(std::string(tokens[3]), nullptr, 16); }
         catch (const std::invalid_argument&) {
             Con_DPrintf(ConLogType::Info, "PrivateRes_ParseList: can't parse crc32 at line %d: can't perform conversion, skipping...\n", line_num);
             continue;
@@ -136,7 +132,7 @@ void PrivateRes_ParseList(const char* data, int len)
         }
 
         int iSize;
-        try { iSize = std::stoi(tokens[4]); }
+        try { iSize = std::stoi(std::string(tokens[4])); }
         catch (const std::invalid_argument&) {
             Con_DPrintf(ConLogType::Info, "PrivateRes_ParseList: can't parse size at line %d: can't perform conversion, skipping...\n", line_num);
             continue;

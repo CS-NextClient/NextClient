@@ -88,21 +88,6 @@ if (MSVC)
             /EHsc # NEVER catch SEH exceptions; c functions cannot throw exceptions
     )
 
-    if (CMAKE_BUILD_TYPE MATCHES Release)
-        target_compile_options(${PROJECT_NAME} PRIVATE
-                /Zi # enables PDB generation
-                /O2 # enables maximize speed optimizations
-                /GL # enables whole program optimization
-        )
-
-        target_link_options(${PROJECT_NAME} PRIVATE
-                /LTCG            # enables whole program optimization on link-time
-                /INCREMENTAL:NO  # /INCREMENTAL is not compatible with /LTCG
-                /DEBUG           # enables PDB generation
-                /OPT:REF         # eliminates functions and data that are never referenced
-                /OPT:ICF         # enables COMDAT folding
-        )
-    endif()
 endif ()
 
 target_compile_definitions(${PROJECT_NAME} PRIVATE
@@ -124,7 +109,8 @@ if (WIN32)
 endif()
 
 set_target_properties(${PROJECT_NAME} PROPERTIES
-        PREFIX "cstrike/cl_dlls/"
+        PREFIX ""
+        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/$<CONFIG>/cstrike/cl_dlls"
         OUTPUT_NAME ${OUTPUT_NAME}
         SUFFIX ".dll"
         PDB_NAME ${OUTPUT_NAME}
