@@ -58,7 +58,13 @@ const auto kAllowedCvars = std::to_array<std::string>({
     "cl_fog_r",
     "cl_fog_g",
     "cl_fog_b",
-    "viewmodel_fov"
+    "viewmodel_fov",
+    // since v2.5.0
+    "camera_movement_scale",
+    "camera_movement_interp",
+    "cl_bob_camera",
+    "viewmodel_lag_style",
+    "hud_deathnotice_max",
 });
 
 enum class CvarStatus

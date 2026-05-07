@@ -45,24 +45,24 @@ NextClient это модификация для Counter-Strike 1.6, нацеле
 | viewmodel_offset_x | 0             | Yes                         |  |
 | viewmodel_offset_y | 0             | Yes                         |  |
 | viewmodel_offset_z | 0             | Yes                         |  |
-| camera_movement_scale | 1             | No                          | Camera movement scale. |
-| camera_movement_interp | 0             | No                          | Smooths out camera movement when switching weapons. Recommended value is 0.1. Set to 0 to disable smoothing. |
+| camera_movement_scale | 1             | Yes                         | Camera movement scale. |
+| camera_movement_interp | 0             | Yes                         | Smooths out camera movement when switching weapons. Recommended value is 0.1. Set to 0 to disable smoothing. |
 | viewmodel_fov | 90            | No                          | Min: 70<br/>Max: 100 |
 | cl_crosshair_type | 0             | Yes                         | Crosshair type. 0 - crosshair, 1 - T-shaped, 2 - circle, 3 - dot. |
-| cl_bob_camera | 0             | No                          | View origin bob, does nothing with cl_bobstyle 2. |
+| cl_bob_camera | 0             | Yes                         | View origin bob, does nothing with cl_bobstyle 2. |
 | cl_bobstyle | 0             | Yes                         | 0 for default bob, 1 for old style bob and 2 for CS:GO style bob. |
 | cl_bobamt_vert | 0\.13         | Yes                         | Vertical scale for CS:GO style bob. |
 | cl_bobamt_lat | 0\.32         | Yes                         | Lateral scale for CS:GO style bob. |
 | cl_bob_lower_amt | 8             | Yes                         | Specifies how much the viewmodel moves inwards for CS:GO style bob. |
 | cl_rollangle | 0             | Yes                         | Screen roll angle when strafing or looking (Quake effect). |
 | cl_rollspeed | 200           | Yes                         | Screen roll speed when strafing or looking (Quake effect). |
-| viewmodel_lag_style | 0             | No                          | Viewmodel sway style. 0 is off, 1 is HL2 style and 2 is CS:S/CS:GO style. |
+| viewmodel_lag_style | 0             | Yes                         | Viewmodel sway style. 0 is off, 1 is HL2 style and 2 is CS:S/CS:GO style. |
 | viewmodel_lag_scale | 0             | Yes                         | Scale of the viewmodel sway. |
 | viewmodel_lag_speed | 8             | Yes                         |  Speed of the viewmodel sway. (HL2 sway only) |
 | fov_horplus | 0             | No                          | Enables Hor+ scaling for FOV. Fixes the FOV when playing with aspect ratios besides 4:3. |
 | fov_angle | 90            | No (use ncl_setfov instead) | Min: 70<br/>Max: 100 |
 | fov_lerp | 0             | No (use ncl_setfov instead) | FOV interpolation time in seconds. |
-| hud_deathnotice_max | 5             | No                          | The maximum number of killfeed entries that can be displayed. |
+| hud_deathnotice_max | 5             | Yes                         | The maximum number of killfeed entries that can be displayed. |
 | hud_deathnotice_old | 0             | No                          | Enable the old style of killfeed. |
 | http_max_active_requests | 5             | No                          |  |
 | http_max_requests_retries | 3             | No                          |   |
