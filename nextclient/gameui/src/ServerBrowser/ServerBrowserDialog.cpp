@@ -343,7 +343,6 @@ serveritem_t &CServerBrowserDialog::GetServer(unsigned int serverID)
 void CServerBrowserDialog::AddServerToFavorites(uint32_t ip, uint16_t port)
 {
     m_pFavorites->AddNewServer(ip, port);
-    m_pFavorites->StartRefresh();
 }
 
 void CServerBrowserDialog::AddServerToFavorites(const gameserveritem_t& serveritem)
