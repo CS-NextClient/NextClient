@@ -103,6 +103,8 @@ CDialogAddServer::CDialogAddServer(vgui2::Panel *parent) : Frame(parent, "Dialog
     SetTall(y);
 
     ivgui()->AddTickSignal(GetVPanel());
+    
+    m_appId = SteamUtils()->GetAppID();
 }
 
 CDialogAddServer::~CDialogAddServer()
@@ -248,6 +250,9 @@ void CDialogAddServer::TestServers()
 
 void CDialogAddServer::ServerResponded(gameserveritem_t &server)
 {
+    if (server.m_nAppID != m_appId)
+        return;
+
     KeyValues *kv = new KeyValues("Server");
 
     kv->SetString("name", server.GetName().c_str());

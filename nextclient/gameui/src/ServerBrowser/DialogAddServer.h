@@ -69,6 +69,7 @@ private:
     int m_OriginalHeight;
     CUtlVector<gameserveritem_t> m_DiscoveredServers;
     std::vector<HServerQuery> m_ServerQueries;
+    uint32_t m_appId;
 };
 
 #endif
