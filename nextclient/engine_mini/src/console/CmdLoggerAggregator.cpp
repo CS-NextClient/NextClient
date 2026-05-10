@@ -1,6 +1,6 @@
 #include "CmdLoggerAggregator.h"
 
-void CmdLoggerAggregator::LogCommand(const std::string& command, const std::string& value, LogCommandType type)
+void CmdLoggerAggregator::LogCommand(const char* command, const char* value, LogCommandType type)
 {
     for (auto& logger : loggers_)
         logger->LogCommand(command, value, type);

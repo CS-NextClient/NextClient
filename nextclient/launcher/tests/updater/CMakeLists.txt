@@ -18,20 +18,18 @@ file(GLOB_RECURSE UPDATER_SOURCES
         "*.cpp"
         "*.hpp"
         "*.h"
-        "${NEXT_LAUNCHER_SOURCE_DIR}/src/updater/*.cpp"
-        "${NEXT_LAUNCHER_SOURCE_DIR}/src/updater/*.hpp"
-        "${NEXT_LAUNCHER_SOURCE_DIR}/src/updater/*.h"
+        "${NEXT_LAUNCHER_SOURCE_DIR}/src/updater_gui_app/*.cpp"
+        "${NEXT_LAUNCHER_SOURCE_DIR}/src/updater_gui_app/*.hpp"
+        "${NEXT_LAUNCHER_SOURCE_DIR}/src/updater_gui_app/*.h"
         "${NEXT_LAUNCHER_SOURCE_DIR}/dep/easyloggingpp/src/easylogging++.cc"
 )
 
 add_executable(${TARGET_NAME} ${UPDATER_SOURCES})
 
-gtest_add_tests(${TARGET_NAME} ${UPDATER_SOURCES})
-
 target_include_directories(${TARGET_NAME} PRIVATE
         ${NITRO_API_INCLUDE_PATHS}
         ${NEXT_LAUNCHER_SOURCE_DIR}/include
-        ${NEXT_LAUNCHER_SOURCE_DIR}/src/updater
+        ${NEXT_LAUNCHER_SOURCE_DIR}/src/updater_gui_app
         ${NEXT_LAUNCHER_SOURCE_DIR}/dep/easyloggingpp/src
         # for tests
         ${GTEST_INCLUDE_DIR}
@@ -53,6 +51,7 @@ target_link_libraries(${TARGET_NAME} PRIVATE
         next_launcher::utils
         NextClient::engine_mini
         ncl_utils::ncl_utils
+        TaskCoro::TaskCoro
         # for tests
         GTest::gtest
         GTest::gtest_main
@@ -62,4 +61,8 @@ target_link_libraries(${TARGET_NAME} PRIVATE
         ${USOCKETS_LIBRARY}
 )
 
-target_compile_definitions(${TARGET_NAME} PRIVATE LAUNCHER_BUILD_TESTS)
+target_compile_definitions(${TARGET_NAME} PRIVATE
+        LAUNCHER_BUILD_TESTS
+)
+
+gtest_discover_tests(${TARGET_NAME})

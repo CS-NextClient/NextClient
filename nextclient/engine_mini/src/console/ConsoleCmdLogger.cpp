@@ -4,11 +4,11 @@
 
 #include "ConsoleCmdLogger.h"
 
-const int kLogR = 237;
-const int kLogG = 63;
-const int kLogB = 40;
+constexpr int kLogR = 237;
+constexpr int kLogG = 63;
+constexpr int kLogB = 40;
 
-void ConsoleCmdLogger::LogCommand(const std::string& command, const std::string& value, LogCommandType type)
+void ConsoleCmdLogger::LogCommand(const char* command, const char* value, LogCommandType type)
 {
     if (type == LogCommandType::AllowServerCommand)
         return;
@@ -25,23 +25,31 @@ void ConsoleCmdLogger::LogCommand(const std::string& command, const std::string&
         case LogCommandType::BlockedDirectorCommand:
             g_GameConsoleNext->ColorPrintfWide(kLogR, kLogG, kLogB, L"Blocked director cmd: ");
             break;
-
-        case LogCommandType::BlockedStufftextComamnd:
+  
+        case LogCommandType::BlockedStufftextCommand:
             g_GameConsoleNext->ColorPrintfWide(kLogR, kLogG, kLogB, L"Blocked stufftext cmd: ");
             break;
 
         case LogCommandType::BlockedBanner:
             g_GameConsoleNext->ColorPrintfWide(kLogR, kLogG, kLogB, L"Blocked director banner");
             break;
+
+        case LogCommandType::BlockedDirectorCommandByEngine:
+            g_GameConsoleNext->ColorPrintfWide(kLogR, kLogG, kLogB, L"Blocked director cmd (by engine): ");
+            break;
+
+        case LogCommandType::BlockedStufftextCommandByEngine:
+            g_GameConsoleNext->ColorPrintfWide(kLogR, kLogG, kLogB, L"Blocked stufftext cmd (by engine): ");
+            break;
     }
 
     if (type != LogCommandType::BlockedBanner)
         g_GameConsoleNext->PrintfEx("%s", cmd_copy.c_str());
 
-    if (!value.empty())
+    if (value && value[0] != '\0')
     {
         g_GameConsoleNext->ColorPrintfWide(kLogR, kLogG, kLogB, L" value: ");
-        g_GameConsoleNext->PrintfEx("%s", value.c_str());
+        g_GameConsoleNext->PrintfEx("%s", value);
     }
 
     g_GameConsoleNext->PrintfExWide(L"\n");

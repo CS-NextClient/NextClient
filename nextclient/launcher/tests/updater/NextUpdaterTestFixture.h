@@ -3,7 +3,6 @@
 #include <vector>
 #include <filesystem>
 #include <gtest/gtest.h>
-#include <easylogging++.h>
 #include "test_utils.h"
 
 class NextUpdaterTest : public testing::Test
@@ -28,17 +27,9 @@ protected:
         return path;
     }
 
-    el::Logger* GetTestLogger(const std::string& logger_name = "test_logger")
-    {
-        if (!el::Loggers::hasLogger(logger_name))
-            SetUpTestLogger(logger_name);
-
-        return el::Loggers::getLogger(logger_name);
-    }
-
     int GetFreePort() const
     {
-        return 9873; // return 4; hehe
+        return 9873;
     }
 
 private:
@@ -46,14 +37,5 @@ private:
     {
         for (auto& path : paths_to_remove_)
             std::filesystem::remove_all(path);
-    }
-
-    void SetUpTestLogger(const std::string& logger_name)
-    {
-        el::Configurations defaultConf;
-        defaultConf.setToDefault();
-        defaultConf.set(el::Level::Global, el::ConfigurationType::ToFile, "false");
-        defaultConf.set(el::Level::Global, el::ConfigurationType::ToStandardOutput, "false");
-        el::Loggers::reconfigureLogger(logger_name, defaultConf);
     }
 };

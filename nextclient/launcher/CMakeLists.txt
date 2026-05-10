@@ -61,7 +61,6 @@ endif ()
 # launcher subprojects
 add_subdirectory(src)
 
-if (LAUNCHER_BUILD_TESTS)
-    enable_testing()
+if (NEXTCLIENT_BUILD_TESTS)
     add_subdirectory(tests)
 endif ()

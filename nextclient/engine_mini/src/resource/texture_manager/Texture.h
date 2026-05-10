@@ -1,6 +1,6 @@
 #pragma once
+#include <EASTL/fixed_string.h>
 #include "resource/palette_manager/PaletteHandle.h"
-#include "EASTL/fixed_string.h"
 
 namespace tex
 {

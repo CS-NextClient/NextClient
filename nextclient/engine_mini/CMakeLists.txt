@@ -13,6 +13,14 @@ set(CMAKE_POLICY_DEFAULT_CMP0077 NEW)
 set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 set(CMAKE_CXX_STANDARD 23)
 
+if (NEXTCLIENT_BUILD_TESTS)
+    set(LIBRARY_BUILD_TYPE STATIC)
+    set(TARGET_LIBRARIES_SCOPE PUBLIC)
+else ()
+    set(LIBRARY_BUILD_TYPE SHARED)
+    set(TARGET_LIBRARIES_SCOPE PRIVATE)
+endif ()
+
 # common options
 set(BUILD_SHARED_LIBS OFF)
 
@@ -22,7 +30,7 @@ file(GLOB_RECURSE ENGINE_MINI_SOURCES
         "src/*.hpp"
         "src/*.h")
 
-add_library(${PROJECT_NAME} SHARED
+add_library(${PROJECT_NAME} ${LIBRARY_BUILD_TYPE}
         ${ENGINE_MINI_SOURCES}
 )
 
@@ -31,7 +39,7 @@ target_include_directories(${PROJECT_NAME} PRIVATE
         src
 )
 
-target_link_libraries(${PROJECT_NAME} PRIVATE
+target_link_libraries(${PROJECT_NAME} ${TARGET_LIBRARIES_SCOPE}
         nitro_api::nitro_api
         NextClient::gameui
         NextClient::filesystem_proxy
@@ -91,12 +99,14 @@ if (WIN32)
     )
 endif()
 
-set_target_properties(${PROJECT_NAME} PROPERTIES
-        PREFIX ""
-        OUTPUT_NAME ${OUTPUT_NAME}
-        SUFFIX ".dll"
-        PDB_NAME ${OUTPUT_NAME}
-)
+if (NOT NEXTCLIENT_BUILD_TESTS)
+    set_target_properties(${PROJECT_NAME} PROPERTIES
+            PREFIX ""
+            OUTPUT_NAME ${OUTPUT_NAME}
+            SUFFIX ".dll"
+            PDB_NAME ${OUTPUT_NAME}
+    )
+endif ()
 
 #-----------------------------------------------------------------
 # Export library headers
@@ -107,3 +117,7 @@ add_library(NextClient::engine_mini ALIAS engine_mini_export)
 target_include_directories(engine_mini_export INTERFACE
         include
 )
+
+if (NEXTCLIENT_BUILD_TESTS)
+    add_subdirectory(tests)
+endif ()

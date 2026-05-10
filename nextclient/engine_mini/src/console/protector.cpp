@@ -1,148 +1,161 @@
-#include "../engine.h"
+#include "engine.h"
 
+#include <EASTL/fixed_string.h>
 #include <next_engine_mini/cl_private_resources.h>
 
 #include "CmdChecker.h"
 #include "CmdLoggerAggregator.h"
 #include "ConsoleCmdLogger.h"
 
-static char kEmpty[1] = { '\0' };
-
-static std::shared_ptr<CmdLoggerAggregator> g_CmdLogger;
-static std::unique_ptr<CmdChecker> g_CmdChecker;
-static std::vector<std::shared_ptr<nitroapi::Unsubscriber>> g_Unsubs;
-
-static CommandSource g_CommandSource;
-static bool g_Cbuf_AddText_called;
-
-// TODO It is necessary to restore the code of functions on which hooks are now created. And get rid of this file.
-
-static char* Cbuf_AddTextHandler(const char *text, sizebuf_t *buf, nitroapi::NextHandlerInterface<char*, const char*, sizebuf_t*>* next)
+namespace
 {
-    g_Cbuf_AddText_called = true;
+    char kEmpty[1] = {};
 
-    if (text == nullptr || text[0] == '\0')
-        return next->Invoke(text, buf);
+    std::shared_ptr<CmdLoggerAggregator> g_CmdLogger;
+    std::unique_ptr<CmdChecker> g_CmdChecker;
+    std::vector<std::shared_ptr<nitroapi::Unsubscriber>> g_Unsubs;
+    
+    std::string g_FilteredCmd;
+    CommandSource g_CommandSource;
+    bool g_Cbuf_AddText_called;
 
-    std::string_view cmd = text;
-    if (cmd.starts_with(kPrivateResourceMsgMarker))
+    char* Cbuf_AddTextHandler(const char* text, sizebuf_t* buf, nitroapi::NextHandlerInterface<char*, const char*, sizebuf_t*>* next)
+    {
+        g_Cbuf_AddText_called = true;
+
+        if (text == nullptr || text[0] == '\0')
+        {
+            return next->Invoke(text, buf);
+        }
+
+        std::string_view cmd = text;
+        if (cmd.starts_with(kPrivateResourceMsgMarker))
+        {
+            return kEmpty;
+        }
+
+        g_CmdChecker->FilterCmd(cmd, g_CommandSource, g_FilteredCmd);
+
+        if (!g_FilteredCmd.empty())
+        {
+            return next->Invoke(g_FilteredCmd.c_str(), buf);
+        }
+
         return kEmpty;
-
-    std::string filtered_cmd = g_CmdChecker->GetFilteredCmd(cmd, g_CommandSource);
-    if (!filtered_cmd.empty())
-        return next->Invoke(filtered_cmd.c_str(), buf);
-
-    return kEmpty;
-}
-
-static void CL_ConnectionlessPacket(nitroapi::NextHandlerInterface<void>* next)
-{
-    int read_count = *pMsg_readcount;
-
-    MSG_BeginReading();
-    MSG_ReadLong();
-    const char* args = MSG_ReadStringLine();
-
-    *pMsg_readcount = read_count;
-
-    eng()->Cmd_TokenizeString(args);
-    const char* c = gEngfuncs.Cmd_Argv(0);
-
-    if (Q_stricmp(c, "challenge") && *c == 'L')
-    {
-        gEngfuncs.pfnClientCmd("disconnect\n");
-
-        g_CmdLogger->LogCommand("[NOT COMMAND] redirect challenge", "", LogCommandType::BlockedAllCommand);
-        return;
     }
 
-    g_CommandSource = CommandSource::ConnectionlessPacket;
-    next->Invoke();
-    g_CommandSource = CommandSource::Console;
-}
-
-static void SVC_StufftextHandler(nitroapi::NextHandlerInterface<void>* next)
-{
-    int read_count = *pMsg_readcount;
-    const char* cmd = MSG_ReadString();
-    *pMsg_readcount = read_count;
-
-    g_Cbuf_AddText_called = false;
-
-    g_CommandSource = CommandSource::Stufftext;
-    next->Invoke();
-    g_CommandSource = CommandSource::Console;
-
-    if (!g_Cbuf_AddText_called)
+    void CL_ConnectionlessPacket(nitroapi::NextHandlerInterface<void>* next)
     {
-        g_CmdLogger->LogCommand(cmd, "", LogCommandType::BlockedStufftextComamnd);
-    }
-}
+        int read_count = *pMsg_readcount;
 
-static void SVC_DirectorHandler(nitroapi::NextHandlerInterface<void>* next)
-{
-    int read_count = *pMsg_readcount;
+        MSG_BeginReading();
+        MSG_ReadLong();
+        const char* args = MSG_ReadStringLine();
 
-    MSG_ReadByte(); // command_size
-    int direct_type = MSG_ReadByte();
-    const char* cmd = MSG_ReadString();
+        *pMsg_readcount = read_count;
 
-    if (direct_type == DRC_CMD_BANNER) // block spectator banner left-upper corner
-    {
-        g_CmdLogger->LogCommand("[NOT COMMAND] Show DRC_CMD_BANNER", "", LogCommandType::BlockedBanner);
-        return;
+        eng()->Cmd_TokenizeString(args);
+        const char* c = gEngfuncs.Cmd_Argv(0);
+
+        if (Q_stricmp(c, "challenge") && *c == 'L')
+        {
+            gEngfuncs.pfnClientCmd("disconnect\n");
+
+            g_CmdLogger->LogCommand("[NOT COMMAND] redirect challenge", "", LogCommandType::BlockedAllCommand);
+            return;
+        }
+
+        g_CommandSource = CommandSource::ConnectionlessPacket;
+        next->Invoke();
+        g_CommandSource = CommandSource::Console;
     }
 
-    *pMsg_readcount = read_count;
-
-    if (direct_type == DRC_CMD_STUFFTEXT)
+    void SVC_StufftextHandler(nitroapi::NextHandlerInterface<void>* next)
     {
+        int read_count = *pMsg_readcount;
+        const char* cmd = MSG_ReadString();
+        *pMsg_readcount = read_count;
+
         g_Cbuf_AddText_called = false;
 
-        g_CommandSource = CommandSource::Director;
+        g_CommandSource = CommandSource::Stufftext;
         next->Invoke();
         g_CommandSource = CommandSource::Console;
 
         if (!g_Cbuf_AddText_called)
         {
-            g_CmdLogger->LogCommand(cmd, "", LogCommandType::BlockedDirectorCommand);
+            g_CmdLogger->LogCommand(cmd, "", LogCommandType::BlockedStufftextCommandByEngine);
         }
     }
-    else
+
+    void SVC_DirectorHandler(nitroapi::NextHandlerInterface<void>* next)
     {
+        int read_count = *pMsg_readcount;
+
+        MSG_ReadByte(); // command_size
+        int direct_type = MSG_ReadByte();
+        const char* cmd = MSG_ReadString();
+
+        if (direct_type == DRC_CMD_BANNER) // block spectator banner left-upper corner
+        {
+            g_CmdLogger->LogCommand("[NOT COMMAND] Show DRC_CMD_BANNER", "", LogCommandType::BlockedBanner);
+            return;
+        }
+
+        *pMsg_readcount = read_count;
+
+        if (direct_type == DRC_CMD_STUFFTEXT)
+        {
+            g_Cbuf_AddText_called = false;
+
+            g_CommandSource = CommandSource::Director;
+            next->Invoke();
+            g_CommandSource = CommandSource::Console;
+
+            if (!g_Cbuf_AddText_called)
+            {
+                g_CmdLogger->LogCommand(cmd, "", LogCommandType::BlockedDirectorCommandByEngine);
+            }
+        }
+        else
+        {
+            next->Invoke();
+        }
+    }
+
+    void SVC_DisconnectHandler(nitroapi::NextHandlerInterface<void>* next)
+    {
+        int read_count = *pMsg_readcount;
+        const char* reason = MSG_ReadString();
+        *pMsg_readcount = read_count;
+
+        g_CmdLogger->LogCommand("disconnect", reason, LogCommandType::AllowServerCommand);
+
         next->Invoke();
     }
-}
 
-static void SVC_DisconnectHandler(nitroapi::NextHandlerInterface<void>* next)
-{
-    int read_count = *pMsg_readcount;
-    const char* reason = MSG_ReadString();
-    *pMsg_readcount = read_count;
+    void SVC_ResourceLocationHandler(nitroapi::NextHandlerInterface<void>* next)
+    {
+        int read_count = *pMsg_readcount;
+        const char* url = MSG_ReadString();
+        *pMsg_readcount = read_count;
 
-    g_CmdLogger->LogCommand("disconnect", reason, LogCommandType::AllowServerCommand);
+        g_CmdLogger->LogCommand("sv_downloadurl", url, LogCommandType::AllowServerCommand);
 
-    next->Invoke();
-}
-
-static void SVC_ResourceLocationHandler(nitroapi::NextHandlerInterface<void>* next)
-{
-    int read_count = *pMsg_readcount;
-    const char* url = MSG_ReadString();
-    *pMsg_readcount = read_count;
-
-    g_CmdLogger->LogCommand("sv_downloadurl", url, LogCommandType::AllowServerCommand);
-
-    next->Invoke();
-}
+        next->Invoke();
+    }
+} // namespace
 
 void PROTECTOR_Init(std::shared_ptr<nitro_utils::ConfigProviderInterface> config_provider)
 {
     g_Cbuf_AddText_called = false;
     g_CommandSource = CommandSource::Console;
+    g_FilteredCmd.reserve(8192);
 
     if (g_CmdLogger == nullptr)
+    {
         g_CmdLogger = std::make_shared<CmdLoggerAggregator>();
+    }
 
     g_CmdLogger->AddLogger(new ConsoleCmdLogger());
 
@@ -159,8 +172,11 @@ void PROTECTOR_Init(std::shared_ptr<nitro_utils::ConfigProviderInterface> config
 void PROTECTOR_Shutdown()
 {
     for (auto& unsubscriber : g_Unsubs)
+    {
         unsubscriber->Unsubscribe();
+    }
 
+    g_Unsubs.clear();
     g_CmdChecker = nullptr;
     g_CmdLogger = nullptr;
 }
@@ -168,7 +184,9 @@ void PROTECTOR_Shutdown()
 bool PROTECTOR_AddCmdLogger(CommandLoggerInterface* logger)
 {
     if (g_CmdLogger == nullptr)
+    {
         g_CmdLogger = std::make_shared<CmdLoggerAggregator>();
+    }
 
     return g_CmdLogger->AddLogger(logger);
 }
@@ -176,7 +194,9 @@ bool PROTECTOR_AddCmdLogger(CommandLoggerInterface* logger)
 bool PROTECTOR_RemoveCmdLogger(CommandLoggerInterface* logger)
 {
     if (g_CmdLogger == nullptr)
+    {
         g_CmdLogger = std::make_shared<CmdLoggerAggregator>();
+    }
 
     return g_CmdLogger->RemoveLogger(logger);
 }

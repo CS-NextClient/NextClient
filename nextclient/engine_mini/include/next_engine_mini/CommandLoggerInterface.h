@@ -1,14 +1,14 @@
 #pragma once
 
-#include <string>
-
 enum class LogCommandType
 {
     AllowServerCommand = 0,
     BlockedAllCommand = 1,
     BlockedDirectorCommand = 2,
-    BlockedStufftextComamnd = 3,
-    BlockedBanner = 4
+    BlockedStufftextCommand = 3,
+    BlockedBanner = 4,
+    BlockedDirectorCommandByEngine = 5,
+    BlockedStufftextCommandByEngine = 6,
 };
 
 class CommandLoggerInterface
@@ -16,5 +16,5 @@ class CommandLoggerInterface
 public:
     virtual ~CommandLoggerInterface() = default;
 
-    virtual void LogCommand(const std::string& command, const std::string& value, LogCommandType type) = 0;
+    virtual void LogCommand(const char* command, const char* value, LogCommandType type) = 0;
 };

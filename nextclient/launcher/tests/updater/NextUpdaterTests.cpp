@@ -16,14 +16,14 @@ TEST_F(NextUpdaterTest, UpdateAndInstallSuccessExpected)
 {
     int server_port = GetFreePort();
 
-    std::thread server_thread([server_port]{
+    std::thread server_thread([server_port] {
         uWS::App()
-        .get("/branch/test/next_engine_mini.dll", [](auto* response, auto* request) { response->end("aa"); })
-        .get("/branch/test/cstrike/cl_dlls/client_mini.dll", [](auto* response, auto* request) { response->end("bb"); })
-        .get("/branch/test/nitro_api.dll", [](auto* response, auto* request) { response->end("cc"); })
-        .get("/branch/test/cstrike/cl_dlls/GameUI.dll", [](auto* response, auto* request) { response->end("dd"); })
-        .listen(server_port, [](us_listen_socket_t* listenSocket) { })
-        .run();
+            .get("/branch/test/next_engine_mini.dll", [](auto* response, auto* request) { response->end("aa"); })
+            .get("/branch/test/cstrike/cl_dlls/client_mini.dll", [](auto* response, auto* request) { response->end("bb"); })
+            .get("/branch/test/nitro_api.dll", [](auto* response, auto* request) { response->end("cc"); })
+            .get("/branch/test/cstrike/cl_dlls/GameUI.dll", [](auto* response, auto* request) { response->end("dd"); })
+            .listen(server_port, [](us_listen_socket_t* listenSocket) {})
+            .run();
     });
     server_thread.detach();
 
@@ -32,10 +32,16 @@ TEST_F(NextUpdaterTest, UpdateAndInstallSuccessExpected)
 
     WriteToFile(install_path / "next_engine_mini.dll", "old content");
     WriteToFile(install_path / "cstrike/cl_dlls/client_mini.dll", "old content");
-    DWORD client_mini_set_attr_result = SetFileAttributesW((install_path / "cstrike/cl_dlls/client_mini.dll").c_str(), FILE_ATTRIBUTE_HIDDEN | FILE_ATTRIBUTE_READONLY);
+    DWORD client_mini_set_attr_result =
+        SetFileAttributesW((install_path / "cstrike/cl_dlls/client_mini.dll").c_str(), FILE_ATTRIBUTE_HIDDEN | FILE_ATTRIBUTE_READONLY);
 
-    auto http_service = std::make_shared<HttpServiceMock>(std::unordered_map<std::string, HttpResponse> {
-        {"launcher_update", HttpResponse(200, cpr::Error(), nitro_utils::replace_all_copy(R"(
+    auto http_service = std::make_shared<HttpServiceMock>(std::unordered_map<std::string, HttpResponse>{
+        {"launcher_update",
+         HttpResponse(
+             200,
+             cpr::Error(),
+             nitro_utils::replace_all_copy(
+                 R"(
 {
     "hostname": "http://localhost:<server_port>/branch/test",
     "files":[
@@ -53,8 +59,11 @@ TEST_F(NextUpdaterTest, UpdateAndInstallSuccessExpected)
          "size": 2}
     ]
 }
-)", "<server_port>", std::to_string(server_port))
-        )}
+)",
+                 "<server_port>",
+                 std::to_string(server_port)
+             )
+         )}
     });
 
     // check pre install state
@@ -64,15 +73,17 @@ TEST_F(NextUpdaterTest, UpdateAndInstallSuccessExpected)
     EXPECT_FALSE(std::filesystem::exists(install_path / "nitro_api.dll"));
     EXPECT_FALSE(std::filesystem::exists(install_path / "cstrike/cl_dlls/GameUI.dll"));
 
-    NextUpdater next_updater(install_path, backup_path, GetTestLogger(), http_service, [this](const NextUpdaterEvent& event) { });
-    NextUpdaterResult updater_result = next_updater.Start();
+    NextUpdater next_updater(install_path, backup_path, http_service, [this](const NextUpdaterEvent& event) {});
+    NextUpdaterResult updater_result = next_updater.Start().get();
 
     EXPECT_EQ(updater_result, NextUpdaterResult::Updated);
 
     // check after install state
     EXPECT_EQ(ReadFromFile(install_path / "next_engine_mini.dll"), "aa");
     EXPECT_EQ(ReadFromFile(install_path / "cstrike/cl_dlls/client_mini.dll"), "bb");
-    EXPECT_EQ(GetFileAttributesW((install_path / "cstrike/cl_dlls/client_mini.dll").c_str()), FILE_ATTRIBUTE_HIDDEN | FILE_ATTRIBUTE_READONLY);
+    EXPECT_EQ(
+        GetFileAttributesW((install_path / "cstrike/cl_dlls/client_mini.dll").c_str()), FILE_ATTRIBUTE_HIDDEN | FILE_ATTRIBUTE_READONLY
+    );
     EXPECT_EQ(ReadFromFile(install_path / "nitro_api.dll"), "cc");
     EXPECT_EQ(ReadFromFile(install_path / "cstrike/cl_dlls/GameUI.dll"), "dd");
     EXPECT_FALSE(std::filesystem::exists(backup_path));
@@ -82,14 +93,14 @@ TEST_F(NextUpdaterTest, OpenFileErrorTest)
 {
     int server_port = GetFreePort();
 
-    std::thread server_thread([server_port]{
+    std::thread server_thread([server_port] {
         uWS::App()
-        .get("/branch/test/next_engine_mini.dll", [](auto* response, auto* request) { response->end("aa"); })
-        .get("/branch/test/cstrike/cl_dlls/client_mini.dll", [](auto* response, auto* request) { response->end("bb"); })
-        .get("/branch/test/nitro_api.dll", [](auto* response, auto* request) { response->end("cc"); })
-        .get("/branch/test/cstrike/cl_dlls/GameUI.dll", [](auto* response, auto* request) { response->end("dd"); })
-        .listen(server_port, [](us_listen_socket_t* listenSocket) { })
-        .run();
+            .get("/branch/test/next_engine_mini.dll", [](auto* response, auto* request) { response->end("aa"); })
+            .get("/branch/test/cstrike/cl_dlls/client_mini.dll", [](auto* response, auto* request) { response->end("bb"); })
+            .get("/branch/test/nitro_api.dll", [](auto* response, auto* request) { response->end("cc"); })
+            .get("/branch/test/cstrike/cl_dlls/GameUI.dll", [](auto* response, auto* request) { response->end("dd"); })
+            .listen(server_port, [](us_listen_socket_t* listenSocket) {})
+            .run();
     });
     server_thread.detach();
 
@@ -97,10 +108,23 @@ TEST_F(NextUpdaterTest, OpenFileErrorTest)
     auto backup_path = CreateTempDir("ncl_launcher_test_backup_folder");
 
     WriteToFile(install_path / "next_engine_mini.dll", "old content");
-    HANDLE next_engine_file = CreateFileA((install_path / "next_engine_mini.dll").string().c_str(), GENERIC_READ | GENERIC_WRITE, 0, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+    HANDLE next_engine_file = CreateFileA(
+        (install_path / "next_engine_mini.dll").string().c_str(),
+        GENERIC_READ | GENERIC_WRITE,
+        0,
+        NULL,
+        OPEN_EXISTING,
+        FILE_ATTRIBUTE_NORMAL,
+        NULL
+    );
 
-    auto http_service = std::make_shared<HttpServiceMock>(std::unordered_map<std::string, HttpResponse> {
-            {"launcher_update", HttpResponse(200, cpr::Error(), nitro_utils::replace_all_copy(R"(
+    auto http_service = std::make_shared<HttpServiceMock>(std::unordered_map<std::string, HttpResponse>{
+        {"launcher_update",
+         HttpResponse(
+             200,
+             cpr::Error(),
+             nitro_utils::replace_all_copy(
+                 R"(
 {
     "hostname": "http://localhost:<server_port>/branch/test",
     "files":[
@@ -109,15 +133,18 @@ TEST_F(NextUpdaterTest, OpenFileErrorTest)
          "size": 2}
     ]
 }
-)", "<server_port>", std::to_string(server_port))
-            )}
+)",
+                 "<server_port>",
+                 std::to_string(server_port)
+             )
+         )}
     });
 
     // check pre install state
     EXPECT_NE(next_engine_file, INVALID_HANDLE_VALUE);
 
-    NextUpdater next_updater(install_path, backup_path, GetTestLogger(), http_service, [this](const NextUpdaterEvent& event) { });
-    NextUpdaterResult updater_result = next_updater.Start();
+    NextUpdater next_updater(install_path, backup_path, http_service, [this](const NextUpdaterEvent& event) {});
+    NextUpdaterResult updater_result = next_updater.Start().get();
 
     EXPECT_EQ(updater_result, NextUpdaterResult::Error);
 

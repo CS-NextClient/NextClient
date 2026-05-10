@@ -2,157 +2,151 @@
 #include <utility>
 #include <nitro_utils/string_utils.h>
 
-using namespace nitro_utils;
-
-CmdChecker::CmdChecker(std::shared_ptr<CommandLoggerInterface> cmd_logger,
-                       std::shared_ptr<ConfigProviderInterface> config_provider) :
-    cmd_logger_(std::move(cmd_logger)),
-    config_provider_(std::move(config_provider))
+CmdChecker::CmdChecker(
+    std::shared_ptr<CommandLoggerInterface> cmd_logger,
+    std::shared_ptr<nitro_utils::ConfigProviderInterface> config_provider
+) :
+    cmd_logger_(std::move(cmd_logger))
 {
+    InitBlockedCommands(config_provider);
 }
 
-std::string CmdChecker::GetFilteredCmd(const std::string_view& text, CommandSource command_source)
+void CmdChecker::FilterCmd(const std::string_view& cmd, CommandSource command_source, std::string& out)
 {
-    if (text.empty())
+    out.clear();
+
+    if (cmd.empty())
     {
-        return "";
+        return;
     }
 
-    if (text.length() == 1 && text[0] == '\n')
+    if (cmd.length() == 1 && cmd[0] == '\n')
     {
-        return "\n";
+        out = '\n';
+        return;
     }
 
-    if (IsCommandFromServer(command_source) &&
-        !text.ends_with('\n') && !text.ends_with(';'))
+    size_t cur_pos = 0;
+    SplitData split_data;
+
+    while (GetNextSplitToken(cmd, [](char ch) { return ch == ';'; }, &cur_pos, split_data))
     {
-        return GetFilteredCmdInternal(std::string(text) + ';', command_source);
-    }
-
-    return GetFilteredCmdInternal(text, command_source);
-}
-
-std::string CmdChecker::GetFilteredCmdInternal(const std::string_view& text, CommandSource command_source)
-{
-    std::string filtered_cmd;
-    auto cmds = SplitToCmds(text);
-    for (auto& cmd_data : cmds)
-    {
-        auto& cmd = cmd_data.token;
-
-        if (cmd.empty())
-            continue;
-
-        FilterCmdResult filter_cmd_result = FilterCmd(cmd, command_source);
-
-        std::string_view log_cmd_name;
-        std::string_view log_cmd_value;
-        TokenizeCmdForLogger(cmd, log_cmd_name, log_cmd_value);
-
-        if (filter_cmd_result.get_result())
+        if (split_data.token.empty())
         {
-            if (filter_cmd_result.get_filtered_cmd() != nullptr)
-            {
-                filtered_cmd.append(*filter_cmd_result.get_filtered_cmd());
-            }
-            else
-            {
-                filtered_cmd.append(cmd);
-            }
+            continue;
+        }
 
-            if (cmd_data.has_delimiter())
-            {
-                filtered_cmd.append(std::string(1, cmd_data.delimiter));
-            }
+        bool is_cmd_allowed = FilterSingleCmd(split_data.token, command_source, out);
+        if (is_cmd_allowed && split_data.has_delimiter())
+        {
+            out += split_data.delimiter;
+        }
 
-            if (IsCommandFromServer(command_source) && !log_cmd_name.empty())
-            {
-                cmd_logger_->LogCommand(std::string(log_cmd_name), std::string(log_cmd_value), LogCommandType::AllowServerCommand);
-            }
+        LogCmd(is_cmd_allowed, split_data.token, command_source);
+    }
+
+    if (IsCommandFromServer(command_source) && !out.empty() && !out.ends_with('\n') && !out.ends_with(';'))
+    {
+        out += ';';
+    }
+}
+
+bool CmdChecker::FilterSingleCmd(const std::string_view& cmd, CommandSource command_source, std::string& out)
+{
+    size_t pos = 0;
+    SplitData first_cmd_token;
+    if (!GetNextSplitToken(cmd, [](char ch) { return ch <= ' ' || ch == ':'; }, &pos, first_cmd_token))
+    {
+        out.append(cmd);
+        return true;
+    }
+
+    if (nitro_utils::contains(first_cmd_token.token, "dlfile", nitro_utils::CompareOptions::RegisterIndependent))
+    {
+        return false;
+    }
+
+    auto it = blocked_commands_.find(first_cmd_token.token);
+    if (it == blocked_commands_.end())
+    {
+        out.append(cmd);
+        return true;
+    }
+
+    CmdBlockType block_type = it->second;
+    if ((block_type == CmdBlockType::Any) || ((block_type == CmdBlockType::OnlyServer) && IsCommandFromServer(command_source)))
+    {
+        return false;
+    }
+
+    out.append(cmd);
+    return true;
+}
+
+void CmdChecker::LogCmd(bool is_cmd_allowed, const std::string_view& cmd, CommandSource command_source)
+{
+    std::string_view log_cmd_name;
+    std::string_view log_cmd_value;
+    TokenizeCmdForLogger(cmd, log_cmd_name, log_cmd_value);
+
+    if (is_cmd_allowed)
+    {
+        if (IsCommandFromServer(command_source) && !log_cmd_name.empty())
+        {
+            std::string log_cmd_name_string(log_cmd_name);
+            std::string log_cmd_value_string(log_cmd_value);
+
+            cmd_logger_->LogCommand(log_cmd_name_string.c_str(), log_cmd_value_string.c_str(), LogCommandType::AllowServerCommand);
+        }
+    }
+    else
+    {
+        if (!log_cmd_name.empty())
+        {
+            std::string log_cmd_name_string(log_cmd_name);
+            std::string log_cmd_value_string(log_cmd_value);
+
+            LogCommandType log_command = GetBlockedLogCommandType(command_source);
+            cmd_logger_->LogCommand(log_cmd_name_string.c_str(), log_cmd_value_string.c_str(), log_command);
+        }
+    }
+}
+
+void CmdChecker::InitBlockedCommands(std::shared_ptr<nitro_utils::ConfigProviderInterface> config_provider)
+{
+    auto blocked_commands = config_provider->get_all_values("cmd_filter");
+    if (!blocked_commands)
+    {
+        return;
+    }
+
+    for (const auto& [key, value] : *blocked_commands)
+    {
+        CmdBlockType block_type;
+
+        if (value == "0")
+        {
+            block_type = CmdBlockType::Any;
+        }
+        else if (value == "1" || value == "2")
+        {
+            block_type = CmdBlockType::OnlyServer;
         }
         else
         {
-            if (!log_cmd_name.empty())
-            {
-                LogCommandType log_command = GetLogCommandType(command_source);
-                cmd_logger_->LogCommand(std::string(log_cmd_name), std::string(log_cmd_value), log_command);
-            }
+            continue;
         }
+
+        blocked_commands_[key] = block_type;
     }
-
-    return filtered_cmd;
-}
-
-CmdChecker::FilterCmdResult CmdChecker::FilterCmd(const std::string_view& cmd, CommandSource command_source)
-{
-    auto cmd_tokens = SplitCmdToTokens(cmd);
-
-    if (cmd_tokens.empty())
-        return FilterCmdResult(true); // normally false, but for russian language
-
-    std::string cmd_name(cmd_tokens[0].token);
-    nitro_utils::to_lower(cmd_name);
-
-    // block all commands contains 'dlfile'
-    if (nitro_utils::contains(cmd_name, "dlfile"))
-        return FilterCmdResult(false);
-
-    auto blocked_commands_option = config_provider_->get_all_values("cmd_filter");
-    if (!blocked_commands_option)
-        return FilterCmdResult(true);
-
-    auto blocked_commands = *blocked_commands_option;
-    auto blocked_bind_keys_option = config_provider_->get_all_values("bind_filter");
-
-    // Check command for contains in blocked commands dictionary
-    if (blocked_commands.find(cmd_name) != blocked_commands.end())
-    {
-        auto type = (CmdBlockType)std::stoi(blocked_commands.at(cmd_name));
-
-        if (type == CmdBlockType::Any)
-            return FilterCmdResult(false);
-
-        if (type == CmdBlockType::OnlyServer && IsCommandFromServer(command_source))
-            return FilterCmdResult(false);
-
-        if (type == CmdBlockType::BindSpecial && IsCommandFromServer(command_source) && blocked_bind_keys_option)
-        {
-            if (cmd_tokens.size() != 3)
-            {
-                // Argc may be 2 (ex.: bind F3, show current bind)
-                // ERROR: wrong bind command
-                return FilterCmdResult(false);
-            }
-
-            std::string key(cmd_tokens[1].token);
-            std::string value(cmd_tokens[2].token);
-
-            nitro_utils::trim(key, '\"');
-            nitro_utils::trim(value, '\"');
-            nitro_utils::to_lower(key);
-
-            if (blocked_bind_keys_option->find(key) != blocked_bind_keys_option->end())
-                return FilterCmdResult(false); // This bind is blocked
-
-            // Recursion checking
-            std::string filtered_bind_value = GetFilteredCmdInternal(value, command_source);
-
-            if (filtered_bind_value.empty())
-                return FilterCmdResult(false); // All bind command was banned
-
-            auto filtered_cmd = std::make_shared<std::string>("bind " + key + " \"" + filtered_bind_value + "\"");
-            return FilterCmdResult(true, filtered_cmd);
-        }
-    }
-
-    return FilterCmdResult(true);
 }
 
 bool CmdChecker::GetNextSplitToken(
     const std::string_view& text,
     const std::function<bool(char)>& is_delim,
     size_t* cur_pos,
-    SplitData& cmd_split_data)
+    SplitData& split_data
+)
 {
     size_t text_length = text.length();
 
@@ -179,7 +173,7 @@ bool CmdChecker::GetNextSplitToken(
             if (quotes % 2 == 0 && is_delim(text[i]))
             {
                 delimiter = text[i];
-                break;  // don't break if inside a quoted string
+                break; // don't break if inside a quoted string
             }
 
             if (text[i] == '\n')
@@ -206,50 +200,19 @@ bool CmdChecker::GetNextSplitToken(
     *cur_pos = i;
     if (token_length > 0)
     {
-        cmd_split_data.token = std::string_view(text).substr(token_start, token_length);
-        cmd_split_data.delimiter = delimiter;
+        split_data.token = std::string_view(text).substr(token_start, token_length);
+        split_data.delimiter = delimiter;
 
         return true;
     }
     return false;
 }
 
-std::vector<CmdChecker::SplitData> CmdChecker::SplitWithNewLineAndQuotesRespect(const std::string_view& text, const std::function<bool(char)>& is_delim)
-{
-    std::vector<SplitData> cmds;
-
-    size_t cur_pos = 0;
-    while (true)
-    {
-        SplitData cmd_split_data;
-        if (GetNextSplitToken(text, is_delim, &cur_pos, cmd_split_data))
-        {
-            cmds.emplace_back(cmd_split_data);
-        }
-
-        if (cur_pos >= text.length())
-            break;
-    }
-
-    return cmds;
-}
-
-std::vector<CmdChecker::SplitData> CmdChecker::SplitToCmds(const std::string_view &text)
-{
-    return SplitWithNewLineAndQuotesRespect(text, [](char ch)
-    { return ch == ';'; });
-}
-
-std::vector<CmdChecker::SplitData> CmdChecker::SplitCmdToTokens(const std::string_view &text)
-{
-    return SplitWithNewLineAndQuotesRespect(text, [](char ch)
-    { return ch <= ' ' || ch == ':'; });
-}
-
-bool CmdChecker::TokenizeCmdForLogger(const std::string_view &text, std::string_view& name, std::string_view& value)
+bool CmdChecker::TokenizeCmdForLogger(const std::string_view& text, std::string_view& name, std::string_view& value)
 {
     size_t cur_pos = 0;
     SplitData split_data;
+
     if (GetNextSplitToken(text, [](char ch) { return ch <= ' ' || ch == ':'; }, &cur_pos, split_data))
     {
         name = split_data.token;
@@ -261,29 +224,29 @@ bool CmdChecker::TokenizeCmdForLogger(const std::string_view &text, std::string_
     return false;
 }
 
-LogCommandType CmdChecker::GetLogCommandType(CommandSource command_source)
+bool CmdChecker::IsCommandFromServer(CommandSource command_source)
+{
+    return command_source != CommandSource::Console;
+}
+
+LogCommandType CmdChecker::GetBlockedLogCommandType(CommandSource command_source)
 {
     LogCommandType log_command;
 
     switch (command_source)
     {
-    case CommandSource::Stufftext:
-        log_command = LogCommandType::BlockedStufftextComamnd;
-        break;
+        case CommandSource::Stufftext:
+            log_command = LogCommandType::BlockedStufftextCommand;
+            break;
 
-    case CommandSource::Director:
-        log_command = LogCommandType::BlockedDirectorCommand;
-        break;
+        case CommandSource::Director:
+            log_command = LogCommandType::BlockedDirectorCommand;
+            break;
 
-    default:
-        log_command = LogCommandType::BlockedAllCommand;
-        break;
+        default:
+            log_command = LogCommandType::BlockedAllCommand;
+            break;
     }
 
     return log_command;
-}
-
-bool CmdChecker::IsCommandFromServer(CommandSource command_source)
-{
-    return command_source != CommandSource::Console;
 }
