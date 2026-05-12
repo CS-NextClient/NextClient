@@ -23,9 +23,16 @@ compile_commands.json
 CTestTestfile.cmake
 _deps
 cmake-build-*/
-
 CMakeUserPresets.json
 
 ### CMake Patch ###
 # External projects
 *-prefix/
+
+# AI
+.claude/
+.codex/
+.gemini/
+.cursor/
+.windsurf/
+.junie/
