@@ -131,8 +131,11 @@ void CCvarSlider::Paint(void)
         m_fStartValue = curvalue;
         m_fCurrentValue = curvalue;
 
-        SetValue(val);
+        SetValue(val, false);
         m_iStartValue = GetValue();
+        m_iLastSliderValue = m_iStartValue;
+
+        PostActionSignal(new KeyValues("CvarChanged"));
     }
 
     BaseClass::Paint();
@@ -183,7 +186,7 @@ void CCvarSlider::Reset(void)
     m_fCurrentValue = m_fStartValue;
 
     int value = (int)(CVARSLIDER_SCALE_FACTOR * m_fStartValue);
-    SetValue(value);
+    SetValue(value, false);
 
     m_iStartValue = GetValue();
     m_iLastSliderValue = m_iStartValue;

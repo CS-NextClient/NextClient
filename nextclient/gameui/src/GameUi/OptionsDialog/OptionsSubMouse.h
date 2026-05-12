@@ -36,6 +36,7 @@ protected:
 
 private:
     MESSAGE_FUNC_PTR(OnControlModified, "ControlModified", panel);
+    MESSAGE_FUNC_PTR(OnCvarChanged, "CvarChanged", panel);
     MESSAGE_FUNC_PTR(OnTextChanged, "TextChanged", panel);
 
     MESSAGE_FUNC_PTR(OnCheckButtonChecked, "CheckButtonChecked", panel)

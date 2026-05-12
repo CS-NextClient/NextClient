@@ -37,6 +37,7 @@ COptionsSubMouse::~COptionsSubMouse(void)
 
 void COptionsSubMouse::OnPageShow(void)
 {
+    UpdateSensitivityLabel(m_pMouseSensitivitySlider->GetSliderValue());
 }
 
 void COptionsSubMouse::OnResetData(void)
@@ -49,6 +50,8 @@ void COptionsSubMouse::OnResetData(void)
     m_pJoystickLookCheckBox->Reset();
     m_pMouseSensitivitySlider->Reset();
     m_pAutoAimCheckBox->Reset();
+
+    UpdateSensitivityLabel(m_pMouseSensitivitySlider->GetSliderValue());
 }
 
 void COptionsSubMouse::OnApplyChanges(void)
@@ -66,9 +69,7 @@ void COptionsSubMouse::OnApplyChanges(void)
 }
 
 void COptionsSubMouse::BoundSensitivityValue() {
-    char buf[64];
-    m_pMouseSensitivityLabel->GetText(buf, 64);
-    float fValue = std::clamp((float)atof(buf), 0.2f, 20.0f);
+    float fValue = std::clamp(m_pMouseSensitivitySlider->GetSliderValue(), 0.2f, 20.0f);
     m_pMouseSensitivitySlider->SetSliderValue(fValue);
     UpdateSensitivityLabel(fValue);
 }
@@ -84,7 +85,13 @@ void COptionsSubMouse::OnControlModified(Panel *panel)
 {
     PostActionSignal(new KeyValues("ApplyButtonEnable"));
 
-    if (panel == m_pMouseSensitivitySlider && m_pMouseSensitivitySlider->HasBeenModified())
+    if (panel == m_pMouseSensitivitySlider)
+        UpdateSensitivityLabel(m_pMouseSensitivitySlider->GetSliderValue());
+}
+
+void COptionsSubMouse::OnCvarChanged(Panel *panel)
+{
+    if (panel == m_pMouseSensitivitySlider)
         UpdateSensitivityLabel(m_pMouseSensitivitySlider->GetSliderValue());
 }
 
