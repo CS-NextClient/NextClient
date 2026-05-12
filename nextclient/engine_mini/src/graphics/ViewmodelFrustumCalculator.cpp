@@ -5,12 +5,18 @@ void ViewmodelFrustumCalculator::CalcFrustum(GLdouble& left_out, GLdouble& right
 {
     bool fov_changed = false;
 
-    if (old_cvar_fov_ != viewmodel_fov->value)
+    float base_fov = viewmodel_fov->value;
+    if (p_scr_fov_value && *p_scr_fov_value > 0.0f)
     {
-        old_cvar_fov_ = viewmodel_fov->value;
+        base_fov = viewmodel_fov->value * (*p_scr_fov_value / 90.0f);
+    }
+
+    if (cached_fov_ != base_fov)
+    {
+        cached_fov_ = base_fov;
         fov_changed = true;
 
-        fov_ = std::clamp(viewmodel_fov->value, 1.f, 170.f);
+        fov_ = std::clamp(base_fov, 1.f, 170.f);
         fov_ = CalcVerticalFov(fov_);
     }
 

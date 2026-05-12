@@ -8,7 +8,7 @@ public:
     static constexpr GLdouble kZFar = 4096.0;
 
 private:
-    float old_cvar_fov_{};
+    float cached_fov_{};
     unsigned int old_vid_width_{};
     unsigned int old_vid_height_{};
 
