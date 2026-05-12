@@ -405,7 +405,7 @@ result<ResultT<std::string, UpdateError>> NextUpdater::SelectBaseUrl(const Updat
                 std::this_thread::sleep_for(10ms);
         }
 
-        co_return UpdateError(UpdateErrorType::UnknownError, "All hostnames failed test file verification");
+        co_return UpdateError(UpdateErrorType::ConnectionError, "All hostnames failed test file verification");
     }
 
     LOG(INFO) << LOG_TAG << "No test entry, using first hostname: " << update_entry.hostnames.front();
