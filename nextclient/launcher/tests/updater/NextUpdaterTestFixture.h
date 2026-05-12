@@ -10,10 +10,6 @@ class NextUpdaterTest : public testing::Test
     std::vector<std::filesystem::path> paths_to_remove_;
 
 protected:
-    void SetUp() override
-    {
-    }
-
     void TearDown() override
     {
         RemovePaths();
@@ -27,9 +23,10 @@ protected:
         return path;
     }
 
-    int GetFreePort() const
+    int GetFreePort()
     {
-        return 9873;
+        static int port = 9873;
+        return port++;
     }
 
 private:

@@ -46,9 +46,30 @@ result<NextUpdaterResult> NextUpdater::Start()
     if (update_entry.has_error())
     {
         LOG(ERROR) << LOG_TAG << "Requesting file list error: " << update_entry.error_str();
+
+        if (ct_->IsCanceled())
+            co_return NextUpdaterResult::CanceledByUser;
+
         SetErrorAndRaiseEvent(update_entry.error_str());
 
         NextUpdaterResult error_type = update_entry.error().GetType() == UpdateErrorType::ConnectionError ?
+            NextUpdaterResult::ConnectionError :
+            NextUpdaterResult::Error;
+
+        co_return error_type;
+    }
+
+    ResultT<std::string, UpdateError> base_url_result = co_await SelectBaseUrl(*update_entry);
+    if (base_url_result.has_error())
+    {
+        LOG(ERROR) << LOG_TAG << "Selecting base url error: " << base_url_result.error_str();
+
+        if (ct_->IsCanceled())
+            co_return NextUpdaterResult::CanceledByUser;
+
+        SetErrorAndRaiseEvent(base_url_result.error_str());
+
+        NextUpdaterResult error_type = base_url_result.error().GetType() == UpdateErrorType::ConnectionError ?
             NextUpdaterResult::ConnectionError :
             NextUpdaterResult::Error;
 
@@ -113,10 +134,10 @@ result<NextUpdaterResult> NextUpdater::Start()
 
     LOG(INFO) << LOG_TAG << "Downloading an update";
 #if defined(_DEBUG) || defined(LAUNCHER_BUILD_TESTS)
-    LOG(INFO) << LOG_TAG << "  base url: " << update_entry->hostname;
+    LOG(INFO) << LOG_TAG << "  base url: " << *base_url_result;
 #endif
     SetStateAndRaiseEvent(NextUpdaterState::Downloading);
-    ResultT<std::vector<HttpFileResult>, UpdateError> download_results = DownloadFilesToUpdate(*files_to_update | std::views::values, update_entry->hostname,
+    ResultT<std::vector<HttpFileResult>, UpdateError> download_results = DownloadFilesToUpdate(*files_to_update | std::views::values, *base_url_result,
         [this](cpr::cpr_off_t total, cpr::cpr_off_t downloaded, cpr::cpr_off_t speed) {
             SetStateProgressAndRaiseEvent((float)downloaded / (float)total);
             return ct_->IsCanceled();
@@ -125,6 +146,10 @@ result<NextUpdaterResult> NextUpdater::Start()
     if (download_results.has_error())
     {
         LOG(ERROR) << LOG_TAG << "Download update error: " << download_results.error_str();
+
+        if (ct_->IsCanceled())
+            co_return NextUpdaterResult::CanceledByUser;
+
         SetErrorAndRaiseEvent(download_results.error_str());
 
         fo_install.CloseAllFiles();
@@ -311,6 +336,98 @@ result<ResultT<UpdateEntry, UpdateError>> NextUpdater::SendUpdateFilesRequest()
     }
 }
 
+result<ResultT<std::string, UpdateError>> NextUpdater::SelectBaseUrl(const UpdateEntry& update_entry)
+{
+    if (!update_entry.hostname.empty())
+        co_return std::string(update_entry.hostname);
+
+    if (update_entry.hostnames.empty())
+        co_return UpdateError(UpdateErrorType::DeserializationError, "No hostnames provided in update entry");
+
+    if (update_entry.test.has_value())
+    {
+        const auto& test_file = *update_entry.test;
+
+        auto request_ct = CancellationToken::Create();
+
+        std::vector<std::pair<std::string, cpr::AsyncResponse>> requests;
+        for (const auto& hostname : update_entry.hostnames)
+        {
+            requests.emplace_back(
+                hostname,
+                cpr::GetAsync(
+                    cpr::Url(HttpFileDownloader::BuildFileUrl(hostname, test_file.filename)),
+                    cpr::ConnectTimeout(seconds(5)),
+                    cpr::Timeout(seconds(5)),
+                    cpr::LowSpeed(1024, 5),
+                    cpr::ProgressCallback([request_ct](cpr::cpr_off_t, cpr::cpr_off_t, cpr::cpr_off_t, cpr::cpr_off_t, intptr_t) {
+                        return !request_ct->IsCanceled();
+                    })
+                )
+            );
+        }
+
+        while (!requests.empty())
+        {
+            if (ct_->IsCanceled())
+            {
+                request_ct->SetCanceled();
+                co_return UpdateError(UpdateErrorType::UnknownError, "Operation cancelled");
+            }
+
+            for (auto it = requests.begin(); it != requests.end();)
+            {
+                auto& [host, response_async] = *it;
+                
+                if (!response_async.valid() || response_async.wait_for(0s) != std::future_status::ready)
+                {
+                    ++it;
+                    continue;
+                }
+
+                std::string validation_error = ValidateTestFileResponse(response_async.get(), test_file);
+                if (!validation_error.empty())
+                {
+                    LOG(WARNING) << LOG_TAG << "Test file validation failed from " << it->first << ": " << validation_error;
+                    it = requests.erase(it);
+                    continue;
+                }
+
+                request_ct->SetCanceled();
+                
+                std::string selected_host = it->first;
+                LOG(INFO) << LOG_TAG << "Selected hostname for update: " << selected_host;
+                
+                co_return selected_host;
+            }
+
+            if (!requests.empty())
+                std::this_thread::sleep_for(10ms);
+        }
+
+        co_return UpdateError(UpdateErrorType::UnknownError, "All hostnames failed test file verification");
+    }
+
+    LOG(INFO) << LOG_TAG << "No test entry, using first hostname: " << update_entry.hostnames.front();
+    co_return std::string(update_entry.hostnames.front());
+}
+
+std::string NextUpdater::ValidateTestFileResponse(const cpr::Response& response, const FileEntry& test_file)
+{
+    std::string error_message = HttpFileDownloader::ValidateResponseAndGetErrorMessage(response);
+    if (!error_message.empty())
+        return error_message;
+
+    if (response.text.size() != test_file.size)
+        return std::format("size mismatch: expected={}, actual={}", test_file.size, response.text.size());
+
+    std::string hash = GetDataMd5(response.text);
+    if (hash != test_file.hash)
+        return std::format("hash mismatch: expected={}, actual={}", test_file.hash, hash);
+
+    return "";
+}
+
 ResultT<std::vector<HttpFileResult>, UpdateError> NextUpdater::DownloadFilesToUpdate(auto files, const std::string& hostname, std::function<bool(cpr::cpr_off_t total, cpr::cpr_off_t downloaded, cpr::cpr_off_t speed)> progress)
 {
     std::vector<HttpFileRequest> files_to_download;
@@ -414,7 +531,7 @@ Result<> NextUpdater::ClearBackupFolder()
             return ResultError(ec_remove_all.message());
 
         if (!files_removed)
-            ResultError("fs::remove_all returns false, but without errors and with exists backup folder");
+            return ResultError("fs::remove_all returns false, but without errors and with exists backup folder");
 
         return {};
     }
@@ -566,6 +683,17 @@ std::string NextUpdater::GetStreamMd5(std::fstream& stream)
 
     MD5 md5;
     md5.update(buffer.data(), buffer.size());
+    md5.finalize();
+    return md5.hexdigest();
+}
+
+std::string NextUpdater::GetDataMd5(const std::string& data)
+{
+    if (data.empty())
+        return "";
+
+    MD5 md5;
+    md5.update(data.data(), data.size());
     md5.finalize();
     return md5.hexdigest();
 }

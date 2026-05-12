@@ -8,7 +8,7 @@ using namespace std::chrono_literals;
 HttpFileDownloader::HttpFileDownloader(const std::vector<HttpFileRequest>& files, const std::string& base_url, const std::function<bool(cpr::cpr_off_t downloaded, cpr::cpr_off_t speed)>& progress) :
     progress_(progress)
 {
-    base_url_ = FixUrl(base_url);
+    base_url_ = EnsureTrailingSlash(base_url);
 
     for (const auto& file : files)
         files_to_download_.emplace(file, 0);
@@ -74,10 +74,16 @@ void HttpFileDownloader::PruneCompletedRequests()
     }
 }
 
+std::string HttpFileDownloader::BuildFileUrl(const std::string& base_url, const std::string& filename)
+{
+    std::string url = EnsureTrailingSlash(base_url) + filename;
+    nitro_utils::replace_all(url, " ", "%20");
+    return url;
+}
+
 void HttpFileDownloader::CreateAndAddRequest(const QueuedRequest& queued_request)
 {
-    std::string file_url = base_url_ + queued_request.get_request().get_filename();
-    nitro_utils::replace_all(file_url, " ", "%20");
+    std::string file_url = BuildFileUrl(base_url_, queued_request.get_request().get_filename());
 
     auto shared_data = std::make_shared<RequestContext::Shared>();
 
@@ -100,7 +106,7 @@ void HttpFileDownloader::CreateAndAddRequest(const QueuedRequest& queued_request
     requests_.emplace_back(
         queued_request.get_request(),
         queued_request.get_retry(),
-        std::chrono::system_clock::now(),
+        system_clock::now(),
         shared_data,
         std::move(cpr_response));
 }
@@ -157,14 +163,12 @@ uint32_t HttpFileDownloader::GetDownloadedBytes()
     return actual_bytes_downloaded;
 }
 
-std::string HttpFileDownloader::FixUrl(const std::string &url)
+std::string HttpFileDownloader::EnsureTrailingSlash(const std::string &url)
 {
-    std::string fixed_url = url;
+    if (!url.ends_with('/'))
+        return url + '/';
 
-    if (fixed_url[fixed_url.length() - 1] != '/')
-        fixed_url = fixed_url + '/';
-
-    return fixed_url;
+    return url;
 }
 
 std::string HttpFileDownloader::ValidateResponseAndGetErrorMessage(const cpr::Response& response)

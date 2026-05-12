@@ -71,6 +71,7 @@ private:
     RestoreFromBackupResult RestoreFromBackup(RestoreFromBackupBehaviour behaviour = RestoreFromBackupBehaviour::None);
 
     concurrencpp::result<ncl_utils::ResultT<UpdateEntry, UpdateError>> SendUpdateFilesRequest();
+    concurrencpp::result<ncl_utils::ResultT<std::string, UpdateError>> SelectBaseUrl(const UpdateEntry& update_entry);
     std::vector<UpdaterFileInfo> CreateUpdaterFileInfos(const std::vector<FileEntry>& remote_files);
     // key is remote file name
     static ncl_utils::ResultT<std::unordered_map<std::string, UpdaterFileInfo>, UpdateError> GetFilesToUpdate(const std::vector<UpdaterFileInfo>& files);
@@ -86,4 +87,6 @@ private:
 
     // utils
     static std::string GetStreamMd5(std::fstream& stream);
+    static std::string GetDataMd5(const std::string& data);
+    static std::string ValidateTestFileResponse(const cpr::Response& response, const FileEntry& test_file);
 };

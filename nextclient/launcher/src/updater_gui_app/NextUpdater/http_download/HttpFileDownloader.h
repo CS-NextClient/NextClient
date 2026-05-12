@@ -28,6 +28,9 @@ class HttpFileDownloader
 public:
     explicit HttpFileDownloader(const std::vector<HttpFileRequest>& files, const std::string& base_url, const std::function<bool(cpr::cpr_off_t downloaded, cpr::cpr_off_t speed)>& progress);
     [[nodiscard]] std::vector<HttpFileResult> StartDownloads();
+    static std::string EnsureTrailingSlash(const std::string &url);
+    static std::string BuildFileUrl(const std::string& base_url, const std::string& filename);
+    static std::string ValidateResponseAndGetErrorMessage(const cpr::Response& response);
 
 private:
     void PruneCompletedRequests();
@@ -37,6 +40,4 @@ private:
     void UpdateTransferStatistics();
     void CancelDownloads();
     uint32_t GetDownloadedBytes();
-    static std::string FixUrl(const std::string &url);
-    static std::string ValidateResponseAndGetErrorMessage(const cpr::Response& response);
 };
