@@ -33,6 +33,8 @@ add_library(${PROJECT_NAME} SHARED
         src/viewmodel_overrides.h
         src/fov.cpp
         src/fov.h
+        src/invert_mouse.cpp
+        src/invert_mouse.h
         src/hud/hud_sprite/sprite_rect.h
         src/hud/hud_sprite/sprite_color.h
         src/hud/hud_sprite/hud_sprite_state.h

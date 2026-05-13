@@ -10,6 +10,7 @@
 #include "fov.h"
 #include "color_chat_in_console.h"
 #include "inspect.h"
+#include "invert_mouse.h"
 
 nitroapi::NitroApiInterface* g_NitroApi;
 
@@ -88,6 +89,8 @@ static void HUD_InitPost()
 
     hud_draw = g_engfuncs.pfnCVarGetPointer("hud_draw");
 
+    InvertMouseInit();
+
     ColorChatInConsolePatch();
 }
 
@@ -104,6 +107,7 @@ static void HUD_ResetHandler(HUD_ResetNext next)
     next->Invoke();
 
     g_GameHud->Reset();
+    ResetInvertMouse();
 }
 
 static int HUD_VidInitHandler(HUD_VidInitNext next)
@@ -170,6 +174,7 @@ static void UserMsg_CurWeaponPost(const char* name, int size, void* data, int re
 static void UserMsg_InitHUDPost(const char* name, int size, void* data, int result)
 {
     g_GameHud->InitHUDData();
+    ResetInvertMouse();
 }
 
 static int UserMsg_TextMsgHandler(const char* name, int size, void* data, UserMsg_TextMsgNext next)
@@ -197,6 +202,15 @@ static int UserMsg_TextMsgHandler(const char* name, int size, void* data, UserMs
     }
 
     return next->Invoke(name, size, data);
+}
+
+static void CL_CreateMoveHandler(float frametime, usercmd_t* cmd, int active, CL_CreateMoveNext next)
+{
+    CL_CreateMove_InvertMousePre(frametime, cmd, active);
+
+    next->Invoke(frametime, cmd, active);
+
+    CL_CreateMove_InvertMousePost(frametime, cmd, active);
 }
 
 static void HUD_ProcessPlayerStateHandler(entity_state_s* dst, const entity_state_s* src, HUD_ProcessPlayerStateNext next)
@@ -237,12 +251,15 @@ public:
         g_Unsub.emplace_back(client_data->UserMsg_CurWeapon += UserMsg_CurWeaponPost);
         g_Unsub.emplace_back(client_data->UserMsg_InitHUD += UserMsg_InitHUDPost);
         g_Unsub.emplace_back(client_data->UserMsg_TextMsg |= UserMsg_TextMsgHandler);
+        g_Unsub.emplace_back(client_data->CL_CreateMove |= CL_CreateMoveHandler);
 
         g_GameHud = std::make_unique<GameHud>(nitro_api);
     }
 
     void Uninitialize() override
     {
+        ResetInvertMouse();
+
         for (auto& unsubscriber: g_Unsub) {
             unsubscriber->Unsubscribe();
         }
