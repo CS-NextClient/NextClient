@@ -27,9 +27,10 @@
 
 #include "Analytics.h"
 #include "DefaultUserInfo.h"
-#include "exception_handler.h"
 #include "RegistryUserStorage.h"
 #include "EngineCommons.h"
+#include "exception_handler.h"
+#include "taskbar_icon.h"
 
 static const char* NITRO_API_LOG_TAG = "launcher";
 
@@ -228,6 +229,17 @@ ClientLauncher::EngineSessionResult ClientLauncher::RunEngineSession(char* post_
     unsubscribers.emplace_back(nitro_api->GetClientData()->HUD_Init += [this] {
         HUD_InitHandler();
     });
+
+    unsubscribers.emplace_back(
+        nitro_api->GetEngineData()->Sys_InitGame += [](char* lpOrgCmdLine, char* pBaseDir, void* pwnd, int bIsDedicated, bool ret) {
+            if (ret)
+            {
+                HWND hwnd = FindCurrentProcessSDLWindow();
+                if (hwnd)
+                    SetTaskbarIcon(hwnd);
+            }
+        }
+    );
 
     auto [engine, engine_module] = LoadModule<IEngineAPI>(kEngineDll, VENGINE_LAUNCHER_API_VERSION);
     if (engine == nullptr)
@@ -553,8 +565,8 @@ void ClientLauncher::CheckVideoModeCrash()
     }
 
     hl_registry_->WriteInt("ScreenBPP", 32);
-    hl_registry_->WriteInt("ScreenHeight", kDefaultWidth);
-    hl_registry_->WriteInt("ScreenWidth", kDefaultHeight);
+    hl_registry_->WriteInt("ScreenWidth", kDefaultWidth);
+    hl_registry_->WriteInt("ScreenHeight", kDefaultHeight);
 }
 
 void ClientLauncher::Sys_ErrorHandler(const char* error)
