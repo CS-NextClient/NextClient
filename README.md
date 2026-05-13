@@ -185,7 +185,7 @@ cmake --build --preset vs2022-local-release --target BUILD_ALL
 ### Visual Studio
  - Open the project folder
  - Select build preset, e.g. `vs2022-debug` or `vs2022-release`
- - Build the `BUILD_ALL` target
+ - In the main menu, select Build -> Build All
 
 ### VS Code
  - Install the `ms-vscode.cmake-tools` extension

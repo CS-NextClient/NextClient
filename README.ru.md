@@ -184,8 +184,8 @@ cmake --build --preset vs2022-local-release --target BUILD_ALL
 
 ### Visual Studio
  - Открыть папку проекта
- - Выбрать build-пресет, например `vs2022-debug` и `vs2022-release` 
- - Собирать цель `BUILD_ALL`
+ - Выбрать build-пресет, например `vs2022-debug` или `vs2022-release`
+ - В главном меню выбрать Build -> Build All
 
 ### VS Code
  - Установить расширение `ms-vscode.cmake-tools`
