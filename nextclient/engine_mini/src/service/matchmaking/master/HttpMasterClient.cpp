@@ -37,6 +37,8 @@ result<std::vector<netadr_t>> HttpMasterClient::GetServerAddressesAsync(
         session.SetUrl(url_);
         session.SetHeader(header);
         session.SetBody(Body("{\"method\": \"server_list\", \"data\": \"null\"}"));
+        session.SetConnectTimeout(kConnectTimeout);
+        session.SetTimeout(kTimeout);
         session.SetProgressCallback(ProgressCallback([cancellation_token](cpr_pf_arg_t, cpr_pf_arg_t, cpr_pf_arg_t, cpr_pf_arg_t, intptr_t)
         {
             if (cancellation_token != nullptr && cancellation_token->IsCanceled())

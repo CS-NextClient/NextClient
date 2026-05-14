@@ -14,4 +14,6 @@ void TaskCoroImpl::OnUpdate()
 
 void TaskCoroImpl::OnShutdown()
 {
+    if (update_executor_ && !update_executor_->shutdown_requested())
+        update_executor_->shutdown();
 }

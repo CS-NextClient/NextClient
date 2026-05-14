@@ -5,8 +5,8 @@
 #include <magic_enum/magic_enum.hpp>
 
 #include <taskcoro/impl/SynchronizationContextImpl.h>
-#include <taskcoro/exceptions/OperationCanceledException.h>
 #include <taskcoro/exceptions/TaskCoroRuntimeException.h>
+#include <taskcoro/exceptions/TaskCoroShutdownException.h>
 
 using namespace taskcoro;
 
@@ -135,16 +135,16 @@ void TaskCoroImpl::RunTask(TaskType task_type, std::function<void()> task)
 
     if (executor->shutdown_requested())
     {
-        throw TaskCoroRuntimeException(TaskCoroRuntimeExceptionType::ExecutorShutdown);
+        throw TaskCoroShutdownException();
     }
 
     try
     {
         executor->submit(std::move(task));
     }
-    catch (concurrencpp::errors::interrupted_task& e)
+    catch (concurrencpp::errors::interrupted_task&)
     {
-        throw OperationCanceledException(e.what());
+        throw TaskCoroShutdownException();
     }
 }
 
@@ -161,5 +161,13 @@ void TaskCoroImpl::Update() const
     if (update_executor_ && !update_executor_->shutdown_requested())
     {
         update_executor_->loop_once();
+    }
+}
+
+void TaskCoroImpl::ShutdownUpdateExecutor()
+{
+    if (update_executor_ && !update_executor_->shutdown_requested())
+    {
+        update_executor_->shutdown();
     }
 }

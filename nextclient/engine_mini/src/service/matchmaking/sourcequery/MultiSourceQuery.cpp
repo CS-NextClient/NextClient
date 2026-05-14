@@ -5,6 +5,7 @@
 #include <ranges>
 
 #include <taskcoro/TaskCoro.h>
+#include <taskcoro/exceptions/TaskCoroShutdownException.h>
 
 #include "SourceQueryInfo.h"
 #include "SourceQueryRules.h"
@@ -121,24 +122,31 @@ result<void> MultiSourceQuery::SwitchToNewSocket(bool broadcast)
 
 void MultiSourceQuery::MainLoop()
 {
-    while (!cancellation_token_->IsCanceled())
+    try
     {
-        OPTICK_EVENT("MainLoop")
-
-        auto current_time = high_resolution_clock::now();
-
-        ReceiveAndAssembleBuffers();
-        ProcessTimeoutQueries(current_time);
-        ProcessIncomingBuffers(current_time);
-        CloseExpiredSockets(current_time);
-
+        while (!cancellation_token_->IsCanceled())
         {
-            OPTICK_EVENT("Update")
-            manual_sync_ctx_->Update();
-        }
+            OPTICK_EVENT("MainLoop")
 
-        // TODO make conditional variable
-        std::this_thread::sleep_for(5ms);
+            auto current_time = high_resolution_clock::now();
+
+            ReceiveAndAssembleBuffers();
+            ProcessTimeoutQueries(current_time);
+            ProcessIncomingBuffers(current_time);
+            CloseExpiredSockets(current_time);
+
+            {
+                OPTICK_EVENT("Update")
+                manual_sync_ctx_->Update();
+            }
+
+            // TODO make conditional variable
+            std::this_thread::sleep_for(5ms);
+        }
+    }
+    catch (const TaskCoroShutdownException& e)
+    {
+        LOG(WARNING) << "MultiSourceQuery::MainLoop shutdown: " << e.what();
     }
 
     main_loop_done_ = true;

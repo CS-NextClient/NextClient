@@ -16,6 +16,7 @@
 #include "concepts.h"
 #include "io/net.h"
 #include "exceptions/TaskCoroRuntimeException.h"
+#include "exceptions/TaskCoroShutdownException.h"
 #include "exceptions/OperationCanceledException.h"
 #include "exceptions/OperationTimeoutException.h"
 

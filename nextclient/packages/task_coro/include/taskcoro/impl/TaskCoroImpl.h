@@ -34,6 +34,7 @@ namespace taskcoro
         std::shared_ptr<SynchronizationContextImplInterface> CreateSynchronizationContext(TaskType task_type, std::thread::id thread_id) override;
 
         void Update() const;
+        void ShutdownUpdateExecutor();
 
     private:
         std::shared_ptr<concurrencpp::executor> GetExecutorByTaskType(TaskType task_type) const;

@@ -266,6 +266,12 @@ static void EngineMiniInitialize(nitroapi::NitroApiInterface* nitro_api, NextCli
 
 static void OnGameUninitializing()
 {
+    if (g_Analytics)
+        g_Analytics->AddBreadcrumb("info", BREADCRUMBS_TAG " OnGameUninitializing");
+    
+    if (g_pTaskCoroImpl)
+        g_pTaskCoroImpl->ShutdownUpdateExecutor();
+
     PROTECTOR_Shutdown();
     CL_CvarsSandboxShutdown();
 

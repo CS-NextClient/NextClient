@@ -8,6 +8,9 @@
 
 class HttpMasterClient : public MasterClientInterface
 {
+    static constexpr std::chrono::milliseconds kConnectTimeout{5000};
+    static constexpr std::chrono::milliseconds kTimeout{15000};
+    
     std::string url_{};
     std::unordered_map<std::string, std::string> headers_{};
 

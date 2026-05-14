@@ -2,6 +2,7 @@
 
 #include <utility>
 #include <taskcoro/exceptions/TaskCoroRuntimeException.h>
+#include <taskcoro/exceptions/TaskCoroShutdownException.h>
 
 using namespace taskcoro;
 
@@ -26,7 +27,7 @@ void SynchronizationContextImpl::RunTask(std::function<void()> task)
     std::shared_ptr<TaskCoroImpl> impl = task_coro_impl_.lock();
     if (!impl)
     {
-        throw TaskCoroRuntimeException("task_coro_impl_.expired()");
+        throw TaskCoroShutdownException("task_coro_impl expired");
     }
 
     impl->RunTask(task_type_, std::move(task));
