@@ -21,7 +21,7 @@
     "version>=" : "1.17.0"
   }, {
     "name" : "sentry-native",
-    "version>=" : "0.8.4",
+    "version>=" : "0.11.3",
     "features": ["compression"]
   }, {
     "name" : "glfw3",

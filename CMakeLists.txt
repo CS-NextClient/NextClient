@@ -116,6 +116,7 @@ if (NOT NEXTCLIENT_BUILD_TESTS)
                 COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:vgui2> ${NEXTCLIENT_INSTALL_DIR}/vgui2.dll
                 COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/dep/optic/bin/OptickCore.dll ${NEXTCLIENT_INSTALL_DIR}/OptickCore.dll
                 COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_CURRENT_SOURCE_DIR}/assets ${NEXTCLIENT_INSTALL_DIR}
+                COMMAND ${CMAKE_COMMAND} -E copy ${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/tools/sentry-native/crashpad_handler.exe ${NEXTCLIENT_INSTALL_DIR}/crashpad_handler.exe
         )
     endif ()
 endif ()
