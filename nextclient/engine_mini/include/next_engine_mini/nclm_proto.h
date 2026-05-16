@@ -10,6 +10,7 @@
 
 constexpr size_t RSA_KEY_LENGTH =			256;
 constexpr size_t NCLM_VERIF_PAYLOAD_SIZE =	196;
+constexpr size_t NCLM_VERIF_PAYLOAD_SIZE_PADDED = 256;
 constexpr size_t NCLM_VERIF_ENCRYPTED_PAYLOAD_SIZE = ((NCLM_VERIF_PAYLOAD_SIZE / RSA_KEY_LENGTH) + 1) * RSA_KEY_LENGTH;
 
 // Tamanho do payload HWID: SHA-256 em hex = 64 caracteres ASCII + null terminator.

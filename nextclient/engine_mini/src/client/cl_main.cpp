@@ -351,34 +351,52 @@ bool CL_PrecacheResources()
 void CL_HandleNclMessage()
 {
     const char* raw_buffer = MSG_ReadString();
-    NclmBodyReader body(raw_buffer);
 
-    auto opcode = (NCLM_S2C)body.ReadByte();
+    NclmBodyReader body(raw_buffer);
+    NCLM_S2C opcode = static_cast<NCLM_S2C>(body.ReadByte());
+
     switch (opcode)
     {
         case NCLM_S2C::VERIFICATION_PAYLOAD:
-            auto encryptedPayload = body.ReadBuf(NCLM_VERIF_ENCRYPTED_PAYLOAD_SIZE);
+            std::vector<uint8_t> encrypted_payload = body.ReadBuf(NCLM_VERIF_ENCRYPTED_PAYLOAD_SIZE);
 
-            if (g_NclmVerificator != nullptr)
+            if (g_NclmVerificator == nullptr)
             {
-                char result[NCLM_VERIF_PAYLOAD_SIZE];
-                int written_size = g_NclmVerificator->DecryptPayload((const char*)encryptedPayload.data(), encryptedPayload.size(), result, sizeof(result));
-
-                if (written_size != NCLM_VERIF_PAYLOAD_SIZE)
-                {
-                    break;
-                }
-
-                sizebuf_t* msgbuf = &cls->netchan.message;
-
-                MSG_WriteByte(msgbuf, clc_ncl_message);
-                MSG_WriteLong(msgbuf, NCLM_HEADER_OLD);
-                MSG_WriteByte(msgbuf, (int)NCLM_C2S::VERIFICATION_RESPONSE);
-                MSG_WriteString(msgbuf, va("%d.%d.%d", g_NextClientVersion.major, g_NextClientVersion.minor, g_NextClientVersion.patch));
-                MSG_WriteBuf(msgbuf, written_size, result);
-
-                hwid::SendToServer(msgbuf);
+                break;
             }
+
+            // Protocol quirks across server module versions:
+            // - 1.4.0 sends and consumes 256 bytes.
+            // - 1.5.0 sends 196 bytes and should stop processing after consuming
+            //   the payload, but it does not; control passes back to ReHLDS,
+            //   which then attempts to continue parsing from the wrong offset,
+            //   causing an invalid read.
+            // - 1.5.1+ sends 196 bytes and correctly halts further processing by
+            //   breaking the handler chain.
+            // Because we cannot distinguish the server version at this stage,
+            // we always respond with the full 256-byte padded buffer so that
+            // 1.5.0 does not trigger the invalid read.
+
+            uint8_t result[NCLM_VERIF_PAYLOAD_SIZE_PADDED];
+            V_memset(result, 0, sizeof(result));
+
+            size_t written_size =
+                g_NclmVerificator->DecryptPayload(encrypted_payload.data(), encrypted_payload.size(), result, sizeof(result));
+
+            if (written_size != NCLM_VERIF_PAYLOAD_SIZE)
+            {
+                break;
+            }
+
+            sizebuf_t* msgbuf = &cls->netchan.message;
+
+            MSG_WriteByte(msgbuf, clc_ncl_message);
+            MSG_WriteLong(msgbuf, NCLM_HEADER_OLD);
+            MSG_WriteByte(msgbuf, static_cast<int>(NCLM_C2S::VERIFICATION_RESPONSE));
+            MSG_WriteString(msgbuf, va("%d.%d.%d", g_NextClientVersion.major, g_NextClientVersion.minor, g_NextClientVersion.patch));
+            MSG_WriteBuf(msgbuf, sizeof(result), result);
+
+            hwid::SendToServer(msgbuf);
             break;
     }
 }
