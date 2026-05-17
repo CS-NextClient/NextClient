@@ -6,10 +6,11 @@ int	StudioDrawModel(int flags)
 {
     cl_entity_t *entity = IEngineStudio.GetCurrentEntity();
 
-    if (entity != IEngineStudio.GetViewEntity())
-        return g_OriginalStudio.StudioDrawModel(flags);
+    if (entity == IEngineStudio.GetViewEntity())
+    {
+        IEngineStudio.StudioSetRenderamt(entity->curstate.renderamt);
+        InspectThink();
+    }
 
-    InspectThink();
-
-    return g_OriginalStudio.StudioDrawModel(flags);;
+    return g_OriginalStudio.StudioDrawModel(flags);
 }
