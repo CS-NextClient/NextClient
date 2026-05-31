@@ -10,6 +10,11 @@ const char* NET_AdrToString(netadr_t a)
     return a.ToString();
 }
 
+qboolean NET_LeaveGroup(netsrc_t sock, netadr_t addr)
+{
+    return eng()->NET_LeaveGroup(sock, addr);
+}
+
 qboolean NET_CompareAdr(netadr_t a, netadr_t b)
 {
     return a == b;

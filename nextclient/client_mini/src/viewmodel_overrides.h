@@ -1,5 +1,6 @@
 #pragma once
 
+#include <tier0/basetypes.h>
 #include <const.h>
 
 struct viewmodel_overrides_t

@@ -26,14 +26,20 @@
 #include "client/cl_main.h"
 #include "client/download.h"
 #include "client/spriteapi.h"
+#include "client/ncl_entity/cl_ncl_entity_sync.h"
+#include "client/ncl_entity/cl_ncl_entity_sync_overlay.h"
+#include "client/ncl_entity/WeaponSyncSystem.h"
 #include "client/cl_private_resources.h"
 #include "client/cl_parsefn.h"
 #include "client/cl_game.h"
+#include "client/cl_string_registry.h"
 #include "binding/jsapi/jsapi.h"
 #include "common/cvar.h"
 #include "console/console.h"
 #include "console/protector.h"
 #include "cstrike_hack.h"
+#include "client/cl_sound.h"
+#include "client/ncl_entity/PlayerSyncSystem.h"
 
 NextClientVersion g_NextClientVersion;
 
@@ -68,7 +74,7 @@ client_static_t* cls;
 server_static_t* g_psvs;
 server_t* g_psv;
 qboolean* g_bMajorMapChange;
-CareerStateType* g_careerState;
+CareerStateType* p_g_careerState;
 model_t** loadmodel;
 int* cl_playerindex;
 cl_entity_t** p_cl_entities;
@@ -104,7 +110,10 @@ keydest_t* p_key_dest;
 sfx_t** p_known_sfx;
 int* p_num_sfx;
 int* p_gHostSpawnCount;
-void* p_gGLPalette;
+netadr_t* p_net_local_adr;
+netadr_t* p_g_GameServerAddress;
+float* p_g_LastScreenUpdateTime;
+int* p_maxTransObjs;
 
 cvar_t* fs_startup_timings;
 cvar_t* fs_lazy_precache;
@@ -183,7 +192,7 @@ static void EngineMiniUninitialize()
     g_psvs = nullptr;
     g_psv = nullptr;
     g_bMajorMapChange = nullptr;
-    g_careerState = nullptr;
+    p_g_careerState = nullptr;
     loadmodel = nullptr;
     cl_playerindex = nullptr;
     p_loadcache = nullptr;
@@ -217,7 +226,10 @@ static void EngineMiniUninitialize()
     p_known_sfx = nullptr;
     p_num_sfx = nullptr;
     p_gHostSpawnCount = nullptr;
-    p_gGLPalette = nullptr;
+    p_net_local_adr = nullptr;
+    p_g_GameServerAddress = nullptr;
+    p_g_LastScreenUpdateTime = nullptr;
+    p_maxTransObjs = nullptr;
 
     fs_startup_timings = nullptr;
     fs_lazy_precache = nullptr;
@@ -274,6 +286,9 @@ static void OnGameUninitializing()
 
     PROTECTOR_Shutdown();
     CL_CvarsSandboxShutdown();
+    CL_StringRegistryShutdown();
+    CL_NclEntitySyncOverlayShutdown();
+    CL_NclEntitySyncShutdown();
 
     for (auto &unsubscriber : g_Unsubs)
         unsubscriber->Unsubscribe();
@@ -328,7 +343,7 @@ static void OnGameInitializing(void* mainwindow, HDC* pmaindc, HGLRC* pbaseRC, c
     v.Assign(g_psvs, GET_VARIABLE_NAME(g_psvs), eng()->server_static);
     v.Assign(g_psv, GET_VARIABLE_NAME(g_psvs), eng()->server);
     v.Assign(g_bMajorMapChange, GET_VARIABLE_NAME(g_bMajorMapChange), eng()->bMajorMapChange);
-    v.Assign(g_careerState, GET_VARIABLE_NAME(g_careerState), eng()->careerState);
+    v.Assign(p_g_careerState, GET_VARIABLE_NAME(g_careerState), eng()->careerState);
     v.Assign(loadmodel, GET_VARIABLE_NAME(loadmodel), eng()->loadmodel);
     v.Assign(cl_playerindex, GET_VARIABLE_NAME(cl_playerindex), eng()->cl_playerindex);
     v.Assign(p_loadcache, GET_VARIABLE_NAME(pLoadcache), eng()->loadcache);
@@ -368,7 +383,10 @@ static void OnGameInitializing(void* mainwindow, HDC* pmaindc, HGLRC* pbaseRC, c
     v.Assign(p_known_sfx, GET_VARIABLE_NAME(p_known_sfx), eng()->known_sfx);
     v.Assign(p_num_sfx, GET_VARIABLE_NAME(p_num_sfx), eng()->num_sfx);
     v.Assign(p_gHostSpawnCount, GET_VARIABLE_NAME(p_gHostSpawnCount), eng()->gHostSpawnCount);
-    v.Assign(p_gGLPalette, GET_VARIABLE_NAME(p_gGLPalette), eng()->gGLPalette);
+    v.Assign(p_net_local_adr, GET_VARIABLE_NAME(p_net_local_adr), eng()->net_local_adr);
+    v.Assign(p_g_GameServerAddress, GET_VARIABLE_NAME(p_g_GameServerAddress), eng()->g_GameServerAddress);
+    v.Assign(p_g_LastScreenUpdateTime, GET_VARIABLE_NAME(p_g_LastScreenUpdateTime), eng()->g_LastScreenUpdateTime);
+    v.Assign(p_maxTransObjs, GET_VARIABLE_NAME(p_maxTransObjs), eng()->maxTransObjs);
 
     if (v.HasNullPtr())
     {
@@ -393,6 +411,7 @@ static void OnGameInitializing(void* mainwindow, HDC* pmaindc, HGLRC* pbaseRC, c
     g_Unsubs.emplace_back(eng()->CL_StartResourceDownloading |= [](const char* msg, int custom, const auto& next)                      { CL_StartResourceDownloading(msg, custom); });
     g_Unsubs.emplace_back(eng()->CL_ReadPackets              |= [](const auto& next)                                                   { CL_ReadPackets(); });
     g_Unsubs.emplace_back(eng()->CL_RequestMissingResources  |= [](const auto& next)                                                   { return CL_RequestMissingResources(); });
+    g_Unsubs.emplace_back(eng()->CL_Disconnect               |= [](const auto& next)                                                   { return CL_Disconnect(); });
     g_Unsubs.emplace_back(eng()->Host_Map_f                  |= [](const auto& next)                                                   { Host_Map_f(); });
     g_Unsubs.emplace_back(eng()->Host_FilterTime             |= [](float delay, const auto& next)                                      { return Host_FilterTime(delay); });
     g_Unsubs.emplace_back(eng()->Mod_ClearAll                |= [](const auto& next)                                                   { Mod_ClearAll(); });
@@ -465,13 +484,6 @@ static void OnGameInitializing(void* mainwindow, HDC* pmaindc, HGLRC* pbaseRC, c
         CL_HTTPCancel_f();
     });
 
-    g_Unsubs.emplace_back(eng()->CL_Disconnect |= [](const auto& next) {
-        // We must clear the list of private resources before SPR_Shutdown_NoModelFree is called (which is called from CL_Disconnect)
-        PrivateRes_Clear();
-        client_stateex.resourcesNeeded.clear();
-        next->Invoke();
-    });
-
     g_Unsubs.emplace_back(eng()->NET_SendPacket += [](netsrc_t sock, int length, void *data, netadr_t to, int result) {
         NET_SendPacketPost(sock, length, data, to, result);
     });
@@ -539,6 +551,8 @@ static void OnGameInitializing(void* mainwindow, HDC* pmaindc, HGLRC* pbaseRC, c
         }
     });
 
+    g_Unsubs.emplace_back(eng()->S_StartDynamicSound |= S_StartDynamicSoundHook);
+    
     GL_SetMode_Subscriber(mainwindow, pmaindc, pbaseRC, pszDriver, pszCmdLine, result);
 }
 
@@ -591,6 +605,11 @@ static void OnGameInitialized()
     CL_CreateHttpDownloadManager(g_pGameUi, g_pLocalize, g_SettingGuard);
     JSAPI_Init();
     CL_CvarsSandboxInit();
+    CL_StringRegistryInit();
+    CL_NclEntitySyncInit();
+    CL_NclEntitySyncRegisterType(static_cast<uint8_t>(ncl_entity::EntityTypeId::Player), std::make_unique<PlayerSyncSystem>());
+    CL_NclEntitySyncRegisterType(static_cast<uint8_t>(ncl_entity::EntityTypeId::Weapon), std::make_unique<WeaponSyncSystem>());
+    CL_NclEntitySyncOverlayInit();
     PROTECTOR_Init(g_SettingGuard);
 }
 

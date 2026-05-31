@@ -37,6 +37,7 @@ add_library(${PROJECT_NAME} ${LIBRARY_BUILD_TYPE}
 target_include_directories(${PROJECT_NAME} PRIVATE
         include
         src
+        ${NEXTCLIENT_ROOT}/dep/nextclientapi_amxx/include
 )
 
 target_link_libraries(${PROJECT_NAME} ${TARGET_LIBRARIES_SCOPE}

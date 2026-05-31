@@ -7,6 +7,11 @@ void StartLoadingProgressBar(const char *loadingType, int numProgressPoints)
     eng()->StartLoadingProgressBar.InvokeChained(loadingType, numProgressPoints);
 }
 
+void StopLoadingProgressBar()
+{
+    eng()->StopLoadingProgressBar.InvokeChained();
+}
+
 void SetLoadingProgressBarStatusText(const char *statusText)
 {
     if (!g_pGameUi)
@@ -47,4 +52,12 @@ void VGuiWrap2_LoadingStarted(const char *resourceType, const char *resourceName
         return;
 
     g_pGameUi->LoadingStarted(resourceType, resourceName);
+}
+
+void VGuiWrap2_NotifyOfServerDisconnect()
+{
+    if (!g_pGameUi)
+        return;
+    
+    g_pGameUi->DisconnectFromServer();
 }

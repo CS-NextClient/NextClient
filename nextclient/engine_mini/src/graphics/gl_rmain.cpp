@@ -1,13 +1,16 @@
-#include "../engine.h"
+#include "engine.h"
+
 #include <unordered_set>
 #include <optick.h>
+#include <common/mem.h>
+
 #include "gl_local.h"
 #include "gl_draw.h"
 #include "ViewmodelFrustumCalculator.h"
-#include "../console/console.h"
-#include "../common/sys_dll.h"
-#include "../common/cvar.h"
-#include "../client/cl_main.h"
+#include "console/console.h"
+#include "common/sys_dll.h"
+#include "common/cvar.h"
+#include "client/cl_main.h"
 
 std::unordered_set<cl_entity_t*> g_MuzzleFlashEffects;
 ViewmodelFrustumCalculator g_ViewmodelFrustumCalculator;
@@ -97,6 +100,19 @@ void AppendTEntity_Subscriber(cl_entity_t* ent)
 {
     // since only R_MuzzleFlash uses AppendTEntity, we can do this
     g_MuzzleFlashEffects.emplace(ent);
+}
+
+void R_DestroyObjects()
+{
+    OPTICK_EVENT();
+
+    if (*p_transObjects)
+    {
+        Mem_Free(*p_transObjects);
+        *p_transObjects = nullptr;
+    }
+    
+    *p_maxTransObjs = 0;
 }
 
 void R_DrawSpriteModel(cl_entity_t* e)

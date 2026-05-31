@@ -1,25 +1,31 @@
+#include "engine.h"
 #include "cl_main.h"
-#include "../engine.h"
+
 #include <optick.h>
 #include <next_engine_mini/nclm_proto.h>
 
-#include "cl_private_resources.h"
+#include "ncl_entity/cl_ncl_entity_sync.h"
+#include "graphics/gl_local.h"
+#include "console/console.h"
+#include "steam/steam_api.h"
+#include "common/common.h"
+#include "common/model.h"
+#include "common/zone.h"
+#include "common/cvar.h"
+#include "common/com_strings.h"
+#include "common/filesystem.h"
+#include "common/net_ws.h"
+#include "common/net_chan.h"
+#include "common/host.h"
+#include "common/nclm/NclmBodyReader.h"
+#include "common/nclm/NclmBodyWriter.h"
+#include "common/nclm/hwid_collector.h"
+#include "common/nclm/hwid_sender.h"
+#include "cl_demo.h"
 #include "spriteapi.h"
-#include "../analytics.h"
-#include "../vgui_int.h"
-#include "../console/console.h"
-#include "../common/common.h"
-#include "../common/model.h"
-#include "../common/zone.h"
-#include "../common/cvar.h"
-#include "../common/com_strings.h"
-#include "../common/net_ws.h"
-#include "../common/net_chan.h"
-#include "../common/nclm/NclmBodyReader.h"
-#include "../common/nclm/NclmBodyWriter.h"
-#include "../common/nclm/hwid_collector.h"
-#include "../common/nclm/hwid_sender.h"
-#include "../graphics/gl_local.h"
+#include "vgui_int.h"
+#include "cl_private_resources.h"
+#include "cl_string_registry.h"
 
 void SetCareerAudioState(int state)
 {
@@ -35,13 +41,96 @@ void AddStartupTiming(const char* name)
     eng()->AddStartupTiming.InvokeChained(name);
 }
 
+void CL_ClearState(qboolean quiet)
+{
+    OPTICK_EVENT();
+
+    eng()->CL_ClearState.InvokeChained(quiet);
+}
+
 void CL_Disconnect()
 {
     OPTICK_EVENT();
 
-    hwid::Reset();
+    cls->connect_time = -99999.0;
+    cls->connect_retry = 0;
 
-    eng()->CL_Disconnect.InvokeChained();
+    PrivateRes_Clear();
+    client_stateex.resourcesNeeded.clear();
+
+    *p_g_careerState = CAREER_NONE;
+
+    SetCareerAudioState(0);
+    SPR_Shutdown_NoModelFree();
+    S_StopAllSounds(true);
+
+    if (cls->demoplayback)
+    {
+        CL_StopPlayback();
+    }
+    else if (cls->state == ca_connected || cls->state == ca_active || cls->state == ca_uninitialized || cls->state == ca_connecting)
+    {
+        if (cls->demorecording)
+        {
+            CL_Stop_f();
+        }
+
+        FS_LogLevelLoadStarted("ExitGame");
+
+        if (cls->passive)
+        {
+            NET_LeaveGroup(cls->netchan.sock, cls->connect_stream);
+            NET_LeaveGroup(cls->netchan.sock, cls->game_stream);
+        }
+        else if (cls->netchan.remote_address.GetType() != NA_UNUSED)
+        {
+            char final[32];
+            final[0] = clc_stringcmd;
+            V_strcpy(&final[1], "dropclient\n");
+
+            Netchan_Transmit(&cls->netchan, 13, reinterpret_cast<uint8_t*>(final));
+            Netchan_Transmit(&cls->netchan, 13, reinterpret_cast<uint8_t*>(final));
+            Netchan_Transmit(&cls->netchan, 13, reinterpret_cast<uint8_t*>(final));
+        }
+
+        cls->state = ca_disconnected;
+
+        netadr_t* cur_addr = p_net_local_adr;
+        if (p_g_GameServerAddress->GetType() != NA_LOOPBACK)
+        {
+            cur_addr = p_g_GameServerAddress;
+        }
+
+        SteamUser()->TerminateGameConnection(cur_addr->GetIPHostByteOrder(), cur_addr->GetPortHostByteOrder());
+        V_memset(p_g_GameServerAddress, 0, sizeof(netadr_t));
+
+        if (Host_IsServerActive())
+        {
+            Host_ShutdownServer(false);
+        }
+
+        // TODO: The original engine calls CloseSecurityModule() here, but there is no hook for it in NextClient yet.
+        // Not relevant for CS 1.6, since CS is not shipped as a protected module.
+    }
+
+    cls->timedemo = false;
+    cls->demoplayback = false;
+    cls->signon = 0;
+
+    CL_ClearState(true);
+
+    Netchan_Clear(&cls->netchan);
+    CL_DeallocateDynamicData();
+
+    scr_downloading->value = -1.0;
+    sys_timescale->value = 1.0;
+    *p_g_LastScreenUpdateTime = 0.0;
+
+    VGuiWrap2_NotifyOfServerDisconnect();
+    StopLoadingProgressBar();
+
+    hwid::Reset();
+    CL_CvarsSandboxClear();
 }
 
 void S_BeginPrecaching()
@@ -114,6 +203,9 @@ void CL_ClearCaches()
 void CL_ClearClientState()
 {
     OPTICK_EVENT();
+
+    CL_NclEntitySyncClear();
+    CL_StringRegistryClear();
 
     for (auto& frame : cl->frames)
     {
@@ -189,7 +281,7 @@ void CL_ConnectClient()
     {
         char version[32];
         g_NclmVerificator->GetVersion(version, sizeof(version));
-        
+
         MSG_WriteByte(msgbuf, clc_ncl_message);
         MSG_WriteLong(msgbuf, NCLM_HEADER_OLD);
         MSG_WriteByte(msgbuf, (int)NCLM_C2S::VERIFICATION_REQUEST);
@@ -226,12 +318,12 @@ bool CL_PrecacheResources()
     SetLoadingProgressBarStatusText("#GameUI_PrecachingResources");
     ContinueLoadingProgressBar("ClientConnect", 7, 0.0);
 
-    if (fs_startup_timings->value != (float) 0.0)
+    if (fs_startup_timings->value != (float)0.0)
         AddStartupTiming("begin CL_PrecacheResources()");
 
     PrivateRes_PrepareToPrecache();
 
-    for (resource_t* pResource = cl->resourcesonhand.pNext, * pNext; pResource != &cl->resourcesonhand; pResource = pNext)
+    for (resource_t *pResource = cl->resourcesonhand.pNext, *pNext; pResource != &cl->resourcesonhand; pResource = pNext)
     {
         pNext = pResource->pNext;
 
@@ -316,7 +408,7 @@ bool CL_PrecacheResources()
 
             case t_eventscript:
                 cl->event_precache[pResource->nIndex].filename = Mem_Strdup(pResource->szFileName);
-                cl->event_precache[pResource->nIndex].pszScript = (const char*) COM_LoadFile(pResource->szFileName, 5, 0);
+                cl->event_precache[pResource->nIndex].pszScript = (const char*)COM_LoadFile(pResource->szFileName, 5, 0);
 
                 if (cl->event_precache[pResource->nIndex].pszScript)
                 {
@@ -350,6 +442,8 @@ bool CL_PrecacheResources()
 
 void CL_HandleNclMessage()
 {
+    OPTICK_EVENT();
+
     const char* raw_buffer = MSG_ReadString();
 
     NclmBodyReader body(raw_buffer);
@@ -358,51 +452,55 @@ void CL_HandleNclMessage()
     switch (opcode)
     {
         case NCLM_S2C::VERIFICATION_PAYLOAD:
-            std::vector<uint8_t> encrypted_payload = body.ReadBuf(NCLM_VERIF_ENCRYPTED_PAYLOAD_SIZE);
-
-            if (g_NclmVerificator == nullptr)
             {
+                std::vector<uint8_t> encrypted_payload = body.ReadBuf(NCLM_VERIF_ENCRYPTED_PAYLOAD_SIZE);
+
+                if (g_NclmVerificator == nullptr)
+                {
+                    break;
+                }
+
+                // Protocol quirks across server module versions:
+                // - 1.4.0 sends and consumes 256 bytes.
+                // - 1.5.0 sends 196 bytes and should stop processing after consuming
+                //   the payload, but it does not; control passes back to ReHLDS,
+                //   which then attempts to continue parsing from the wrong offset,
+                //   causing an invalid read.
+                // - 1.5.1+ sends 196 bytes and correctly halts further processing by
+                //   breaking the handler chain.
+                // Because we cannot distinguish the server version at this stage,
+                // we always respond with the full 256-byte padded buffer so that
+                // 1.5.0 does not trigger the invalid read.
+
+                uint8_t result[NCLM_VERIF_PAYLOAD_SIZE_PADDED];
+                V_memset(result, 0, sizeof(result));
+
+                size_t written_size =
+                    g_NclmVerificator->DecryptPayload(encrypted_payload.data(), encrypted_payload.size(), result, sizeof(result));
+
+                if (written_size != NCLM_VERIF_PAYLOAD_SIZE)
+                {
+                    break;
+                }
+
+                sizebuf_t* msgbuf = &cls->netchan.message;
+
+                MSG_WriteByte(msgbuf, clc_ncl_message);
+                MSG_WriteLong(msgbuf, NCLM_HEADER_OLD);
+                MSG_WriteByte(msgbuf, static_cast<int>(NCLM_C2S::VERIFICATION_RESPONSE));
+                MSG_WriteString(msgbuf, va("%d.%d.%d", g_NextClientVersion.major, g_NextClientVersion.minor, g_NextClientVersion.patch));
+                MSG_WriteBuf(msgbuf, sizeof(result), result);
+
+                hwid::SendToServer(msgbuf);
                 break;
             }
-
-            // Protocol quirks across server module versions:
-            // - 1.4.0 sends and consumes 256 bytes.
-            // - 1.5.0 sends 196 bytes and should stop processing after consuming
-            //   the payload, but it does not; control passes back to ReHLDS,
-            //   which then attempts to continue parsing from the wrong offset,
-            //   causing an invalid read.
-            // - 1.5.1+ sends 196 bytes and correctly halts further processing by
-            //   breaking the handler chain.
-            // Because we cannot distinguish the server version at this stage,
-            // we always respond with the full 256-byte padded buffer so that
-            // 1.5.0 does not trigger the invalid read.
-
-            uint8_t result[NCLM_VERIF_PAYLOAD_SIZE_PADDED];
-            V_memset(result, 0, sizeof(result));
-
-            size_t written_size =
-                g_NclmVerificator->DecryptPayload(encrypted_payload.data(), encrypted_payload.size(), result, sizeof(result));
-
-            if (written_size != NCLM_VERIF_PAYLOAD_SIZE)
-            {
-                break;
-            }
-
-            sizebuf_t* msgbuf = &cls->netchan.message;
-
-            MSG_WriteByte(msgbuf, clc_ncl_message);
-            MSG_WriteLong(msgbuf, NCLM_HEADER_OLD);
-            MSG_WriteByte(msgbuf, static_cast<int>(NCLM_C2S::VERIFICATION_RESPONSE));
-            MSG_WriteString(msgbuf, va("%d.%d.%d", g_NextClientVersion.major, g_NextClientVersion.minor, g_NextClientVersion.patch));
-            MSG_WriteBuf(msgbuf, sizeof(result), result);
-
-            hwid::SendToServer(msgbuf);
-            break;
     }
 }
 
 void CL_Send_CvarValue()
 {
+    OPTICK_EVENT();
+
     // nclm protocol check
     int readcount = *pMsg_readcount;
     long header = MSG_ReadLong();
@@ -438,4 +536,11 @@ void CL_Send_CvarValue()
         MSG_WriteString(&cls->netchan.message, "CVAR is protected");
     else
         MSG_WriteString(&cls->netchan.message, cvar->string);
+}
+
+void CL_StopPlayback()
+{
+    OPTICK_EVENT();
+
+    eng()->CL_StopPlayback.InvokeChained();
 }

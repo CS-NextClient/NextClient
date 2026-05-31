@@ -22,32 +22,31 @@ void Host_Map_f()
 {
     char mapstring[64];
     char name[64];
-    CareerStateType careerState = *g_careerState;
+    CareerStateType careerState = *p_g_careerState;
 
     if (*cmd_source != src_command)
     {
-        *g_careerState = CAREER_NONE;
+        *p_g_careerState = CAREER_NONE;
         return;
     }
 
     if (g_engfuncs.pfnCmd_Argc() > 1 && Q_strlen(g_engfuncs.pfnCmd_Args()) > 54)
     {
-        *g_careerState = CAREER_NONE;
+        *p_g_careerState = CAREER_NONE;
         Con_Printf("map change failed: command string is too long.\n");
         return;
     }
 
     if (g_engfuncs.pfnCmd_Argc() < 2)
     {
-        *g_careerState = CAREER_NONE;
+        *p_g_careerState = CAREER_NONE;
         Con_Printf("map <levelname> : changes server to specified map\n");
         return;
     }
 
     CL_Disconnect();
-    //TODO: what it? why is this?
     if (careerState == CAREER_LOADING)
-        *g_careerState = CAREER_LOADING;
+        *p_g_careerState = CAREER_LOADING;
 
     if (COM_CheckParm("-steam") && PF_IsDedicatedServer())
         *g_bMajorMapChange = TRUE;
@@ -102,9 +101,9 @@ void Host_Map_f()
     ContinueLoadingProgressBar("Server", 11, 0.0);
     NotifyDedicatedServerUI("UpdateMap");
 
-    if (*g_careerState == CAREER_LOADING)
+    if (*p_g_careerState == CAREER_LOADING)
     {
-        *g_careerState = CAREER_PLAYING;
+        *p_g_careerState = CAREER_PLAYING;
         SetCareerAudioState(1);
     }
     else

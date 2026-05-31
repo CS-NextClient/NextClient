@@ -10,15 +10,21 @@
 #include "../client/cl_private_resources.h"
 #include "../client/download.h"
 
-void Netchan_Setup(netsrc_t socketnumber, netchan_t* chan, netadr_t adr, int player_slot, void* connection_status,
-                   qboolean (*pfnNetchan_Blocksize)(void*))
+void Netchan_Setup(
+    netsrc_t socketnumber,
+    netchan_t *chan,
+    netadr_t adr,
+    int player_slot,
+    void *connection_status,
+    qboolean (*pfnNetchan_Blocksize)(void *)
+)
 {
     OPTICK_EVENT();
 
     eng()->Netchan_Setup(socketnumber, chan, adr, player_slot, connection_status, pfnNetchan_Blocksize);
 }
 
-qboolean Netchan_CopyFileFragments(netchan_t* chan)
+qboolean Netchan_CopyFileFragments(netchan_t *chan)
 {
     OPTICK_EVENT();
 
@@ -45,7 +51,7 @@ qboolean Netchan_CopyFileFragments(netchan_t* chan)
     }
 
     SZ_Clear(net_message);
-    SZ_Write(net_message, (char*)p->frag_message.data, p->frag_message.cursize);
+    SZ_Write(net_message, (char *)p->frag_message.data, p->frag_message.cursize);
 
     MSG_BeginReading();
     Q_strncpy(filename, MSG_ReadString(), sizeof(filename));
@@ -80,12 +86,15 @@ qboolean Netchan_CopyFileFragments(netchan_t* chan)
         if (cls->state == ca_dedicated || !IsSafeFileToDownload(filename))
         {
             g_DownloadFileLogger->AddLogFileError(filename, LogFileTypeError::FileBlocked, 0, 0);
-            Con_Printf(cls->state == ca_dedicated ? "Non-customization file fragment received, ignoring\n" : "File fragment received with bad path, ignoring\n");
+            Con_Printf(
+                cls->state == ca_dedicated ? "Non-customization file fragment received, ignoring\n"
+                                           : "File fragment received with bad path, ignoring\n"
+            );
             Netchan_FlushIncoming(chan, FRAG_FILE_STREAM);
             return FALSE;
         }
 
-        for (const auto& desc : ResourceDescriptorFactory::MakeByDownloadPath(filename))
+        for (const auto &desc : ResourceDescriptorFactory::MakeByDownloadPath(filename))
         {
             if (!IsSafeFileToDownload(desc.get_save_path()))
             {
@@ -152,7 +161,6 @@ qboolean Netchan_CopyFileFragments(netchan_t* chan)
         pos += p->frag_message.cursize;
         Mem_Free(p);
         p = n;
-
     }
 
     // FIXED: We have concat fragment buffer above, make sure that the fisrt fragment is null
@@ -162,9 +170,9 @@ qboolean Netchan_CopyFileFragments(netchan_t* chan)
 
     if (bCompressed)
     {
-        unsigned char* uncompressedBuffer = (unsigned char*)Mem_Malloc(uncompressedSize);
+        unsigned char *uncompressedBuffer = (unsigned char *)Mem_Malloc(uncompressedSize);
         Con_DPrintf(ConLogType::Info, "Decompressing file %s (%d -> %d)\n", filename, nsize, uncompressedSize);
-        BZ2_bzBuffToBuffDecompress((char*)uncompressedBuffer, &uncompressedSize, (char*)buffer, nsize, 1, 0);
+        BZ2_bzBuffToBuffDecompress((char *)uncompressedBuffer, &uncompressedSize, (char *)buffer, nsize, 1, 0);
         Mem_Free(buffer);
         pos = uncompressedSize;
         buffer = uncompressedBuffer;
@@ -172,7 +180,9 @@ qboolean Netchan_CopyFileFragments(netchan_t* chan)
 
     if (bPrivateResourceList)
     {
-        Con_DPrintf(ConLogType::Info, "Private resource list received from location: %s\n", client_stateex.privateResListDownloadPath.c_str());
+        Con_DPrintf(
+            ConLogType::Info, "Private resource list received from location: %s\n", client_stateex.privateResListDownloadPath.c_str()
+        );
 
         if (client_stateex.privateResListState != PrivateResListState::DownloadingResList)
             Con_DPrintf(ConLogType::Info, "Invalid privateResListState state: %d\n", client_stateex.privateResListState);
@@ -180,7 +190,7 @@ qboolean Netchan_CopyFileFragments(netchan_t* chan)
         client_stateex.privateResListState = PrivateResListState::RerunBatchResources;
         Con_DPrintf(ConLogType::Info, "privateResListState = RerunBatchResources\n");
 
-        PrivateRes_ParseList((const char*)buffer, pos);
+        PrivateRes_ParseList((const char *)buffer, pos);
     }
     else if (filename[0] == '!')
     {
@@ -196,9 +206,9 @@ qboolean Netchan_CopyFileFragments(netchan_t* chan)
     {
         if (pos > 0)
         {
-            for (const auto& desc : ResourceDescriptorFactory::MakeByDownloadPath(filename))
+            for (const auto &desc : ResourceDescriptorFactory::MakeByDownloadPath(filename))
             {
-                bool is_saved = desc.SaveToFile((const char*)buffer, pos);
+                bool is_saved = desc.SaveToFile((const char *)buffer, pos);
                 if (!is_saved)
                 {
                     g_DownloadFileLogger->AddLogFileError(desc.get_save_path().c_str(), LogFileTypeError::FileSaveError, 0, 0);
@@ -276,11 +286,25 @@ void Netchan_FlushIncoming(netchan_t *chan, int stream)
     eng()->Netchan_FlushIncoming.InvokeChained(chan, stream);
 }
 
+void Netchan_Transmit(netchan_t *chan, int length, uint8_t *data)
+{
+    OPTICK_EVENT();
+
+    eng()->Netchan_Transmit.InvokeChained(chan, length, data);
+}
+
 void Netchan_UpdateProgress(netchan_t *chan)
 {
     OPTICK_EVENT();
 
     eng()->Netchan_UpdateProgress.InvokeChained(chan);
+}
+
+void Netchan_Clear(netchan_t* chan)
+{
+    OPTICK_EVENT();
+    
+    eng()->Netchan_Clear.InvokeChained(chan);
 }
 
 qboolean NET_GetPacket(netsrc_t sock)

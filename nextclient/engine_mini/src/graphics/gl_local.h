@@ -183,6 +183,7 @@ void DisableScissorTest();
 void R_NewMap();
 void R_RenderView();
 void R_ForceCVars(qboolean mp);
+void R_DestroyObjects();
 void AppendTEntity_Subscriber(cl_entity_t* ent);
 
 //

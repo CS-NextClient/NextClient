@@ -46,7 +46,7 @@ enum class NCLM_C2S {
      * Clients that do not support HWID will never send this opcode.
      * The server MUST NOT kick clients that omit it — treat them as "no HWID".
      */
-    HARDWARE_ID                     // = 0x04  (sequential after DECLARE_VERSION_REQUEST = 0x03)
+    HARDWARE_ID
 };
 
 enum class NCLM_S2C {

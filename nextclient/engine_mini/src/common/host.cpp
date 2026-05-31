@@ -10,6 +10,11 @@ qboolean Host_IsSinglePlayerGame()
 	return cl->maxclients == 1;
 }
 
+qboolean Host_IsServerActive()
+{
+    return g_psv->active;
+}
+
 int Host_GetMaxClients()
 {
     if (g_psv->active)
@@ -93,4 +98,9 @@ qboolean Host_FilterTime(float time)
 void Host_WriteConfiguration()
 {
 	eng()->Host_WriteConfiguration.InvokeChained();
+}
+
+void Host_ShutdownServer(qboolean crash)
+{
+    eng()->Host_ShutdownServer.InvokeChained(crash);    
 }

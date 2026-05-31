@@ -2,6 +2,7 @@
 #include <string>
 #include <vector>
 #include <map>
+#include <cstdint>
 
 class NclmBodyReader
 {
@@ -17,6 +18,7 @@ public:
     NclmBodyReader(const std::string& raw_body);
     void StartRead();
     uint8_t ReadByte();
+    int16_t ReadShort();
     long ReadLong();
     std::string ReadString();
     std::vector<uint8_t> ReadBuf(size_t size);

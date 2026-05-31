@@ -40,7 +40,7 @@ extern client_static_t* cls;
 extern server_static_t* g_psvs;
 extern server_t* g_psv;
 extern qboolean* g_bMajorMapChange;
-extern CareerStateType* g_careerState;
+extern CareerStateType* p_g_careerState;
 extern model_t** loadmodel;
 extern int* cl_playerindex;
 extern cl_entity_t** p_cl_entities;
@@ -76,6 +76,10 @@ extern keydest_t* p_key_dest;
 extern sfx_t** p_known_sfx;
 extern int* p_num_sfx;
 extern int* p_gHostSpawnCount;
+extern netadr_t* p_net_local_adr;
+extern netadr_t* p_g_GameServerAddress;
+extern float* p_g_LastScreenUpdateTime;
+extern int* p_maxTransObjs;
 
 extern cvar_t* fs_startup_timings;
 extern cvar_t* fs_lazy_precache;
@@ -128,6 +132,7 @@ void CL_MoveToOnHandList(resource_t *pResource);
 void CL_StartResourceDownloading(const char *pszMessage, bool bCustom);
 void CL_ClearResourceLists();
 void CL_CreateResourceList();
+void CL_DeallocateDynamicData();
 
 // common/hpak.cpp
 bool HPAK_GetDataPointer(const char *filename, resource_t *pResource, uint8_t **buffer, int *bufsize);

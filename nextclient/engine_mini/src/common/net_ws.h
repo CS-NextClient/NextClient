@@ -4,4 +4,5 @@
 
 void NET_ClearLagData(qboolean bClient, qboolean bServer);
 const char *NET_AdrToString(netadr_t a);
+qboolean NET_LeaveGroup(netsrc_t sock, netadr_t addr);
 qboolean NET_CompareAdr(netadr_t a, netadr_t b);

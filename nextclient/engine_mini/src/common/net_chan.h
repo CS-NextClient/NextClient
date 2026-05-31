@@ -11,7 +11,9 @@ qboolean Netchan_Process(netchan_t *chan);
 void Netchan_CreateFragments(bool server, netchan_t *chan, sizebuf_t *msg);
 void Netchan_FragSend(netchan_t *chan);
 void Netchan_FlushIncoming(netchan_t *chan, int stream);
+void Netchan_Transmit(netchan_t *chan, int length, uint8_t *data);
 void Netchan_UpdateProgress(netchan_t *chan);
+void Netchan_Clear(netchan_t* chan);
 qboolean NET_GetPacket(netsrc_t sock);
 qboolean NET_GetPacket_0();
 

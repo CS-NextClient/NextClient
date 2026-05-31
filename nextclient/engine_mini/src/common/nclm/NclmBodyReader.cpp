@@ -1,4 +1,5 @@
 #include "NclmBodyReader.h"
+#include <algorithm>
 
 NclmBodyReader::NclmBodyReader(const std::string& raw_body)
 {
@@ -38,6 +39,16 @@ uint8_t NclmBodyReader::ReadByte()
     return IsReadable(1) ? buffer_[readcount_++] : 0;
 }
 
+int16_t NclmBodyReader::ReadShort()
+{
+    if (!IsReadable(2))
+        return 0;
+
+    auto value = *(int16_t*)(buffer_.data() + readcount_);
+    readcount_ += 2;
+    return value;
+}
+
 long NclmBodyReader::ReadLong()
 {
     if (!IsReadable(4))
@@ -50,13 +61,19 @@ long NclmBodyReader::ReadLong()
 
 std::string NclmBodyReader::ReadString()
 {
-    auto value = reinterpret_cast<const char*>(buffer_.data() + readcount_);
-    size_t len = std::strlen(value);
-    if (!IsReadable(len))
+    if (readcount_ >= buffer_.size())
         return "";
 
-    readcount_ += len;
-    return value;
+    auto start = reinterpret_cast<const char*>(buffer_.data() + readcount_);
+    size_t max_len = buffer_.size() - readcount_;
+
+    auto end = std::find(start, start + max_len, '\0');
+    if (end == start + max_len)
+        return "";
+
+    size_t len = end - start;
+    readcount_ += len + 1;
+    return start;
 }
 
 std::vector<uint8_t> NclmBodyReader::ReadBuf(size_t size)

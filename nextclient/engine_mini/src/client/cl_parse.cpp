@@ -1,41 +1,64 @@
-#include <md5.h>
-#include <common/filesystem.h>
+#include "engine.h"
 
-#include "../engine.h"
+#include <optick.h>
+#include <common/filesystem.h>
+#include <md5.h>
+
 #include "download.h"
 #include "cl_spectator.h"
 #include "cl_main.h"
 #include "cl_private_resources.h"
-#include "../analytics.h"
-#include "../vgui_int.h"
-#include "../console/console.h"
-#include "../common/sys_dll.h"
-#include "../common/net_buffer.h"
-#include "../common/net_chan.h"
-#include "../common/net_ws.h"
-#include "../common/zone.h"
-#include "../common/com_strings.h"
-#include "../common/common.h"
-#include "../common/model.h"
-#include "../graphics/gl_local.h"
+#include "analytics.h"
+#include "vgui_int.h"
+#include "console/console.h"
+#include "common/sys_dll.h"
+#include "common/net_buffer.h"
+#include "common/net_chan.h"
+#include "common/net_ws.h"
+#include "common/zone.h"
+#include "common/com_strings.h"
+#include "common/common.h"
+#include "common/model.h"
+#include "graphics/gl_local.h"
 
 void CL_SendConsistencyInfo(sizebuf_t *msg)
 {
+    OPTICK_EVENT();
+    
     eng()->CL_SendConsistencyInfo.InvokeChained(msg);
 }
 
 void Net_APICheckTimeouts()
 {
+    OPTICK_EVENT();
+    
     eng()->Net_APICheckTimeouts.InvokeChained();
 }
 
 void CL_ReallocateDynamicData(int maxclients)
 {
+    OPTICK_EVENT();
+    
     eng()->CL_ReallocateDynamicData.InvokeChained(maxclients);
+}
+
+void CL_DeallocateDynamicData()
+{
+    OPTICK_EVENT();
+    
+    if (*p_cl_entities)
+    {
+        Mem_Free(*p_cl_entities);
+        *p_cl_entities = nullptr;
+    }
+
+    R_DestroyObjects();
 }
 
 void CL_PrecacheBSPModels(char* pfilename)
 {
+    OPTICK_EVENT();
+    
     if (!pfilename)
         return;
 
@@ -71,6 +94,8 @@ void CL_PrecacheBSPModels(char* pfilename)
 
 void CL_RegisterResources(sizebuf_t *msg)
 {
+    OPTICK_EVENT();
+    
     int mungebuffer[4];
 
     if (cls->dl.custom || (cls->signon == 2 && cls->state == ca_active))
@@ -128,11 +153,15 @@ void CL_RegisterResources(sizebuf_t *msg)
 
 void CL_ParseServerMessage(qboolean normal_message)
 {
+    OPTICK_EVENT();
+    
     eng()->CL_ParseServerMessage.InvokeChained(normal_message);
 }
 
 int CL_EstimateNeededResources()
 {
+    OPTICK_EVENT();
+    
     int nTotalSize = 0;
 
     client_stateex.resourcesNeeded.clear();
@@ -191,6 +220,8 @@ int CL_EstimateNeededResources()
 
 qboolean CL_RequestMissingResources()
 {
+    OPTICK_EVENT();
+    
     if (!cls->dl.doneregistering && (cls->dl.custom || cls->state == ca_uninitialized))
     {
         resource_t* pResource = cl->resourcesneeded.pNext;
@@ -211,6 +242,8 @@ qboolean CL_RequestMissingResources()
 
 void CL_RegisterCustomization(resource_t* resource)
 {
+    OPTICK_EVENT();
+    
     qboolean bFound = false;
     customization_t* pList;
 
@@ -238,6 +271,8 @@ void CL_RegisterCustomization(resource_t* resource)
 
 void CL_ProcessFile_0(qboolean successfully_received, const char* filename)
 {
+    OPTICK_EVENT();
+    
     resource_t* pResource;
 
     if (successfully_received)
@@ -348,6 +383,8 @@ void CL_ProcessFile_0(qboolean successfully_received, const char* filename)
 
 void CL_ReadPackets()
 {
+    OPTICK_EVENT();
+    
     const int kMaxPackets = 250;
 
     int packets_count = 0;
@@ -489,6 +526,8 @@ void CL_ReadPackets()
  */
 bool CL_CheckFile(sizebuf_t *msg, const ResourceDescriptor& res_descriptor, std::unordered_set<std::string>& dlfile_resources)
 {
+    OPTICK_EVENT();
+    
     if (GetCvarFloat("cl_allowdownload") == 0.0)
     {
         Con_DPrintf(ConLogType::Info, "Download refused, cl_allowdownload is 0\n");
@@ -530,6 +569,8 @@ bool CL_CheckFile(sizebuf_t *msg, const ResourceDescriptor& res_descriptor, std:
 
 void CL_BatchResourceRequest()
 {
+    OPTICK_EVENT();
+    
     byte data[65536];
     char filename[256];
     std::unordered_set<std::string> dlfile_resources;
@@ -649,6 +690,8 @@ void CL_BatchResourceRequest()
 
 void CL_StartResourceDownloading(const char *pszMessage, bool bCustom)
 {
+    OPTICK_EVENT();
+    
     resourceinfo_t ri;
 
     if (fs_startup_timings->value != 0.0)
@@ -699,6 +742,8 @@ void CL_StartResourceDownloading(const char *pszMessage, bool bCustom)
 
 void CL_ClearResourceLists()
 {
+    OPTICK_EVENT();
+    
     cl->downloadUrl[0] = '\0';
 
     for (resource_t *pResource = cl->resourcesneeded.pNext, * pNext; pResource != &cl->resourcesneeded; pResource = pNext)
@@ -726,6 +771,8 @@ void CL_ClearResourceLists()
 
 void CL_CreateResourceList()
 {
+    OPTICK_EVENT();
+    
     if (cls->state != ca_dedicated)
     {
         HPAK_FlushHostQueue();
