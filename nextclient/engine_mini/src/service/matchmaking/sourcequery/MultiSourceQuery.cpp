@@ -268,6 +268,7 @@ void MultiSourceQuery::ProcessQueries(netadr_t address, ByteBuffer& buffer)
     netadr_t query_address = address;
     if (!queries_.contains(query_address))
     {
+        query_address.SetIP(INADDR_BROADCAST);
         query_address.SetType(NA_BROADCAST);
 
         if (!queries_.contains(query_address))
