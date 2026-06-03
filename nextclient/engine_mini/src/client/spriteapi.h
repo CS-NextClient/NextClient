@@ -16,6 +16,7 @@ struct SPRITELIST
 void SPR_Init();
 void SPR_Shutdown();
 void SPR_Shutdown_NoModelFree();
+void SPR_ResetState();
 
 HSPRITE_t SPR_Load(const char* pTextureName);
 bool SPR_IsLoaded(const char* sprite_name);

@@ -101,6 +101,17 @@ void SPR_Shutdown_NoModelFree()
     ghCrosshair = 0;
 }
 
+void SPR_ResetState()
+{
+    OPTICK_EVENT();
+
+    gpSprite = nullptr;
+    gSpriteList = nullptr;
+    gLoadedSpriteNames.clear();
+    gSpriteCount = 0;
+    ghCrosshair = 0;
+}
+
 HSPRITE_t SPR_Load(const char* pTextureName)
 {
     OPTICK_EVENT();

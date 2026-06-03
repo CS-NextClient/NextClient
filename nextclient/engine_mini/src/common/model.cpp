@@ -551,3 +551,12 @@ void Mod_ClearAll()
         }
     }
 }
+
+void Mod_ResetState()
+{
+    OPTICK_EVENT();
+
+    Q_memset(mod_known, 0, sizeof(mod_known));
+    Q_memset(mod_known_info, 0, sizeof(mod_known_info));
+    mod_numknown = 0;
+}

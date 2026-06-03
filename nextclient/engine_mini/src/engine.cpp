@@ -642,16 +642,16 @@ public:
         });
 
         unsubs_.emplace_back(engine_data->Host_Shutdown |= [this](const auto& next) {
-            if (is_uninitializing_)
+            if (!is_uninitializing_)
             {
-                next->Invoke();
-                return;
+                is_uninitializing_ = true;
+                OnGameUninitializing();
             }
 
-            is_uninitializing_ = true;
-            OnGameUninitializing();
-
             next->Invoke();
+
+            SPR_ResetState();
+            Mod_ResetState();
         });
     }
 

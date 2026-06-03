@@ -25,5 +25,6 @@ void Mod_Print();
 void Mod_UnloadSpriteTextures(model_t* pModel);
 void Mod_UnloadFiltered(const std::function<bool(model_t*)>& filter);
 void Mod_ClearAll();
+void Mod_ResetState();
 
 int* R_StudioReloadSkin(model_t* pModel, int index, skin_t* pskin);
