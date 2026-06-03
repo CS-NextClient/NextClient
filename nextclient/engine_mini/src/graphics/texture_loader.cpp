@@ -275,7 +275,16 @@ namespace tex
                 height = pot_height;
             }
 
-            texture.palette = g_PaletteManagerGlob.Load(palette);
+            if (palette)
+            {
+                uint8_t gamma_palette[256 * 3];
+                ApplyGammaToPalette(palette, gamma_palette, sizeof(gamma_palette));
+                texture.palette = g_PaletteManagerGlob.Load(gamma_palette);
+            }
+            else
+            {
+                texture.palette = g_PaletteManagerGlob.Load(palette);
+            }
 
             qglTexImage2D(GL_TEXTURE_2D, 0, GL_COLOR_INDEX8_EXT, width, height, GL_FALSE, GL_COLOR_INDEX, GL_UNSIGNED_BYTE, data);
             SetTextureFilters(false, filter);

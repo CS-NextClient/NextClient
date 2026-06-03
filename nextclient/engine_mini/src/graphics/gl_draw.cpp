@@ -88,17 +88,12 @@ static quake_mode_t modes[6]{
 static cvarhook_t gl_texturemode_hook = {gl_texturemode_hook_callback, nullptr, nullptr};
 
 static bool g_DrawInitialized;
-static bool g_BuildGammaTableFirstCallPass;
 
 void BuildGammaTable(float g)
 {
-    // V_Init_AfterCvarsHook must run after engine registers its cvars but before
-    // the first gamma table build. BuildGammaTable is the earliest reliable hook point.
-    if (!g_BuildGammaTableFirstCallPass)
-    {
-        g_BuildGammaTableFirstCallPass = true;
-        V_Init_AfterCvarsHook();
-    }
+    // Re-resolve cached gamma cvar pointers each call: the engine re-registers its cvars on
+    // every session (_restart), so resolving once would leave them dangling after a restart.
+    V_Init_AfterCvarsHook();
 
     float inverse_gamma = 0.40000001f;
     if (g != 0.0f)
@@ -236,7 +231,9 @@ bool V_CheckGamma()
         return false;
     }
 
-    BuildGammaTable(gamma_cvar->value);
+    // Via eng()->BuildGammaTable so the engine's own lightgammatable (lightmaps) is rebuilt
+    // too, not just NextClient's texgammatable.
+    eng()->BuildGammaTable(gamma_cvar->value);
 
     oldgammavalue = gamma_cvar->value;
     oldlightgamma = lightgamma_cvar->value;
