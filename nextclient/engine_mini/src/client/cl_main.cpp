@@ -3,6 +3,7 @@
 
 #include <optick.h>
 #include <next_engine_mini/nclm_proto.h>
+#include <hwid_collector/hwid_collector.h>
 
 #include "ncl_entity/cl_ncl_entity_sync.h"
 #include "graphics/gl_local.h"
@@ -19,13 +20,63 @@
 #include "common/host.h"
 #include "common/nclm/NclmBodyReader.h"
 #include "common/nclm/NclmBodyWriter.h"
-#include "common/nclm/hwid_collector.h"
-#include "common/nclm/hwid_sender.h"
+
 #include "cl_demo.h"
 #include "spriteapi.h"
 #include "vgui_int.h"
 #include "cl_private_resources.h"
 #include "cl_string_registry.h"
+
+namespace
+{
+    void SendVerificationResponse(sizebuf_t* msgbuf, const uint8_t nonce[NCLM_VERIF_PAYLOAD_SIZE_PADDED])
+    {
+        // Pad the response to the full 256 bytes. This works around a bug in server
+        // module 1.5.0, which mis-parses a 196-byte payload and resumes reading at the
+        // wrong offset; the padding makes it consume safe trailing bytes instead. It
+        // also keeps compatibility with the 1.4.0 module, which expects exactly 256 bytes.
+        MSG_WriteByte(msgbuf, clc_ncl_message);
+        MSG_WriteLong(msgbuf, NCLM_HEADER_OLD);
+        MSG_WriteByte(msgbuf, static_cast<int>(NCLM_C2S::VERIFICATION_RESPONSE));
+        MSG_WriteString(msgbuf, va("%d.%d.%d", g_NextClientVersion.major, g_NextClientVersion.minor, g_NextClientVersion.patch));
+        MSG_WriteBuf(msgbuf, NCLM_VERIF_PAYLOAD_SIZE_PADDED, const_cast<uint8_t*>(nonce));
+    }
+
+    void SendHwidToServer(sizebuf_t* msgbuf, const uint8_t* nonce, size_t nonce_size)
+    {
+        uint8_t salted_hwid[NCLM_HWID_SIGNATURE_SIZE];
+        size_t salted_size = 0;
+
+        std::string hwid_str = hwid::Collect();
+        if (hwid_str.size() == NCLM_HWID_SIZE)
+        {
+            const uint8_t* hwid_data = reinterpret_cast<const uint8_t*>(hwid_str.data());
+            salted_size = g_NclmVerificator->SaltHwid(hwid_data, hwid_str.size(), nonce, nonce_size, salted_hwid, sizeof(salted_hwid));
+
+            if (salted_size > sizeof(salted_hwid))
+            {
+                salted_size = 0;
+            }
+        }
+
+        MSG_WriteByte(msgbuf, clc_ncl_message);
+        MSG_WriteLong(msgbuf, NCLM_HEADER);
+
+        NclmBodyWriter writer(msgbuf);
+        writer.WriteByte(static_cast<uint8_t>(NCLM_C2S::HARDWARE_ID));
+        if (salted_size > 0)
+        {
+            writer.WriteBuf(salted_hwid, salted_size);
+        }
+        writer.Send();
+
+        // Same workaround as VERIFICATION_RESPONSE: the 1.5.0 module resumes reading at
+        // the wrong offset, so trailing padding makes it consume safe zero bytes instead
+        // of the HWID payload.
+        static uint8_t pad[64] = {};
+        MSG_WriteBuf(msgbuf, sizeof(pad), pad);
+    }
+} // namespace
 
 void SetCareerAudioState(int state)
 {
@@ -453,45 +504,25 @@ void CL_HandleNclMessage()
     {
         case NCLM_S2C::VERIFICATION_PAYLOAD:
             {
-                std::vector<uint8_t> encrypted_payload = body.ReadBuf(NCLM_VERIF_ENCRYPTED_PAYLOAD_SIZE);
+                std::vector<uint8_t> payload = body.ReadBuf(NCLM_VERIF_ENCRYPTED_PAYLOAD_SIZE);
 
                 if (g_NclmVerificator == nullptr)
                 {
                     break;
                 }
 
-                // Protocol quirks across server module versions:
-                // - 1.4.0 sends and consumes 256 bytes.
-                // - 1.5.0 sends 196 bytes and should stop processing after consuming
-                //   the payload, but it does not; control passes back to ReHLDS,
-                //   which then attempts to continue parsing from the wrong offset,
-                //   causing an invalid read.
-                // - 1.5.1+ sends 196 bytes and correctly halts further processing by
-                //   breaking the handler chain.
-                // Because we cannot distinguish the server version at this stage,
-                // we always respond with the full 256-byte padded buffer so that
-                // 1.5.0 does not trigger the invalid read.
+                uint8_t nonce[NCLM_VERIF_PAYLOAD_SIZE_PADDED];
+                V_memset(nonce, 0, sizeof(nonce));
 
-                uint8_t result[NCLM_VERIF_PAYLOAD_SIZE_PADDED];
-                V_memset(result, 0, sizeof(result));
-
-                size_t written_size =
-                    g_NclmVerificator->DecryptPayload(encrypted_payload.data(), encrypted_payload.size(), result, sizeof(result));
-
-                if (written_size != NCLM_VERIF_PAYLOAD_SIZE)
+                size_t nonce_size = g_NclmVerificator->DecryptNonce(payload.data(), payload.size(), nonce, sizeof(nonce));
+                if (nonce_size != NCLM_VERIF_PAYLOAD_SIZE)
                 {
                     break;
                 }
 
                 sizebuf_t* msgbuf = &cls->netchan.message;
-
-                MSG_WriteByte(msgbuf, clc_ncl_message);
-                MSG_WriteLong(msgbuf, NCLM_HEADER_OLD);
-                MSG_WriteByte(msgbuf, static_cast<int>(NCLM_C2S::VERIFICATION_RESPONSE));
-                MSG_WriteString(msgbuf, va("%d.%d.%d", g_NextClientVersion.major, g_NextClientVersion.minor, g_NextClientVersion.patch));
-                MSG_WriteBuf(msgbuf, sizeof(result), result);
-
-                hwid::SendToServer(msgbuf);
+                SendVerificationResponse(msgbuf, nonce);
+                SendHwidToServer(msgbuf, nonce, nonce_size);
                 break;
             }
     }

@@ -48,6 +48,7 @@ target_link_libraries(${PROJECT_NAME} ${TARGET_LIBRARIES_SCOPE}
         data_types::data_types
         TaskCoro::TaskCoro
         ncl_utils::ncl_utils
+        hwid_collector::hwid_collector
         easyloggingpp::easyloggingpp
         cpr::cpr
         optic::optic

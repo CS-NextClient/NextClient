@@ -21,7 +21,7 @@
 //   3. GetBootDriveNumber() — always collects the serial from the correct boot disk
 // =============================================================================
 
-#include "hwid_collector.h"
+#include <hwid_collector/hwid_collector.h>
 
 #define _WIN32_DCOM
 #include <Windows.h>
