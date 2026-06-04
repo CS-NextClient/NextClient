@@ -140,6 +140,15 @@ void R_NewMap()
 {
     OPTICK_EVENT();
 
+    // Force a skybox reload: on reconnect to a cached (same-map) BSP, R_InitSky is skipped and gLoadSky stays false, 
+    // so R_LoadSkys would wipe the sky without reloading it (white sky).
+    // TODO: remove this once the texture/model cache consistency issue is fixed 
+    // (brush models reloading on session change re-runs R_InitSky and makes this redundant).
+    if (eng()->gLoadSky != nullptr)
+    {
+        *eng()->gLoadSky = TRUE;
+    }
+
     eng()->R_NewMap.InvokeChained();
 }
 
