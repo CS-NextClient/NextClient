@@ -231,9 +231,9 @@ bool V_CheckGamma()
         return false;
     }
 
-    // Via eng()->BuildGammaTable so the engine's own lightgammatable (lightmaps) is rebuilt
-    // too, not just NextClient's texgammatable.
-    eng()->BuildGammaTable(gamma_cvar->value);
+    // InvokeChained rebuilds both the engine's lightgammatable
+    // and NextClient's texgammatable.
+    eng()->BuildGammaTable.InvokeChained(gamma_cvar->value);
 
     oldgammavalue = gamma_cvar->value;
     oldlightgamma = lightgamma_cvar->value;
@@ -1195,6 +1195,12 @@ void Draw_Init()
     for (int i = 0; i < 256; ++i)
     {
         texgammatable[i] = i;
+    }
+
+    // The identity reset above wiped texgammatable; rebuild it. Chained because the engine's lightgammatable needs rebuilding too
+    if (gamma_cvar != nullptr)
+    {
+        eng()->BuildGammaTable.InvokeChained(gamma_cvar->value);
     }
 
     draw_disc = LoadTransBMP("lambda");
