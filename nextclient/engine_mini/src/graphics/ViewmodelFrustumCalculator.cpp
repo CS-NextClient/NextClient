@@ -5,11 +5,12 @@ void ViewmodelFrustumCalculator::CalcFrustum(GLdouble& left_out, GLdouble& right
 {
     bool fov_changed = false;
 
-    float base_fov = viewmodel_fov->value;
-    if (p_scr_fov_value && *p_scr_fov_value > 0.0f)
-    {
-        base_fov = viewmodel_fov->value * (*p_scr_fov_value / 90.0f);
-    }
+    static cvar_t* vm_fov_scale = nullptr;
+    if (!vm_fov_scale)
+        vm_fov_scale = gEngfuncs.pfnGetCvarPointer("_vm_fov_scale");
+
+    float scale = (vm_fov_scale && vm_fov_scale->value > 0.0f) ? vm_fov_scale->value : 1.0f;
+    float base_fov = viewmodel_fov->value * scale;
 
     if (cached_fov_ != base_fov)
     {

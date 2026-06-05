@@ -8,6 +8,7 @@ static int MsgFunc_SetFOVEx(const char *pszName, int iSize, void *pbuf);
 cvar_t* fov_horplus;
 cvar_t* fov_lerp;
 cvar_t* fov_angle;
+cvar_t* vm_fov_scale;
 
 float fovDifference = 1;
 
@@ -59,6 +60,7 @@ void FovInit()
     fov_horplus = gEngfuncs.pfnRegisterVariable("fov_horplus", "0", FCVAR_ARCHIVE);
     fov_lerp = gEngfuncs.pfnRegisterVariable("fov_lerp", "0", FCVAR_ARCHIVE);
     fov_angle = gEngfuncs.pfnRegisterVariable("fov_angle", "90", FCVAR_ARCHIVE);
+    vm_fov_scale = gEngfuncs.pfnRegisterVariable("_vm_fov_scale", "1", 0);
 
     gEngfuncs.pfnHookUserMsg("SetFOVEx", MsgFunc_SetFOVEx);
 }
@@ -137,4 +139,7 @@ int FovMsgFunc_SetFOV(const char *pszName, int iSize, void *pbuf, UserMsg_SetFOV
 void FovHUD_UpdateClientData(client_data_t *cdata, float flTime, int result)
 {
     cdata->fov = CalcCurrentFov();
+
+    if (vm_fov_scale)
+        vm_fov_scale->value = currentFov / kFovDefault;
 }

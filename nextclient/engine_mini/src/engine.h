@@ -67,7 +67,6 @@ extern int* p_cl_numvisedicts;
 extern cl_entity_t** p_cl_visedicts;
 extern qboolean* p_isFogEnabled;
 extern refdef_t* r_refdef;
-extern float* p_scr_fov_value;
 extern float* p_g_SND_VoiceOverdrive;
 extern int* p_cszrawsentences;
 extern char *(*p_rgpszrawsentence)[CVOXFILESENTENCEMAX];

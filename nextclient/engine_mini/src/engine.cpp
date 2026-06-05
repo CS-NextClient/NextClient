@@ -101,7 +101,6 @@ int* p_cl_numvisedicts;
 cl_entity_t** p_cl_visedicts;
 qboolean* p_isFogEnabled;
 refdef_t* r_refdef;
-float* p_scr_fov_value;
 float* p_g_SND_VoiceOverdrive;
 int* p_cszrawsentences;
 char *(*p_rgpszrawsentence)[CVOXFILESENTENCEMAX];
@@ -217,7 +216,6 @@ static void EngineMiniUninitialize()
     p_cl_visedicts = nullptr;
     p_isFogEnabled = nullptr;
     r_refdef = nullptr;
-    p_scr_fov_value = nullptr;
     p_g_SND_VoiceOverdrive = nullptr;
     p_cszrawsentences = nullptr;
     p_rgpszrawsentence = nullptr;
@@ -367,7 +365,6 @@ static void OnGameInitializing(void* mainwindow, HDC* pmaindc, HGLRC* pbaseRC, c
     v.Assign(p_cl_visedicts, GET_VARIABLE_NAME(p_cl_visedicts), eng()->cl_visedicts);
     v.Assign(p_isFogEnabled, GET_VARIABLE_NAME(p_isFogEnabled), eng()->isFogEnabled);
     v.Assign(r_refdef, GET_VARIABLE_NAME(p_r_refdef), eng()->r_refdef);
-    v.Assign(p_scr_fov_value, GET_VARIABLE_NAME(p_scr_fov_value), eng()->scr_fov_value);
     v.Assign(p_g_SND_VoiceOverdrive, GET_VARIABLE_NAME(p_g_SND_VoiceOverdrive), eng()->g_SND_VoiceOverdrive);
     v.Assign(p_cszrawsentences, GET_VARIABLE_NAME(p_cszrawsentences), eng()->cszrawsentences);
     v.Assign(p_rgpszrawsentence, GET_VARIABLE_NAME(p_rgpszrawsentence), eng()->rgpszrawsentence);
