@@ -375,7 +375,7 @@ void CScriptObject::WriteToConfig(void)
             if (fMax != -1.0)
                 fVal = __min(fVal, fMax);
 
-            Q_snprintf(szValue, sizeof(szValue), "%f", fVal);
+            Q_snprintf(szValue, sizeof(szValue), "%s", CleanFloat(fVal));
             break;
         }
 

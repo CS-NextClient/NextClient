@@ -5,6 +5,7 @@
 #include <unordered_map>
 
 #include <parsemsg.h>
+#include <nitro_utils/string_utils.h>
 
 #include "client.h"
 #include "../console/console.h"
@@ -116,7 +117,9 @@ namespace
             if (cvar == nullptr)
                 continue;
 
-            gEngfuncs.Cvar_Set(kv->GetName(), kv->GetString());
+            // KeyValues reloads numeric values as floats rendered via "%f" ("0.8" -> "0.800000").
+            // Strip the zeros or servers checking the exact cvar string kick.
+            gEngfuncs.Cvar_Set(kv->GetName(), nitro_utils::trim_float_zeros_copy(kv->GetString()).c_str());
         }
 
         FS_RemoveFile(va("%s%s", kCvarsBackupFolder, kCvarsBackupFile), kCvarsPathId);
