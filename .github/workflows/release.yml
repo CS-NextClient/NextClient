@@ -1,0 +1,50 @@
+name: Release
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+  id-token: write
+  attestations: write
+
+jobs:
+  build:
+    uses: ./.github/workflows/build.yml
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: NextClient-${{ github.sha }}
+          path: dist/nextclient
+
+      - name: Download PDB artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: NextClient-pdb-${{ github.sha }}
+          path: dist/pdb
+
+      - name: Package release archives
+        env:
+          TAG: ${{ github.event.release.tag_name }}
+        run: |
+          (cd dist/nextclient && zip -r "$GITHUB_WORKSPACE/NextClient-$TAG.zip" .)
+          (cd dist/pdb && zip -r "$GITHUB_WORKSPACE/NextClient-$TAG-pdb.zip" .)
+
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: |
+            NextClient-${{ github.event.release.tag_name }}.zip
+            NextClient-${{ github.event.release.tag_name }}-pdb.zip
+
+      - name: Upload assets to release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.event.release.tag_name }}
+        run: gh release upload "$TAG" "NextClient-$TAG.zip" "NextClient-$TAG-pdb.zip" --clobber
