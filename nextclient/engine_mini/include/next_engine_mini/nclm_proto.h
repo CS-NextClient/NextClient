@@ -61,4 +61,14 @@ enum class NCLM_S2C
         256 bytes	Encrypted message payload
     */
     VERIFICATION_PAYLOAD,
+
+    /*
+     * Advertises that the server understands the 'nclm' protocol.
+     * Sent right before VERIFICATION_PAYLOAD.
+     *
+     * Payload:
+     *   byte    Message header (this opcode)
+     *   string  Server module version (SemVer)
+     */
+    SERVER_HELLO,
 };

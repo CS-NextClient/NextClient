@@ -29,6 +29,8 @@
 
 namespace
 {
+    NextClientVersion g_ServerModuleVersion{};
+
     void SendVerificationResponse(sizebuf_t* msgbuf, const uint8_t nonce[NCLM_VERIF_PAYLOAD_SIZE_PADDED])
     {
         // Pad the response to the full 256 bytes. This works around a bug in server
@@ -69,12 +71,6 @@ namespace
             writer.WriteBuf(salted_hwid, salted_size);
         }
         writer.Send();
-
-        // Same workaround as VERIFICATION_RESPONSE: the 1.5.0 module resumes reading at
-        // the wrong offset, so trailing padding makes it consume safe zero bytes instead
-        // of the HWID payload.
-        static uint8_t pad[64] = {};
-        MSG_WriteBuf(msgbuf, sizeof(pad), pad);
     }
 } // namespace
 
@@ -326,6 +322,8 @@ void CL_ConnectClient()
     else
         Con_Printf("Connection accepted by %s\n", NET_AdrToString(*net_from));
 
+    g_ServerModuleVersion = NextClientVersion{};
+
     sizebuf_t* msgbuf = &cls->netchan.message;
 
     if (g_NclmVerificator != nullptr)
@@ -502,6 +500,12 @@ void CL_HandleNclMessage()
 
     switch (opcode)
     {
+        case NCLM_S2C::SERVER_HELLO:
+            {
+                ParseNextClientVersion(body.ReadString(), g_ServerModuleVersion);
+                break;
+            }
+
         case NCLM_S2C::VERIFICATION_PAYLOAD:
             {
                 std::vector<uint8_t> payload = body.ReadBuf(NCLM_VERIF_ENCRYPTED_PAYLOAD_SIZE);
@@ -522,7 +526,11 @@ void CL_HandleNclMessage()
 
                 sizebuf_t* msgbuf = &cls->netchan.message;
                 SendVerificationResponse(msgbuf, nonce);
-                SendHwidToServer(msgbuf, nonce, nonce_size);
+
+                if (g_ServerModuleVersion >= NextClientVersion{1, 6, 0})
+                {
+                    SendHwidToServer(msgbuf, nonce, nonce_size);
+                }
                 break;
             }
     }
