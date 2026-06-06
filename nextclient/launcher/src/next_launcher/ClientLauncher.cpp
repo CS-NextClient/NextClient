@@ -34,9 +34,12 @@
 
 static const char* NITRO_API_LOG_TAG = "launcher";
 
+
 ClientLauncher::ClientLauncher(HINSTANCE module_instance, const char* cmd_line) :
     module_instance_(module_instance)
 {
+    ProvisionDefaultConfigs();
+
     next_client_version_ = {
         NEXT_CLIENT_BUILD_VERSION_MAJOR,
         NEXT_CLIENT_BUILD_VERSION_MINOR,
@@ -612,4 +615,41 @@ std::string ClientLauncher::CreateVersionsString(nitroapi::NitroApiInterface* ni
                nitroapi_version, LAUNCHER_VERSION, engine_mini_version, client_mini_version, gameui_version);
 
     return versions;
+}
+
+void ClientLauncher::ProvisionDefaultConfigs()
+{
+    namespace fs = std::filesystem;
+
+    for (const char* target : kDefaultConfigs)
+    {
+        fs::path target_path(target);
+        fs::path default_path = fs::path(kDefaultConfigsDir) / target_path.filename();
+
+        std::error_code ec;
+        if (fs::exists(target_path, ec))
+        {
+            continue;
+        }
+
+        if (!fs::exists(default_path, ec))
+        {
+            LOG(WARNING) << "Default config not found: " << default_path.string();
+            continue;
+        }
+
+        if (fs::path parent = target_path.parent_path(); !parent.empty())
+        {
+            fs::create_directories(parent, ec);
+        }
+
+        if (fs::copy_file(default_path, target_path, ec))
+        {
+            LOG(INFO) << "Provisioned config from default: " << target;
+        }
+        else
+        {
+            LOG(WARNING) << "Failed to provision config '" << target << "': " << ec.message();
+        }
+    }
 }

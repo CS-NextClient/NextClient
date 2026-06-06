@@ -36,6 +36,14 @@ class ClientLauncher
     static constexpr char kErrorTitle[] = "Counter-Strike Launcher";
     static constexpr char kNextClientRegistry[] = "Software\\Valve\\Half-Life\\nextclient";
     static constexpr char kHlRegistry[] = "Software\\Valve\\Half-Life\\Settings";
+
+    static constexpr char kDefaultConfigsDir[] = "platform/defaults";
+    static constexpr const char* kDefaultConfigs[] = {
+        "user_game_config.ini",
+        "platform/config/MasterServer.vdf",
+        "platform/config/backend.json",
+    };
+    
     const int kMinWidth = 640;
     const int kMinHeight = 480;
     const int kDefaultWidth = 800;
@@ -98,6 +106,7 @@ private:
                                             EngineMiniInterface* engine_mini,
                                             ClientMiniInterface* client_mini,
                                             IGameUINext* gameui_next);
+    static void ProvisionDefaultConfigs();
 
     template<class T>
     std::tuple<T*, CSysModule*> LoadModule(const char* module_name, const char* interface_version)
