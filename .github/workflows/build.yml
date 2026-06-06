@@ -21,6 +21,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           submodules: recursive
+          fetch-depth: 0
 
       - name: Cache vcpkg packages
         uses: actions/cache@v4
@@ -28,12 +29,6 @@ jobs:
           path: ${{ github.workspace }}/vcpkg_bincache
           key: vcpkg-${{ runner.os }}-${{ hashFiles('vcpkg.json', 'custom-vcpkg-ports/**') }}
           restore-keys: vcpkg-${{ runner.os }}-
-
-      - name: Fetch vcpkg baseline
-        shell: pwsh
-        run: |
-          $baseline = (Get-Content vcpkg.json -Raw | ConvertFrom-Json).'builtin-baseline'
-          git -C vcpkg fetch --depth 1 origin $baseline
 
       - name: Bootstrap vcpkg
         run: .\vcpkg\bootstrap-vcpkg.bat -disableMetrics
