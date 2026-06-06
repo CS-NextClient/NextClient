@@ -14,7 +14,6 @@ jobs:
     runs-on: windows-2022
 
     env:
-      # vcpkg binary cache so dependencies are not recompiled on every run
       VCPKG_DEFAULT_BINARY_CACHE: ${{ github.workspace }}/vcpkg_bincache
 
     steps:
@@ -23,52 +22,38 @@ jobs:
         with:
           submodules: recursive
 
-      - name: Resolve vcpkg submodule commit
-        id: vcpkg
-        shell: pwsh
-        run: "\"sha=$(git -C vcpkg rev-parse HEAD)\" >> $env:GITHUB_OUTPUT"
-
-      - name: Prepare vcpkg binary cache directory
-        shell: pwsh
-        run: New-Item -ItemType Directory -Force -Path "$env:VCPKG_DEFAULT_BINARY_CACHE" | Out-Null
-
       - name: Cache vcpkg packages
         uses: actions/cache@v4
         with:
           path: ${{ github.workspace }}/vcpkg_bincache
-          key: vcpkg-x86-static-${{ runner.os }}-${{ steps.vcpkg.outputs.sha }}-${{ hashFiles('vcpkg.json', 'custom-vcpkg-ports/**') }}
-          restore-keys: |
-            vcpkg-x86-static-${{ runner.os }}-${{ steps.vcpkg.outputs.sha }}-
-            vcpkg-x86-static-${{ runner.os }}-
+          key: vcpkg-${{ runner.os }}-${{ hashFiles('vcpkg.json', 'custom-vcpkg-ports/**') }}
+          restore-keys: vcpkg-${{ runner.os }}-
+
+      - name: Fetch vcpkg baseline
+        shell: pwsh
+        run: |
+          $baseline = (Get-Content vcpkg.json -Raw | ConvertFrom-Json).'builtin-baseline'
+          git -C vcpkg fetch --depth 1 origin $baseline
 
       - name: Bootstrap vcpkg
-        shell: pwsh
         run: .\vcpkg\bootstrap-vcpkg.bat -disableMetrics
 
       - name: Configure
-        shell: pwsh
-        run: |
-          $installDir = "$env:GITHUB_WORKSPACE/install".Replace('\', '/')
-          cmake --preset vs2022 -DNEXTCLIENT_INSTALL_DIR="$installDir"
+        run: cmake --preset vs2022 "-DNEXTCLIENT_INSTALL_DIR=${{ github.workspace }}\install"
 
       - name: Build
-        shell: pwsh
         run: cmake --build --preset vs2022-release --target BUILD_ALL
-
-      - name: Collect PDBs
-        shell: pwsh
-        run: |
-          New-Item -ItemType Directory -Force -Path install/pdb | Out-Null
-          Copy-Item -Path out/pdb/Release/*.pdb -Destination install/pdb -Force
-
-      - name: Resolve short commit
-        id: meta
-        shell: pwsh
-        run: "\"short=$($env:GITHUB_SHA.Substring(0, 7))\" >> $env:GITHUB_OUTPUT"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: NextClient-${{ steps.meta.outputs.short }}
+          name: NextClient-${{ github.sha }}
           path: install/
+          if-no-files-found: error
+
+      - name: Upload PDBs
+        uses: actions/upload-artifact@v4
+        with:
+          name: NextClient-pdb-${{ github.sha }}
+          path: out/pdb/Release/*.pdb
           if-no-files-found: error
