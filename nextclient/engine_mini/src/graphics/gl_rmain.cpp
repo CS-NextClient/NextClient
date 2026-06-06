@@ -424,6 +424,8 @@ void R_RenderScene()
 {
     OPTICK_EVENT();
 
+    *p_r_blend = 1.0f;
+    
     if (CL_IsDevOverviewMode())
         CL_SetDevOverView(r_refdef);
 
