@@ -30,6 +30,10 @@ jobs:
           key: vcpkg-${{ runner.os }}-${{ hashFiles('vcpkg.json', 'custom-vcpkg-ports/**') }}
           restore-keys: vcpkg-${{ runner.os }}-
 
+      - name: Create vcpkg binary cache directory
+        shell: pwsh
+        run: New-Item -ItemType Directory -Force -Path "${{ github.workspace }}/vcpkg_bincache" | Out-Null
+
       - name: Bootstrap vcpkg
         run: .\vcpkg\bootstrap-vcpkg.bat -disableMetrics
 
