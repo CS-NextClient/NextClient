@@ -4,6 +4,7 @@
 #include <vgui_controls/CheckButton.h>
 #include <vector>
 #include <string>
+#include "IServerBrowserEx.h"
 
 class OptionsSubMiscellaneous : public vgui2::PropertyPage
 {
@@ -29,6 +30,7 @@ private:
 
     bool ApplyColorScheme() const;
     void PrepareColorSchemesList() const;
+    void ActivateServerBrowserTab(ServerBrowserTab tab) const;
 
     static std::string MakeSchemeName(std::string_view scheme_path);
 

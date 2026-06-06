@@ -7,7 +7,7 @@
 #include <GameUi.h>
 #include <steam/steam_api.h>
 #include <nitro_utils/string_utils.h>
-#include "../IServerBrowserEx.h"
+#include "IServerBrowserEx.h"
 #include "vgui_controls/ImagePanel.h"
 
 // prevent windows macros from messing with the class
@@ -22,14 +22,14 @@ OptionsSubMiscellaneous::OptionsSubMiscellaneous(vgui2::Panel *parent) :
     PrepareColorSchemesList();
 
     server_browser_init_tab_ = new vgui2::ComboBox(this, "ServerBrowserInitTab", 5, false);
-    server_browser_init_tab_->AddItem("#ServerBrowser_InternetTab", nullptr);
-    server_browser_init_tab_->AddItem("#ServerBrowser_FavoritesTab", nullptr);
-    //server_browser_init_tab_->AddItem("#ServerBrowser_UniqueTab", nullptr);
-    server_browser_init_tab_->AddItem("#ServerBrowser_HistoryTab", nullptr);
-    server_browser_init_tab_->AddItem("#ServerBrowser_LanTab", nullptr);
-    int tab = miscellaneous_settings_->GetInt(OptionsSubMiscellaneous::kServerBrowserInitialTabKey, (int)ServerBrowserTab::Internet);
-    tab = std::clamp(tab, (int)ServerBrowserTab::Internet, (int)ServerBrowserTab::LAN);
-    server_browser_init_tab_->ActivateItemByRow(tab);
+    server_browser_init_tab_->AddItem("#ServerBrowser_InternetTab", KeyValues::AutoDelete(new KeyValues("", "tab", (int)ServerBrowserTab::Internet)));
+    server_browser_init_tab_->AddItem("#ServerBrowser_FavoritesTab", KeyValues::AutoDelete(new KeyValues("", "tab", (int)ServerBrowserTab::Favorites)));
+    //server_browser_init_tab_->AddItem("#ServerBrowser_UniqueTab", KeyValues::AutoDelete(new KeyValues("", "tab", (int)ServerBrowserTab::Unique)));
+    server_browser_init_tab_->AddItem("#ServerBrowser_HistoryTab", KeyValues::AutoDelete(new KeyValues("", "tab", (int)ServerBrowserTab::History)));
+    server_browser_init_tab_->AddItem("#ServerBrowser_LanTab", KeyValues::AutoDelete(new KeyValues("", "tab", (int)ServerBrowserTab::LAN)));
+
+    int saved_tab = miscellaneous_settings_->GetInt(OptionsSubMiscellaneous::kServerBrowserInitialTabKey, (int)ServerBrowserTab::Internet);
+    ActivateServerBrowserTab((ServerBrowserTab)saved_tab);
 
     disable_auto_open_server_browser_ = new vgui2::CheckButton(this, "DisableAutoOpenServerBrowser", "#GameUI_DisableAutoOpenServerBrowser");
     disable_auto_open_server_browser_->SetSelected(miscellaneous_settings_->GetBool(kDisableAutoOpenServerBrowserKey));
@@ -54,7 +54,9 @@ void OptionsSubMiscellaneous::OnResetData()
 void OptionsSubMiscellaneous::OnApplyChanges()
 {
     miscellaneous_settings_->SetBool(kDisableAutoOpenServerBrowserKey, disable_auto_open_server_browser_->IsSelected());
-    miscellaneous_settings_->SetInt(kServerBrowserInitialTabKey, server_browser_init_tab_->GetActiveItem());
+
+    KeyValues* tab_data = server_browser_init_tab_->GetActiveItemUserData();
+    miscellaneous_settings_->SetInt(kServerBrowserInitialTabKey, tab_data ? tab_data->GetInt("tab") : (int)ServerBrowserTab::Internet);
 
     bool color_scheme_apllied = ApplyColorScheme();
 
@@ -127,6 +129,21 @@ void OptionsSubMiscellaneous::PrepareColorSchemesList() const
             color_scheme_->ActivateItem(item_id);
 
         scheme_file = g_pFullFileSystem->FindNext(find_handle);
+    }
+}
+
+void OptionsSubMiscellaneous::ActivateServerBrowserTab(ServerBrowserTab tab) const
+{
+    server_browser_init_tab_->ActivateItemByRow(0);
+
+    for (int row = 0; row < server_browser_init_tab_->GetItemCount(); row++)
+    {
+        KeyValues* tab_data = server_browser_init_tab_->GetItemUserData(server_browser_init_tab_->GetItemIDFromRow(row));
+        if (tab_data && tab_data->GetInt("tab") == (int)tab)
+        {
+            server_browser_init_tab_->ActivateItemByRow(row);
+            break;
+        }
     }
 }
 
