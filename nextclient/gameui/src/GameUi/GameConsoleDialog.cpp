@@ -252,6 +252,7 @@ void CGameConsoleDialog::Activate()
     m_pEntry->RequestFocus();
     m_pEntry->IgnoreNextTextInput( false );
     m_pEntry->InvalidateLayout( false, true );
+    m_pHistory->InvalidateLayout( false, true );
 }
 
 //-----------------------------------------------------------------------------

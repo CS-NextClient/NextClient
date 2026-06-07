@@ -373,6 +373,15 @@ Scheme
 				"weight"	"500"
 			}
 		}
+		"GameConsole_Mono"
+		{
+			"1"
+			{
+				"name"		"Courier New"
+				"tall"		"14"
+				"weight"	"500"
+			}
+		}
 
 		// this is the symbol font
 		"Marlett"
