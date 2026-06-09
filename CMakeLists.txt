@@ -83,6 +83,22 @@ add_subdirectory(nextclient/client_mini)
 add_subdirectory(nextclient/gameui)
 add_subdirectory(nextclient/steam_api_proxy)
 
+# Windows 7 compatibility
+if (MSVC)
+    set(YY_THUNKS_WIN7_OBJ "${NEXTCLIENT_ROOT}/dep/yy-thunks/x86/YY_Thunks_for_Win7.obj")
+    foreach (_tgt
+            next_launcher
+            engine_mini
+            filesystem_proxy
+            client_mini
+            gameui
+            steam_api_proxy
+            nitro_api
+            vgui2)
+        target_link_libraries(${_tgt} PRIVATE "${YY_THUNKS_WIN7_OBJ}")
+    endforeach ()
+endif ()
+
 # Install directory: cache variable with env fallback
 if (DEFINED ENV{NEXTCLIENT_INSTALL_DIR} AND NOT NEXTCLIENT_INSTALL_DIR)
     set(NEXTCLIENT_INSTALL_DIR "$ENV{NEXTCLIENT_INSTALL_DIR}" CACHE PATH "NextClient install directory")
