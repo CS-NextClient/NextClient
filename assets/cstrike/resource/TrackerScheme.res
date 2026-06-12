@@ -398,7 +398,7 @@ Scheme
 		{
 			"1"
 			{
-				"name"		"Tahoma"
+				"name"		"Verdana"
 				"tall"		"12"
 				"weight"	"600"
 				"yres"	"480 599"
@@ -406,7 +406,7 @@ Scheme
 			}
 			"2"
 			{
-				"name"		"Tahoma"
+				"name"		"Verdana"
 				"tall"		"13"
 				"weight"	"600"
 				"yres"	"600 767"
@@ -414,7 +414,7 @@ Scheme
 			}
 			"3"
 			{
-				"name"		"Tahoma"
+				"name"		"Verdana"
 				"tall"		"14"
 				"weight"	"600"
 				"yres"	"768 1023"
@@ -422,7 +422,7 @@ Scheme
 			}
 			"4"
 			{
-				"name"		"Tahoma"
+				"name"		"Verdana"
 				"tall"		"20"
 				"weight"	"600"
 				"yres"	"1024 1199"
@@ -430,7 +430,7 @@ Scheme
 			}
 			"5"
 			{
-				"name"		"Tahoma"
+				"name"		"Verdana"
 				"tall"		"24"
 				"weight"	"600"
 				"yres"	"1200 6000"
