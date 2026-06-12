@@ -1,6 +1,6 @@
 #include "engine.h"
 
-#include <unordered_set>
+#include <ankerl/unordered_dense.h>
 #include <optick.h>
 #include <common/mem.h>
 
@@ -12,7 +12,7 @@
 #include "common/cvar.h"
 #include "client/cl_main.h"
 
-std::unordered_set<cl_entity_t*> g_MuzzleFlashEffects;
+ankerl::unordered_dense::set<model_t*> g_MuzzleFlashModels;
 ViewmodelFrustumCalculator g_ViewmodelFrustumCalculator;
 
 int CL_FxBlend(cl_entity_t* e)
@@ -98,8 +98,11 @@ void AddTEntity(cl_entity_t* ent)
 
 void AppendTEntity_Subscriber(cl_entity_t* ent)
 {
-    // since only R_MuzzleFlash uses AppendTEntity, we can do this
-    g_MuzzleFlashEffects.emplace(ent);
+    if (ent->model)
+    {
+        // since only R_MuzzleFlash uses AppendTEntity, we can do this
+        g_MuzzleFlashModels.emplace(ent->model);
+    }
 }
 
 void R_DestroyObjects()
@@ -122,6 +125,18 @@ void R_DrawSpriteModel(cl_entity_t* e)
     eng()->R_DrawSpriteModel.InvokeChained(e);
 }
 
+void R_DrawViewmodelSpriteModel(cl_entity_t* e)
+{
+    GLdouble depth_range[2];
+    qglGetDoublev(GL_DEPTH_RANGE, depth_range);
+
+    R_SetProjectionMatrixForViewmodelFov();
+    qglDepthRange(depth_range[0], (depth_range[1] - depth_range[0]) * 0.3 + depth_range[0]);
+    R_DrawSpriteModel(e);
+    qglDepthRange(depth_range[0], depth_range[1]);
+    R_RestoreProjectionMatrix();
+}
+
 void R_DrawBrushModel(cl_entity_t* e)
 {
     OPTICK_EVENT();
@@ -139,6 +154,8 @@ void R_DrawAliasModel(cl_entity_t* e)
 void R_NewMap()
 {
     OPTICK_EVENT();
+
+    g_MuzzleFlashModels.clear();
 
     // Force a skybox reload: on reconnect to a cached (same-map) BSP, R_InitSky is skipped and gLoadSky stays false, 
     // so R_LoadSkys would wipe the sky without reloading it (white sky).
@@ -305,11 +322,9 @@ void R_DrawTEntitiesOnList(qboolean clientOnly)
                         if (*p_r_blend != 0.0)
                         {
                             if (ent->curstate.body && cl->viewent.index == ent->curstate.skin ||
-                                g_MuzzleFlashEffects.contains(ent))
+                                g_MuzzleFlashModels.contains(ent->model))
                             {
-                                R_SetProjectionMatrixForViewmodelFov();
-                                R_DrawSpriteModel(ent);
-                                R_RestoreProjectionMatrix();
+                                R_DrawViewmodelSpriteModel(ent);
                             }
                             else
                             {
@@ -356,7 +371,6 @@ void R_DrawTEntitiesOnList(qboolean clientOnly)
     *p_r_blend = 1.0;
 
     *p_numTransObjs = 0;
-    g_MuzzleFlashEffects.clear();
 }
 
 void R_DrawEntitiesOnList()
@@ -408,9 +422,7 @@ void R_DrawEntitiesOnList()
 
             if (ent->curstate.body && cl->viewent.index == ent->curstate.skin)
             {
-                R_SetProjectionMatrixForViewmodelFov();
-                R_DrawSpriteModel(ent);
-                R_RestoreProjectionMatrix();
+                R_DrawViewmodelSpriteModel(ent);
             }
             else
             {
