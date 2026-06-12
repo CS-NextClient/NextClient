@@ -146,6 +146,7 @@ static void HUD_GetStudioModelInterfacePost(int version, r_studio_interface_t **
     std::memcpy(&g_OriginalStudio, *ppinterface, sizeof(g_OriginalStudio));
 
     (*ppinterface)->StudioDrawModel = StudioDrawModel;
+    (*ppinterface)->StudioDrawPlayer = StudioDrawPlayer;
 }
 
 static void HUD_PlayerMoveInitPost(playermove_t* ppmove)
