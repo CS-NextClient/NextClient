@@ -1,5 +1,6 @@
 #include <taskcoro/SynchronizationContext.h>
 
+#include <coroutine>
 #include <memory>
 #include <utility>
 
@@ -9,6 +10,29 @@ using namespace taskcoro;
 using namespace concurrencpp;
 
 thread_local std::shared_ptr<SynchronizationContext> SynchronizationContext::current_;
+
+namespace
+{
+    // Suspends unconditionally before posting the handle, so the target thread cannot
+    // complete the switch before this coroutine is suspended; otherwise the continuation
+    // would keep running on the source thread (lost switch).
+    struct SwitchToAwaiter
+    {
+        std::shared_ptr<SynchronizationContextImplInterface> sync_ctx_impl;
+
+        bool await_ready() const noexcept
+        {
+            return false;
+        }
+
+        void await_suspend(std::coroutine_handle<> handle) const
+        {
+            sync_ctx_impl->RunTask([handle] { handle.resume(); });
+        }
+
+        void await_resume() const noexcept {}
+    };
+} // namespace
 
 SynchronizationContext::SynchronizationContext(
     std::shared_ptr<SynchronizationContextImplInterface> sync_ctx_impl
@@ -24,15 +48,7 @@ result<void> SynchronizationContext::SwitchTo()
         co_return;
     }
 
-    result_promise<void> promise;
-    result<void> task = promise.get_result();
-
-    sync_ctx_impl_->RunTask([&promise]
-    {
-        promise.set_result();
-    });
-
-    co_await task;
+    co_await SwitchToAwaiter{sync_ctx_impl_};
 }
 
 std::shared_ptr<SynchronizationContext> SynchronizationContext::Current()

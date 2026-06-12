@@ -1,5 +1,6 @@
 #include "MatchmakingSteamComp.h"
 
+#include <cassert>
 #include <optick.h>
 #include <strtools.h>
 
@@ -292,13 +293,18 @@ void MatchmakingSteamComp::RefreshServer(HServerListRequest request_id, int serv
     {
         ct->ThrowIfCancelled();
 
-        auto& request_data = std::get<ServerListRequestData>(server_requests_[request_id]);
-        servernetadr_t net_addr = request_data.servers[server_id].m_NetAdr;
+        servernetadr_t net_addr = std::get<ServerListRequestData>(server_requests_[request_id]).servers[server_id].m_NetAdr;
 
         gameserveritem_t gameserver = co_await matchmaking_service_->RefreshServer(net_addr.GetIP(), net_addr.GetQueryPort());
         ct->ThrowIfCancelled();
 
-        request_data = std::get<ServerListRequestData>(server_requests_[request_id]);
+        // the map entry may be gone or rebuilt after suspension, re-lookup instead of writing through the old reference
+        if (!server_requests_.contains(request_id))
+        {
+            co_return;
+        }
+
+        auto& request_data = std::get<ServerListRequestData>(server_requests_[request_id]);
 
         if (gameserver.m_bHadSuccessfulResponse)
         {
@@ -350,6 +356,9 @@ result<void> MatchmakingSteamComp::RequestServerList(
             ServerAnsweredHandler(request_id, response_callback, server_info);
         }, ct);
 
+    // server_requests_ and the response callback are main-thread confined
+    assert(TaskCoro::IsMainThread());
+
     OPTICK_EVENT("MatchmakingSteamComp::RequestServerList - response_callback->RefreshComplete")
     response_callback->RefreshComplete(request_id, eServerResponded);
 }
@@ -367,6 +376,8 @@ result<void> MatchmakingSteamComp::RefreshServerList(
         {
             ServerAnsweredHandler(request_id, response_callback, server_info);
         }, ct);
+
+    assert(TaskCoro::IsMainThread());
 
     OPTICK_EVENT("MatchmakingSteamComp::RefreshServerList - response_callback->RefreshComplete")
     response_callback->RefreshComplete(request_id, eServerResponded);

@@ -331,7 +331,7 @@ namespace taskcoro
 
             if (task.status() != concurrencpp::result_status::idle)
             {
-                task.get();
+                co_return task.get();
             }
 
             co_await task_impl_->Yield_();
