@@ -167,14 +167,19 @@ void CL_Disconnect()
     CL_ClearState(true);
 
     Netchan_Clear(&cls->netchan);
-    CL_DeallocateDynamicData();
 
     scr_downloading->value = -1.0;
     sys_timescale->value = 1.0;
     *p_g_LastScreenUpdateTime = 0.0;
 
+    // GetLocalPlayer() returns cl_entities + stride*(playernum+1) without a
+    // null-check on the base; defer the entity-array free past the GameUI
+    // notify so a client.dll local-player query during disconnect can't deref
+    // a bogus pointer (read AV ~0x0BB8 in client.dll on hot server-switch).
     VGuiWrap2_NotifyOfServerDisconnect();
     StopLoadingProgressBar();
+
+    CL_DeallocateDynamicData();
 
     hwid::Reset();
     CL_CvarsSandboxClear();
