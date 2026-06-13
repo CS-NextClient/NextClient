@@ -23,6 +23,7 @@
 #include "graphics/gl_local.h"
 #include "graphics/detailtexture.h"
 #include "graphics/font_render.h"
+#include "graphics/color_scheme.h"
 #include "client/client.h"
 #include "client/cl_main.h"
 #include "client/download.h"
@@ -319,6 +320,8 @@ static void OnGameInitializing(void* mainwindow, HDC* pmaindc, HGLRC* pbaseRC, c
     v.Assign(g_pFileSystemNext, GET_VARIABLE_NAME(g_pFileSystemNext), (IFileSystemNext*)filesystem_factory(FILESYSTEM_NEXT_INTERFACE_VERSION, NULL));
 
     g_pFileSystem->AddSearchPathNoWrite("\\cstrike_downloads_private", "GAME");
+
+    ColorScheme_ApplyAlias();
 
     if (v.Validate(eng()->cl_enginefunc, GET_VARIABLE_NAME(gEngfuncs)))
         std::memcpy(&gEngfuncs, eng()->cl_enginefunc, sizeof(gEngfuncs));

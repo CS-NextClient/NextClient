@@ -226,6 +226,11 @@ Scheme
 		"Main.BottomBorder"	"32"
 	}
 
+	CustomFontFiles
+	{
+		"1"		"resource/fonts/DejaVuSans.ttf"
+	}
+
 	//////////////////////// FONTS /////////////////////////////
 	//
 	// describes all the fonts
@@ -357,7 +362,7 @@ Scheme
 		{
 			"1"
 			{
-				"name"		"Verdana" 
+				"name"		"DejaVu Sans" 
 				"tall"		"16" 
 				"weight"	"600"
 				"antialias" "1"
@@ -398,41 +403,41 @@ Scheme
 		{
 			"1"
 			{
-				"name"		"Verdana"
+				"name"		"DejaVu Sans"
 				"tall"		"12"
-				"weight"	"600"
+				"weight"	"500"
 				"yres"	"480 599"
 				"dropshadow"	"1"
 			}
 			"2"
 			{
-				"name"		"Verdana"
+				"name"		"DejaVu Sans"
 				"tall"		"13"
-				"weight"	"600"
+				"weight"	"500"
 				"yres"	"600 767"
 				"dropshadow"	"1"
 			}
 			"3"
 			{
-				"name"		"Verdana"
+				"name"		"DejaVu Sans"
 				"tall"		"14"
-				"weight"	"600"
+				"weight"	"500"
 				"yres"	"768 1023"
 				"dropshadow"	"1"
 			}
 			"4"
 			{
-				"name"		"Verdana"
+				"name"		"DejaVu Sans"
 				"tall"		"20"
-				"weight"	"600"
+				"weight"	"500"
 				"yres"	"1024 1199"
 				"dropshadow"	"1"
 			}
 			"5"
 			{
-				"name"		"Verdana"
+				"name"		"DejaVu Sans"
 				"tall"		"24"
-				"weight"	"600"
+				"weight"	"500"
 				"yres"	"1200 6000"
 				"dropshadow"	"1"
 			}

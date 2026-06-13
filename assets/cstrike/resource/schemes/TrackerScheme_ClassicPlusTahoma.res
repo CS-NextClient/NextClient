@@ -19,7 +19,7 @@ Scheme
 		"White"				"255 255 255 255"
 		"OffWhite"			"216 216 216 255"
 		"DullWhite"			"182 182 182 255"
-		"Orange"			"255 155 0 255"
+		"Orange"			"142 137 35 255"
 		"TransparentBlack"	"0 0 0 128"
 		"Black"				"0 0 0 255"
 
@@ -37,25 +37,25 @@ Scheme
 	BaseSettings
 	{
 		// vgui_controls color specifications
-		Border.Bright					"200 200 200 196"	// the lit side of a control
-		Border.Dark						"40 40 40 196"		// the dark/unlit side of a control
-		Border.Selection				"0 0 0 196"			// the additional border color for displaying the default/selected button
+		Border.Bright					"136 145 128 255"	// the lit side of a control
+		Border.Dark						"40 46 34 255"		// the dark/unlit side of a control
+		Border.Selection				"0 0 0 255"			// the additional border color for displaying the default/selected button
 
 		Button.TextColor				"White"
-		Button.BgColor					"Blank"
+		Button.BgColor					"76 88 68 255"
 		Button.ArmedTextColor			"White"
 		Button.ArmedBgColor				"Blank"
 		Button.DepressedTextColor		"White"
-		Button.DepressedBgColor			"Blank"
+		Button.DepressedBgColor			"76 88 68 255"
 		Button.FocusBorderColor			"Black"
 		
 		CheckButton.TextColor			"OffWhite"
-		CheckButton.SelectedTextColor	"White"
+		CheckButton.SelectedTextColor	"196 181 80 255"
 		CheckButton.BgColor				"TransparentBlack"
-		CheckButton.Border1  			"Border.Dark" 		// the left checkbutton border
-		CheckButton.Border2  			"Border.Bright"		// the right checkbutton border
-		CheckButton.Check				"White"				// color of the check itself
-        CheckButton.HighlightFgColor    "White"
+		CheckButton.Border1  			"40 46 34 255" 		// the left checkbutton border
+		CheckButton.Border2  			"136 145 128 255"		// the right checkbutton border
+		CheckButton.Check				"196 181 80 255"				// color of the check itself
+        CheckButton.HighlightFgColor    "255 255 255 255"
         CheckButton.ArmedBgColor        "Blank"
         CheckButton.DepressedBgColor    "Blank"
 
@@ -67,10 +67,10 @@ Scheme
 		Frame.TitleTextInsetX			16
 		Frame.ClientInsetX				8
 		Frame.ClientInsetY				6
-		Frame.BgColor					"120 120 120 230"
-		Frame.OutOfFocusBgColor			"160 160 160 32"
-		Frame.FocusTransitionEffectTime	"0.1"							// time it takes for a window to fade in/out on focus/out of focus
-		Frame.TransitionEffectTime		"0.25"
+		Frame.BgColor					"76 88 68 255"
+		Frame.OutOfFocusBgColor			"76 88 68 255"
+		Frame.FocusTransitionEffectTime	"0"							// time it takes for a window to fade in/out on focus/out of focus
+		Frame.TransitionEffectTime		"0"
 		Frame.AutoSnapRange				"0"
 		Frame.OutOfFocusAlpha		"128"
 		FrameGrip.Color1				"200 200 200 196"
@@ -102,66 +102,66 @@ Scheme
 		Label.DisabledFgColor2			"30 30 30 255"
 
 		ListPanel.TextColor					"OffWhite"
-		ListPanel.TextBgColor				"Blank"
-		ListPanel.BgColor					"TransparentBlack"
-		ListPanel.SelectedTextColor			"Black"
+		ListPanel.TextBgColor				"62 70 55 255"
+		ListPanel.BgColor					"62 70 55 255"
+		ListPanel.SelectedTextColor			"White"
 		ListPanel.SelectedBgColor			"Orange"
-		ListPanel.SelectedOutOfFocusBgColor	"255 155 0 128"
+		ListPanel.SelectedOutOfFocusBgColor	"142 137 35 255"
 		ListPanel.EmptyListInfoTextColor	"OffWhite"
 
-		Menu.TextColor					"White"
-		Menu.BgColor					"120 120 120 230"
-		Menu.ArmedTextColor				"Black"
+		Menu.TextColor					"DullWhite"
+		Menu.BgColor					"76 88 68 255"
+		Menu.ArmedTextColor				"White"
 		Menu.ArmedBgColor				"Orange"
 		Menu.TextInset					"6"
 
 		Panel.FgColor					"DullWhite"
 		Panel.BgColor					"Blank"
 
-		ProgressBar.FgColor				"White"
-		ProgressBar.BgColor				"TransparentBlack"
+		ProgressBar.FgColor				"196 181 80 255"
+		ProgressBar.BgColor				"62 70 55 255"
 
 		PropertySheet.TextColor			"OffWhite"
-		PropertySheet.SelectedTextColor	"White"
-		PropertySheet.TransitionEffectTime	"0.2"	// time to change from one tab to another
+		PropertySheet.SelectedTextColor	"196 181 80 255"
+		PropertySheet.TransitionEffectTime	"0"	// time to change from one tab to another
 
 		RadioButton.TextColor			"DullWhite"
 		RadioButton.SelectedTextColor	"White"
 
 		RichText.TextColor				"OffWhite"
-		RichText.BgColor				"TransparentBlack"
+		RichText.BgColor				"62 70 55 255"
 		RichText.SelectedTextColor		"Black"
 		RichText.SelectedBgColor		"Orange"
 
 		ScrollBar.Wide					17
-	  	ScrollBarNobBorder.Outer 			"ScrollBarDark"
+	  	ScrollBarNobBorder.Outer 			"40 46 34 255"
 		ScrollBarNobBorder.Inner 			"ScrollBarGrey"
 		ScrollBarNobBorderHover.Inner 			"ScrollBarGrey"
 		ScrollBarNobBorderDragging.Inner 		"ScrollBarHilight"
 
-		ScrollBarButton.FgColor				"ScrollBarHilight"
-		ScrollBarButton.BgColor				"ScrollBarGrey"
+		ScrollBarButton.FgColor				"DullWhite"
+		ScrollBarButton.BgColor				"76 88 68 255"
 		ScrollBarButton.ArmedFgColor			"ScrollBarHilight"
-		ScrollBarButton.ArmedBgColor			"ScrollBarGrey"
-		ScrollBarButton.DepressedFgColor		"ScrollBarHilight"
-		ScrollBarButton.DepressedBgColor		"ScrollBarGrey"
+		ScrollBarButton.ArmedBgColor			"76 88 68 255"
+		ScrollBarButton.DepressedFgColor		"ScrollBarGrey"
+		ScrollBarButton.DepressedBgColor		"76 88 68 255"
 
 		ScrollBarSlider.Inset				1			// Number of pixels to inset scroll bar nob
-		ScrollBarSlider.FgColor				"ScrollBarGrey"			// nob color
-		ScrollBarSlider.BgColor				"ScrollBarDark"	// slider background color
+		ScrollBarSlider.FgColor				"76 88 68 255"			// nob color
+		ScrollBarSlider.BgColor				"90 106 80 255"	// slider background color
 		ScrollBarSlider.NobFocusColor			"ScrollBarHilight"		// nob mouseover color
 		ScrollBarSlider.NobDragColor			"ScrollBarHilight"		// nob active drag color
 
-		SectionedListPanel.HeaderTextColor	"White"
+		SectionedListPanel.HeaderTextColor	"196 181 80 255"
 		SectionedListPanel.HeaderBgColor	"Blank"
 		SectionedListPanel.DividerColor		"Black"
 		SectionedListPanel.TextColor		"DullWhite"
 		SectionedListPanel.BrightTextColor	"White"
-		SectionedListPanel.BgColor			"TransparentBlack"
-		SectionedListPanel.SelectedTextColor			"Black"
+		SectionedListPanel.BgColor			"62 70 55 255"
+		SectionedListPanel.SelectedTextColor			"White"
 		SectionedListPanel.SelectedBgColor				"Orange"
-		SectionedListPanel.OutOfFocusSelectedTextColor	"Black"
-		SectionedListPanel.OutOfFocusSelectedBgColor	"255 155 0 128"
+		SectionedListPanel.OutOfFocusSelectedTextColor	"White"
+		SectionedListPanel.OutOfFocusSelectedBgColor	"40 46 34 255"
 
 		Slider.NobColor				"108 108 108 255"
 		Slider.NobFocusColor			"Orange"
@@ -171,13 +171,13 @@ Scheme
 		Slider.DisabledTextColor2	"30 30 30 255"
 
 		TextEntry.TextColor			"OffWhite"
-		TextEntry.BgColor			"TransparentBlack"
+		TextEntry.BgColor			"62 70 55 255"
 		TextEntry.CursorColor		"OffWhite"
 		TextEntry.DisabledTextColor	"DullWhite"
 		TextEntry.DisabledBgColor	"Blank"
-		TextEntry.SelectedTextColor	"Black"
+		TextEntry.SelectedTextColor	"White"
 		TextEntry.SelectedBgColor	"Orange"
-		TextEntry.OutOfFocusSelectedBgColor	"255 155 0 128"
+		TextEntry.OutOfFocusSelectedBgColor	"40 46 34 255"
 		TextEntry.FocusEdgeColor	"0 0 0 196"
 
 		ToggleButton.SelectedTextColor	"White"
@@ -190,8 +190,8 @@ Scheme
 		WizardSubPanel.BgColor		"Blank"
 
 		// scheme-specific colors
-		MainMenu.TextColor			"White"
-		MainMenu.ArmedTextColor		"200 200 200 255"
+		MainMenu.TextColor			"DullWhite"
+		MainMenu.ArmedTextColor		"White"
 		MainMenu.DepressedTextColor	"192 186 80 255"
 		MainMenu.MenuItemHeight		"30"
 		MainMenu.Inset				"32"
@@ -362,7 +362,7 @@ Scheme
 		{
 			"1"
 			{
-				"name"		"DejaVu Sans" 
+				"name"		"DejaVu Sans"
 				"tall"		"16" 
 				"weight"	"600"
 				"antialias" "1"
@@ -403,41 +403,41 @@ Scheme
 		{
 			"1"
 			{
-				"name"		"DejaVu Sans"
+				"name"		"Tahoma"
 				"tall"		"12"
-				"weight"	"500"
+				"weight"	"600"
 				"yres"	"480 599"
 				"dropshadow"	"1"
 			}
 			"2"
 			{
-				"name"		"DejaVu Sans"
+				"name"		"Tahoma"
 				"tall"		"13"
-				"weight"	"500"
+				"weight"	"600"
 				"yres"	"600 767"
 				"dropshadow"	"1"
 			}
 			"3"
 			{
-				"name"		"DejaVu Sans"
+				"name"		"Tahoma"
 				"tall"		"14"
-				"weight"	"500"
+				"weight"	"600"
 				"yres"	"768 1023"
 				"dropshadow"	"1"
 			}
 			"4"
 			{
-				"name"		"DejaVu Sans"
+				"name"		"Tahoma"
 				"tall"		"20"
-				"weight"	"500"
+				"weight"	"600"
 				"yres"	"1024 1199"
 				"dropshadow"	"1"
 			}
 			"5"
 			{
-				"name"		"DejaVu Sans"
+				"name"		"Tahoma"
 				"tall"		"24"
-				"weight"	"500"
+				"weight"	"600"
 				"yres"	"1200 6000"
 				"dropshadow"	"1"
 			}
@@ -488,12 +488,12 @@ Scheme
         FrameBorder
 		{
 			"inset" "0 0 1 1"
-            "backgroundtype" "2"
+			"backgroundtype" "2"
 			Left
 			{
 				"1"
 				{
-					"color" "Blank"
+					"color" "Border.Bright"
 					"offset" "0 0"
 				}
 			}
@@ -502,7 +502,7 @@ Scheme
 			{
 				"1"
 				{
-					"color" "Blank"
+					"color" "Border.Dark"
 					"offset" "0 0"
 				}
 			}
@@ -511,7 +511,7 @@ Scheme
 			{
 				"1"
 				{
-					"color" "Blank"
+					"color" "Border.Bright"
 					"offset" "0 0"
 				}
 			}
@@ -520,7 +520,7 @@ Scheme
 			{
 				"1"
 				{
-					"color" "Blank"
+					"color" "Border.Dark"
 					"offset" "0 0"
 				}
 			}
@@ -627,14 +627,10 @@ Scheme
 			{
 				"1"
 				{
-					"color" "ScrollBarNobBorder.Outer"
+					"color" "Border.Bright"
 					"offset" "0 0"
 				}
-				"2"
-				{
-					"color" "ScrollBarNobBorder.Inner"
-					"offset" "1 1"
-				}
+				
 			}
 
 			Right
@@ -644,25 +640,16 @@ Scheme
 					"color" "ScrollBarNobBorder.Outer"
 					"offset" "0 0"
 				}
-				"2"
-				{
-					"color" "ScrollBarNobBorder.Inner"
-					"offset" "1 1"
-				}
 			}
 
 			Top
 			{
 				"1"
 				{
-					"color" "ScrollBarNobBorder.Outer"
+					"color" "Border.Bright"
 					"offset" "0 0"
 				}
-				"2"
-				{
-					"color" "ScrollBarNobBorder.Inner"
-					"offset" "1 1"
-				}				
+							
 			}
 
 			Bottom
@@ -672,11 +659,7 @@ Scheme
 					"color" "ScrollBarNobBorder.Outer"
 					"offset" "0 0"
 				}
-				"2"
-				{
-					"color" "ScrollBarNobBorder.Inner"
-					"offset" "1 1"
-				}
+				
 			}
 		}
 		
@@ -807,7 +790,7 @@ Scheme
 			{
 				"1"
 				{
-					"color" "Border.Dark"
+					"color" "Border.Bright"
 					"offset" "0 1"
 				}
 			}
@@ -825,7 +808,7 @@ Scheme
 			{
 				"1"
 				{
-					"color" "Border.Dark"
+					"color" "Border.Bright"
 					"offset" "0 0"
 				}
 			}
