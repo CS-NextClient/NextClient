@@ -298,7 +298,6 @@ void MatchmakingSteamComp::RefreshServer(HServerListRequest request_id, int serv
         gameserveritem_t gameserver = co_await matchmaking_service_->RefreshServer(net_addr.GetIP(), net_addr.GetQueryPort());
         ct->ThrowIfCancelled();
 
-        // the map entry may be gone or rebuilt after suspension, re-lookup instead of writing through the old reference
         if (!server_requests_.contains(request_id))
         {
             co_return;
