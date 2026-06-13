@@ -1,6 +1,5 @@
 #include "engine.h"
 
-#include <ankerl/unordered_dense.h>
 #include <optick.h>
 #include <common/mem.h>
 
@@ -12,7 +11,6 @@
 #include "common/cvar.h"
 #include "client/cl_main.h"
 
-ankerl::unordered_dense::set<model_t*> g_MuzzleFlashModels;
 ViewmodelFrustumCalculator g_ViewmodelFrustumCalculator;
 
 int CL_FxBlend(cl_entity_t* e)
@@ -98,10 +96,11 @@ void AddTEntity(cl_entity_t* ent)
 
 void AppendTEntity_Subscriber(cl_entity_t* ent)
 {
-    if (ent->model)
+    // Tag only the local viewmodel's flash (the temp entity, not cl.viewent) so other players'
+    // flashes keep the world FOV. skin is unused by sprite rendering and independent of viewmodel fx.
+    if (*p_currententity == &cl->viewent)
     {
-        // since only R_MuzzleFlash uses AppendTEntity, we can do this
-        g_MuzzleFlashModels.emplace(ent->model);
+        ent->curstate.skin = cl->viewent.index;
     }
 }
 
@@ -155,9 +154,7 @@ void R_NewMap()
 {
     OPTICK_EVENT();
 
-    g_MuzzleFlashModels.clear();
-
-    // Force a skybox reload: on reconnect to a cached (same-map) BSP, R_InitSky is skipped and gLoadSky stays false, 
+    // Force a skybox reload: on reconnect to a cached (same-map) BSP, R_InitSky is skipped and gLoadSky stays false,
     // so R_LoadSkys would wipe the sky without reloading it (white sky).
     // TODO: remove this once the texture/model cache consistency issue is fixed 
     // (brush models reloading on session change re-runs R_InitSky and makes this redundant).
@@ -321,8 +318,7 @@ void R_DrawTEntitiesOnList(qboolean clientOnly)
 
                         if (*p_r_blend != 0.0)
                         {
-                            if (ent->curstate.body && cl->viewent.index == ent->curstate.skin ||
-                                g_MuzzleFlashModels.contains(ent->model))
+                            if (cl->viewent.index != 0 && cl->viewent.index == ent->curstate.skin)
                             {
                                 R_DrawViewmodelSpriteModel(ent);
                             }
