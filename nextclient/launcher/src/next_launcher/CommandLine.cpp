@@ -3,6 +3,7 @@
 #include <cctype>
 #include <cstdio>
 #include <cstring>
+#include <string>
 #include <utility>
 
 CCommandLine::CCommandLine()
@@ -18,82 +19,60 @@ void CCommandLine::CreateCmdLine(const char* commandline)
 {
     assert(commandline != nullptr);
 
-    char szFull[4096];
-    char szFileName[4096];
-
-    delete[] m_pszCmdLine;
-
-    size_t iLen = strlen(commandline) + 1;
-    char* pszCmdLine = new char[iLen];
-    strcpy_s(pszCmdLine, iLen, commandline);
-
-    const char* pszSource = pszCmdLine;
+    std::string szFull;
+    const char* pszSource = commandline;
     bool allowAtSign = true;
-    char* pszDest = szFull;
 
-    bool bContinue = true;
-
-    while (*pszSource && bContinue)
+    while (*pszSource)
     {
-        while (!allowAtSign || *pszSource != '@')
+        if (allowAtSign && *pszSource == '@')
         {
-            *pszDest++ = *pszSource;
-            allowAtSign = !!isspace(*pszSource);
             ++pszSource;
 
-            if (!(*pszSource))
-            {
-                bContinue = false;
-                break;
-            }
-        }
-
-        if (!bContinue)
-            break;
-        ++pszSource;
-
-        //Get the complete name.
-        {
+            //Get the complete name.
             const char* pszEnd = strchr(pszSource, ' ');
-            const size_t uiFileNameLength = pszEnd ? (pszEnd - pszSource) : strlen(pszSource);
+            const size_t uiFileNameLength = pszEnd ? (size_t)(pszEnd - pszSource) : strlen(pszSource);
 
-            strncpy_s(szFileName, pszSource, std::min(uiFileNameLength, sizeof(szFileName)));
-            szFileName[sizeof(szFileName) - 1] = '\0';
-
+            std::string szFileName(pszSource, uiFileNameLength);
             pszSource += uiFileNameLength;
-        }
 
-        FILE* pParamFile;
-        //Try to open it, if successful, read all options and add them.
-        if (fopen_s(&pParamFile, szFileName, "r") == 0)
-        {
-            while (!feof(pParamFile))
+            FILE* pParamFile;
+            //Try to open it, if successful, read all options and add them.
+            if (fopen_s(&pParamFile, szFileName.c_str(), "r") == 0)
             {
-                //Make sure it never reads in too much.
-                if (fgets(pszDest, sizeof(szFull) - (pszDest - szFull), pParamFile))
+                char szLine[1024];
+                while (fgets(szLine, sizeof(szLine), pParamFile))
                 {
-                    const size_t uiLength = strlen(pszDest);
+                    const size_t uiLength = strlen(szLine);
                     //Overwrite the newline with a whitespace.
-                    pszDest[uiLength - 1] = ' ';
-                    pszDest += uiLength;
+                    if (uiLength > 0 && szLine[uiLength - 1] == '\n')
+                        szLine[uiLength - 1] = ' ';
+
+                    szFull += szLine;
                 }
+
+                fclose(pParamFile);
+            }
+            else
+            {
+                printf("Parameter file '%s' not found, skipping...", szFileName.c_str());
             }
 
-            fclose(pParamFile);
+            allowAtSign = false;
+            continue;
         }
-        else
-        {
-            printf("Parameter file '%s' not found, skipping...", szFileName);
-        }
+
+        szFull += *pszSource;
+        allowAtSign = !!isspace((unsigned char)*pszSource);
+        ++pszSource;
     }
 
-    *pszDest = '\0';
+    const size_t iLen = szFull.size() + 1;
+    char* result = new char[iLen];
+    strcpy_s(result, iLen, szFull.c_str());
 
-    delete[] pszCmdLine;
-
-    iLen = (pszDest - szFull) + 1;
-    m_pszCmdLine = new char[iLen];
-    strcpy_s(m_pszCmdLine, iLen, szFull);
+    delete[] m_pszCmdLine;
+    m_pszCmdLine = result;
 }
 
 void CCommandLine::CreateCmdLine(int argc, char** argv)

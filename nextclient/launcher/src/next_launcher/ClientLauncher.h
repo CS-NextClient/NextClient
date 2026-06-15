@@ -3,6 +3,7 @@
 #include <Windows.h>
 #include <string>
 #include <format>
+#include <optional>
 
 #include <interface.h>
 
@@ -26,6 +27,14 @@
 
 class ClientLauncher
 {
+public:
+    struct NextProcess
+    {
+        std::string application;
+        std::string command_line;
+    };
+    
+private:
     enum class EngineSessionResult
     {
         Exit,
@@ -36,6 +45,7 @@ class ClientLauncher
     static constexpr char kErrorTitle[] = "Counter-Strike Launcher";
     static constexpr char kNextClientRegistry[] = "Software\\Valve\\Half-Life\\nextclient";
     static constexpr char kHlRegistry[] = "Software\\Valve\\Half-Life\\Settings";
+    static constexpr char kRelaunchEnvVar[] = "NEXTCLIENT_RELAUNCH";
 
     static constexpr char kDefaultConfigsDir[] = "platform/defaults";
     static constexpr const char* kDefaultConfigs[] = {
@@ -61,27 +71,31 @@ class ClientLauncher
     std::shared_ptr<CCommandLine> cmd_line_;
 
     std::string sentry_init_log_;
-
     std::vector<BranchEntry> available_branches_;
 
     HINSTANCE module_instance_;
     HANDLE global_win_mutex_;
+    bool is_relaunch_{};
+    
+    std::optional<NextProcess> next_process_;
 
 public:
     explicit ClientLauncher(HINSTANCE module_instance, const char* cmd_line);
     ~ClientLauncher();
 
     void Run();
+    const std::optional<NextProcess>& next_process() const { return next_process_; }
 
 private:
 #ifdef UPDATER_ENABLE
     UpdaterResult RunUpdater(UpdaterFlags updater_flags);
 #endif
+    UpdaterDoneStatus RunStartupUpdater();
 
     void PrepareEngineCommandLine();
-    void RunEngine();
-    EngineSessionResult RunEngineSession(char* post_restart_cmd_line);
-    void RunNewGame();
+    EngineSessionResult RunEngine();
+    NextProcess BuildRestartProcess();
+    NextProcess BuildNewGameProcess();
 
     void CreateConsoleWindowAndRedirectOutput();
 
@@ -101,7 +115,6 @@ private:
 
     void Sys_ErrorHandler(const char* error);
 
-    static void LogLoadedModules();
     static std::string CreateVersionsString(nitroapi::NitroApiInterface* nitro_api,
                                             EngineMiniInterface* engine_mini,
                                             ClientMiniInterface* client_mini,

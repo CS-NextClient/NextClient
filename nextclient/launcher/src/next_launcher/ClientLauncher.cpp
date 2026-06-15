@@ -56,6 +56,13 @@ ClientLauncher::ClientLauncher(HINSTANCE module_instance, const char* cmd_line) 
     hl_registry_ = std::make_shared<CRegistry>(kHlRegistry);
     hl_registry_->Init();
 
+    is_relaunch_ = GetEnvironmentVariableA(kRelaunchEnvVar, nullptr, 0) > 0;
+
+    if (is_relaunch_)
+    {
+        LOG(INFO) << "Relaunch after restart";
+    }
+
     InitializeCmdLine(cmd_line);
 
     global_win_mutex_ = CreateMutexA(nullptr, FALSE, "ValveHalfLifeLauncherMutex");
@@ -97,6 +104,34 @@ void ClientLauncher::Run()
 
     analytics_->SendAnalyticsEvent("startup_init_post_mutex");
 
+    UpdaterDoneStatus updater_done = RunStartupUpdater();
+
+    if (updater_done == UpdaterDoneStatus::RunGame)
+    {
+        EngineSessionResult run_result = RunEngine();
+
+        if (run_result == EngineSessionResult::Restart)
+        {
+            next_process_ = BuildRestartProcess();
+        }
+    }
+
+    UninitializeAnalytics();
+    UninitializeSentry();
+
+    if (updater_done == UpdaterDoneStatus::RunNewGame)
+    {
+        next_process_ = BuildNewGameProcess();
+    }
+
+    if (next_process_)
+    {
+        SetEnvironmentVariableA(kRelaunchEnvVar, "1");
+    }
+}
+
+UpdaterDoneStatus ClientLauncher::RunStartupUpdater()
+{
 #ifdef UPDATER_ENABLE
     UpdaterFlags updater_flags{};
     updater_flags |= cmd_line_->CheckParm("-noupdate") ? UpdaterFlags::None : UpdaterFlags::Updater;
@@ -104,76 +139,56 @@ void ClientLauncher::Run()
     auto [updater_done, available_branches] = RunUpdater(updater_flags);
     available_branches_ = available_branches;
 
-    if (updater_done == UpdaterDoneStatus::RunGame)
-        RunEngine();
+    return updater_done;
 #else
-    RunEngine();
-#endif
-
-    UninitializeAnalytics();
-    UninitializeSentry();
-
-#ifdef UPDATER_ENABLE
-    if (updater_done == UpdaterDoneStatus::RunNewGame)
-    {
-        RunNewGame();
-    }
+    return UpdaterDoneStatus::RunGame;
 #endif
 }
 
-void ClientLauncher::RunNewGame()
+ClientLauncher::NextProcess ClientLauncher::BuildRestartProcess()
 {
-    cmd_line_->AppendParm("-noupdate", nullptr);
+    std::string application = GetCurrentProcessPath().string();
+    std::string command_line = cmd_line_->GetCmdLine();
 
-    std::string process_name = GetCurrentProcessPath()
+    if (!cmd_line_->CheckParm("-noupdate"))
+    {
+        command_line += " -noupdate";
+    }
+
+    return { application, command_line };
+}
+
+ClientLauncher::NextProcess ClientLauncher::BuildNewGameProcess()
+{
+    std::string application = GetCurrentProcessPath()
         .filename()
         .replace_extension("")
         .string() + "_new.exe";
 
-    PROCESS_INFORMATION process_information;
-    STARTUPINFOA startupinfo;
-    ZeroMemory(&startupinfo, sizeof(startupinfo));
+    std::string command_line = cmd_line_->GetCmdLine();
 
-    bool result = CreateProcessA(
-        process_name.c_str(),
-        (char*) cmd_line_->GetCmdLine(),
-        nullptr,
-        nullptr,
-        false,
-        NORMAL_PRIORITY_CLASS,
-        nullptr,
-        nullptr,
-        &startupinfo,
-        &process_information);
+    if (!cmd_line_->CheckParm("-noupdate"))
+    {
+        command_line += " -noupdate";
+    }
 
-    LOG_IF(!result, ERROR) << "Can't CreateProcessA for new launcher: " << process_name << ". Error: " << GetWinErrorString(GetLastError());
+    return { application, command_line };
 }
 
-void ClientLauncher::RunEngine()
+ClientLauncher::EngineSessionResult ClientLauncher::RunEngine()
 {
     analytics_->SendAnalyticsEvent("startup_run_engine");
 
-    char post_restart_cmd_line[4096] = { '\0' };
+    if (!is_relaunch_)
+    {
+        PrepareEngineCommandLine();
+    }
 
-    PrepareEngineCommandLine();
     CheckVideoModeCrash();
 
-    while (true)
-    {
-        EngineSessionResult result = RunEngineSession(post_restart_cmd_line);
+    char post_restart_cmd_line[4096] = { '\0' };
 
-        if (result == EngineSessionResult::Exit)
-        {
-            return;
-        }
-    }
-}
-
-ClientLauncher::EngineSessionResult ClientLauncher::RunEngineSession(char* post_restart_cmd_line)
-{
     std::vector<std::shared_ptr<nitroapi::Unsubscriber>> unsubscribers;
-
-    LogLoadedModules();
 
     auto [nitro_api, nitro_api_module] = LoadModule<nitroapi::NitroApiInterface>("nitro_api2.dll", NITROAPI_INTERFACE_VERSION);
     if (nitro_api == nullptr)
@@ -254,10 +269,12 @@ ClientLauncher::EngineSessionResult ClientLauncher::RunEngineSession(char* post_
     client_mini->Init(nitro_api);
     engine_mini->Init(nitro_api, next_client_version_, analytics_.get());
 
+    EngineCommons::Init(nitro_api, user_info_client_, versions, available_branches_);
+
+    LOG(INFO) << "Engine command line: '" << cmd_line_->GetCmdLine() << "'";
+
     LOG(INFO) << "IEngineAPI::Run";
     analytics_->AddBreadcrumb("Info", "IEngineAPI::Run");
-
-    EngineCommons::Init(nitro_api, user_info_client_, versions, available_branches_);
 
     EngineRunResult engine_run_result = engine->Run(
         module_instance_,
@@ -489,9 +506,15 @@ void ClientLauncher::HUD_InitHandler()
 
 void ClientLauncher::InitializeCmdLine(const char* cmd_line)
 {
-    std::string launch_parameters = config_provider_->get_value_string("launch_parameters", "");
-
     cmd_line_ = std::make_shared<CCommandLine>();
+
+    if (is_relaunch_)
+    {
+        cmd_line_->CreateCmdLine(cmd_line);
+        return;
+    }
+
+    std::string launch_parameters = config_provider_->get_value_string("launch_parameters", "");
     cmd_line_->CreateCmdLine(std::format("{} {}", cmd_line, launch_parameters).c_str());
 
     if (config_provider_->get_value_int("stretch_aspect", 0))
@@ -575,27 +598,6 @@ void ClientLauncher::CheckVideoModeCrash()
 void ClientLauncher::Sys_ErrorHandler(const char* error)
 {
     analytics_->SendCrashMonitoringEvent("Sys_Error", error, true);
-}
-
-void ClientLauncher::LogLoadedModules()
-{
-    auto write_line = [](const char* module)
-    {
-        if (GetModuleHandleA(module) != nullptr)
-        {
-            LOG(WARNING) << "Module " << module << " already loaded.";
-        }
-    };
-
-    write_line("hw.dll");
-    write_line("cstrike\\cl_dlls\\client.dll");
-    write_line("cstrike\\cl_dlls\\gameui.dll");
-    write_line("cstrike\\cl_dlls\\client_mini.dll");
-    write_line("cstrike\\dlls\\mp.dll");
-    write_line("filesystem_proxy.dll");
-    write_line("next_engine_mini.dll");
-    write_line("platform\\steam\\steam_api_orig.dll");
-    write_line("steam_api_orig.dll");
 }
 
 std::string ClientLauncher::CreateVersionsString(nitroapi::NitroApiInterface* nitro_api,
