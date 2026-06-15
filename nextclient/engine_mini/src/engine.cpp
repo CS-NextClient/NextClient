@@ -22,7 +22,6 @@
 #include "common/sys_dll.h"
 #include "graphics/gl_local.h"
 #include "graphics/detailtexture.h"
-#include "graphics/font_render.h"
 #include "graphics/color_scheme.h"
 #include "client/client.h"
 #include "client/cl_main.h"
@@ -158,8 +157,6 @@ NclmVerificatorInterface* g_NclmVerificator;
 
 static void EngineMiniUninitialize()
 {
-    FontRender_UninstallHook();
-
     CL_DeleteHttpDownloadManager();
     KV_UninitializeKeyValuesSystem();
 
@@ -276,8 +273,6 @@ static void EngineMiniInitialize(nitroapi::NitroApiInterface* nitro_api, NextCli
     
     registry = new CRegistry("Software\\Valve\\Half-Life\\Settings");
     registry->Init();
-
-    FontRender_InstallHook();
 }
 
 static void OnGameUninitializing()

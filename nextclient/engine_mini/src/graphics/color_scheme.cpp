@@ -64,10 +64,9 @@ void ColorScheme_ApplyAlias()
     }
 
     std::string scheme = ReadSelectedScheme();
-
-    if (scheme.empty() || scheme == kDefaultScheme)
+    if (scheme.empty())
     {
-        return;
+        scheme = kDefaultScheme;
     }
 
     std::string scheme_path = std::string(kSchemesDir) + "/" + scheme;

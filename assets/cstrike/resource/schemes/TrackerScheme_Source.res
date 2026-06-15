@@ -403,43 +403,48 @@ Scheme
 		{
 			"1"
 			{
-				"name"		"DejaVu Sans"
+				"name"		"Verdana"
 				"tall"		"12"
-				"weight"	"500"
+				"weight"	"600"
 				"yres"	"480 599"
 				"dropshadow"	"1"
+				"fallback"	"DejaVu Sans"
 			}
 			"2"
 			{
-				"name"		"DejaVu Sans"
+				"name"		"Verdana"
 				"tall"		"13"
-				"weight"	"500"
+				"weight"	"600"
 				"yres"	"600 767"
 				"dropshadow"	"1"
+				"fallback"	"DejaVu Sans"
 			}
 			"3"
 			{
-				"name"		"DejaVu Sans"
+				"name"		"Verdana"
 				"tall"		"14"
-				"weight"	"500"
+				"weight"	"600"
 				"yres"	"768 1023"
 				"dropshadow"	"1"
+				"fallback"	"DejaVu Sans"
 			}
 			"4"
 			{
-				"name"		"DejaVu Sans"
+				"name"		"Verdana"
 				"tall"		"20"
-				"weight"	"500"
+				"weight"	"600"
 				"yres"	"1024 1199"
 				"dropshadow"	"1"
+				"fallback"	"DejaVu Sans"
 			}
 			"5"
 			{
-				"name"		"DejaVu Sans"
+				"name"		"Verdana"
 				"tall"		"24"
-				"weight"	"500"
+				"weight"	"600"
 				"yres"	"1200 6000"
 				"dropshadow"	"1"
+				"fallback"	"DejaVu Sans"
 			}
 		}
 		"CreditsFont"

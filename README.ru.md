@@ -201,6 +201,7 @@ cmake --build --preset vs2022-local-release --target BUILD_ALL
 - [MoeMod](https://github.com/MoeMod) - за проект [Thanatos-Launcher](https://github.com/MoeMod/Thanatos-Launcher), он очень помог при реализации GameUI и VGUI2
 - [tmp64](https://github.com/tmp64) - за проект [hl1_source_sdk](https://github.com/tmp64/hl1_source_sdk)
 - [TsarVar](https://tsarvar.com) - за идею JS API для gameui
+- [SanyaSho](https://github.com/SanyaSho) - за проект [BarsTech_goldsrc_compatible_public](https://github.com/SanyaSho/BarsTech_goldsrc_compatible_public), который помог с рендерингом шрифтов VGUI2
 - Valve - за Counter-Strike 1.6 и лояльное отношение к моддерскому сообществу
 
 Спасибо всем кто поддерживает проект баг репортами, предложениями и словами поддержки.
