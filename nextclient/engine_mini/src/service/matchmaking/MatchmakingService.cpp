@@ -321,7 +321,7 @@ gameserveritem_t MatchmakingService::ConvertToGameServerItem(const SQResponseInf
         server.m_bSecure = info.secure;
         server.m_nBotPlayers = info.num_of_bots;
         server.m_nMaxPlayers = info.max_players;
-        server.m_nPlayers = std::max(0, (int)info.num_players - (int)info.num_of_bots);
+        server.m_nPlayers = info.num_players;
         server.m_nPing = (int)sq_info.ping_ms;
         server.m_bHadSuccessfulResponse = true;
         server.m_bDoNotRefresh = false;

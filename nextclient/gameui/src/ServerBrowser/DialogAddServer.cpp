@@ -2,6 +2,7 @@
 #include "ServerBrowserDialog.h"
 #include "ServerListCompare.h"
 #include "IGameList.h"
+#include <GameServerHelpers.h>
 
 #include <vgui/IVGui.h>
 #include <vgui/ILocalize.h>
@@ -263,7 +264,7 @@ void CDialogAddServer::ServerResponded(gameserveritem_t &server)
     kv->SetInt("bots", server.m_nBotPlayers ? 2 : 0);
 
     char buf[32];
-    Q_snprintf(buf, sizeof(buf), "%d / %d", server.m_nPlayers, server.m_nMaxPlayers);
+    Q_snprintf(buf, sizeof(buf), "%d / %d", GetHumanPlayerCount(server), server.m_nMaxPlayers);
     kv->SetString("Players", buf);
 
     if (server.m_nPing < 1200)

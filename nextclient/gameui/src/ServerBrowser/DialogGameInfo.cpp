@@ -4,6 +4,7 @@
 #include "ServerBrowserDialog.h"
 #include "DialogServerPassword.h"
 #include <ModInfo.h>
+#include <GameServerHelpers.h>
 
 #include <vgui/ISystem.h>
 #include <vgui/ISurfaceNext.h>
@@ -189,7 +190,7 @@ void CDialogGameInfo::PerformLayout()
 
     if (server_item_.m_nMaxPlayers > 0)
     {
-        Q_snprintf(buf, sizeof(buf), "%d / %d", server_item_.m_nPlayers, server_item_.m_nMaxPlayers);
+        Q_snprintf(buf, sizeof(buf), "%d / %d", GetHumanPlayerCount(server_item_), server_item_.m_nMaxPlayers);
     }
     else
         buf[0] = 0;
@@ -232,7 +233,7 @@ void CDialogGameInfo::PerformLayout()
 
     if (m_pAutoRetry->IsSelected())
     {
-        if ((server_item_.m_nPlayers + server_item_.m_nBotPlayers) < server_item_.m_nMaxPlayers)
+        if (GetHumanPlayerCount(server_item_) < server_item_.m_nMaxPlayers)
             m_pInfoLabel->SetText("#ServerBrowser_PressJoinToConnect");
         else if (m_pAutoRetryJoin->IsSelected())
             m_pInfoLabel->SetText("#ServerBrowser_JoinWhenSlotIsFree");
@@ -323,7 +324,7 @@ void CDialogGameInfo::ServerResponded(gameserveritem_t &server)
     }
     else if (m_pAutoRetry->IsSelected())
     {
-        if ((server_item_.m_nPlayers + server_item_.m_nBotPlayers) < server_item_.m_nMaxPlayers)
+        if (GetHumanPlayerCount(server_item_) < server_item_.m_nMaxPlayers)
         {
             surface()->PlaySound("servers/game_ready.wav");
             FlashWindow();
@@ -455,7 +456,7 @@ bool CDialogGameInfo::ConnectToServer()
         return false;
     }
 
-    if ((server_item_.m_nPlayers + server_item_.m_nBotPlayers) >= server_item_.m_nMaxPlayers)
+    if (GetHumanPlayerCount(server_item_) >= server_item_.m_nMaxPlayers)
     {
         m_bServerFull = true;
         m_bShowAutoRetryToggle = true;

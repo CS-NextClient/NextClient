@@ -2,6 +2,7 @@
 #include "serveritem.h"
 #include "ServerBrowserDialog.h"
 #include "BaseGamesPage.h"
+#include <GameServerHelpers.h>
 
 #include <KeyValues.h>
 #include <vgui_controls/ListPanel.h>
@@ -136,9 +137,9 @@ int __cdecl PlayersCompare(ListPanel *pPanel, const ListPanelItem &p1, const Lis
     serveritem_t &s1 = game_list_panel->GetOuterGamesPage()->GetServer(p1.userData);
     serveritem_t &s2 = game_list_panel->GetOuterGamesPage()->GetServer(p2.userData);
 
-    int s1p = std::max(0, s1.gs.m_nPlayers - s1.gs.m_nBotPlayers);
+    int s1p = GetHumanPlayerCount(s1.gs);
     int s1m = std::max(0, s1.gs.m_nMaxPlayers - s1.gs.m_nBotPlayers);
-    int s2p = std::max(0, s2.gs.m_nPlayers - s2.gs.m_nBotPlayers);
+    int s2p = GetHumanPlayerCount(s2.gs);
     int s2m = std::max(0, s2.gs.m_nMaxPlayers - s2.gs.m_nBotPlayers);
 
     if (s1p > s2p)

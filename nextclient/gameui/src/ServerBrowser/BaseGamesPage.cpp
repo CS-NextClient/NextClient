@@ -1,6 +1,7 @@
 #include "BaseGamesPage.h"
 #include "ServerListCompare.h"
 #include "ServerBrowserDialog.h"
+#include <GameServerHelpers.h>
 
 #include <vgui/ILocalize.h>
 #include <vgui/ISchemeNext.h>
@@ -395,7 +396,7 @@ void CBaseGamesPage::ServerResponded(serveritem_t &server)
     if (server.gs.m_bHadSuccessfulResponse)
     {
         char buf[256];
-        sprintf(buf, "%d / %d", server.gs.m_nPlayers, server.gs.m_nMaxPlayers);
+        sprintf(buf, "%d / %d", GetHumanPlayerCount(server.gs), server.gs.m_nMaxPlayers);
         kv->SetString("Players", buf);
     }
     else
@@ -528,7 +529,7 @@ void CBaseGamesPage::ApplyGameFilters()
                 kv->SetString("GameDesc", server.gs.m_szGameDescription);
 
                 char buf[256];
-                sprintf(buf, "%d / %d", server.gs.m_nPlayers, server.gs.m_nMaxPlayers);
+                sprintf(buf, "%d / %d", GetHumanPlayerCount(server.gs), server.gs.m_nMaxPlayers);
                 kv->SetString("Players", buf);
                 kv->SetInt("Ping", server.gs.m_nPing);
                 kv->SetInt("password", server.gs.m_bPassword ? 1 : 0);
@@ -718,10 +719,10 @@ bool CBaseGamesPage::CheckPrimaryFilters(serveritem_t &server)
 
 bool CBaseGamesPage::CheckSecondaryFilters(serveritem_t &server)
 {
-    if (m_bFilterNoEmptyServers && (server.gs.m_nPlayers - server.gs.m_nBotPlayers) < 1)
+    if (m_bFilterNoEmptyServers && GetHumanPlayerCount(server.gs) < 1)
         return false;
 
-    if (m_bFilterNoFullServers && server.gs.m_nPlayers >= server.gs.m_nMaxPlayers)
+    if (m_bFilterNoFullServers && GetHumanPlayerCount(server.gs) >= server.gs.m_nMaxPlayers)
         return false;
 
     if (m_iPingFilter && server.gs.m_nPing > m_iPingFilter)

@@ -2,6 +2,7 @@
 
 #include <GameUi.h>
 #include <TaskRun.h>
+#include <GameServerHelpers.h>
 
 #include "AcceptedDomains.h"
 #include <nitro_utils/net_utils.h>
@@ -49,7 +50,7 @@ CefRefPtr<CefV8Value> GameServerItemToV8Object(const gameserveritem_t& server) {
 	value->SetValue("address", CefV8Value::CreateString(server.m_NetAdr.GetConnectionAddressString()), defProperty);
 	value->SetValue("hostname", CefV8Value::CreateString(server.GetName()), defProperty);
 	value->SetValue("map", CefV8Value::CreateString(server.m_szMap), defProperty);
-	value->SetValue("playersOnline", CefV8Value::CreateInt(server.m_nPlayers), defProperty);
+	value->SetValue("playersOnline", CefV8Value::CreateInt(GetHumanPlayerCount(server)), defProperty);
 	value->SetValue("botsOnline", CefV8Value::CreateInt(server.m_nBotPlayers), defProperty);
 	value->SetValue("playersMax", CefV8Value::CreateInt(server.m_nMaxPlayers), defProperty);
 	value->SetValue("isPasswordProtected", CefV8Value::CreateBool(server.m_bPassword), defProperty);
