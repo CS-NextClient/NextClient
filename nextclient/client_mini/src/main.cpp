@@ -255,6 +255,7 @@ public:
         g_Unsub.emplace_back(client_data->CL_CreateMove |= CL_CreateMoveHandler);
 
         g_GameHud = std::make_unique<GameHud>(nitro_api);
+        g_Unsub.emplace_back(client_data->HUD_Shutdown += [] { g_GameHud.reset(); });
     }
 
     void Uninitialize() override

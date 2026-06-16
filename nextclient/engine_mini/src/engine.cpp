@@ -280,6 +280,10 @@ static void OnGameUninitializing()
     if (g_Analytics)
         g_Analytics->AddBreadcrumb("info", BREADCRUMBS_TAG " OnGameUninitializing");
     
+    // Notify the server of disconnect when the game is closed via the window's X button.
+    if (cls && (cls->state == ca_connected || cls->state == ca_active || cls->state == ca_uninitialized || cls->state == ca_connecting))
+        CL_Disconnect();
+
     if (g_pTaskCoroImpl)
         g_pTaskCoroImpl->ShutdownUpdateExecutor();
 
