@@ -155,43 +155,42 @@ void CCommandLine::RemoveParm(const char* pszParm)
     if (!m_pszCmdLine || !pszParm || !(*pszParm))
         return;
 
+    size_t uiParmNameLength = strlen(pszParm);
+    char* pszSearch = m_pszCmdLine;
+
     while (true)
     {
-        const size_t uiLength = strlen(m_pszCmdLine);
-
-        char* const pszParmLocation = strstr(m_pszCmdLine, pszParm);
+        char* pszParmLocation = strstr(pszSearch, pszParm);
 
         //No more occurences found; trim trailing whitespace and exit.
         if (!pszParmLocation)
         {
-            for (size_t uiIndex = uiLength; uiIndex > 0; uiIndex = strlen(m_pszCmdLine))
-            {
-                char* pszNext = &m_pszCmdLine[uiIndex - 1];
-
-                if (*pszNext != ' ')
-                    break;
-
-                *pszNext = '\0';
-            }
+            size_t uiLength = strlen(m_pszCmdLine);
+            while (uiLength > 0 && m_pszCmdLine[uiLength - 1] == ' ')
+                m_pszCmdLine[--uiLength] = '\0';
 
             return;
         }
 
-        //Skip the '+' or '-' at the start so it doesn't get stuck looping over itself.
-        const char* pszNextStart = pszParmLocation + 1;
+        //Match only a whole parameter token, not a prefix, so "-full" doesn't hit "-fulldump".
+        char chBefore = pszParmLocation == m_pszCmdLine ? ' ' : pszParmLocation[-1];
+        char chAfter = pszParmLocation[uiParmNameLength];
 
-        //Find the start of the next command.
-        //TODO: this doesn't check if the value is quoted and contains a '+' or '-'. - Solokiller
-        while (*pszNextStart && *pszNextStart != '-' && *pszNextStart != '+')
+        if (chBefore != ' ' || (chAfter != ' ' && chAfter != '\0'))
         {
-            ++pszNextStart;
+            pszSearch = pszParmLocation + 1;
+            continue;
         }
 
-        const size_t uiTrailingLength = uiLength - (pszNextStart - m_pszCmdLine);
+        //Find the start of the next command; the parameter's value(s) are removed with it.
+        //TODO: this doesn't check if the value is quoted and contains a '+' or '-'. - Solokiller
+        char* pszNextStart = pszParmLocation + uiParmNameLength;
+        while (*pszNextStart && *pszNextStart != '-' && *pszNextStart != '+')
+            ++pszNextStart;
 
-        //Move the trailing commands (if any) forward, zero out leftover data.
-        memmove(pszParmLocation, pszNextStart, uiTrailingLength);
-        memset(pszParmLocation + uiTrailingLength, 0, pszNextStart - pszParmLocation);
+        //Move the trailing commands (if any) forward, including the null terminator.
+        memmove(pszParmLocation, pszNextStart, strlen(pszNextStart) + 1);
+        pszSearch = pszParmLocation;
     }
 }
 
