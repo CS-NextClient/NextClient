@@ -18,10 +18,14 @@ namespace
     void DrawOverlay()
     {
         if (!g_cvar_debug_entity_sync || g_cvar_debug_entity_sync->value == 0.0f)
+        {
             return;
+        }
 
         if (cls == nullptr || cls->state != ca_active)
+        {
             return;
+        }
 
         static std::vector<std::string> lines;
         lines.clear();
@@ -55,12 +59,20 @@ namespace
 
 void CL_NclEntitySyncOverlayInit()
 {
+#ifdef NDEBUG
+    return;
+#endif
+
     g_cvar_debug_entity_sync = gEngfuncs.pfnRegisterVariable("ncl_debug_entity_sync", "0", FCVAR_ARCHIVE);
     g_unsubs.emplace_back(client()->HUD_Redraw |= HUD_RedrawHook);
 }
 
 void CL_NclEntitySyncOverlayShutdown()
 {
+#ifdef NDEBUG
+    return;
+#endif
+
     for (auto& unsubscriber : g_unsubs)
     {
         unsubscriber->Unsubscribe();
