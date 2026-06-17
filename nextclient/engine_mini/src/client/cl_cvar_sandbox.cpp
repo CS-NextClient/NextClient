@@ -84,6 +84,8 @@ namespace
     };
 
     bool g_CvarsSandboxAvailable = true;
+    bool g_ConfigReloaded = false;
+    bool g_SandboxInitPending = false;
     std::unordered_map<std::string, CvarData> g_SandboxedCvars;
 
     std::vector<std::shared_ptr<nitroapi::Unsubscriber>> g_Unsubs;
@@ -142,6 +144,20 @@ namespace
 
         if (!g_CvarsSandboxAvailable)
             g_SandboxedCvars.clear();
+    }
+
+    void OnSandboxConnect()
+    {
+        // Race with the post-_restart relaunch "+connect": stuffcmds runs it during boot
+        // before config.cfg loads, so a snapshot here would back up engine defaults.
+        // Defer to ForceReloadProfile, which runs after config is loaded.
+        if (!g_ConfigReloaded)
+        {
+            g_SandboxInitPending = true;
+            return;
+        }
+
+        InitSandbox();
     }
 
     void CvarSet_Hook(const char* name, const char* value, nitroapi::NextHandlerInterface<void, const char*, const char*>* next)
@@ -248,9 +264,17 @@ void CL_CvarsSandboxInit()
     g_Unsubs.emplace_back(eng()->ForceReloadProfile += [] {
         RestoreCvarsBackup();
         Host_WriteConfiguration();
+
+        g_ConfigReloaded = true;
+
+        if (g_SandboxInitPending)
+        {
+            g_SandboxInitPending = false;
+            InitSandbox();
+        }
     });
 
-    g_Unsubs.emplace_back(eng()->CL_Connect_f += InitSandbox);
+    g_Unsubs.emplace_back(eng()->CL_Connect_f += OnSandboxConnect);
     g_Unsubs.emplace_back(eng()->Cvar_Set |= CvarSet_Hook);
 
     gEngfuncs.pfnHookUserMsg("SandboxCvar", MsgFunc_SandboxCvar);
