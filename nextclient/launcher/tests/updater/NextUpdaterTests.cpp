@@ -383,7 +383,7 @@ TEST_F(NextUpdaterTest, AllHostnamesErrorExpected)
     NextUpdater next_updater(install_path, backup_path, http_service, [this](const NextUpdaterEvent& event) {});
     NextUpdaterResult updater_result = next_updater.Start().get();
 
-    EXPECT_EQ(updater_result, NextUpdaterResult::Error);
+    EXPECT_EQ(updater_result, NextUpdaterResult::ConnectionError);
 }
 
 TEST_F(NextUpdaterTest, NoHostnameAndNoHostnamesErrorExpected)
