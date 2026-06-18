@@ -343,7 +343,7 @@
 		"xpos"		"253"
 		"ypos"		"170"
 		"wide"		"220"
-		"tall"		"24"
+		"tall"		"28"
 		"AutoResize"		"0"
 		"PinCorner"		"0"
 		"RoundedCorners"		"15"
