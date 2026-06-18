@@ -15,16 +15,17 @@ NextClient это модификация для Counter-Strike 1.6, нацеле
  - Расширенный killfeed - поддержка расширенного killfeed [regamedll](https://github.com/s1lentq/ReGameDLL_CS/pull/858), отображение иконок убийств: через стену, через дым, без прицела, в прыжке, с доминированием, etc.
  - Расширенные настройки прицела - добавлены новые виды прицела: точка, T-образный, окружность
  - 2 схемы GUI с возможностью их смены через настройки, и возможность добавлять свои схемы не удаляя старые
+ - Поддержка HTML-интерфейсов в GameUI на базе CEF (Chromium Embedded Framework) с JS API для взаимодействия с клиентом
  - Отображение более 255hp при использовании [серверного модуля](https://github.com/CS-NextClient/NextClientServerApi)
  - Отображение количества и размера оставшихся файлов, общего размера файлов и скорости загрузки при подключении на сервер
  - Цветной чат в консоли
  - Различные улучшения из [csldr](https://github.com/mikkokko/csldr) для оружия от первого лица:
     - Настраиваемое расположение модели
-    - Новые типы bob
+    - Альтернативный bob из CS:GO 1.0.0.40
     - Поддержка sway/lag
     - Возможность отключить смещение модели при взгляде вверх/вниз
-    - Поддержка анимации осмотра
-    - Поддержка управления камерой для анимации осмотра
+    - Клиентский осмотр оружия
+    - Управление камерой на основе костей
 
 ### Возможности для amxmodx разработчиков:
  - Песочница кваров, возможность менять квары клиенту (из ограниченного списка) на время его нахождения на сервере
@@ -32,6 +33,9 @@ NextClient это модификация для Counter-Strike 1.6, нацеле
  - Sprite API, управление спрайтами на экране
  - Расширенное FOV сообщение
  - Поддержка эффектов для viewmodel
+ - Замена звуков оружия
+ - Инверсия мыши
+ - Верификация клиента и получение идентификатора игрока на основе железа (HWID)
  - Раздельный прекэш для обычного клиента cs 1.6 и NextClient
  - Прекэш hud.txt и других стандартных ресурсов
 
@@ -45,20 +49,20 @@ NextClient это модификация для Counter-Strike 1.6, нацеле
 | viewmodel_offset_x | 0             | Yes                         |  |
 | viewmodel_offset_y | 0             | Yes                         |  |
 | viewmodel_offset_z | 0             | Yes                         |  |
-| camera_movement_scale | 1             | Yes                         | Camera movement scale. |
+| camera_movement_scale | 1.0           | Yes                         | Camera movement scale. |
 | camera_movement_interp | 0             | Yes                         | Smooths out camera movement when switching weapons. Recommended value is 0.1. Set to 0 to disable smoothing. |
-| viewmodel_fov | 90            | No                          | Min: 70<br/>Max: 100 |
+| viewmodel_fov | 90            | Yes                         | Min: 70<br/>Max: 100 |
 | cl_crosshair_type | 0             | Yes                         | Crosshair type. 0 - crosshair, 1 - T-shaped, 2 - circle, 3 - dot. |
-| cl_bob_camera | 0             | Yes                         | View origin bob, does nothing with cl_bobstyle 2. |
+| cl_bob_camera | 1             | Yes                         | View origin bob, does nothing with cl_bobstyle 2. |
 | cl_bobstyle | 0             | Yes                         | 0 for default bob, 1 for old style bob and 2 for CS:GO style bob. |
 | cl_bobamt_vert | 0\.13         | Yes                         | Vertical scale for CS:GO style bob. |
 | cl_bobamt_lat | 0\.32         | Yes                         | Lateral scale for CS:GO style bob. |
-| cl_bob_lower_amt | 8             | Yes                         | Specifies how much the viewmodel moves inwards for CS:GO style bob. |
+| cl_bob_lower_amt | 8.0           | Yes                         | Specifies how much the viewmodel moves inwards for CS:GO style bob. |
 | cl_rollangle | 0             | Yes                         | Screen roll angle when strafing or looking (Quake effect). |
-| cl_rollspeed | 200           | Yes                         | Screen roll speed when strafing or looking (Quake effect). |
+| cl_rollspeed | 200.0         | Yes                         | Screen roll speed when strafing or looking (Quake effect). |
 | viewmodel_lag_style | 0             | Yes                         | Viewmodel sway style. 0 is off, 1 is HL2 style and 2 is CS:S/CS:GO style. |
-| viewmodel_lag_scale | 0             | Yes                         | Scale of the viewmodel sway. |
-| viewmodel_lag_speed | 8             | Yes                         |  Speed of the viewmodel sway. (HL2 sway only) |
+| viewmodel_lag_scale | 1.0           | Yes                         | Scale of the viewmodel sway. |
+| viewmodel_lag_speed | 8.0           | Yes                         |  Speed of the viewmodel sway. (HL2 sway only) |
 | fov_horplus | 0             | No                          | Enables Hor+ scaling for FOV. Fixes the FOV when playing with aspect ratios besides 4:3. |
 | fov_angle | 90            | No (use ncl_setfov instead) | Min: 70<br/>Max: 100 |
 | fov_lerp | 0             | No (use ncl_setfov instead) | FOV interpolation time in seconds. |
@@ -201,6 +205,8 @@ cmake --build --preset vs2022-local-release --target BUILD_ALL
 - [MoeMod](https://github.com/MoeMod) - за проект [Thanatos-Launcher](https://github.com/MoeMod/Thanatos-Launcher), он очень помог при реализации GameUI и VGUI2
 - [tmp64](https://github.com/tmp64) - за проект [hl1_source_sdk](https://github.com/tmp64/hl1_source_sdk)
 - [TsarVar](https://tsarvar.com) - за идею JS API для gameui
+- [s1lent](https://github.com/s1lentq) - за советы, готовые фиксы и разработку спецификации [avatarid-spec](https://github.com/goldclient-plus/avatarid-spec)
+- [lozatto](https://github.com/lozatto) - за реализацию фичи Unique Machine Identifier (HWID)
 - [SanyaSho](https://github.com/SanyaSho) - за проект [BarsTech_goldsrc_compatible_public](https://github.com/SanyaSho/BarsTech_goldsrc_compatible_public), который помог с рендерингом шрифтов VGUI2
 - Valve - за Counter-Strike 1.6 и лояльное отношение к моддерскому сообществу
 

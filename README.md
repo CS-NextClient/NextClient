@@ -15,6 +15,7 @@ NextClient has integrated some features from [csldr](https://github.com/mikkokko
  - Advanced killfeed - support for advanced killfeed [regamedll](https://github.com/s1lentq/ReGameDLL_CS/pull/858), displaying kill icons: through the wall, through smoke, without aiming, jumping, dominating, etc.
  - Advanced crosshair settings - added new crosshair types: dot, T-shaped, circle
  - 2 GUI schemes with the ability to change them through the settings, and the ability to add your own schemes without deleting the old ones
+ - HTML interface support in GameUI based on CEF (Chromium Embedded Framework) with a JS API for interacting with the client
  - Display more than 255hp when using [server module](https://github.com/CS-NextClient/NextClientServerApi)
  - Display number and size of remaining files, total file size and upload speed when connected to the server
  - Color chat in console
@@ -32,6 +33,9 @@ NextClient has integrated some features from [csldr](https://github.com/mikkokko
  - Sprite API, control of sprites on the screen
  - Extended FOV message
  - Support for viewmodel effects
+ - Weapon sound replacement
+ - Mouse inversion
+ - Client verification and hardware ID (HWID) request
  - Separate precache for regular cs 1.6 client and NextClient
  - Precache of hud.txt and other standard resources
 
@@ -45,20 +49,20 @@ NextClient has integrated some features from [csldr](https://github.com/mikkokko
 | viewmodel_offset_x | 0             | Yes                         |  |
 | viewmodel_offset_y | 0             | Yes                         |  |
 | viewmodel_offset_z | 0             | Yes                         |  |
-| camera_movement_scale | 1             | Yes                         | Camera movement scale. |
+| camera_movement_scale | 1.0           | Yes                         | Camera movement scale. |
 | camera_movement_interp | 0             | Yes                         | Smooths out camera movement when switching weapons. Recommended value is 0.1. Set to 0 to disable smoothing. |
-| viewmodel_fov | 90            | No                          | Min: 70<br/>Max: 100 |
+| viewmodel_fov | 90            | Yes                         | Min: 70<br/>Max: 100 |
 | cl_crosshair_type | 0             | Yes                         | Crosshair type. 0 - crosshair, 1 - T-shaped, 2 - circle, 3 - dot. |
-| cl_bob_camera | 0             | Yes                         | View origin bob, does nothing with cl_bobstyle 2. |
+| cl_bob_camera | 1             | Yes                         | View origin bob, does nothing with cl_bobstyle 2. |
 | cl_bobstyle | 0             | Yes                         | 0 for default bob, 1 for old style bob and 2 for CS:GO style bob. |
 | cl_bobamt_vert | 0\.13         | Yes                         | Vertical scale for CS:GO style bob. |
 | cl_bobamt_lat | 0\.32         | Yes                         | Lateral scale for CS:GO style bob. |
-| cl_bob_lower_amt | 8             | Yes                         | Specifies how much the viewmodel moves inwards for CS:GO style bob. |
+| cl_bob_lower_amt | 8.0           | Yes                         | Specifies how much the viewmodel moves inwards for CS:GO style bob. |
 | cl_rollangle | 0             | Yes                         | Screen roll angle when strafing or looking (Quake effect). |
-| cl_rollspeed | 200           | Yes                         | Screen roll speed when strafing or looking (Quake effect). |
+| cl_rollspeed | 200.0         | Yes                         | Screen roll speed when strafing or looking (Quake effect). |
 | viewmodel_lag_style | 0             | Yes                         | Viewmodel sway style. 0 is off, 1 is HL2 style and 2 is CS:S/CS:GO style. |
-| viewmodel_lag_scale | 0             | Yes                         | Scale of the viewmodel sway. |
-| viewmodel_lag_speed | 8             | Yes                         |  Speed of the viewmodel sway. (HL2 sway only) |
+| viewmodel_lag_scale | 1.0           | Yes                         | Scale of the viewmodel sway. |
+| viewmodel_lag_speed | 8.0           | Yes                         |  Speed of the viewmodel sway. (HL2 sway only) |
 | fov_horplus | 0             | No                          | Enables Hor+ scaling for FOV. Fixes the FOV when playing with aspect ratios besides 4:3. |
 | fov_angle | 90            | No (use ncl_setfov instead) | Min: 70<br/>Max: 100 |
 | fov_lerp | 0             | No (use ncl_setfov instead) | FOV interpolation time in seconds. |
@@ -201,6 +205,8 @@ cmake --build --preset vs2022-local-release --target BUILD_ALL
 - [MoeMod](https://github.com/MoeMod) - for the project [Thanatos-Launcher](https://github.com/MoeMod/Thanatos-Launcher), it helped a lot when implementing GameUI and VGUI2
 - [tmp64](https://github.com/tmp64) - for the project [hl1_source_sdk](https://github.com/tmp64/hl1_source_sdk)
 - [TsarVar](https://tsarvar.com) - for the idea of a JS API for gameui
+- [s1lent](https://github.com/s1lentq) - for advice, ready-made fixes, and development of the [avatarid-spec](https://github.com/goldclient-plus/avatarid-spec) specification
+- [lozatto](https://github.com/lozatto) - for contributing the unique machine identifier (HWID) feature
 - [SanyaSho](https://github.com/SanyaSho) - for the project [BarsTech_goldsrc_compatible_public](https://github.com/SanyaSho/BarsTech_goldsrc_compatible_public), which helped with VGUI2 font rendering
 - Valve - for Counter-Strike 1.6 and loyal attitude to the modder community
 
