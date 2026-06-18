@@ -119,17 +119,18 @@ void ExceptionHandler(void* exception_pointers)
         return;
     }
 
-    // The same exception can reach this handler more than once while it propagates
-    // through the registered SEH filters; compare the faulting address to dump it only once.
-    static void* handled_exception_address = nullptr;
-    void* address = ep->ExceptionRecord ? ep->ExceptionRecord->ExceptionAddress : nullptr;
-    if (address != nullptr && address == handled_exception_address)
+    // Capture once per process. An outer engine/Steam filter can swallow a fatal fault and
+    // resume on a deterministically failing operation, re-entering this handler every iteration;
+    // the faulting address is unreliable for dedup (may be null or vary), so guard with a flag.
+    static LONG handled = 0;
+    if (InterlockedExchange(&handled, 1) != 0)
     {
         return;
     }
 
-    handled_exception_address = address;
-
+    // Order is deliberate: capture locally and report to Sentry before terminating.
+    // sentry_handle_exception captures synchronously (may not even return on the crashpad
+    // backend), so the terminate below cannot truncate the report.
     SaveCrashDump(ep);
 
 #ifdef SENTRY_ENABLE
@@ -137,4 +138,8 @@ void ExceptionHandler(void* exception_pointers)
     ucontext.exception_ptrs = *ep;
     sentry_handle_exception(&ucontext);
 #endif
+
+    // Terminate so the swallow-and-continue loop can't re-enter the same fault and keep
+    // dumping. This deliberately preempts Steam's crash handler, which NextClient doesn't use.
+    TerminateProcess(GetCurrentProcess(), ep->ExceptionRecord ? ep->ExceptionRecord->ExceptionCode : EXCEPTION_NONCONTINUABLE_EXCEPTION);
 }
