@@ -47,4 +47,4 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ github.event.release.tag_name }}
-        run: gh release upload "$TAG" "NextClient-$TAG.zip" "NextClient-$TAG-pdb.zip" --clobber
+        run: gh release upload "$TAG" "NextClient-$TAG.zip" "NextClient-$TAG-pdb.zip" --clobber --repo "$GITHUB_REPOSITORY"
