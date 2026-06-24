@@ -94,6 +94,33 @@ TEST_F(ParseCmdTest, Console_BlocksAnyCommand)
     EXPECT_EQ("", Filter("bad_cmd", CommandSource::Console));
 }
 
+TEST_F(ParseCmdTest, Stufftext_BlocksOnlyServerCommand_IgnoringCase)
+{
+    EXPECT_CALL(*logger_mock_, LogCommand(StrEq("BIND"), StrEq("x"), LogCommandType::BlockedStufftextCommand));
+
+    EXPECT_EQ("", Filter("BIND x"));
+}
+
+TEST_F(ParseCmdTest, Stufftext_BlocksOnlyServerCommand_IgnoringMixedCase)
+{
+    EXPECT_CALL(*logger_mock_, LogCommand(StrEq("BiNd"), StrEq("x"), LogCommandType::BlockedStufftextCommand));
+
+    EXPECT_EQ("", Filter("BiNd x"));
+}
+
+TEST_F(ParseCmdTest, Console_BlocksAnyCommand_IgnoringCase)
+{
+    EXPECT_CALL(*logger_mock_, LogCommand(StrEq("Bad_Cmd"), StrEq(""), LogCommandType::BlockedAllCommand));
+
+    EXPECT_EQ("", Filter("Bad_Cmd", CommandSource::Console));
+}
+
+TEST_F(ParseCmdTest, AllowedCommand_PreservesOriginalCase)
+{
+    // Case folding is for matching only: a passed-through command must keep its original case.
+    EXPECT_EQ("BiNd x", Filter("BiNd x", CommandSource::Console));
+}
+
 // ====================================
 //
 // C. Hardcoded dlfile block
@@ -135,6 +162,13 @@ TEST_F(ParseCmdTest, Dlfile_Substring_AlsoBlocked)
 
     EXPECT_EQ("", Filter("mydlfile x"));
     EXPECT_EQ("", Filter("dlfile2 x"));
+}
+
+TEST_F(ParseCmdTest, Dlfile_BlockedIgnoringCase)
+{
+    EXPECT_CALL(*logger_mock_, LogCommand(StrEq("DLFILE"), StrEq("model.mdl"), LogCommandType::BlockedStufftextCommand));
+
+    EXPECT_EQ("", Filter("DLFILE model.mdl"));
 }
 
 // ====================================

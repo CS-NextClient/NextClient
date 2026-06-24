@@ -36,7 +36,7 @@ public:
 
 private:
     std::shared_ptr<CommandLoggerInterface> cmd_logger_;
-    nitro_utils::transparent_string_map<CmdBlockType> blocked_commands_;
+    nitro_utils::transparent_string_map<CmdBlockType, nitro_utils::StringCase::Insensitive> blocked_commands_;
 
 public:
     explicit CmdChecker(
