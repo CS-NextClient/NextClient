@@ -63,40 +63,47 @@ namespace taskcoro
 
         auto result_promise = std::make_shared<concurrencpp::result_promise<TResult>>();
 
-        auto bound_call = [task_type,
-                           func = std::decay_t<TCallable>(std::forward<TCallable>(callable)),
-                           ...xs = std::unwrap_ref_decay_t<TArgs>(std::forward<TArgs>(arguments))]
-        () mutable -> TResult
-        {
-            if (SynchronizationContext::Current() == nullptr && task_type != TaskType::NewThread)
-            {
-                auto ctx_impl = task_impl_->CreateSynchronizationContext(task_type, std::this_thread::get_id());
-                SynchronizationContext::SetCurrent(std::make_shared<SynchronizationContext>(ctx_impl));
-            }
-
-            if constexpr (std::is_void_v<TResult>)
-            {
-                std::invoke(std::move(func), std::forward_like<TArgs>(xs)...);
-                return;
-            }
-            else
-            {
-                return std::invoke(std::move(func), std::forward_like<TArgs>(xs)...);
-            }
-        };
-
-        auto task_lambda = [result_promise, bound = std::move(bound_call)]() mutable
+        auto task_lambda = [result_promise,
+                            task_type,
+                            func = std::decay_t<TCallable>(std::forward<TCallable>(callable)),
+                            ...xs = std::unwrap_ref_decay_t<TArgs>(std::forward<TArgs>(arguments))]
+        () mutable
         {
             try
             {
+                if (SynchronizationContext::Current() == nullptr && task_type != TaskType::NewThread)
+                {
+                    auto ctx_impl = task_impl_->CreateSynchronizationContext(task_type, std::this_thread::get_id());
+                    SynchronizationContext::SetCurrent(std::make_shared<SynchronizationContext>(ctx_impl));
+                }
+
                 if constexpr (std::is_void_v<TResult>)
                 {
-                    bound();
+                    std::invoke(std::move(func), std::forward_like<TArgs>(xs)...);
                     result_promise->set_result();
+                }
+                else if constexpr (is_coro_result)
+                {
+                    // A coroutine frame stores only a pointer to its lambda's closure, not a copy; if `func`
+                    // were destroyed when this lambda returns (the user coroutine's first suspension), a
+                    // capturing coroutine lambda's captures would dangle. Holding func/xs as wrapper-coroutine
+                    // parameters keeps them alive until the awaited user coroutine completes.
+                    result_promise->set_result(
+                        [](std::decay_t<TCallable> held_func, std::unwrap_ref_decay_t<TArgs>... held_xs) -> TResult
+                        {
+                            if constexpr (std::is_void_v<TUnwrapped>)
+                            {
+                                co_await std::invoke(std::move(held_func), std::move(held_xs)...);
+                            }
+                            else
+                            {
+                                co_return co_await std::invoke(std::move(held_func), std::move(held_xs)...);
+                            }
+                        }(std::move(func), std::move(xs)...));
                 }
                 else
                 {
-                    result_promise->set_result(bound());
+                    result_promise->set_result(std::invoke(std::move(func), std::forward_like<TArgs>(xs)...));
                 }
             }
             catch (...)

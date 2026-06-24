@@ -4,6 +4,7 @@
 
 #include <magic_enum/magic_enum.hpp>
 
+#include <taskcoro/SynchronizationContext.h>
 #include <taskcoro/impl/SynchronizationContextImpl.h>
 #include <taskcoro/exceptions/TaskCoroRuntimeException.h>
 #include <taskcoro/exceptions/TaskCoroShutdownException.h>
@@ -14,11 +15,47 @@ TaskCoroImpl::TaskCoroImpl(std::thread::id main_thread_id, bool is_main_thead_av
     main_thread_id_(main_thread_id),
     is_main_thead_available_(is_main_thead_available)
 {
-    ccruntime_ = std::make_unique<concurrencpp::runtime>();
+    concurrencpp::runtime_options options;
+    options.thread_started_callback = [this](std::string_view thread_name)
+    {
+        EstablishWorkerContext(thread_name);
+    };
+
+    ccruntime_ = std::make_unique<concurrencpp::runtime>(options);
     update_executor_ = ccruntime_->make_manual_executor();
     thread_executor_ = ccruntime_->thread_executor();
     thread_pool_executor_ = ccruntime_->thread_pool_executor();
     thread_pool_io_executor_ = ccruntime_->background_executor();
+}
+
+void TaskCoroImpl::EstablishWorkerContext(std::string_view thread_name)
+{
+    if (SynchronizationContext::Current() != nullptr)
+    {
+        return;
+    }
+
+    // These are concurrencpp's internal worker-thread names (executor name + " worker", see
+    // details::make_executor_worker_name); they are not a public API. If concurrencpp is upgraded
+    // (currently pinned to 0.1.7) and renames its workers, the context silently stops being
+    // established here and pool/IO continuations regress to no switch-back.
+    TaskType task_type{};
+    if (thread_name == "concurrencpp::thread_pool_executor worker")
+    {
+        task_type = TaskType::ThreadPool;
+    }
+    else if (thread_name == "concurrencpp::background_executor worker")
+    {
+        task_type = TaskType::IO;
+    }
+    else
+    {
+        // thread_executor (NewThread) and timer workers intentionally keep no context.
+        return;
+    }
+
+    auto ctx_impl = CreateSynchronizationContext(task_type, std::this_thread::get_id());
+    SynchronizationContext::SetCurrent(std::make_shared<SynchronizationContext>(ctx_impl));
 }
 
 TaskCoroImpl::~TaskCoroImpl()

@@ -1,5 +1,6 @@
 #pragma once
 #include <chrono>
+#include <string_view>
 
 #include <concurrencpp/concurrencpp.h>
 
@@ -21,7 +22,6 @@ namespace taskcoro
 
     public:
         explicit TaskCoroImpl(std::thread::id main_thread_id, bool is_main_thead_available = true);
-        explicit TaskCoroImpl();
         ~TaskCoroImpl() override;
 
         bool IsMainThread() override;
@@ -38,5 +38,6 @@ namespace taskcoro
 
     private:
         std::shared_ptr<concurrencpp::executor> GetExecutorByTaskType(TaskType task_type) const;
+        void EstablishWorkerContext(std::string_view thread_name);
     };
 }
