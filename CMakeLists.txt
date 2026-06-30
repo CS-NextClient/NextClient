@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.21)
-project(NextClient VERSION 2.5.2)
+project(NextClient VERSION 2.5.3)
 
 set(NEXTCLIENT_ROOT ${CMAKE_CURRENT_SOURCE_DIR})
 
