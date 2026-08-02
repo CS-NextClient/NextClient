@@ -3,6 +3,7 @@
 #include <optick.h>
 
 #include <model.h>
+#include <ncl_studio/StudioValidate.h>
 #include <studio.h>
 
 #include "console/console.h"
@@ -292,12 +293,25 @@ void Mod_LoadSpriteModel(model_t *mod, void *buffer)
 	}
 }
 
-void Mod_LoadStudioModel(model_t* mod, void* buffer)
+void Mod_LoadStudioModel(model_t* mod, void* buffer, int file_length)
 {
     OPTICK_EVENT();
 
     studiohdr_t* phdr = (studiohdr_t*) buffer;
-    if (LittleLong(phdr->version) != STUDIO_VERSION)
+
+    // The file length is the only bound in the process that is not itself taken from the
+    // file, and every reader downstream works from the truncated cache block without any
+    // way to tell how far it goes. A model that does not hold together is turned into the
+    // same empty stub an unsupported version already produces, so the failure is one the
+    // rest of the engine already knows how to carry.
+    ncl_utils::Result<> valid = ncl_studio::ValidateStudioFile(buffer, (size_t)file_length);
+
+    if (valid.has_error())
+    {
+        Con_Printf("Mod_LoadStudioModel: %s: %s\n", mod->name, valid.error_str().c_str());
+    }
+
+    if (LittleLong(phdr->version) != STUDIO_VERSION || valid.has_error())
     {
         Q_memset(phdr, 0, 244u);
         Q_strcpy(phdr->name, "bogus");
@@ -421,7 +435,7 @@ model_t* Mod_LoadModel(model_t* mod, qboolean crash, qboolean trackCRC)
             Mod_LoadSpriteModel(mod, buf);
             break;
         case IDSTUDIOHEADER:
-            Mod_LoadStudioModel(mod, buf);
+            Mod_LoadStudioModel(mod, buf, length);
             break;
         case Q1BSP_VERSION:
         case HLBSP_VERSION:

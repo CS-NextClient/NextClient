@@ -1,0 +1,96 @@
+{
+  "version": 1,
+  "program": "weapon_finish",
+  "parameters": {
+    "uPattern": { "type": "texture", "label": "#ncl_mat_pattern", "hint": "#ncl_mat_pattern_hint" },
+    "uUnderlay": { "type": "texture", "label": "#ncl_mat_underlay", "hint": "#ncl_mat_underlay_hint" },
+    "uWearMap": { "type": "texture", "label": "#ncl_mat_wear_map", "hint": "#ncl_mat_wear_map_hint" },
+    "uSphereMap": { "type": "texture", "label": "#ncl_mat_sphere_map", "hint": "#ncl_mat_sphere_map_hint" },
+    "uReflectMask": { "type": "texture", "label": "#ncl_mat_reflect_mask", "hint": "#ncl_mat_reflect_mask_hint" },
+
+    "uBaseTint": {
+      "type": "vec4", "default": [1.0, 1.0, 1.0, 1.0], "widget": "color", "min": 0.0, "max": 1.0,
+      "label": "#ncl_mat_base_tint", "hint": "#ncl_mat_base_tint_hint"
+    },
+    "uPatternTint": {
+      "type": "vec4", "default": [1.0, 1.0, 1.0, 1.0], "widget": "color", "min": 0.0, "max": 1.0,
+      "label": "#ncl_mat_pattern_tint", "hint": "#ncl_mat_pattern_tint_hint"
+    },
+    "uUnderlayTint": {
+      "type": "vec4", "default": [1.0, 1.0, 1.0, 1.0], "widget": "color", "min": 0.0, "max": 1.0,
+      "label": "#ncl_mat_underlay_tint", "hint": "#ncl_mat_underlay_tint_hint"
+    },
+    "uPatternTransform": {
+      "type": "vec4", "default": [1.0, 1.0, 0.0, 0.0],
+      "label": "#ncl_mat_pattern_transform", "hint": "#ncl_mat_placement_hint"
+    },
+    "uWearMapTransform": {
+      "type": "vec4", "default": [1.0, 1.0, 0.0, 0.0],
+      "label": "#ncl_mat_wear_map_transform", "hint": "#ncl_mat_placement_hint"
+    },
+    "uUnderlayTransform": {
+      "type": "vec4", "default": [1.0, 1.0, 0.0, 0.0],
+      "label": "#ncl_mat_underlay_transform", "hint": "#ncl_mat_placement_hint"
+    },
+    "uReflectTint": {
+      "type": "vec4", "default": [1.0, 1.0, 1.0, 1.0], "widget": "color", "min": 0.0, "max": 1.0,
+      "label": "#ncl_mat_reflect_tint", "hint": "#ncl_mat_reflect_tint_hint"
+    },
+    "uReflectMaskTransform": {
+      "type": "vec4", "default": [1.0, 1.0, 0.0, 0.0],
+      "label": "#ncl_mat_reflect_mask_transform", "hint": "#ncl_mat_placement_hint"
+    },
+
+    "uLayerMix": {
+      "type": "scalar", "instance": true, "quantum": 0.03125, "default": 0.0, "min": 0.0, "max": 1.0,
+      "label": "#ncl_mat_layer_mix", "hint": "#ncl_mat_layer_mix_hint"
+    },
+    "uWear": {
+      "type": "scalar", "instance": true, "quantum": 0.03125, "default": 0.0, "min": 0.0, "max": 1.0,
+      "label": "#ncl_mat_wear", "hint": "#ncl_mat_wear_hint"
+    },
+    "uWearSoftness": {
+      "type": "scalar", "default": 0.08, "min": 0.001, "max": 0.5,
+      "label": "#ncl_mat_wear_softness", "hint": "#ncl_mat_wear_softness_hint"
+    },
+    "uReflectivity": {
+      "type": "scalar", "default": 0.0, "min": 0.0, "max": 4.0,
+      "label": "#ncl_mat_reflectivity", "hint": "#ncl_mat_reflectivity_hint"
+    },
+    "uReflectWear": {
+      "type": "scalar", "default": 0.0, "min": -1.0, "max": 1.0,
+      "label": "#ncl_mat_reflect_wear", "hint": "#ncl_mat_reflect_wear_hint"
+    },
+    "uSpecular": {
+      "type": "scalar", "default": 0.0, "min": 0.0, "max": 4.0,
+      "label": "#ncl_mat_specular", "hint": "#ncl_mat_specular_hint"
+    },
+    "uGloss": {
+      "type": "scalar", "default": 32.0, "min": 1.0, "max": 256.0,
+      "label": "#ncl_mat_gloss", "hint": "#ncl_mat_gloss_hint"
+    }
+  },
+  "groups": [
+    { "name": "base", "label": "#ncl_mat_group_base", "params": ["uBaseTint"] },
+    {
+      "name": "pattern", "label": "#ncl_mat_group_pattern",
+      "params": ["uPattern", "uPatternTint", "uPatternTransform", "uLayerMix"]
+    },
+    {
+      "name": "wear", "label": "#ncl_mat_group_wear",
+      "params": ["uWearMap", "uWearMapTransform", "uWear", "uWearSoftness"]
+    },
+    {
+      "name": "underlay", "label": "#ncl_mat_group_underlay",
+      "params": ["uUnderlay", "uUnderlayTint", "uUnderlayTransform"]
+    },
+    {
+      "name": "highlight", "label": "#ncl_mat_group_highlight",
+      "params": [
+        "uReflectMask", "uReflectMaskTransform", "uReflectTint", "uReflectWear",
+        "uSpecular", "uGloss", "uSphereMap", "uReflectivity"
+      ]
+    }
+  ],
+  "overlays": { "max": 4 }
+}

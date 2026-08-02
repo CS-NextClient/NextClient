@@ -4,6 +4,7 @@
 #include <Windows.h>
 #include <common/cvar.h>
 #include <glad/glad.h>
+#include "graphics/render/RenderDevice.h"
 
 #include "common/cmd.h"
 #include "common/sys_dll.h"
@@ -11,6 +12,8 @@
 #include "graphics/detailtexture.h"
 #include "graphics/gl_local.h"
 #include "graphics/gl_draw.h"
+#include "graphics/render/RenderDebug.h"
+#include "graphics/render/StudioDraw.h"
 
 static bool g_DisableMultitexture;
 
@@ -144,6 +147,24 @@ void GL_SetMode_Subscriber(void* mainwindow, HDC* pmaindc, HGLRC* pbaseRC, const
     QGL_Init();
 
     gl_extensions = (const char*)qglGetString(GL_EXTENSIONS);
+
+    render::Device_OnContextCreated();
+
+    // Applied here rather than inside the device registry: which debug output the driver
+    // should report is this module's policy, not the registry's.
+    if (render::Device_Available())
+    {
+        render::Debug_Apply();
+
+        // Here rather than on the first draw: a compile takes long enough to be seen as a
+        // freeze mid-game, and this runs while the game is starting up anyway. Read from
+        // the raw command line because no cvar exists yet at this point, and the flag is
+        // the escape hatch for a driver whose GLSL compiler cannot survive the build.
+        if (strstr(GetCommandLineA(), "-noshaderwarmup") == nullptr)
+        {
+            render::Studio_WarmPrograms();
+        }
+    }
 }
 
 void GL_Config()

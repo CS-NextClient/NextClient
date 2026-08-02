@@ -13,6 +13,7 @@
 #include <taskcoro/TaskCoro.h>
 #include <taskcoro/impl/TaskCoroImpl.h>
 #include <tier2/tier2.h>
+#include "graphics/render/RenderDevice.h"
 
 #include "common/common.h"
 #include "common/net_chan.h"
@@ -23,6 +24,8 @@
 #include "graphics/gl_local.h"
 #include "graphics/detailtexture.h"
 #include "graphics/color_scheme.h"
+#include "graphics/render/RenderOverlay.h"
+#include "graphics/render/StudioIntercept.h"
 #include "graphics/text/text_render.h"
 #include "client/client.h"
 #include "client/cl_main.h"
@@ -31,10 +34,13 @@
 #include "client/ncl_entity/cl_ncl_entity_sync.h"
 #include "client/ncl_entity/cl_ncl_entity_sync_overlay.h"
 #include "client/ncl_entity/WeaponSyncSystem.h"
+#include "client/ncl_entity/MaterialSyncSystem.h"
 #include "client/cl_private_resources.h"
 #include "client/cl_parsefn.h"
 #include "client/cl_game.h"
 #include "client/cl_string_registry.h"
+#include "graphics/render/MaterialEdit.h"
+#include "graphics/render/ServerMaterials.h"
 #include "binding/jsapi/jsapi.h"
 #include "common/cvar.h"
 #include "console/console.h"
@@ -103,9 +109,11 @@ int* p_cl_numvisedicts;
 cl_entity_t** p_cl_visedicts;
 qboolean* p_isFogEnabled;
 refdef_t* r_refdef;
+float* p_scr_fov_value;
 float* p_g_SND_VoiceOverdrive;
 int* p_cszrawsentences;
 char *(*p_rgpszrawsentence)[CVOXFILESENTENCEMAX];
+dlight_t (*p_cl_elights)[kMaxElights];
 float* p_scr_con_current;
 keydest_t* p_key_dest;
 sfx_t** p_known_sfx;
@@ -221,6 +229,7 @@ static void EngineMiniUninitialize()
     p_g_SND_VoiceOverdrive = nullptr;
     p_cszrawsentences = nullptr;
     p_rgpszrawsentence = nullptr;
+    p_cl_elights = nullptr;
     p_scr_con_current = nullptr;
     p_key_dest = nullptr;
     p_known_sfx = nullptr;
@@ -293,6 +302,14 @@ static void OnGameUninitializing()
     CL_StringRegistryShutdown();
     CL_NclEntitySyncOverlayShutdown();
     CL_NclEntitySyncShutdown();
+
+    // Before the unsubscribe loop, and not from the Draw_Shutdown hook, which is one of the
+    // hooks that loop detaches: this runs from a Host_Shutdown pre-hook, so by the time the
+    // engine reaches Draw_Shutdown the lambda is gone. The GL context is still current here,
+    // which is what both of these require.
+    render::Studio_Shutdown();
+    render::Device_OnContextDestroyed();
+    TextRender_ReleaseGl();
 
     for (auto &unsubscriber : g_Unsubs)
         unsubscriber->Unsubscribe();
@@ -373,9 +390,11 @@ static void OnGameInitializing(void* mainwindow, HDC* pmaindc, HGLRC* pbaseRC, c
     v.Assign(p_cl_visedicts, GET_VARIABLE_NAME(p_cl_visedicts), eng()->cl_visedicts);
     v.Assign(p_isFogEnabled, GET_VARIABLE_NAME(p_isFogEnabled), eng()->isFogEnabled);
     v.Assign(r_refdef, GET_VARIABLE_NAME(p_r_refdef), eng()->r_refdef);
+    v.Assign(p_scr_fov_value, GET_VARIABLE_NAME(p_scr_fov_value), eng()->scr_fov_value);
     v.Assign(p_g_SND_VoiceOverdrive, GET_VARIABLE_NAME(p_g_SND_VoiceOverdrive), eng()->g_SND_VoiceOverdrive);
     v.Assign(p_cszrawsentences, GET_VARIABLE_NAME(p_cszrawsentences), eng()->cszrawsentences);
     v.Assign(p_rgpszrawsentence, GET_VARIABLE_NAME(p_rgpszrawsentence), eng()->rgpszrawsentence);
+    v.Assign(p_cl_elights, GET_VARIABLE_NAME(p_cl_elights), eng()->cl_elights);
     v.Assign(p_scr_con_current, GET_VARIABLE_NAME(p_scr_con_current), eng()->scr_con_current);
     v.Assign(scr_downloading, GET_VARIABLE_NAME(scr_downloading), eng()->scr_downloading);
     v.Assign(p_cl_entities, GET_VARIABLE_NAME(p_cl_entities), eng()->cl_entities);
@@ -455,7 +474,7 @@ static void OnGameInitializing(void* mainwindow, HDC* pmaindc, HGLRC* pbaseRC, c
     g_Unsubs.emplace_back(eng()->GL_UnloadTexture            |= [](const char* identifier, const auto& next)                           { GL_UnloadTexture(identifier); });
     g_Unsubs.emplace_back(eng()->GL_Bind                     |= [](int texnum, const auto& next)                                       { GL_Bind(texnum); });
     g_Unsubs.emplace_back(eng()->Draw_Init                   |= [](const auto& next)                                                   { Draw_Init(); });
-    g_Unsubs.emplace_back(eng()->Draw_Shutdown               |= [](const auto& next)                                                   { TextRender_ReleaseGl(); Draw_Shutdown(); });
+    g_Unsubs.emplace_back(eng()->Draw_Shutdown               |= [](const auto& next)                                                   { render::Device_OnContextDestroyed(); TextRender_ReleaseGl(); Draw_Shutdown(); });
     g_Unsubs.emplace_back(eng()->Draw_PicFromWad             |= [](const char* name, const auto& next)                                 { return Draw_PicFromWad(name); });
     g_Unsubs.emplace_back(eng()->V_UpdatePalette             |= [](const auto& next)                                                   { V_UpdatePalette(); });
     g_Unsubs.emplace_back(eng()->V_CheckGamma                |= [](const auto& next)                                                   { return V_CheckGamma(); });
@@ -545,8 +564,21 @@ static void OnGameInitializing(void* mainwindow, HDC* pmaindc, HGLRC* pbaseRC, c
         }
     });
 
+    // Runs before the client copies the table into its own renderer, which is the only
+    // moment the geometry submission stage can be redirected.
+    g_Unsubs.emplace_back(client()->HUD_GetStudioModelInterface |= [](int version, struct r_studio_interface_s **ppinterface, struct engine_studio_api_s *pstudio, const auto& next) {
+        render::Studio_PatchApi(pstudio);
+        return next->Invoke(version, ppinterface, pstudio);
+    });
+
     g_Unsubs.emplace_back(client()->HUD_GetStudioModelInterface += [](int version, struct r_studio_interface_s **ppinterface, struct engine_studio_api_s *pstudio, int result) {
         pStudioAPI = *ppinterface;
+    });
+
+    // Drawn from the HUD pass, where the 2D projection the overlay needs is already set
+    // up, and after the studio stage has run for this frame.
+    g_Unsubs.emplace_back(client()->HUD_Redraw += [](float time, int intermission, int result) {
+        render::Overlay_Draw();
     });
 
     g_Unsubs.emplace_back(eng()->Host_FrameInternal += [](float delta) {
@@ -614,6 +646,7 @@ static void OnGameInitialized()
     CL_NclEntitySyncInit();
     CL_NclEntitySyncRegisterType(static_cast<uint8_t>(ncl_entity::EntityTypeId::Player), std::make_unique<PlayerSyncSystem>());
     CL_NclEntitySyncRegisterType(static_cast<uint8_t>(ncl_entity::EntityTypeId::Weapon), std::make_unique<WeaponSyncSystem>());
+    CL_NclEntitySyncRegisterType(static_cast<uint8_t>(ncl_entity::EntityTypeId::Material), std::make_unique<MaterialSyncSystem>());
     CL_NclEntitySyncOverlayInit();
     PROTECTOR_Init(g_SettingGuard);
 }
@@ -718,6 +751,11 @@ public:
     TextRenderInterface* GetTextRender() override
     {
         return TextRender_Get();
+    }
+
+    MaterialEditInterface* GetMaterialEdit() override
+    {
+        return render::MaterialEdit_Get();
     }
 };
 

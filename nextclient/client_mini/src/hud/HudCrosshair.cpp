@@ -2,6 +2,7 @@
 #include "weapontype.h"
 #include "../shared_util.h"
 #include "../main.h"
+#include "../material_preview.h"
 
 HudCrosshair::HudCrosshair(nitroapi::NitroApiInterface *nitro_api) :
     nitroapi::NitroApiHelper(nitro_api),
@@ -39,6 +40,13 @@ void HudCrosshair::VidInit()
     m_iCrosshairScaleBase = 0;
     m_szLastCrosshairColor[0] = '\0';
     m_szLastCrosshairSize[0] = '\0';
+}
+
+// The middle of what the world is drawn into, which stops being the middle of the screen
+// the moment a docked panel takes part of the frame.
+int HudCrosshair::CenterX() const
+{
+    return (screeninfo_.iWidth - MaterialPreview_ViewportInset()) / 2;
 }
 
 void HudCrosshair::DrawCrosshair(float flTime, int weaponid)
@@ -428,27 +436,27 @@ void HudCrosshair::DrawCrosshairEx(int iBarSize, float flCrosshairDistance, bool
         {
             int size = sqrt((radius * radius) - (float)(i * i));
 
-            pfnFillRGBA((screeninfo_.iWidth / 2) + i, (screeninfo_.iHeight / 2) + size, 1, 1, r, g, b, a);
-            pfnFillRGBA((screeninfo_.iWidth / 2) + i, (screeninfo_.iHeight / 2) - size, 1, 1, r, g, b, a);
-            pfnFillRGBA((screeninfo_.iWidth / 2) - i, (screeninfo_.iHeight / 2) + size, 1, 1, r, g, b, a);
-            pfnFillRGBA((screeninfo_.iWidth / 2) - i, (screeninfo_.iHeight / 2) - size, 1, 1, r, g, b, a);
-            pfnFillRGBA((screeninfo_.iWidth / 2) + size, (screeninfo_.iHeight / 2) + i, 1, 1, r, g, b, a);
-            pfnFillRGBA((screeninfo_.iWidth / 2) + size, (screeninfo_.iHeight / 2) - i, 1, 1, r, g, b, a);
-            pfnFillRGBA((screeninfo_.iWidth / 2) - size, (screeninfo_.iHeight / 2) + i, 1, 1, r, g, b, a);
-            pfnFillRGBA((screeninfo_.iWidth / 2) - size, (screeninfo_.iHeight / 2) - i, 1, 1, r, g, b, a);
+            pfnFillRGBA((CenterX()) + i, (screeninfo_.iHeight / 2) + size, 1, 1, r, g, b, a);
+            pfnFillRGBA((CenterX()) + i, (screeninfo_.iHeight / 2) - size, 1, 1, r, g, b, a);
+            pfnFillRGBA((CenterX()) - i, (screeninfo_.iHeight / 2) + size, 1, 1, r, g, b, a);
+            pfnFillRGBA((CenterX()) - i, (screeninfo_.iHeight / 2) - size, 1, 1, r, g, b, a);
+            pfnFillRGBA((CenterX()) + size, (screeninfo_.iHeight / 2) + i, 1, 1, r, g, b, a);
+            pfnFillRGBA((CenterX()) + size, (screeninfo_.iHeight / 2) - i, 1, 1, r, g, b, a);
+            pfnFillRGBA((CenterX()) - size, (screeninfo_.iHeight / 2) + i, 1, 1, r, g, b, a);
+            pfnFillRGBA((CenterX()) - size, (screeninfo_.iHeight / 2) - i, 1, 1, r, g, b, a);
         }
     }
     else if (eCrosshairType == CrossHairType::Cross || eCrosshairType == CrossHairType::T)
     {
-        pfnFillRGBA((screeninfo_.iWidth / 2) + (int)flCrosshairDistance, screeninfo_.iHeight / 2, iBarSize, 1, r, g, b, a);
-        pfnFillRGBA((screeninfo_.iWidth / 2) - (int)flCrosshairDistance - iBarSize + 1, screeninfo_.iHeight / 2, iBarSize, 1, r, g, b, a);
-        pfnFillRGBA(screeninfo_.iWidth / 2, (screeninfo_.iHeight / 2) + (int)flCrosshairDistance, 1, iBarSize, r, g, b, a);
+        pfnFillRGBA((CenterX()) + (int)flCrosshairDistance, screeninfo_.iHeight / 2, iBarSize, 1, r, g, b, a);
+        pfnFillRGBA((CenterX()) - (int)flCrosshairDistance - iBarSize + 1, screeninfo_.iHeight / 2, iBarSize, 1, r, g, b, a);
+        pfnFillRGBA(CenterX(), (screeninfo_.iHeight / 2) + (int)flCrosshairDistance, 1, iBarSize, r, g, b, a);
         if (eCrosshairType != CrossHairType::T)
-            pfnFillRGBA(screeninfo_.iWidth / 2, (screeninfo_.iHeight / 2) - (int)flCrosshairDistance - iBarSize + 1, 1, iBarSize, r, g, b, a);
+            pfnFillRGBA(CenterX(), (screeninfo_.iHeight / 2) - (int)flCrosshairDistance - iBarSize + 1, 1, iBarSize, r, g, b, a);
 
     }
     else if (eCrosshairType == CrossHairType::Dot)
     {
-        pfnFillRGBA((screeninfo_.iWidth / 2) - 1, (screeninfo_.iHeight / 2) - 1, 3, 3, r, g, b, a);
+        pfnFillRGBA((CenterX()) - 1, (screeninfo_.iHeight / 2) - 1, 3, 3, r, g, b, a);
     }
 }

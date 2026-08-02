@@ -67,9 +67,23 @@ extern int* p_cl_numvisedicts;
 extern cl_entity_t** p_cl_visedicts;
 extern qboolean* p_isFogEnabled;
 extern refdef_t* r_refdef;
+extern float* p_scr_fov_value;
 extern float* p_g_SND_VoiceOverdrive;
 extern int* p_cszrawsentences;
 extern char *(*p_rgpszrawsentence)[CVOXFILESENTENCEMAX];
+
+// The engine's own ceiling, read off the loop in R_StudioEntityLight rather than out of a
+// header: the SDK does not carry it.
+inline constexpr int kMaxElights = 64;
+extern dlight_t (*p_cl_elights)[kMaxElights];
+
+// One rule for what the renderer counts as a live light, so that the diagnostics which
+// describe a frame and the code that drew it cannot disagree about which lights were in
+// it.
+inline bool Elight_Alive(const dlight_t& light)
+{
+    return light.die > cl->time && light.radius > 0.0f;
+}
 extern float* p_scr_con_current;
 extern keydest_t* p_key_dest;
 extern sfx_t** p_known_sfx;

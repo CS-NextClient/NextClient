@@ -5,6 +5,14 @@
 
 #include "gl_local.h"
 #include "gl_draw.h"
+#include "render/MaterialEdit.h"
+#include "render/MaterialTextures.h"
+#include "render/RenderCapture.h"
+#include "render/RenderTest.h"
+#include "render/StudioDraw.h"
+#include "render/StudioDump.h"
+#include "render/StudioGeometry.h"
+#include "render/StudioIntercept.h"
 #include "ViewmodelFrustumCalculator.h"
 #include "console/console.h"
 #include "common/sys_dll.h"
@@ -163,6 +171,12 @@ void R_NewMap()
         *eng()->gLoadSky = TRUE;
     }
 
+    // The engine reuses its model slots across maps, so cached studio geometry keyed by
+    // a model would otherwise survive into a map that loaded different models.
+    render::Studio_ForgetModel();
+    render::Geometry_Clear();
+    render::MaterialTextures_Clear();
+
     eng()->R_NewMap.InvokeChained();
 }
 
@@ -226,6 +240,11 @@ void R_DrawViewModel()
 {
     OPTICK_EVENT();
 
+    // After R_PreDrawViewModel, which is where the engine puts its own animation back on the
+    // weapon, and before the draw that reads it.
+    render::MaterialEdit_ApplyViewmodel(&cl->viewent, cl->time);
+    render::MaterialEdit_NoteViewmodel(&cl->viewent, cl->time);
+
     eng()->R_DrawViewModel.InvokeChained();
 }
 
@@ -239,6 +258,19 @@ void R_PolyBlend()
 void R_PreDrawViewModel()
 {
     OPTICK_EVENT();
+
+    // The engine's pass puts its own animation back on the weapon and poses it once with
+    // that, which is exactly what the panel is being asked to override. Skipped rather than
+    // undone: undoing it afterwards still leaves the renderer having seen both.
+    //
+    // What is given up while the panel drives the weapon is the firing of animation events
+    // and the seeding of attachment points - neither of which an author scrubbing through a
+    // reload wants anyway.
+    if (render::MaterialEdit_DrivesViewmodel())
+    {
+        render::MaterialEdit_ApplyViewmodel(&cl->viewent, cl->time);
+        return;
+    }
 
     eng()->R_PreDrawViewModel.InvokeChained();
 }
@@ -496,6 +528,25 @@ void R_RenderView()
     }
 
     *p_mirror = false;
+
+    // Narrowed before anything is drawn and left alone afterwards: the screen rectangle is
+    // recomputed from scratch every frame, so this holds for exactly the frame it was asked
+    // for. Everything downstream - the viewport, the aspect and the vertical fov - is
+    // derived from this rectangle by the engine, so the view is not stretched, it is
+    // smaller.
+    int inset = render::MaterialEdit_ViewportInset(r_refdef->vrect.width);
+    render::MaterialEdit_SetAppliedInset(inset);
+
+    if (inset > 0)
+    {
+        r_refdef->vrect.width -= inset;
+
+        // Nothing draws over the strip the world no longer reaches, and the panel does not
+        // cover all of it, so without this it keeps whatever was last drawn there.
+        qglClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+        qglClear(GL_COLOR_BUFFER_BIT);
+    }
+
     R_Clear();
     if (!r_refdef->onlyClientDraws)
         R_PreDrawViewModel();
@@ -510,6 +561,11 @@ void R_RenderView()
 
         R_PolyBlend();
     }
+
+    render::Studio_DiscardPending();
+    render::Test_Draw();
+    render::Dump_OnSceneEnd();
+    render::Capture_OnSceneEnd();
 
     S_ExtraUpdate();
 

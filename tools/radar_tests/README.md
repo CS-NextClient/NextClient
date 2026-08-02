@@ -38,6 +38,11 @@ heatmap (`--out`) showing where pixels changed. Use `--region X,Y,W,H` to
 restrict the comparison to the radar box, `--tol` / `--fail-frac` to adjust
 sensitivity. Requires `pillow` and `numpy`.
 
+`--clusters` adds a second verdict for the case the fraction cannot decide: it
+groups the differing pixels by the tiles they fill densely and fails on a group
+that is both dense and one-sided, whatever the fraction says. A defect of that
+shape passed a fraction limit once, on the studio shader path.
+
 For multi-resolution coverage, capture a golden per target resolution
 (`..._1920x1080.tga`, `..._1280x1024.tga`, ...) and diff each against a check
 captured at the matching resolution.

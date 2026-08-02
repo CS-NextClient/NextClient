@@ -28,6 +28,8 @@
 #include "GameConsole.h"
 #include "LoadingDialog.h"
 #include "DemoPlayerDialog.h"
+#include "Controls/ImageFilePanel.h"
+#include "MaterialEditDialog.h"
 #include "OptionsDialog/HudRadarDialog.h"
 #include "OptionsSubMiscellaneous.h"
 #include "IClientVGUI.h"
@@ -51,6 +53,7 @@ static IGameClientExports* g_pGameClientExports = nullptr;
 static EngineMiniInterface* g_pEngineMini = nullptr;
 static vgui2::DHANDLE<CDemoPlayerDialog> g_hDemoPlayerDialog;
 static vgui2::DHANDLE<CHudRadarDialog> g_hHudRadarDialog;
+static vgui2::DHANDLE<CMaterialEditDialog> g_hMaterialEditDialog;
 vgui2::DHANDLE<CLoadingDialog> g_hLoadingDialog;
 
 void CGameUI::OpenHudRadarDialog()
@@ -77,6 +80,29 @@ void CGameUI::OpenHudRadarDialog()
         g_hHudRadarDialog->RequestFocus();
     }
 }
+void CGameUI::OpenMaterialEditDialog()
+{
+    // Over the running game only: the panel judges a material on the model in front of the
+    // author, and from the menu there is no model and no lighting to judge it in.
+    if (!IsInLevel())
+    {
+        engine->pfnConsolePrint("r_mat_panel: only in a level, the panel edits what you are looking at\n");
+        return;
+    }
+
+    if (!g_hMaterialEditDialog.Get())
+    {
+        g_hMaterialEditDialog = new CMaterialEditDialog(BasePanel());
+    }
+
+    BeginPanelOverGame(g_hMaterialEditDialog.Get());
+
+    g_hMaterialEditDialog->Activate();
+    g_hMaterialEditDialog->SetVisible(true);
+    g_hMaterialEditDialog->MoveToFront();
+    g_hMaterialEditDialog->RequestFocus();
+}
+
 static CGameUI g_GameUI;
 static HWND g_MainWindow = nullptr;
 static WNDPROC g_MainWindowProc = nullptr;
@@ -240,6 +266,11 @@ void CGameUI::Start(cl_enginefuncs_s *engineFuncs, int interfaceVersion, void *s
         g_pServerBrowser->ActiveGameName(ModInfo().GetGameDescription(), engine->pfnGetGameDirectory());
         g_pServerBrowser->Reactivate();
     }
+
+    // Registered here rather than later: the engine refuses a command once the host is
+    // initialised, and GameUI::Start runs before that.
+    engine->pfnAddCommand("r_mat_panel", []() { GameUI().OpenMaterialEditDialog(); });
+    engine->pfnAddCommand("r_mat_images", []() { ImageFilePanel_Report(); });
 
     RegisterCommonJsApi(engineFuncs);
     RegisterMatchmakingJsApi();

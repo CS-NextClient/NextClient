@@ -60,6 +60,10 @@ public:
     // Options button (there is no console command for it).
     void OpenHudRadarDialog();
 
+    // Opens the material editor over the running game. Only useful in a level, because it
+    // edits the material of a model the author is looking at.
+    void OpenMaterialEditDialog();
+
     // Shows a VGUI panel over the running game instead of the menu: reparents it to
     // the client panel the engine paints while the GameUI menu is hidden, hides the
     // GameUI so the engine resumes drawing the HUD, and enables the mouse cursor.

@@ -52,6 +52,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
         nitro_utils::nitro_utils
         data_encoding::data_encoding
         concurrencpp::concurrencpp
+        stb::stb
         Ws2_32.lib
 )
 

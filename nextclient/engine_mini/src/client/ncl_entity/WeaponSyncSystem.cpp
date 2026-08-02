@@ -60,6 +60,7 @@ void WeaponSyncSystem::OnCreate(uint16_t entity_id, const NclEntityFields& field
 
         weapon_id_to_entity_id_[active_weapon_id] = entity_id;
         entity_to_weapon_[entity_id] = std::move(weapon_data);
+
     }
 }
 
@@ -114,6 +115,7 @@ void WeaponSyncSystem::OnDestroy(uint16_t entity_id)
     {
         weapon_id_to_entity_id_.erase(rev);
     }
+
     entity_to_weapon_.erase(it);
 }
 

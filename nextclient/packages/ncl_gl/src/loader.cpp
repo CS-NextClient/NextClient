@@ -30,6 +30,11 @@ bool ncl_gl::EnsureLoaded()
         return g_LoadOk;
     }
 
+    return Reload();
+}
+
+bool ncl_gl::Reload()
+{
     g_LoadDone = true;
     g_LoadOk = gladLoadGLLoader(reinterpret_cast<GLADloadproc>(LoadProc)) != 0;
 

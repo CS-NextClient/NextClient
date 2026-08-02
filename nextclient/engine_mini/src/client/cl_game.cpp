@@ -1,6 +1,7 @@
 #include "../engine.h"
 #include <optick.h>
 #include "spriteapi.h"
+#include "graphics/render/MaterialEdit.h"
 
 HSPRITE_t ghCrosshair;
 wrect_t gCrosshairRc;
@@ -23,6 +24,10 @@ void SetCrosshair(HSPRITE_t hspr, wrect_t rc, int r, int g, int b)
 void DrawCrosshair(int x, int y)
 {
     OPTICK_EVENT();
+
+    // The engine centres this on the whole screen. While a panel is docked, the world is not
+    // on the whole screen, and a crosshair that stays put is pointing at nothing.
+    x -= render::MaterialEdit_AppliedInset() / 2;
 
     if (ghCrosshair)
     {

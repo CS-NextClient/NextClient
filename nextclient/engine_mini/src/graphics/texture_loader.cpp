@@ -120,7 +120,7 @@ namespace tex
         qglTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY_EXT, gl_ansio.value);
     }
 
-    static bool LoadTGA(const char* file, uint8_t* rgba_out, uint32_t size, int* width_out, int* height_out)
+    static bool LoadImage(const char* file, const std::vector<imageinfo::Format>& formats, uint8_t* rgba_out, uint32_t size, int* width_out, int* height_out)
     {
         const uint32_t width_max = kTextureMaxSize;
         const uint32_t height_max = kTextureMaxSize;
@@ -143,7 +143,7 @@ namespace tex
         //     return false;
         // }
 
-        ImageInfo image_info = imageinfo::parse<RawDataReader>(RawData(file_buffer, file_len), {kFormatTga}, true);
+        ImageInfo image_info = imageinfo::parse<RawDataReader>(RawData(file_buffer, file_len), formats, true);
 
         if (!image_info.ok())
         {
@@ -172,6 +172,18 @@ namespace tex
             return false;
         }
 
+        // Re-checked against the dimensions the decoder actually produced. The bound above
+        // came from the header parser, and the two do not have to agree: the header parser
+        // is restricted to the declared formats while stb auto-detects, so a file that
+        // reads as small to one and large to the other would overrun the destination.
+        if ((int64_t)width * height > (int64_t)width_max * height_max)
+        {
+            Con_Printf("Decoded image size is too large %s. Actual: %dx%d, Max: %dx%d\n", file, width, height, width_max, height_max);
+            stbi_image_free(image);
+            FS_Close(file_handle);
+            return false;
+        }
+
         V_memcpy(rgba_out, image, width * height * 4);
         *width_out = width;
         *height_out = height;
@@ -193,12 +205,31 @@ namespace tex
         V_sprintf_safe(new_filename, "gfx/%s.tga", filename);
 
         int width, height;
-        if (LoadTGA(new_filename, data, array_size, &width, &height))
+        if (LoadImage(new_filename, {kFormatTga}, data, array_size, &width, &height))
         {
             return LoadTexture(texture, identifier, TextureFormat::RGBA, data, width, height, mipmap, nullptr, filter);
         }
 
         return false;
+    }
+
+    bool LoadTextureFromPath(Texture& texture, const TexIdentifierStr& identifier, const char* path, bool mipmap, int filter)
+    {
+        const int array_size = kTextureMaxSize * kTextureMaxSize * 4;
+
+        ScratchArena arena(g_ScratchAllocator);
+        uint8_t* data = arena.AllocateArray<uint8_t>(array_size);
+
+        int width, height;
+
+        // PNG as well as TGA: material artwork needs a real alpha channel, and the
+        // decoder already handles both, only the format allowlist did not.
+        if (!LoadImage(path, {kFormatTga, kFormatPng}, data, array_size, &width, &height))
+        {
+            return false;
+        }
+
+        return LoadTexture(texture, identifier, TextureFormat::RGBA, data, width, height, mipmap, nullptr, filter);
     }
 
     bool LoadTexture(

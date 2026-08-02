@@ -10,6 +10,7 @@
 #include "viewmodel_overrides.h"
 #include "fov.h"
 #include "camera.h"
+#include "material_preview.h"
 
 static void V_ResetViewmodelOverrides();
 static void V_SetViewmodelOverrides(cl_entity_t* view_model);
@@ -483,6 +484,9 @@ void ViewCalcRefdef(ref_params_s *pparams, V_CalcRefdefNext next)
        run after it and must not overwrite the captured camera */
     if (nextView == 0)
     {
+        MaterialPreview_ApplyCamera(pparams);
+        MaterialPreview_ApplyViewmodel(pparams);
+
         ncl_math::VectorCopy(pparams->vieworg, g_MainViewOrigin);
         ncl_math::VectorCopy(pparams->viewangles, g_MainViewAngles);
     }

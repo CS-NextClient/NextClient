@@ -26,6 +26,7 @@
 #include "vgui_int.h"
 #include "cl_private_resources.h"
 #include "cl_string_registry.h"
+#include "graphics/render/ServerMaterials.h"
 
 namespace
 {
@@ -258,6 +259,7 @@ void CL_ClearClientState()
 
     CL_NclEntitySyncClear();
     CL_StringRegistryClear();
+    render::ServerMaterials_Clear();
 
     for (auto& frame : cl->frames)
     {

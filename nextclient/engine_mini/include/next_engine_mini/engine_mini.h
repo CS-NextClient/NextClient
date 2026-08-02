@@ -4,6 +4,7 @@
 #include "CommandLoggerInterface.h"
 #include "AnalyticsInterface.h"
 #include "HttpDownloadManagerInterface.h"
+#include "MaterialEditInterface.h"
 #include "NclmVerificatorInterface.h"
 #include "NextClientVersion.h"
 #include "TextRenderInterface.h"
@@ -37,7 +38,8 @@ public:
     virtual void SetNclmVerificator(NclmVerificatorInterface* handler) = 0;
 
     virtual TextRenderInterface* GetTextRender() = 0;
+    virtual MaterialEditInterface* GetMaterialEdit() = 0;
 };
 
-#define ENGINE_MINI_INTERFACE_VERSION "EngineMini009"
+#define ENGINE_MINI_INTERFACE_VERSION "EngineMini019"
 

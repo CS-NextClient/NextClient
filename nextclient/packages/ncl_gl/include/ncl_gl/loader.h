@@ -15,4 +15,10 @@ namespace ncl_gl
 
     // Whether EnsureLoaded already ran and succeeded. Never triggers loading.
     bool IsLoaded();
+
+    // Resolves the entry points again against the current context. On WGL proc
+    // addresses are per-ICD rather than per-context, so this normally changes
+    // nothing, but that is not part of the WGL contract and a device reset must
+    // not depend on it.
+    bool Reload();
 }

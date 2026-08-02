@@ -3,6 +3,7 @@ project(engine_mini)
 set(OUTPUT_NAME "next_engine_mini")
 
 find_package(concurrencpp CONFIG REQUIRED)
+find_package(CMakeRC REQUIRED)
 find_package(optic REQUIRED)
 find_package(SDL2 REQUIRED)
 find_package(imageinfo CONFIG REQUIRED)
@@ -34,6 +35,19 @@ add_library(${PROJECT_NAME} ${LIBRARY_BUILD_TYPE}
         ${ENGINE_MINI_SOURCES}
 )
 
+cmrc_add_resource_library(
+        ${PROJECT_NAME}_rc
+        ALIAS ${PROJECT_NAME}::rc
+
+        assets/shaders/test_quad.vert
+        assets/shaders/test_quad.frag
+        assets/shaders/studio.vert
+        assets/shaders/studio.frag
+        assets/shaders/weapon_finish.vert
+        assets/shaders/weapon_finish.frag
+        assets/shaders/weapon_finish.json
+)
+
 target_include_directories(${PROJECT_NAME} PRIVATE
         include
         src
@@ -56,6 +70,10 @@ target_link_libraries(${PROJECT_NAME} ${TARGET_LIBRARIES_SCOPE}
         concurrencpp::concurrencpp
         bzip2
         glad::glad
+        ncl_gl::ncl_gl
+        ncl_material::ncl_material
+        ncl_studio::ncl_studio
+        ${PROJECT_NAME}::rc
         SDL2::SDL2
         imageinfo::imageinfo
         stb::stb

@@ -81,6 +81,7 @@ add_subdirectory(nextclient/engine_mini)
 add_subdirectory(nextclient/filesystem_proxy)
 add_subdirectory(nextclient/client_mini)
 add_subdirectory(nextclient/gameui)
+add_subdirectory(nextclient/matgen)
 add_subdirectory(nextclient/steam_api_proxy)
 
 # vgui2 lives in the SDK submodule and cannot name a NextClient target, but its font path is served

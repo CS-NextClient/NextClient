@@ -1,4 +1,6 @@
 #include "main.h"
+#include "material_preview.h"
+#include <next_engine_mini/engine_mini.h>
 #include <cstring>
 #include <ranges>
 #include <next_client_mini/client_mini.h>
@@ -98,6 +100,21 @@ static void HUD_InitPost()
     ColorChatInConsolePatch();
 
     RadarHooks_PatchHudText();
+
+    // The stand-in is asked for through the editing interface the engine module exports,
+    // and put into the world here: only the client knows where the author is standing.
+    CreateInterfaceFn engine_factory = Sys_GetFactory("next_engine_mini.dll");
+
+    if (engine_factory != nullptr)
+    {
+        EngineMiniInterface* engine_mini =
+            (EngineMiniInterface*)engine_factory(ENGINE_MINI_INTERFACE_VERSION, nullptr);
+
+        if (engine_mini != nullptr)
+        {
+            MaterialPreview_Init(engine_mini->GetMaterialEdit());
+        }
+    }
 }
 
 static int HUD_RedrawHandler(float flTime, int iIntermission, HUD_RedrawNext next)
@@ -186,6 +203,13 @@ static void HUD_GetStudioModelInterfacePost(int version, r_studio_interface_t **
 
     (*ppinterface)->StudioDrawModel = StudioDrawModel;
     (*ppinterface)->StudioDrawPlayer = StudioDrawPlayer;
+}
+
+// The material panel asks for a stand-in through the editing interface; the client is the
+// side that can put one into the world, so the two meet here.
+static void HUD_CreateEntitiesPost()
+{
+    MaterialPreview_CreateEntities();
 }
 
 static void HUD_PlayerMoveInitPost(playermove_t* ppmove)
@@ -294,6 +318,7 @@ public:
         g_Unsub.emplace_back(client_data->V_CalcRefdef |= Hook_V_CalcRefdef);
         g_Unsub.emplace_back(client_data->HUD_PostRunCmd += HUD_PostRunCmdPost);
         g_Unsub.emplace_back(client_data->HUD_GetStudioModelInterface += HUD_GetStudioModelInterfacePost);
+        g_Unsub.emplace_back(client_data->HUD_CreateEntities += HUD_CreateEntitiesPost);
         g_Unsub.emplace_back(client_data->HUD_PlayerMoveInit += HUD_PlayerMoveInitPost);
         g_Unsub.emplace_back(client_data->UserMsg_SetFOV |= UserMsg_SetFOVHandler);
         g_Unsub.emplace_back(client_data->HUD_ProcessPlayerState |= HUD_ProcessPlayerStateHandler);

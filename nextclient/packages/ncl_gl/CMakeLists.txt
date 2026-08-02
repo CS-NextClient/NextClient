@@ -4,6 +4,7 @@ project(ncl_gl)
 set(CMAKE_CXX_STANDARD 23)
 
 add_library(${PROJECT_NAME} STATIC
+    src/capture.cpp
     src/loader.cpp
     src/program.cpp
 )

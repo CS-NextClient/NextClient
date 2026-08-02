@@ -18,6 +18,14 @@
 
 #include "view.h"
 #include "gl_local.h"
+#include "render/MaterialEdit.h"
+#include "render/RenderCapture.h"
+#include "render/ServerMaterials.h"
+#include "render/RenderConfig.h"
+#include "render/ShaderManager.h"
+#include "render/StudioDraw.h"
+#include "render/StudioDump.h"
+#include "render/StudioIntercept.h"
 #include "text/text_render.h"
 #include "qgl.hpp"
 #include "vgui2.h"
@@ -151,6 +159,8 @@ void BuildGammaTable(float g)
 
         lightgammatable[i] = value;
     }
+
+    render::Studio_OnGammaChanged();
 
     // fill lineargammatable and screengammatable
 
@@ -1168,6 +1178,12 @@ void Draw_Init()
 
     Cmd_AddCommand("gl_texels", GL_Texels_f);
     TextRender_RegisterDiagnostics();
+    render::Config_Init();
+    render::Studio_RegisterCommands();
+    render::Capture_RegisterCommands();
+    render::Dump_RegisterCommands();
+    render::ServerMaterials_RegisterCommands();
+    render::MaterialEdit_RegisterCommands();
     Cvar_RegisterVariable(&gl_max_size);
     Cvar_RegisterVariable(&gl_round_down);
     Cvar_RegisterVariable(&gl_picmip);

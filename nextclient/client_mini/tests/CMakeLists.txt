@@ -11,6 +11,11 @@ add_executable(${TARGET_NAME}
         RadarMemoryTests.cpp
         RadarFadeTests.cpp
         RadarPolicyTests.cpp
+        MaterialDocTests.cpp
+        MaterialResolveTests.cpp
+        StudioMeshBuilderTests.cpp
+        StudioValidateTests.cpp
+        MaterialPresetTests.cpp
         ../src/hud/radar/RadarView.cpp
         ../src/hud/radar/RadarMemory.cpp
         ../src/hud/radar/RadarFade.cpp
@@ -21,6 +26,8 @@ target_link_libraries(${TARGET_NAME} PRIVATE
         GTest::gtest
         GTest::gtest_main
         ncl_math::ncl_math
+        ncl_material::ncl_material
+        ncl_studio::ncl_studio
 )
 
 # Only the engine-free radar pieces are tested (RadarUtil.h, the RadarView math, the

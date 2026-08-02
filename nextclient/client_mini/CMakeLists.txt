@@ -23,6 +23,7 @@ endif ()
 add_library(${PROJECT_NAME} SHARED
         src/hlsdk.h
         src/main.cpp
+        src/material_preview.cpp
         src/main.h
         src/view.cpp
         src/view.h
