@@ -1,5 +1,6 @@
-#include "../../main.h"
-#include "../../hlsdk.h"
+#include "main.h"
+#include "hlsdk.h"
+
 #include "hud_sprite.h"
 #include "triangleapi.h"
 
@@ -18,7 +19,7 @@ void HudSprite::Draw() const
     const auto ta = gEngfuncs.pTriAPI;
     ta->SpriteTexture(const_cast<model_s*>(sprite), getFrameInt());
     ta->RenderMode(getRenderMode());
-    ta->Color4f(getColor().red, getColor().green, getColor().blue, getCurrentAlpha());
+    ta->Color4f(getColor().r, getColor().g, getColor().b, getCurrentAlpha());
     ta->CullFace(TRI_NONE);
     if (isFullScreen()) {
         ta->Begin(TRI_QUADS);
@@ -67,7 +68,7 @@ void HudSprite::Update(float time)
 
 void HudSprite::UpdateState(float time)
 {
-    const auto alpha = getColor().alpha;
+    const auto alpha = getColor().a;
     switch (getSpriteState()) {
         case HudSpriteState::In: {
             const auto newAlpha = (getStateEndTime(HudSpriteState::In) - time) / getInTime();
@@ -347,15 +348,15 @@ HudSprite* HudSprite::setSpriteRect(int left, int top, int right, int bottom)
 
 HudSprite* HudSprite::setSpriteColor(byte red, byte green, byte blue)
 {
-    spriteColor_.red = normalizeColor(red);
-    spriteColor_.green = normalizeColor(green);
-    spriteColor_.blue = normalizeColor(blue);
+    spriteColor_.r = normalizeColor(red);
+    spriteColor_.g = normalizeColor(green);
+    spriteColor_.b = normalizeColor(blue);
     return this;
 }
 
 HudSprite* HudSprite::setAlpha(byte alpha)
 {
-    spriteColor_.alpha = normalizeColor(alpha);
+    spriteColor_.a = normalizeColor(alpha);
     return this;
 }
 

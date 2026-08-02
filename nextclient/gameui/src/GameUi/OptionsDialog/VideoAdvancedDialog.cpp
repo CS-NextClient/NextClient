@@ -2,12 +2,13 @@
 
 #include <vgui/IInput.h>
 #include <vgui/IInputInternal.h>
-
 #include <vgui_controls/Label.h>
 #include <vgui_controls/Button.h>
 #include <vgui_controls/MessageBox.h>
 #include <vgui_controls/ComboBox.h>
 #include <vgui_controls/TextEntry.h>
+
+#include "GameUi/GameUi.h"
 
 CVideoAdvancedDialog::CVideoAdvancedDialog(vgui2::Panel *parent) :
     BaseClass(parent, "CVideoAdvancedDialog")
@@ -28,7 +29,6 @@ CVideoAdvancedDialog::CVideoAdvancedDialog(vgui2::Panel *parent) :
     m_pFovSlider = new CCvarSlider(this, "FovAngle", "#GameUI_FovAngle", 70.f, 100.f, "fov_angle");
     m_pFovText = new vgui2::TextEntry(this, "FovAngleText");
     m_pFovText->AddActionSignalTarget(this);
-
 
     m_pFovViewmodelAutoCheckbox = new vgui2::CheckButton(this, "ViewmodelFovAutoCheckbox", "");
     m_pFovViewmodelAutoCheckbox->AddActionSignalTarget(this);
@@ -96,11 +96,9 @@ void CVideoAdvancedDialog::OnKeyCodeTyped(vgui2::KeyCode code)
     if (code == vgui2::KEY_ESCAPE)
     {
         Close();
+        return;
     }
-    else
-    {
-        BaseClass::OnKeyCodeTyped(code);
-    }
+    BaseClass::OnKeyCodeTyped(code);
 }
 
 void CVideoAdvancedDialog::OnCheckButtonChecked(Panel *panel)

@@ -44,6 +44,17 @@ jobs:
       - name: Build
         run: cmake --build --preset vs2022-release --target BUILD_ALL
 
+      # Separate configure directory: BUILD_ALL is only declared when NEXTCLIENT_BUILD_TESTS
+      # is off, so the tests cannot share the build above.
+      - name: Configure tests
+        run: cmake --preset vs2022-tests "-DNEXTCLIENT_INSTALL_DIR=${{ github.workspace }}\install-tests"
+
+      - name: Build tests
+        run: cmake --build --preset vs2022-tests-release --target client_mini-tests
+
+      - name: Run tests
+        run: ctest --test-dir build/vs2022-tests -C Release --output-on-failure
+
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:

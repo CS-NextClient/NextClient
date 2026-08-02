@@ -229,6 +229,9 @@ COptionsSubMultiplayer::COptionsSubMultiplayer(vgui2::Panel *parent) : vgui2::Pr
     m_pCrosshairDynamic = new CCvarToggleCheckButton(this, "CrosshairDynamic", "#GameUI_CrosshairDynamic", "cl_dynamiccrosshair");
     m_pCrosshairImage = new CrosshairImagePanel(this, "CrosshairImage", m_pCrosshairTranslucencyCheckbox);
 
+    vgui2::Button* hud_radar = new vgui2::Button(this, "HudRadar", "#GameUI_HudRadarSettings");
+    hud_radar->SetCommand("HudRadar");
+
     LoadControlSettings("Resource\\OptionsSubMultiplayer.res");
 
     InitCrosshairTypeEntries();
@@ -251,6 +254,10 @@ void COptionsSubMultiplayer::OnCommand(const char *command)
 
         m_hMultiplayerAdvancedDialog->Activate();
         m_hMultiplayerAdvancedDialog->SetPos(100, 100);
+    }
+    else if (!stricmp(command, "HudRadar"))
+    {
+        GameUI().OpenHudRadarDialog();
     }
 
     BaseClass::OnCommand(command);

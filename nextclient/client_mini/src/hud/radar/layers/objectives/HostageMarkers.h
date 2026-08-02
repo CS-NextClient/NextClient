@@ -1,0 +1,72 @@
+#pragma once
+
+#include <array>
+#include <cstdint>
+
+#include <ncl_math/vec3.h>
+
+#include "hud/radar/MarkerFeed.h"
+#include "hud/radar/RadarFrame.h"
+#include "hud/radar/RadarLimits.h"
+#include "ObjectiveEntities.h"
+
+class RadarVisibility;
+class RadarPolicy;
+class RadarBroadcast;
+
+// The hostages, drawn by whichever pass the policy and the local player's team leave available.
+class HostageMarkers
+{
+    // Which draw owns spots_ this frame. Revealed means the server hands out every hostage
+    // position, so both feeds serve at once and MarkerFeed resolves them instead.
+    enum class Pass : std::uint8_t
+    {
+        None,
+        Sight,
+        Revealed,
+        ServerMarker,
+    };
+
+    // A remembered hostage position. The key is the edict index in the sight pass and the message
+    // index in the server-marker pass, so a change of pass drops the whole set.
+    struct Spot
+    {
+        bool valid;
+        int key;
+        ncl_math::Vector2 pos;
+        float last_seen;
+        bool visible;
+    };
+
+    RadarVisibility& visibility_;
+    const RadarPolicy& policy_;
+    const RadarBroadcast& broadcast_;
+
+    MarkerFeed feed_;
+
+    std::array<Spot, kRadarMaxHostages> spots_{};
+    Pass pass_{};
+
+public:
+    explicit HostageMarkers(RadarVisibility& visibility, const RadarPolicy& policy, const RadarBroadcast& broadcast);
+
+    void Draw(const RadarFrame& frame, const ObjectiveEntities& entities, int dot);
+
+    void Reset();
+
+    // Drops what only holds while the map does, which is the message index to edict pairing.
+    void OnLevelChange();
+
+private:
+    void SetPass(Pass pass);
+
+    void ClearVisibility();
+
+    // -1 when all slots are taken.
+    int FindOrCreate(int key, ncl_math::Vector2 pos, float time);
+
+    void DrawDot(const RadarFrame& frame, ncl_math::Vector2 world, int dot, int alpha);
+    void DrawBySight(const RadarFrame& frame, const ObjectiveEntities& entities, int dot);
+    void DrawRevealed(const RadarFrame& frame, const ObjectiveEntities& entities, int dot);
+    void DrawServerMarkers(const RadarFrame& frame, int size);
+};

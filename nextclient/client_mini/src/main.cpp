@@ -11,6 +11,8 @@
 #include "color_chat_in_console.h"
 #include "inspect.h"
 #include "invert_mouse.h"
+#include "hud/radar/RadarHooks.h"
+#include "hud/radar/HudTextZone.h"
 
 nitroapi::NitroApiInterface* g_NitroApi;
 
@@ -92,12 +94,44 @@ static void HUD_InitPost()
     InvertMouseInit();
 
     ColorChatInConsolePatch();
+
+    RadarHooks_PatchHudText();
 }
 
-static void HUD_RedrawPost(float flTime, int iIntermission, int result)
+static int HUD_RedrawHandler(float flTime, int iIntermission, HUD_RedrawNext next)
 {
+    // Draw the advanced radar before the stock HUD so weapon selection and any
+    // server-side HUD drawn by the original client render on top of it instead of
+    // being covered by the larger radar. The radar publishes its zone here; only
+    // text drawn by the stock client (between the two passthrough toggles) is
+    // pushed out from under it, never NextClient's own HUD text.
+    SCREENINFO screen;
+    screen.iSize = sizeof(screen);
+    gEngfuncs.pfnGetScreenInfo(&screen);
+    HudTextZone_BeginFrame(screen.iWidth, screen.iHeight);
+
+    HudTextZone_ClearZone();
+
     if (hud_draw->value != 0.0)
+    {
+        HudTextZone_SetPassthrough(true);
+        g_GameHud->DrawRadar(flTime);
+        HudTextZone_SetPassthrough(false);
+    }
+
+    int result = next->Invoke(flTime, iIntermission);
+
+    // The stock HUD has drawn; emit the glyph lines buffered from under the radar,
+    // shifted as whole lines now that their widths are known.
+    RadarHooks_FlushText();
+
+    HudTextZone_SetPassthrough(true);
+    if (hud_draw->value != 0.0)
+    {
         g_GameHud->Draw(flTime);
+    }
+
+    return result;
 }
 
 static void HUD_ResetHandler(HUD_ResetNext next)
@@ -178,6 +212,15 @@ static void UserMsg_InitHUDPost(const char* name, int size, void* data, int resu
     ResetInvertMouse();
 }
 
+static int UserMsg_ResetHUDHandler(const char* name, int size, void* data, UserMsg_RadarMsgNext next)
+{
+    // Sent on every round restart / respawn; reset the NextClient HUD here (trails,
+    // death marks, objectives) since the one-shot gmsgInitHUD does not repeat.
+    int result = next->Invoke(name, size, data);
+    g_GameHud->Reset();
+    return result;
+}
+
 static int UserMsg_TextMsgHandler(const char* name, int size, void* data, UserMsg_TextMsgNext next)
 {
     static const std::string hiddenServerCmds[] = {
@@ -241,7 +284,7 @@ public:
         g_Unsub.emplace_back(client_data->HUD_VidInit |= HUD_VidInitHandler);
         g_Unsub.emplace_back(client_data->HUD_Reset |= HUD_ResetHandler);
         g_Unsub.emplace_back(client_data->HUD_Init += HUD_InitPost);
-        g_Unsub.emplace_back(client_data->HUD_Redraw += HUD_RedrawPost);
+        g_Unsub.emplace_back(client_data->HUD_Redraw |= HUD_RedrawHandler);
         g_Unsub.emplace_back(client_data->HUD_UpdateClientData += HUD_UpdateClientDataPost);
         g_Unsub.emplace_back(client_data->V_CalcRefdef |= Hook_V_CalcRefdef);
         g_Unsub.emplace_back(client_data->HUD_PostRunCmd += HUD_PostRunCmdPost);
@@ -252,6 +295,8 @@ public:
         g_Unsub.emplace_back(client_data->UserMsg_CurWeapon += UserMsg_CurWeaponPost);
         g_Unsub.emplace_back(client_data->UserMsg_InitHUD += UserMsg_InitHUDPost);
         g_Unsub.emplace_back(client_data->UserMsg_TextMsg |= UserMsg_TextMsgHandler);
+        RadarHooks_Subscribe(nitro_api, g_Unsub);
+        g_Unsub.emplace_back(client_data->UserMsg_ResetHUD |= UserMsg_ResetHUDHandler);
         g_Unsub.emplace_back(client_data->CL_CreateMove |= CL_CreateMoveHandler);
 
         g_GameHud = std::make_unique<GameHud>(nitro_api);
@@ -266,6 +311,8 @@ public:
 
     void Uninitialize() override
     {
+        RadarHooks_UnpatchHudText();
+
         ResetInvertMouse();
 
         for (auto& unsubscriber: g_Unsub) {

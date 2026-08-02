@@ -18,6 +18,7 @@
 
 #include "view.h"
 #include "gl_local.h"
+#include "text/text_render.h"
 #include "qgl.hpp"
 #include "vgui2.h"
 
@@ -1164,8 +1165,10 @@ void Draw_Init()
     g_DrawInitialized = true;
 
     VGUI2_Draw_Init();
+    VGUI2_InstallTextSurface();
 
     Cmd_AddCommand("gl_texels", GL_Texels_f);
+    TextRender_RegisterDiagnostics();
     Cvar_RegisterVariable(&gl_max_size);
     Cvar_RegisterVariable(&gl_round_down);
     Cvar_RegisterVariable(&gl_picmip);

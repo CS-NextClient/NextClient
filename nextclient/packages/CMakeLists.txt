@@ -18,6 +18,8 @@ endif()
 
 add_subdirectory(data_encoding)
 add_subdirectory(data_types)
+add_subdirectory(ncl_math)
+add_subdirectory(ncl_gl)
 add_subdirectory(ncl_utils)
 add_subdirectory(task_coro)
 add_subdirectory(hwid_collector)

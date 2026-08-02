@@ -3,6 +3,7 @@ project(client_mini)
 set(OUTPUT_NAME "client_mini")
 
 find_package(optic REQUIRED)
+find_package(CMakeRC REQUIRED)
 
 set(CMAKE_POLICY_DEFAULT_CMP0077 NEW)
 if (MSVC)
@@ -65,6 +66,69 @@ add_library(${PROJECT_NAME} SHARED
         src/hud/HudHealth.h
         src/hud/HudRadar.cpp
         src/hud/HudRadar.h
+        src/hud/HudRadarAdvanced.cpp
+        src/hud/HudRadarAdvanced.h
+        src/hud/radar/RadarConfig.cpp
+        src/hud/radar/RadarConfig.h
+        src/hud/radar/RadarView.cpp
+        src/hud/radar/RadarView.h
+        src/hud/radar/RadarFrame.h
+        src/hud/radar/RadarLabel.cpp
+        src/hud/radar/RadarLabel.h
+        src/hud/radar/RadarText.cpp
+        src/hud/radar/RadarText.h
+        src/hud/radar/RadarPalette.h
+        src/hud/radar/RadarPolicy.cpp
+        src/hud/radar/RadarPolicy.h
+        src/hud/radar/ServerMarker.cpp
+        src/hud/radar/ServerMarker.h
+        src/hud/radar/Overview.cpp
+        src/hud/radar/Overview.h
+        src/hud/radar/MapRender.cpp
+        src/hud/radar/MapRender.h
+        src/hud/radar/MapObjectives.cpp
+        src/hud/radar/MapObjectives.h
+        src/hud/radar/Visibility.cpp
+        src/hud/radar/Visibility.h
+        src/hud/radar/SmokeRegistry.cpp
+        src/hud/radar/SmokeRegistry.h
+        src/hud/radar/RadarBroadcast.cpp
+        src/hud/radar/RadarBroadcast.h
+        src/hud/radar/MarkerIdentity.cpp
+        src/hud/radar/MarkerIdentity.h
+        src/hud/radar/MarkerFeed.cpp
+        src/hud/radar/MarkerFeed.h
+        src/hud/radar/HudTextZone.cpp
+        src/hud/radar/HudTextZone.h
+        src/hud/radar/RadarHooks.cpp
+        src/hud/radar/RadarHooks.h
+        src/hud/radar/RadarDraw.cpp
+        src/hud/radar/RadarDraw.h
+        src/hud/radar/RadarDrawEffects.cpp
+        src/hud/radar/RadarDrawInternal.h
+        src/hud/radar/RadarDebug.cpp
+        src/hud/radar/RadarDebug.h
+        src/hud/radar/RadarFade.cpp
+        src/hud/radar/RadarFade.h
+        src/hud/radar/RadarUtil.h
+        src/hud/radar/RadarTeam.h
+        src/hud/radar/RadarLimits.h
+        src/hud/radar/layers/BackdropLayer.h
+        src/hud/radar/layers/BackdropLayer.cpp
+        src/hud/radar/layers/PlayersLayer.h
+        src/hud/radar/layers/PlayersLayer.cpp
+        src/hud/radar/layers/players/PlayerTracks.h
+        src/hud/radar/layers/players/PlayerTracks.cpp
+        src/hud/radar/layers/players/DeathMarks.h
+        src/hud/radar/layers/players/DeathMarks.cpp
+        src/hud/radar/layers/ObjectivesLayer.h
+        src/hud/radar/layers/ObjectivesLayer.cpp
+        src/hud/radar/layers/objectives/ObjectiveEntities.h
+        src/hud/radar/layers/objectives/ObjectiveEntities.cpp
+        src/hud/radar/layers/objectives/BombMarker.h
+        src/hud/radar/layers/objectives/BombMarker.cpp
+        src/hud/radar/layers/objectives/HostageMarkers.h
+        src/hud/radar/layers/objectives/HostageMarkers.cpp
         src/hud/HudBase.h
         src/hud/HudBaseHelper.h
         src/hud/GameHud.h
@@ -73,14 +137,32 @@ add_library(${PROJECT_NAME} SHARED
         src/hud/HudAmmo.cpp
 )
 
+cmrc_add_resource_library(
+        ${PROJECT_NAME}_rc
+        ALIAS ${PROJECT_NAME}::rc
+
+        assets/shaders/radar.vert
+        assets/shaders/radar_prim.vert
+        assets/shaders/radar_mask.frag
+        assets/shaders/radar_prim.frag
+        assets/shaders/radar_backdrop.frag
+)
+
 target_include_directories(${PROJECT_NAME} PRIVATE
         include
+        src
 )
 
 target_link_libraries(${PROJECT_NAME} PRIVATE
         nitro_api::nitro_api
         NextClient::gameui
+        NextClient::engine_mini
         optic::optic
+        glad::glad
+        ncl_math::ncl_math
+        ncl_gl::ncl_gl
+        ncl_utils::ncl_utils
+        ${PROJECT_NAME}::rc
 )
 
 if (MSVC)
@@ -127,3 +209,7 @@ add_library(NextClient::client_mini ALIAS client_mini_export)
 target_include_directories(client_mini_export INTERFACE
         include
 )
+
+if (NEXTCLIENT_BUILD_TESTS)
+    add_subdirectory(tests)
+endif ()

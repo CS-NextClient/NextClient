@@ -23,6 +23,9 @@
 #include "graphics/gl_local.h"
 #include "graphics/detailtexture.h"
 #include "graphics/color_scheme.h"
+#include "graphics/text/text_render.h"
+#include "graphics/text/text_surface.h"
+#include "graphics/vgui2.h"
 #include "client/client.h"
 #include "client/cl_main.h"
 #include "client/download.h"
@@ -454,7 +457,10 @@ static void OnGameInitializing(void* mainwindow, HDC* pmaindc, HGLRC* pbaseRC, c
     g_Unsubs.emplace_back(eng()->GL_UnloadTexture            |= [](const char* identifier, const auto& next)                           { GL_UnloadTexture(identifier); });
     g_Unsubs.emplace_back(eng()->GL_Bind                     |= [](int texnum, const auto& next)                                       { GL_Bind(texnum); });
     g_Unsubs.emplace_back(eng()->Draw_Init                   |= [](const auto& next)                                                   { Draw_Init(); });
-    g_Unsubs.emplace_back(eng()->Draw_Shutdown               |= [](const auto& next)                                                   { Draw_Shutdown(); });
+    // The engine resolves its surface here, and schemes create their fonts right after, so this is
+    // the last moment at which the text slots can be replaced before the first font is made.
+    g_Unsubs.emplace_back(eng()->VGui_InitInterfacesList      += [](const char*, void*, int, bool)                                      { VGUI2_InstallTextSurface(); });
+    g_Unsubs.emplace_back(eng()->Draw_Shutdown               |= [](const auto& next)                                                   { VGUI2_UninstallTextSurface(); TextRender_ReleaseGl(); Draw_Shutdown(); });
     g_Unsubs.emplace_back(eng()->Draw_PicFromWad             |= [](const char* name, const auto& next)                                 { return Draw_PicFromWad(name); });
     g_Unsubs.emplace_back(eng()->V_UpdatePalette             |= [](const auto& next)                                                   { V_UpdatePalette(); });
     g_Unsubs.emplace_back(eng()->V_CheckGamma                |= [](const auto& next)                                                   { return V_CheckGamma(); });
@@ -712,6 +718,11 @@ public:
     void SetNclmVerificator(NclmVerificatorInterface* handler) override
     {
         g_NclmVerificator = handler;
+    }
+
+    TextRenderInterface* GetTextRender() override
+    {
+        return TextRender_Get();
     }
 };
 

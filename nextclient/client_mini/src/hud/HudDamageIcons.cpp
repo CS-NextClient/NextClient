@@ -1,5 +1,6 @@
 #include "HudDamageIcons.h"
 #include "DrawUtils.h"
+#include <ncl_math/color.h>
 
 HudDamageIcons::HudDamageIcons(nitroapi::NitroApiInterface* nitro_api)
 	: HudBaseHelper(nitro_api)
@@ -23,19 +24,19 @@ void HudDamageIcons::Draw(float flTime) {
 		return;
 
 	size_t i;
-	int r, g, b, a;
+	int a;
 
-	DrawUtils::UnpackRGB(r, g, b, RGB_YELLOWISH);
+	ncl_math::Color color = DrawUtils::UnpackRGB(RGB_YELLOWISH);
 
 	a = (int)(fabs(sin(flTime * 2)) * 256.0);
-	DrawUtils::ScaleColors(r, g, b, a);
+	color = DrawUtils::ScaleColors(color, a);
 
 	// Draw all the items
 	for (i = 0; i < NUM_DMG_TYPES; i++) {
 		if (m_bitsDamage & damage_flags_[i]) {
 			DAMAGE_IMAGE* pdmg = &m_dmg[i];
 
-			SPR_Set(gHUD()->GetSprite(gHUD()->m_Health->m_HUD_dmg_bio + i), r, g, b);
+			SPR_Set(gHUD()->GetSprite(gHUD()->m_Health->m_HUD_dmg_bio + i), color.r, color.g, color.b);
 			SPR_DrawAdditive(0, pdmg->x, pdmg->y,
 				&gHUD()->GetSpriteRect(gHUD()->m_Health->m_HUD_dmg_bio + i));
 		}

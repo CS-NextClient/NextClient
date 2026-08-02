@@ -2,6 +2,7 @@
 
 #include "main.h"
 
+#include <ncl_math/vec3.h>
 #include <studio.h>
 
 /* animate camera using a viewmodel attachment */
@@ -60,14 +61,14 @@ static float UnpackScale(int frame, mstudioanim_t *anim, int offset)
 static void UnpackRotation(vec3_t angles, int frame, mstudiobone_t *bone, mstudioanim_t *anim)
 {
 	/* unpack the bone rotation */
-	angles[0] = RAD2DEG(bone->value[3] + bone->scale[3] *
-		UnpackScale(frame, anim, anim->offset[3]));
+	angles[0] = (bone->value[3] + bone->scale[3] *
+		UnpackScale(frame, anim, anim->offset[3])) * ncl_math::kRad2Deg;
 
-	angles[1] = RAD2DEG(bone->value[4] + bone->scale[4] *
-		UnpackScale(frame, anim, anim->offset[4]));
+	angles[1] = (bone->value[4] + bone->scale[4] *
+		UnpackScale(frame, anim, anim->offset[4])) * ncl_math::kRad2Deg;
 
-	angles[2] = RAD2DEG(bone->value[5] + bone->scale[5] *
-		UnpackScale(frame, anim, anim->offset[5]));
+	angles[2] = (bone->value[5] + bone->scale[5] *
+		UnpackScale(frame, anim, anim->offset[5])) * ncl_math::kRad2Deg;
 }
 
 static int GetCameraBone(studiohdr_t *hdr)
@@ -103,7 +104,7 @@ static void CameraCalcMovement(cl_entity_t *vm, vec3_t angles)
 	int frame, next_frame;
 	vec3_t angles1, angles2;
 
-	VectorClear(angles);
+	ncl_math::VectorClear(angles);
 
 	model = vm->model;
 	if (!model)
@@ -146,7 +147,7 @@ static void CameraCalcMovement(cl_entity_t *vm, vec3_t angles)
 	UnpackRotation(angles1, frame, bone, anim);
 	UnpackRotation(angles2, next_frame, bone, anim);
 
-	AngleLerp(angles1, angles2, t, angles);
+	ncl_math::AngleLerp(angles1, angles2, t, angles);
 	return;
 }
 
@@ -178,7 +179,7 @@ void CameraApplyMovement(ref_params_t *pparams)
 		if (camera_movement_interp->value)
 		{
 			lerpTime = clientTime;
-			VectorCopy(curMove, prevMove);
+			ncl_math::VectorCopy(curMove, prevMove);
 		}
 	}
 
@@ -189,23 +190,21 @@ void CameraApplyMovement(ref_params_t *pparams)
 		if (frac < 0 || frac >= 1)
 		{
 			/* just copy */
-			VectorCopy(new_movement, curMove);
+			ncl_math::VectorCopy(new_movement, curMove);
 			lerpTime = 0;
 		}
 		else
 		{
-			AngleLerp(prevMove, new_movement, frac, curMove);
+			ncl_math::AngleLerp(prevMove, new_movement, frac, curMove);
 		}
 	}
 	else
 	{
 		/* just copy */
-		VectorCopy(new_movement, curMove);
+		ncl_math::VectorCopy(new_movement, curMove);
 	}
 
 	scale = camera_movement_scale->value;
 
-	pparams->viewangles[0] += curMove[0] * scale;
-	pparams->viewangles[1] += curMove[1] * scale;
-	pparams->viewangles[2] += curMove[2] * scale;
+	ncl_math::VectorMA(curMove, scale, pparams->viewangles);
 }
