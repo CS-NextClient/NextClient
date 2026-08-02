@@ -12,7 +12,6 @@
 #include <vgui_controls/ListPanel.h>
 
 #include <basetypes.h>
-#include <mathlib/mathlib.h>
 #include <common.h>
 #include <cvardef.h>
 #include <pm_defs.h>

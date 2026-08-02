@@ -388,6 +388,21 @@
 		"useproportionalinsets"		"0"
 		"Default"		"0"
 	}
+	"HudRadar"
+	{
+		"ControlName"		"Button"
+		"fieldName"		"HudRadar"
+		"xpos"		"346"
+		"ypos"		"270"
+		"wide"		"122"
+		"tall"		"24"
+		"visible"		"1"
+		"enabled"		"1"
+		"tabPosition"		"10"
+		"textAlignment"		"west"
+		"textinsetx"		"6"
+		"command"		"HudRadar"
+	}
 	"CrosshairImage"
 	{
 		"ControlName"		"ImagePanel"

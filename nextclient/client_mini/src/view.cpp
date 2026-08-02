@@ -2,6 +2,7 @@
 
 #include "main.h"
 
+#include <ncl_math/vec3.h>
 #include <parsemsg.h>
 #include <maintypes.h>
 #include <pm_movevars.h>
@@ -15,6 +16,9 @@ static void V_SetViewmodelOverrides(cl_entity_t* view_model);
 static int V_ViewModelFx_MSG(const char *pszName, int iSize, void *pbuf);
 
 static viewmodel_overrides_t viewmodel_overrides;
+
+vec3_t g_MainViewOrigin;
+vec3_t g_MainViewAngles;
 
 static cvar_t *viewmodel_disable_shift;
 
@@ -90,9 +94,19 @@ struct
     float horBob;
 } g_bobVars;
 
-static float Map(float value, float low1, float high1, float low2, float high2)
+
+// Maps a 0..1 bob phase to a 0..2pi sine argument; cl_bobup sets the up-ramp
+// fraction. Shared by the three bob curves.
+static float BobPhaseToRadians(float cycle)
 {
-	return low2 + (value - low1) * (high2 - low2) / (high1 - low1);
+	float bobup = cl_bobup->value;
+
+	if (cycle < bobup)
+	{
+		return ncl_math::kPi * cycle / bobup;
+	}
+
+	return ncl_math::kPi + ncl_math::kPi * (cycle - bobup) / (1.0f - bobup);
 }
 
 static void V_CalcBob_CSGO(ref_params_t *pparams)
@@ -105,7 +119,7 @@ static void V_CalcBob_CSGO(ref_params_t *pparams)
 	float bobScale;
 	float cycle;
 
-	speed = Vector2DLength(pparams->simvel);
+	speed = ncl_math::Vector2DLength(pparams->simvel);
 
 	maxSpeedDelta = std::max(0.f, (pparams->time - g_bobVars.lastBobTime) * 620.f);
 
@@ -116,7 +130,7 @@ static void V_CalcBob_CSGO(ref_params_t *pparams)
 
 	lowerAmt = cl_bob_lower_amt->value * (speed * 0.001f);
 
-	bobOffset = Map(speed, 0, 320, 0, 1);
+	bobOffset = ncl_math::Remap(speed, 0, 320, 0, 1);
 
 	g_bobVars.bobTime += (pparams->time - g_bobVars.lastBobTime) * bobOffset;
 	g_bobVars.lastBobTime = pparams->time;
@@ -128,10 +142,7 @@ static void V_CalcBob_CSGO(ref_params_t *pparams)
 	cycle = g_bobVars.bobTime - (int)(g_bobVars.bobTime / bobCycle) * bobCycle;
 	cycle /= bobCycle;
 
-	if (cycle < cl_bobup->value)
-		cycle = M_PI_F * cycle / cl_bobup->value;
-	else
-		cycle = M_PI_F + M_PI_F * (cycle - cl_bobup->value) / (1.0f - cl_bobup->value);
+	cycle = BobPhaseToRadians(cycle);
 
 	bobScale = 0.00625f;
 
@@ -145,10 +156,7 @@ static void V_CalcBob_CSGO(ref_params_t *pparams)
 	cycle = g_bobVars.bobTime - (int)(g_bobVars.bobTime / bobCycle * 2) * bobCycle * 2;
 	cycle /= bobCycle * 2;
 
-	if (cycle < cl_bobup->value)
-		cycle = M_PI_F * cycle / cl_bobup->value;
-	else
-		cycle = M_PI_F + M_PI_F * (cycle - cl_bobup->value) / (1.0f - cl_bobup->value);
+	cycle = BobPhaseToRadians(cycle);
 
 	g_bobVars.horBob = speed * (bobScale * cl_bobamt_lat->value);
 	g_bobVars.horBob = g_bobVars.horBob * 0.3f + g_bobVars.horBob * 0.7f * sinf(cycle);
@@ -159,11 +167,11 @@ static void V_AddBob_CSGO(ref_params_t *pparams, vec3_t origin, vec3_t front, ve
 {
     V_CalcBob_CSGO(pparams);
 
-    VectorMA_2(front, g_bobVars.vertBob * 0.4f, origin);
+    ncl_math::VectorMA_2(front, g_bobVars.vertBob * 0.4f, origin);
 
     origin[2] += g_bobVars.vertBob * 0.1f;
 
-    VectorMA_2(side, g_bobVars.horBob * 0.2f, origin);
+    ncl_math::VectorMA_2(side, g_bobVars.horBob * 0.2f, origin);
 }
 
 static float V_CalcBob(ref_params_t *pparams)
@@ -175,12 +183,9 @@ static float V_CalcBob(ref_params_t *pparams)
     float cycle = (float)(bobtime - (int)(bobtime / cl_bobcycle->value) * cl_bobcycle->value);
     cycle /= cl_bobcycle->value;
 
-    if (cycle < cl_bobup->value)
-        cycle = M_PI_F * cycle / cl_bobup->value;
-    else
-        cycle = M_PI_F + M_PI_F * (cycle - cl_bobup->value) / (1.0f - cl_bobup->value);
+    cycle = BobPhaseToRadians(cycle);
 
-    float bob = Vector2DLength(pparams->simvel) * cl_bob->value;
+    float bob = ncl_math::Vector2DLength(pparams->simvel) * cl_bob->value;
     bob = bob * 0.3f + bob * 0.7f * sinf(cycle);
     return std::clamp(bob, -7.f, 4.f);
 }
@@ -190,12 +195,10 @@ static void V_AddLag_HL2(ref_params_t *pparams, vec3_t origin, vec3_t front)
 	vec3_t delta_front;
 	static vec3_t last_front;
 
-	delta_front[0] = front[0] - last_front[0];
-	delta_front[1] = front[1] - last_front[1];
-	delta_front[2] = front[2] - last_front[2];
+	ncl_math::VectorSubtract(front, last_front, delta_front);
 
-	VectorMA(delta_front, viewmodel_lag_speed->value * pparams->frametime, last_front);
-	VectorMA_2(delta_front, -1 * viewmodel_lag_scale->value, origin);
+	ncl_math::VectorMA(delta_front, viewmodel_lag_speed->value * pparams->frametime, last_front);
+	ncl_math::VectorMA_2(delta_front, -1 * viewmodel_lag_scale->value, origin);
 }
 
 // quite an inefficent way to do css style lag but oh well
@@ -231,7 +234,7 @@ static void AddLagAngles(float time, vec3_t angles)
 
 	last_step = step;
 
-	VectorCopy(angles, lag_angles[step % ANGLE_BACKUP].value);
+	ncl_math::VectorCopy(angles, lag_angles[step % ANGLE_BACKUP].value);
 	lag_angles[step % ANGLE_BACKUP].valid = true;
 }
 
@@ -250,20 +253,20 @@ static bool GetLagAngles(float time, vec3_t dest)
 		if (!next_angles->valid)
 		{
 			// can't lerp to these
-			VectorCopy(angles->value, dest);
+			ncl_math::VectorCopy(angles->value, dest);
 		}
 		else
 		{
 			float next_time = FROM_STEP(step + 1);
-			float frac = Map(time, step_time, next_time, 0, 1);
-			AngleLerp(angles->value, next_angles->value, frac, dest);
+			float frac = ncl_math::Remap(time, step_time, next_time, 0, 1);
+			ncl_math::AngleLerp(angles->value, next_angles->value, frac, dest);
 		}
 	}
 	else
 	{
 		// if round_time > time, the difference is
 		// probably so small that it can't be noticed
-		VectorCopy(angles->value, dest);
+		ncl_math::VectorCopy(angles->value, dest);
 	}
 
 	return true;
@@ -278,21 +281,21 @@ static void V_AddLag_CSS(ref_params_t *pparams, vec3_t origin, vec3_t angles, ve
 		return;
 
 	vec3_t delta_angles;
-	VectorSubtract(prev_angles, angles, delta_angles);
-	VectorNegate(delta_angles);
+	ncl_math::VectorSubtract(prev_angles, angles, delta_angles);
+	ncl_math::VectorNegate(delta_angles);
 
-	Vector delta_front;
-	AngleVectors(QAngle(delta_angles), &delta_front, nullptr, nullptr);
+	vec3_t delta_front;
+	ncl_math::AngleVectors(delta_angles, delta_front, nullptr, nullptr);
 
-	VectorMA_2(front, (1 - delta_front[0]) * viewmodel_lag_scale->value, origin);
-	VectorMA_2(side, (delta_front[1]) * viewmodel_lag_scale->value, origin);
-	VectorMA_2(up, (-delta_front[2]) * viewmodel_lag_scale->value, origin);
+	ncl_math::VectorMA_2(front, (1 - delta_front[0]) * viewmodel_lag_scale->value, origin);
+	ncl_math::VectorMA_2(side, (delta_front[1]) * viewmodel_lag_scale->value, origin);
+	ncl_math::VectorMA_2(up, (-delta_front[2]) * viewmodel_lag_scale->value, origin);
 }
 
 static void V_OffsetViewmodel(cl_entity_t *vm, vec3_t front, vec3_t side, vec3_t up)
 {
     vec3_t extra_origin;
-    VectorClear(extra_origin);
+    ncl_math::VectorClear(extra_origin);
 
     float x = viewmodel_offset_x->value + extra_origin[0];
     float y = viewmodel_offset_y->value + extra_origin[1];
@@ -301,18 +304,18 @@ static void V_OffsetViewmodel(cl_entity_t *vm, vec3_t front, vec3_t side, vec3_t
     if (g_GameHud->cl_righthand->value == 0)
         x = -x;
 
-    VectorMA_2(side, x, vm->origin);
-    VectorMA_2(front, y, vm->origin);
-    VectorMA_2(up, z, vm->origin);
+    ncl_math::VectorMA_2(side, x, vm->origin);
+    ncl_math::VectorMA_2(front, y, vm->origin);
+    ncl_math::VectorMA_2(up, z, vm->origin);
 }
 
 static void CalcCustomRefdef(ref_params_t *pparams)
 {
     cl_entity_t *vm;
-    Vector front, side, up;
+    vec3_t front, side, up;
 
     vm = gEngfuncs.GetViewModel();
-    AngleVectors(QAngle(vm->angles), &front, &side, &up);
+    ncl_math::AngleVectors(vm->angles, front, side, up);
 
     /* fix the slight difference between view and vm origin */
     vm->origin[0] += 1.0f / 32;
@@ -327,7 +330,7 @@ static void CalcCustomRefdef(ref_params_t *pparams)
         vm->origin[2] += 1;
 
         // offset the viewmodel
-        VectorMA_2(up, 1, vm->origin);
+        ncl_math::VectorMA_2(up, 1, vm->origin);
     }
 
     if ((int)cl_bobstyle->value == 2)
@@ -337,7 +340,7 @@ static void CalcCustomRefdef(ref_params_t *pparams)
     else
     {
         float bob = V_CalcBob(pparams);
-        VectorMA_2(front, bob * 0.4f, vm->origin);
+        ncl_math::VectorMA_2(front, bob * 0.4f, vm->origin);
 
         if ((int)cl_bobstyle->value == 1)
         {
@@ -382,8 +385,8 @@ static void V_GetInEyePos(int target, vec_t *origin, vec_t *angles)
     if (!ent)
         return;
 
-    VectorCopy(ent->origin, origin);
-    VectorCopy(ent->angles, angles);
+    ncl_math::VectorCopy(ent->origin, origin);
+    ncl_math::VectorCopy(ent->angles, angles);
 
     angles[0] *= -3;
 
@@ -410,13 +413,13 @@ static void CalcSpectatorRefdef(ref_params_t *pparams, int nextView)
         if (timeDiff > 0)
         {
             vec3_t distance;
-            VectorSubtract(ent->prevstate.origin, ent->curstate.origin, distance);
-            VectorScale(distance, 1.0f / timeDiff, distance);
+            ncl_math::VectorSubtract(ent->prevstate.origin, ent->curstate.origin, distance);
+            ncl_math::VectorScale(distance, 1.0f / timeDiff, distance);
 
             velocity[0] = velocity[0] * 0.9f + distance[0] * 0.1f;
             velocity[1] = velocity[1] * 0.9f + distance[1] * 0.1f;
             velocity[2] = velocity[2] * 0.9f + distance[2] * 0.1f;
-            VectorCopy(velocity, pparams->simvel);
+            ncl_math::VectorCopy(velocity, pparams->simvel);
         }
 
         if (gEngfuncs.IsSpectateOnly() || spec_pip->value == INSET_IN_EYE)
@@ -425,7 +428,7 @@ static void CalcSpectatorRefdef(ref_params_t *pparams, int nextView)
         }
         else
         {
-            VectorCopy(ent->angles, pparams->cl_viewangles);
+            ncl_math::VectorCopy(ent->angles, pparams->cl_viewangles);
             pparams->cl_viewangles[0] *= -3;
         }
     }
@@ -474,6 +477,14 @@ void ViewCalcRefdef(ref_params_s *pparams, V_CalcRefdefNext next)
             CalcSpectatorRefdef(pparams, nextView);
         else if (!pparams->paused)
             CalcCustomRefdef(pparams);
+    }
+
+    /* the radar follows the main view; the extra spectator PiP passes (nextView != 0)
+       run after it and must not overwrite the captured camera */
+    if (nextView == 0)
+    {
+        ncl_math::VectorCopy(pparams->vieworg, g_MainViewOrigin);
+        ncl_math::VectorCopy(pparams->viewangles, g_MainViewAngles);
     }
 
     FovThink();

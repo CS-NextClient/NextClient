@@ -1,10 +1,16 @@
 #include "HudRadar.h"
+#include "radar/RadarConfig.h"
 
-HudRadar::HudRadar(nitroapi::NitroApiInterface* nitro_api) 
+HudRadar::HudRadar(nitroapi::NitroApiInterface* nitro_api)
 	: HudBaseHelper(nitro_api)
 	, m_bDrawRadar(gHUD()->m_Health->m_bDrawRadar) {}
 
 void HudRadar::Draw(float flTime) {
+	if (RadarConfig_AdvancedActive())
+	{
+		return;
+	}
+
 	if (m_iHideHUDDisplay & HIDEHUD_HEALTH || cl_enginefunc()->IsSpectateOnly())
 		return;
 

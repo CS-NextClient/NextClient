@@ -227,9 +227,9 @@ void HudCrosshair::DrawCrosshair(float flTime, int weaponid)
     }
 
     if (cl()->gHUD->m_NightVision->m_fOn)
-        DrawCrosshairEx(iBarSize, flCrosshairDistance, false, 250, 50, 50, 255);
+        DrawCrosshairEx(iBarSize, flCrosshairDistance, false, {250, 50, 50, 255});
     else
-        DrawCrosshairEx(iBarSize, flCrosshairDistance, m_bAdditive, m_R, m_G, m_B, 255);
+        DrawCrosshairEx(iBarSize, flCrosshairDistance, m_bAdditive, m_color.WithAlpha(255));
 }
 
 int HudCrosshair::GetWeaponAccuracyFlags(int iWeaponID)
@@ -389,15 +389,7 @@ void HudCrosshair::CalculateCrosshairColor()
 
                 if (m_cvarR != cvarR || m_cvarG != cvarG || m_cvarB != cvarB)
                 {
-                    int r, g, b;
-
-                    r = std::clamp(cvarR, 0, 255);
-                    g = std::clamp(cvarG, 0, 255);
-                    b = std::clamp(cvarB, 0, 255);
-
-                    m_R = r;
-                    m_G = g;
-                    m_B = b;
+                    m_color = {std::clamp(cvarR, 0, 255), std::clamp(cvarG, 0, 255), std::clamp(cvarB, 0, 255), 255};
                     m_cvarR = cvarR;
                     m_cvarG = cvarG;
                     m_cvarB = cvarB;
@@ -419,9 +411,11 @@ void HudCrosshair::CalculateCrosshairDrawMode()
         m_bAdditive = true;
 }
 
-void HudCrosshair::DrawCrosshairEx(int iBarSize, float flCrosshairDistance, bool bAdditive, int r, int g, int b, int a)
+void HudCrosshair::DrawCrosshairEx(int iBarSize, float flCrosshairDistance, bool bAdditive, ncl_math::Color color)
 {
     auto eCrosshairType = (CrossHairType)std::clamp((int)cl_crosshair_type_->value, 0, (int)CrossHairType::END_VAL - 1);
+
+    const int r = color.r, g = color.g, b = color.b, a = color.a;
 
     void (*pfnFillRGBA)(int x, int y, int w, int h, int r, int g, int b, int a) = bAdditive ? cl_enginefunc()->pfnFillRGBA : cl_enginefunc()->pfnFillRGBABlend;
 

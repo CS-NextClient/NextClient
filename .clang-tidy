@@ -125,5 +125,6 @@ readability-*,
 -readability-function-cognitive-complexity,
 -readability-identifier-naming,
 -readability-reference-to-constructed-temporary,
--readability-enum-initial-value,
--readability-braces-around-statements'
+-readability-enum-initial-value'
+CheckOptions:
+  readability-braces-around-statements.ShortStatementLines: '0'

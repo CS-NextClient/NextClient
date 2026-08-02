@@ -1,4 +1,5 @@
 #include "VideoAdvancedDialog.h"
+#include "../GameUi.h"
 
 #include <vgui/IInput.h>
 #include <vgui/IInputInternal.h>
@@ -96,11 +97,9 @@ void CVideoAdvancedDialog::OnKeyCodeTyped(vgui2::KeyCode code)
     if (code == vgui2::KEY_ESCAPE)
     {
         Close();
+        return;
     }
-    else
-    {
-        BaseClass::OnKeyCodeTyped(code);
-    }
+    BaseClass::OnKeyCodeTyped(code);
 }
 
 void CVideoAdvancedDialog::OnCheckButtonChecked(Panel *panel)

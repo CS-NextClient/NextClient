@@ -2,6 +2,7 @@
 #include "../main.h"
 #include <parsemsg.h>
 #include "DrawUtils.h"
+#include <ncl_math/color.h>
 
 constexpr int MAX_HEALTH_TO_RENDER = 99999999;
 constexpr int MAX_HEALTH_DIGITS_TO_RENDER = 8;
@@ -33,12 +34,12 @@ void HudHealth::Draw(float flTime) {
     int x = 10;
     int y = height - 15 - m_iFontHeight;
 
-    int r, g, b, a;
+    int a;
+    ncl_math::Color color;
 
-	if(health > 25) DrawUtils::UnpackRGB(r, g, b, RGB_YELLOWISH);
+	if(health > 25) color = DrawUtils::UnpackRGB(RGB_YELLOWISH);
 	else {
-		r = 255;
-        g = b = 0;
+		color = {255, 0, 0, 255};
 	}
 
 	if (m_fFade) {
@@ -51,14 +52,14 @@ void HudHealth::Draw(float flTime) {
 	}
 	else
 		a = MIN_ALPHA;
-	
-	DrawUtils::ScaleColors(r, g, b, a);
 
-    SPR_Set(gHUD()->GetSprite(sprite_cross_handle_), r, g, b);
+	color = DrawUtils::ScaleColors(color, a);
+
+    SPR_Set(gHUD()->GetSprite(sprite_cross_handle_), color.r, color.g, color.b);
     SPR_DrawAdditive(0, x, y + abs(m_iFontHeight - sprite_cross_height_) / 2, &gHUD()->GetSpriteRect(sprite_cross_handle_));
 
     x += sprite_cross_width_ + 2;
-    DrawUtils::DrawHudNumber(x, y, health, r, g, b, MAX_HEALTH_DIGITS_TO_RENDER, FALSE);
+    DrawUtils::DrawHudNumber(x, y, health, color, MAX_HEALTH_DIGITS_TO_RENDER, FALSE);
 }
 
 void HudHealth::VidInit() {

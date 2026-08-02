@@ -28,6 +28,7 @@
 #include "GameConsole.h"
 #include "LoadingDialog.h"
 #include "DemoPlayerDialog.h"
+#include "OptionsDialog/HudRadarDialog.h"
 #include "OptionsSubMiscellaneous.h"
 #include "IClientVGUI.h"
 
@@ -49,7 +50,33 @@ static IBaseSystem* g_pBaseSystem = nullptr;
 static IGameClientExports* g_pGameClientExports = nullptr;
 static EngineMiniInterface* g_pEngineMini = nullptr;
 static vgui2::DHANDLE<CDemoPlayerDialog> g_hDemoPlayerDialog;
+static vgui2::DHANDLE<CHudRadarDialog> g_hHudRadarDialog;
 vgui2::DHANDLE<CLoadingDialog> g_hLoadingDialog;
+
+void CGameUI::OpenHudRadarDialog()
+{
+    if (!g_hHudRadarDialog.Get())
+    {
+        g_hHudRadarDialog = new CHudRadarDialog(BasePanel());
+    }
+
+    // In a level the dialog floats over the running game; from the menu it stays a
+    // normal GameUI dialog.
+    bool over_game = BeginPanelOverGame(g_hHudRadarDialog.Get());
+    if (!over_game)
+    {
+        g_hHudRadarDialog->SetParent(BasePanel()->GetVPanel());
+    }
+
+    g_hHudRadarDialog->Activate();
+
+    if (over_game)
+    {
+        g_hHudRadarDialog->SetVisible(true);
+        g_hHudRadarDialog->MoveToFront();
+        g_hHudRadarDialog->RequestFocus();
+    }
+}
 static CGameUI g_GameUI;
 static HWND g_MainWindow = nullptr;
 static WNDPROC g_MainWindowProc = nullptr;
@@ -248,6 +275,17 @@ void CGameUI::Shutdown(void)
 
 int CGameUI::ActivateGameUI(void)
 {
+    // While a panel floats over the running game (e.g. the radar-settings frame), Esc
+    // must close only that panel. The engine routes Esc here via
+    // VGuiWrap2_GameUIKeyPressed because the GameUI panel stays hidden (so the HUD keeps
+    // drawing, i.e. HasExclusiveInput is false); without this guard it would open the
+    // main menu on top. The panel ends the over-game state on close, so the next Esc
+    // opens the menu normally.
+    if (IsInLevel() && m_hPanelOverGame.Get())
+    {
+        return 1;
+    }
+
     if (!m_bLoadlingLevel && g_hLoadingDialog.Get() && IsInLevel())
     {
         g_hLoadingDialog->Close();
@@ -318,6 +356,11 @@ void CGameUI::ConnectToServer(const char *game, int IP, int port)
 
 void CGameUI::DisconnectFromServer(void)
 {
+    // The level is gone, so the over-game state must not survive into the next session
+    // (a stale handle would make ActivateGameUI swallow Esc there); clear it before the
+    // menu activation below consults it.
+    m_hPanelOverGame = nullptr;
+
     if (g_pServerBrowser)
         g_pServerBrowser->DisconnectFromGame();
 
@@ -349,6 +392,38 @@ void CGameUI::HideGameUI()
     browserExtensionGameUiApi->OnHideGameUI();
 }
 
+bool CGameUI::BeginPanelOverGame(vgui2::Panel* panel)
+{
+    if (!IsInLevel())
+    {
+        return false;
+    }
+
+    // Reparent to the client VGUI panel (which the engine paints while the GameUI menu
+    // is hidden) and hide the GameUI so the engine resumes drawing the HUD/radar;
+    // enable the mouse cursor for the panel.
+    panel->SetParent(g_pEngineVGui->GetPanel(PANEL_ROOT));
+    g_pBaseUI->HideGameUI();
+    engine->pfnSetMouseEnable(1);
+    m_hPanelOverGame = panel;
+    return true;
+}
+
+void CGameUI::EndPanelOverGame()
+{
+    if (!m_hPanelOverGame.Get())
+    {
+        return;
+    }
+    m_hPanelOverGame = nullptr;
+
+    engine->pfnSetMouseEnable(0);
+    // Engine-side game-ui hide: releases mouse/input the way the second Esc does, which
+    // is what makes the client redraw its spectator UI. Our CGameUI::HideGameUI early-
+    // returns here (menu is not active), so this engine call is the part that matters.
+    g_pBaseUI->HideGameUI();
+}
+
 bool CGameUI::IsGameUIActive(void)
 {
     return BasePanel()->IsVisible();
@@ -357,6 +432,7 @@ bool CGameUI::IsGameUIActive(void)
 void CGameUI::LoadingStarted(const char *resourceType, const char *resourceName)
 {
     m_bLoadlingLevel = true;
+    m_hPanelOverGame = nullptr;
 
     GameConsole().Hide();
     BasePanel()->OnLevelLoadingStarted(resourceName);
@@ -520,4 +596,5 @@ void CGameUI::NeedApplyMultiplayerGameSettings()
 void CGameUI::OnDisconnectFromServer(int eSteamLoginFailure, const char *username)
 {
     m_bNeedApplyMultiplayerGameSettings = false;
+    m_hPanelOverGame = nullptr;
 }

@@ -83,6 +83,13 @@ add_subdirectory(nextclient/client_mini)
 add_subdirectory(nextclient/gameui)
 add_subdirectory(nextclient/steam_api_proxy)
 
+# vgui2 lives in the SDK submodule and cannot name a NextClient target, but its font path is served
+# by the engine text service and draws the glyph atlas through glad. Hand it the engine-mini headers
+# and glad from this side until the vgui2 shim itself moves out of the submodule (see
+# docs/engine-text-service-plan.md).
+target_include_directories(vgui2 PRIVATE "${NEXTCLIENT_ROOT}/nextclient/engine_mini/include")
+target_link_libraries(vgui2 PRIVATE glad::glad)
+
 # Windows 7 compatibility
 if (MSVC)
     set(YY_THUNKS_WIN7_OBJ "${NEXTCLIENT_ROOT}/dep/yy-thunks/x86/YY_Thunks_for_Win7.obj")

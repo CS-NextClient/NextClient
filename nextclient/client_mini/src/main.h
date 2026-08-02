@@ -4,12 +4,16 @@
 #include <next_gameui/IGameConsoleNext.h>
 #include "hud/GameHud.h"
 
+using HUD_InitNext = nitroapi::NextHandlerInterface<void>*;
+using HUD_RedrawNext = nitroapi::NextHandlerInterface<int, float, int>*;
+using CL_HookEventNext = nitroapi::NextHandlerInterface<void, char*, void(*)(struct event_args_s*)>*;
 using V_CalcRefdefNext = nitroapi::NextHandlerInterface<void, ref_params_s*>*;
 using UserMsg_SetFOVNext = nitroapi::NextHandlerInterface<int, const char*, int, void*>*;
 using HUD_ProcessPlayerStateNext = nitroapi::NextHandlerInterface<void, entity_state_s*, const entity_state_s*>*;
 using HUD_ResetNext = nitroapi::NextHandlerInterface<void>*;
 using HUD_VidInitNext = nitroapi::NextHandlerInterface<int>*;
 using UserMsg_TextMsgNext = nitroapi::NextHandlerInterface<int, const char*, int, void*>*;
+using UserMsg_RadarMsgNext = nitroapi::NextHandlerInterface<int, const char*, int, void*>*;
 using CL_CreateMoveNext = nitroapi::NextHandlerInterface<void, float, usercmd_s*, int>*;
 
 extern nitroapi::NitroApiInterface* g_NitroApi;

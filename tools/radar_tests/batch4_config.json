@@ -1,0 +1,23 @@
+{
+  "exe": "D:/Counter Strike 1.6 steam next client/cstrike.exe",
+  "gamedir": "D:/Counter Strike 1.6 steam next client/cstrike",
+  "launch_args": [
+    "-game", "cstrike",
+    "-windowed", "-width", "{width}", "-height", "{height}",
+    "-noborder",
+    "+host_framerate", "0.013333",
+    "+playdemo", "{demo}"
+  ],
+  "demo": "radar_test",
+  "resolution": "1280x1024",
+  "golden_dir": "goldens_batch4",
+  "timeout": 240,
+  "tol": 12,
+  "fail_frac": 0.004,
+  "steps": [
+    {"trigger": "at",    "time": 2.0,      "name": "spawn", "dump": true},
+    {"trigger": "on",    "event": "smoke", "name": "smoke", "dump": true, "shot": true, "region": [0, 145, 250, 250]},
+    {"trigger": "on",    "event": "bomb",  "name": "bomb",  "dump": true, "shot": true, "region": [0, 145, 250, 250]},
+    {"trigger": "on",    "event": "flash", "name": "flash", "shot": true, "region": [0, 145, 250, 250]}
+  ]
+}

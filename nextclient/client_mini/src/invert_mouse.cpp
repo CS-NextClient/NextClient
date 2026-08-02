@@ -1,7 +1,7 @@
 #include "invert_mouse.h"
 #include "main.h"
 #include <algorithm>
-#include <mathlib/mathlib.h>
+#include <ncl_math/vec3.h>
 #include <parsemsg.h>
 
 namespace
@@ -133,7 +133,7 @@ void CL_CreateMove_InvertMousePost(float frametime, usercmd_s* cmd, int active)
         float delta_yaw = current_angles[1] - g_LastOriginalYaw;
         g_LastOriginalYaw = current_angles[1];
 
-        float inverted_yaw = AngleNormalize(g_LastInvertedYaw - delta_yaw);
+        float inverted_yaw = ncl_math::AngleNormalize(g_LastInvertedYaw - delta_yaw);
         g_LastInvertedYaw = inverted_yaw;
 
         current_angles[1] = inverted_yaw;
