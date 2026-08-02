@@ -50,8 +50,11 @@ result<HttpResponse> NextUpdaterHttpService::PostAsync(
 
     co_await InitializeBackendAddressIfNeeded(linked_ct);
 
+    // The IO task holds its own token: WithCancellation below can return before PostInternal finishes.
+    std::shared_ptr<TaskTracker::Token> io_token = std::make_shared<TaskTracker::Token>(task_tracker_.MakeToken());
+
     result<HttpResponse> internal_task = TaskCoro::RunIO(
-        [this, method, data, linked_ct]() mutable
+        [this, method, data, linked_ct, io_token]() mutable
         {
             return PostInternal(method, data, linked_ct);
         }

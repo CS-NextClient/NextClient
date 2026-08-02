@@ -598,6 +598,9 @@ void ClientLauncher::CheckVideoModeCrash()
 void ClientLauncher::Sys_ErrorHandler(const char* error)
 {
     analytics_->SendCrashMonitoringEvent("Sys_Error", error, true);
+
+    // Sys_Error exits from inside IEngineAPI::Run, so the teardown after it never happens.
+    EngineCommons::Reset();
 }
 
 std::string ClientLauncher::CreateVersionsString(nitroapi::NitroApiInterface* nitro_api,

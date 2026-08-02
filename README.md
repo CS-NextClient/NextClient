@@ -8,6 +8,8 @@ NextClient has integrated some features from [csldr](https://github.com/mikkokko
 
 *Please note that the official version of NextClient does not include an emulator. Next21 team is not developing a Steam emulator. You still need to have Steam running and a purchased copy of Cs 1.6 to play on the NextClient version from GitHub.*
 
+*Some antivirus engines flag NextClient binaries. These are heuristic false positives caused by runtime detouring of engine functions. Official builds are produced from the source code of this repository by GitHub Actions and carry a signed build provenance attestation. Details and false positive reporting: [docs/reporting-av-false-positives.md](docs/reporting-av-false-positives.md).*
+
 ### Main features:
  - Protector - protects the client from malicious commands from the server
  - Ability to change the master server (the default ms is [tsarvar.com](https://tsarvar.com))

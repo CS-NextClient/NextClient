@@ -16,30 +16,47 @@
 #include "download.h"
 #include "cl_private_resources.h"
 
-static resourcetype_t ValidateClientResourceAndGetType(const ResourceDescriptor& resource_descriptor)
+namespace
 {
-    std::filesystem::path download_path = resource_descriptor.get_download_path();
-    if (!download_path.has_extension() || !download_path.has_filename())
+    constexpr std::string_view kSoundPath = DEFAULT_SOUNDPATH;
+}
+
+static resourcetype_t GetResourceTypeByPath(const std::string& filepath)
+{
+    std::filesystem::path path = filepath;
+    if (!path.has_extension() || !path.has_filename())
     {
         return rt_max;
     }
 
     resourcetype_t resource_type = rt_max;
 
-    std::string dl_path_lower = nitro_utils::to_lower_copy(download_path.string());
+    std::string path_lower = nitro_utils::to_lower_copy(path.string());
 
-    if (dl_path_lower.starts_with("sprites/") &&
-        (dl_path_lower.ends_with(".spr") || dl_path_lower.ends_with(".txt")))
+    if (path_lower.starts_with("sprites/") &&
+        (path_lower.ends_with(".spr") || path_lower.ends_with(".txt")))
     {
         resource_type = t_generic;
     }
-    else if (dl_path_lower.starts_with("sound/") &&
-        (dl_path_lower.ends_with(".wav") || dl_path_lower.ends_with(".flac") || dl_path_lower.ends_with(".ogg") || dl_path_lower.ends_with(".mp3")))
+    else if (path_lower.starts_with(kSoundPath) &&
+        (path_lower.ends_with(".wav") || path_lower.ends_with(".mp3")))
     {
         resource_type = t_sound;
     }
 
     return resource_type;
+}
+
+static resourcetype_t ValidateClientResourceAndGetType(const ResourceDescriptor& resource_descriptor)
+{
+    resourcetype_t download_type = GetResourceTypeByPath(resource_descriptor.get_download_path());
+
+    if (download_type != GetResourceTypeByPath(resource_descriptor.get_filename()))
+    {
+        return rt_max;
+    }
+
+    return download_type;
 }
 
 static void AddPrivateResource(bool client_only, const std::string& filename, const std::string& download_path, CRC32_t server_crc, int size)
@@ -200,8 +217,15 @@ void PrivateRes_AddClientOnlyResources(resource_t* list)
             continue;
         }
 
+        // resource list keeps t_sound paths relative to DEFAULT_SOUNDPATH, while a private resource is keyed by the full client path
+        const char* resource_name = filepath.c_str();
+        if (resource_type == t_sound)
+        {
+            resource_name += kSoundPath.size();
+        }
+
         auto* res = (resource_t*)Mem_ZeroMalloc(sizeof(resource_t));
-        V_strcpy_safe(res->szFileName, filepath.c_str());
+        V_strcpy_safe(res->szFileName, resource_name);
         res->type = resource_type;
         res->nDownloadSize = res_descriptor.get_download_size();
 

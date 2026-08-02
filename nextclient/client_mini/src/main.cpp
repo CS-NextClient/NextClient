@@ -306,6 +306,12 @@ public:
 
         g_GameHud = std::make_unique<GameHud>(nitro_api);
         g_Unsub.emplace_back(client_data->HUD_Shutdown += [] { g_GameHud.reset(); });
+
+        // Sys_Error exits the process without Host_Shutdown, so HUD_Shutdown never fires on that path.
+        g_Unsub.emplace_back(eng()->Sys_Error |= [](const char* error, const auto& next) {
+            g_GameHud.reset();
+            next->Invoke(error);
+        });
     }
 
     void Uninitialize() override
