@@ -31,10 +31,6 @@ namespace
     // cannot name an entity this client will ever draw.
     constexpr int kMaxBoundEntities = 4096;
 
-    // What one entity may wear at once. Not a shape of the protocol - a binding names its
-    // own texture and needs no slot - but a ceiling on what one entity can cost.
-    constexpr size_t kMaxBindingsPerEntity = 16;
-
     // Separates the texture from the parameter in an instance key. Safe as a separator
     // because a studio texture name is a file name without a path.
     constexpr char kParamScopeSeparator = '/';
@@ -59,6 +55,11 @@ namespace
     struct EntityBindings
     {
         std::vector<Binding> worn;
+
+        // Whether the renderer has ever asked this index about a texture. A binding aimed at
+        // an index nothing draws is the one failure of this path with nothing to see: no
+        // message, no wrong colour, just the model as it always was.
+        bool drawn = false;
     };
 
     std::unordered_map<int, EntityBindings> g_Bindings;
@@ -289,7 +290,7 @@ namespace
             }
         }
 
-        if (bindings.worn.size() >= kMaxBindingsPerEntity)
+        if (bindings.worn.size() >= render::kMaxBindingsPerEntity)
         {
             Con_Printf("materials: entity %d already wears %u materials\n",
                 entity_index, static_cast<unsigned>(bindings.worn.size()));
@@ -360,6 +361,14 @@ namespace
         ncl_material::ParamValue value;
         value.type = ncl_material::ParamType::Scalar;
         value.scalar = static_cast<float>(steps) * schema->quantum;
+
+        // Held to the declared range like every other source. A material from a preset or a
+        // document goes through Validate, which refuses one out of range; this is the one
+        // path that writes a parameter without it, and the step count comes off the wire.
+        if (schema->has_range)
+        {
+            value.scalar = std::clamp(value.scalar, schema->min_value, schema->max_value);
+        }
 
         for (ncl_material::Param& param : binding.resolved.params)
         {
@@ -467,12 +476,14 @@ const ncl_material::Material* render::ServerMaterials_BindingFor(const EntityMat
         return nullptr;
     }
 
-    std::unordered_map<int, EntityBindings>::const_iterator it = g_Bindings.find(query.entity_index);
+    std::unordered_map<int, EntityBindings>::iterator it = g_Bindings.find(query.entity_index);
 
     if (it == g_Bindings.end())
     {
         return nullptr;
     }
+
+    it->second.drawn = true;
 
     for (const Binding& binding : it->second.worn)
     {
@@ -555,8 +566,9 @@ namespace
         {
             for (const Binding& binding : entity.second.worn)
             {
-                Con_Printf("  entity %d: %s %s on %s\n",
-                    entity.first, binding.preset.c_str(), binding.name.c_str(), binding.texture_name.c_str());
+                Con_Printf("  entity %d: %s %s on %s%s\n",
+                    entity.first, binding.preset.c_str(), binding.name.c_str(), binding.texture_name.c_str(),
+                    entity.second.drawn ? "" : "  (never drawn)");
             }
         }
     }

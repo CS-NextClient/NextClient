@@ -1,6 +1,7 @@
 #include "engine.h"
 #include "MaterialSyncSystem.h"
 
+#include <algorithm>
 #include <format>
 
 #include "cl_ncl_entity_sync.h"
@@ -49,6 +50,21 @@ namespace
 
         for (const auto& pair : delta.added)
         {
+            // Idempotent, and capped at what the renderer keeps. Dress rebinds the whole
+            // accumulated list on every update, and every rebind reads a preset, finds a
+            // material by name and deep-copies it: a pair added twice is that work done
+            // twice for the life of the entity, and a list past the ceiling is that work
+            // done for a binding the renderer will refuse.
+            if (std::find(pairs.begin(), pairs.end(), pair) != pairs.end())
+            {
+                continue;
+            }
+
+            if (pairs.size() >= render::kMaxBindingsPerEntity)
+            {
+                break;
+            }
+
             pairs.push_back(pair);
         }
     }

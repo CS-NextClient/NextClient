@@ -531,7 +531,11 @@ void MaterialPreview_CreateEntities()
         std::memset(&g_StandIn, 0, sizeof(g_StandIn));
 
         g_StandIn.model = model;
-        g_StandIn.index = index;
+
+        // Left at zero. The two numbers are not the same kind of thing: modelindex names a
+        // precached model, index names an edict, and putting the first into the second gives
+        // the stand-in the identity of whatever edict happens to carry that number - which
+        // the renderer reads to decide what the server dressed it in.
         g_StandIn.curstate.modelindex = index;
         g_StandIn.curstate.renderamt = 255;
         g_StandIn.curstate.scale = 1.0f;

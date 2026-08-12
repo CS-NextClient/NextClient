@@ -7,6 +7,12 @@
 
 namespace render
 {
+    // What one entity may wear at once. Not a shape of the protocol - a binding names its
+    // own texture and needs no slot - but a ceiling on what one entity can cost. Public
+    // because the side that accumulates the bindings has to hold the same ceiling: what it
+    // keeps past this is work whose only result is a refusal.
+    constexpr size_t kMaxBindingsPerEntity = 16;
+
     // What a server has dressed entities in.
     //
     // Nothing announces a preset. A binding names the file it comes from, so the file is
