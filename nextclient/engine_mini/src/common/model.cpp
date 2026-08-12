@@ -311,12 +311,21 @@ void Mod_LoadStudioModel(model_t* mod, void* buffer, int file_length)
         Con_Printf("Mod_LoadStudioModel: %s: %s\n", mod->name, valid.error_str().c_str());
     }
 
+    // Built beside the load buffer rather than over it: the buffer is exactly the file's own
+    // length, and a file shorter than a header is one of the things the validation refuses,
+    // so writing a whole header back into it is a heap overflow on the very input that
+    // failed. Nothing downstream reads the buffer once this points elsewhere.
+    studiohdr_t stub;
+
     if (LittleLong(phdr->version) != STUDIO_VERSION || valid.has_error())
     {
-        Q_memset(phdr, 0, 244u);
-        Q_strcpy(phdr->name, "bogus");
-        phdr->length = 244;
-        phdr->texturedataindex = 244;
+        Q_memset(&stub, 0, sizeof(stub));
+        Q_strcpy(stub.name, "bogus");
+        stub.length = static_cast<int>(sizeof(studiohdr_t));
+        stub.texturedataindex = static_cast<int>(sizeof(studiohdr_t));
+
+        phdr = &stub;
+        buffer = &stub;
     }
 
     mod->type = mod_studio;
