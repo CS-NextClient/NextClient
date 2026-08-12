@@ -18,6 +18,10 @@ void MaterialPreview_Init(MaterialEditInterface* editor);
 // Called once a frame while the client is building its entity list.
 void MaterialPreview_CreateEntities();
 
+// A map has been loaded. The engine's model table is reusable again from here, which is what
+// the editor's own count of what it has loaded into it is measured against.
+void MaterialPreview_VidInit();
+
 // How many pixels of the frame the docked panel covers. Anything the hud draws against the
 // middle of the screen is drawn against the middle of nothing while a panel is open.
 int MaterialPreview_ViewportInset();

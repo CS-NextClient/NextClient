@@ -5,6 +5,7 @@
 #include <cstdio>
 #include <cstring>
 #include <string>
+#include <vector>
 
 #include <next_engine_mini/MaterialEditInterface.h>
 
@@ -47,6 +48,51 @@ namespace
 
     cl_entity_t g_StandIn;
     std::string g_LoadedPath;
+
+    // The engine keeps every model it has ever loaded in one fixed table, reuses a slot only
+    // after a map change has marked it unreferenced, and dies outright when the table is full
+    // and nothing is reusable. Nothing here can read how much of it the map has taken, so the
+    // editor counts what it has put in and stops far short: an author clicking through a
+    // catalogue of three thousand would otherwise reach the end of the table on their own.
+    constexpr size_t kMaxModelsOutsidePrecache = 128;
+
+    std::vector<std::string> g_ModelsOutsidePrecache;
+
+    // The studio interface's loader is the engine's own without CRC tracking, which is what
+    // keeps a model looked at in the editor out of the server's consistency checks.
+    model_t* LoadOutsidePrecache(const char* path)
+    {
+        if (IEngineStudio.Mod_ForName == nullptr)
+        {
+            return nullptr;
+        }
+
+        bool loaded_before =
+            std::find(g_ModelsOutsidePrecache.begin(), g_ModelsOutsidePrecache.end(), path) !=
+            g_ModelsOutsidePrecache.end();
+
+        if (!loaded_before && g_ModelsOutsidePrecache.size() >= kMaxModelsOutsidePrecache)
+        {
+            gEngfuncs.Con_Printf(
+                "r_mat_standin: %u models have been loaded for the editor on this map already, "
+                "which is as many as it will ask the engine to hold; change map to free them\n",
+                static_cast<unsigned>(g_ModelsOutsidePrecache.size())
+            );
+
+            return nullptr;
+        }
+
+        // Second argument zero: a model that is not there is answered with nothing rather
+        // than with a fatal error.
+        model_t* model = IEngineStudio.Mod_ForName(path, 0);
+
+        if (model != nullptr && !loaded_before)
+        {
+            g_ModelsOutsidePrecache.push_back(path);
+        }
+
+        return model;
+    }
 
     // One per mover, and not one shared. A single clock is consumed by whoever reads it
     // first, so the second mover always saw no time pass; and the stand-in's copy is only
@@ -383,6 +429,15 @@ void MaterialPreview_ApplyViewmodel(ref_params_s* pparams)
     g_Editor->SetClientReport(report);
 }
 
+void MaterialPreview_VidInit()
+{
+    // Whatever the editor put into the engine's model table is reusable from here, so the
+    // count starts again. The stand-in is dropped with it: its model belongs to the map that
+    // just went away.
+    g_ModelsOutsidePrecache.clear();
+    g_LoadedPath.clear();
+}
+
 void MaterialPreview_CreateEntities()
 {
     if (!Editing())
@@ -398,12 +453,21 @@ void MaterialPreview_CreateEntities()
         return;
     }
 
-    // Loaded through the engine, so it is precached and cached exactly as any other model
-    // is, and the studio path sees nothing unusual about it.
+    // Loaded through the engine, so it is cached exactly as any other model is and the studio
+    // path sees nothing unusual about it.
     if (g_LoadedPath != path)
     {
+        // CL_LoadModel loads nothing despite the name: it looks the name up among what the
+        // server precached and answers with that index. A model the map has no use for is
+        // not in there at all, and has to be loaded here.
         int index = 0;
         model_t* model = gEngfuncs.CL_LoadModel(path, &index);
+
+        if (model == nullptr)
+        {
+            index = 0;
+            model = LoadOutsidePrecache(path);
+        }
 
         if (model == nullptr)
         {

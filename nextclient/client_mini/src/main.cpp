@@ -174,6 +174,7 @@ static int HUD_VidInitHandler(HUD_VidInitNext next)
 
     ViewVidInit();
     g_GameHud->VidInit();
+    MaterialPreview_VidInit();
 
     return 1;
 }
