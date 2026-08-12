@@ -388,9 +388,11 @@ void CGameUI::ConnectToServer(const char *game, int IP, int port)
 void CGameUI::DisconnectFromServer(void)
 {
     // The level is gone, so the over-game state must not survive into the next session
-    // (a stale handle would make ActivateGameUI swallow Esc there); clear it before the
-    // menu activation below consults it.
-    m_hPanelOverGame = nullptr;
+    // (a stale handle would make ActivateGameUI swallow Esc there); closed rather than
+    // forgotten, because the panel's OnClose is what takes back the free camera, the
+    // viewport it reserved and the mouse. Done before the menu activation below, which
+    // consults the handle.
+    ClosePanelOverGame();
 
     if (g_pServerBrowser)
         g_pServerBrowser->DisconnectFromGame();
@@ -440,6 +442,23 @@ bool CGameUI::BeginPanelOverGame(vgui2::Panel* panel)
     return true;
 }
 
+void CGameUI::ClosePanelOverGame()
+{
+    vgui2::Panel* panel = m_hPanelOverGame.Get();
+
+    if (panel == nullptr)
+    {
+        return;
+    }
+
+    // Sent rather than posted: the callers go on to activate the menu, and a close that has
+    // not happened yet still holds the handle that suppresses it. The panel clears the
+    // handle from EndPanelOverGame in its own OnClose.
+    vgui2::ipanel()->SendMessage(panel->GetVPanel(), new KeyValues("Close"), NULL);
+
+    m_hPanelOverGame = nullptr;
+}
+
 void CGameUI::EndPanelOverGame()
 {
     if (!m_hPanelOverGame.Get())
@@ -463,7 +482,7 @@ bool CGameUI::IsGameUIActive(void)
 void CGameUI::LoadingStarted(const char *resourceType, const char *resourceName)
 {
     m_bLoadlingLevel = true;
-    m_hPanelOverGame = nullptr;
+    ClosePanelOverGame();
 
     GameConsole().Hide();
     BasePanel()->OnLevelLoadingStarted(resourceName);
@@ -627,5 +646,5 @@ void CGameUI::NeedApplyMultiplayerGameSettings()
 void CGameUI::OnDisconnectFromServer(int eSteamLoginFailure, const char *username)
 {
     m_bNeedApplyMultiplayerGameSettings = false;
-    m_hPanelOverGame = nullptr;
+    ClosePanelOverGame();
 }

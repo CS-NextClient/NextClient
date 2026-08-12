@@ -87,6 +87,11 @@ public:
 private:
     void OpenServerBrowserIfNeeded();
 
+    // Closes the panel shown over the running game, if there is one. The panel's own OnClose
+    // is the only place that takes back what it put into the renderer, so a level that ends
+    // has to close it rather than drop the handle.
+    void ClosePanelOverGame();
+
 private:
     bool m_bFirstActivatePassed;
     bool m_bServBrowserFirstActivatePassed;
