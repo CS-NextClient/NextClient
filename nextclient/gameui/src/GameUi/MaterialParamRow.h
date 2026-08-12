@@ -32,6 +32,35 @@ class CMaterialParamRow : public vgui2::Panel, public CDragValueLabel::IListener
 {
     DECLARE_CLASS_SIMPLE(CMaterialParamRow, vgui2::Panel);
 
+private:
+    CMaterialEditDialog* m_pOwner;
+
+    std::string m_Name;
+    MaterialEditParamType m_Type;
+    MaterialEditParamWidget m_Widget;
+    bool m_Instance;
+    bool m_HasRange;
+    float m_Min;
+    float m_Max;
+    float m_Quantum;
+
+    CDragValueLabel* m_pLabel;
+    CDragValueLabel* m_pComponents[4];
+    vgui2::Slider* m_pSlider;
+    vgui2::TextEntry* m_pFields[4];
+    vgui2::Button* m_pBrowse;
+    SwatchButton* m_pSwatch;
+    CImageFilePanel* m_pPreview;
+
+    // Set while the controls are being filled from the editor, so the change messages that
+    // causes do not travel back and rewrite what was just read.
+    bool m_Loading;
+
+    // The value as the drag has moved it, before the editor snaps it to the declared step.
+    // Reading the stored value back each time instead would make a parameter on a coarse
+    // grid immovable: every step smaller than the grid rounds to where it started.
+    float m_DragValue[4];
+
 public:
     CMaterialParamRow(vgui2::Panel* parent, CMaterialEditDialog* owner, const MaterialEditParam& param);
 
@@ -69,32 +98,4 @@ private:
     int ValueToSlider(float value) const;
 
     void UpdateSwatch();
-
-    CMaterialEditDialog* m_pOwner;
-
-    std::string m_Name;
-    MaterialEditParamType m_Type;
-    MaterialEditParamWidget m_Widget;
-    bool m_Instance;
-    bool m_HasRange;
-    float m_Min;
-    float m_Max;
-    float m_Quantum;
-
-    CDragValueLabel* m_pLabel;
-    CDragValueLabel* m_pComponents[4];
-    vgui2::Slider* m_pSlider;
-    vgui2::TextEntry* m_pFields[4];
-    vgui2::Button* m_pBrowse;
-    SwatchButton* m_pSwatch;
-    CImageFilePanel* m_pPreview;
-
-    // Set while the controls are being filled from the editor, so the change messages that
-    // causes do not travel back and rewrite what was just read.
-    bool m_Loading;
-
-    // The value as the drag has moved it, before the editor snaps it to the declared step.
-    // Reading the stored value back each time instead would make a parameter on a coarse
-    // grid immovable: every step smaller than the grid rounds to where it started.
-    float m_DragValue[4];
 };

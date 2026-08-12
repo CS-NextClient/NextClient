@@ -19,6 +19,10 @@ namespace render
 
     class GpuBuffer : public IDeviceResource
     {
+        GLuint name_;
+        GLenum target_;
+        size_t size_;
+
     public:
         GpuBuffer();
         ~GpuBuffer() override;
@@ -40,10 +44,5 @@ namespace render
         bool ok() const { return name_ != 0; }
 
         GpuBufferSlice slice(size_t offset, size_t size) const;
-
-    private:
-        GLuint name_;
-        GLenum target_;
-        size_t size_;
     };
 }

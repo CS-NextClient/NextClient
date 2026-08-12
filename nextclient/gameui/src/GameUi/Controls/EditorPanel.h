@@ -16,6 +16,30 @@ class CEditorPanel : public vgui2::Frame
 {
     DECLARE_CLASS_SIMPLE(CEditorPanel, vgui2::Frame);
 
+private:
+    bool m_Flying;
+
+    // When the flight was last stepped, on vgui's clock. Zero while nothing is being flown,
+    // so the first step of a flight is not the gap since the last one.
+    double m_LastStepTime;
+
+    // Whether the held press has turned or moved anything yet. A press that never does is a
+    // click at something rather than a flight.
+    bool m_FlyMoved;
+
+    // What the mouse was doing last frame, so a flight can start on the press rather than on
+    // finding the button already down.
+    bool m_MouseHeld;
+
+    // How far along the build-up to the top speed the flight is, from 0 to 1. Back to zero
+    // whenever nothing is pressed, so every flight starts at walking pace.
+    float m_FlyRamp;
+
+    // Where the cursor was when the flight began. It is put back there every frame, so the
+    // camera can be turned as far as it likes without the pointer walking off the screen.
+    int m_LookAnchorX;
+    int m_LookAnchorY;
+
 public:
     CEditorPanel(vgui2::Panel* parent, const char* name);
 
@@ -54,27 +78,4 @@ private:
     float StepTime();
     void PickAt(int cursor_x, int cursor_y);
     void ToggleConsole();
-
-    bool m_Flying;
-
-    // When the flight was last stepped, on vgui's clock. Zero while nothing is being flown,
-    // so the first step of a flight is not the gap since the last one.
-    double m_LastStepTime;
-
-    // Whether the held press has turned or moved anything yet. A press that never does is a
-    // click at something rather than a flight.
-    bool m_FlyMoved;
-
-    // What the mouse was doing last frame, so a flight can start on the press rather than on
-    // finding the button already down.
-    bool m_MouseHeld;
-
-    // How far along the build-up to the top speed the flight is, from 0 to 1. Back to zero
-    // whenever nothing is pressed, so every flight starts at walking pace.
-    float m_FlyRamp;
-
-    // Where the cursor was when the flight began. It is put back there every frame, so the
-    // camera can be turned as far as it likes without the pointer walking off the screen.
-    int m_LookAnchorX;
-    int m_LookAnchorY;
 };

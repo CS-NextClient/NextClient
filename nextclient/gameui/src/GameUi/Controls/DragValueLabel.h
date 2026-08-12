@@ -24,15 +24,16 @@ public:
         virtual void OnDragValueEnd(int index) { }
     };
 
-    CDragValueLabel(vgui2::Panel* parent, const char* name, const char* text, IListener* listener, int index);
-
-    void OnMousePressed(vgui2::MouseCode code) override;
-    void OnMouseReleased(vgui2::MouseCode code) override;
-    void OnCursorMoved(int x, int y) override;
-
 private:
     IListener* m_pListener;
     int m_Index;
     bool m_Dragging;
     int m_LastX;
+
+public:
+    CDragValueLabel(vgui2::Panel* parent, const char* name, const char* text, IListener* listener, int index);
+
+    void OnMousePressed(vgui2::MouseCode code) override;
+    void OnMouseReleased(vgui2::MouseCode code) override;
+    void OnCursorMoved(int x, int y) override;
 };

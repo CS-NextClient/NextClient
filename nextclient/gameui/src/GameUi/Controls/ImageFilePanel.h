@@ -27,6 +27,13 @@ class CImageFilePanel : public vgui2::Panel
 {
     DECLARE_CLASS_SIMPLE(CImageFilePanel, vgui2::Panel);
 
+private:
+    // Points into the decoded image kept for this path, or null when there is none. The
+    // pixels are cached per path and outlive the panel: texture ids are handed out by the
+    // surface and never given back, so one is kept per distinct path for the life of the
+    // process and creating one per paint would leak.
+    const ImageFilePixels* m_pImage;
+
 public:
     CImageFilePanel(vgui2::Panel* parent, const char* name);
 
@@ -41,13 +48,6 @@ public:
     // to mark it: it draws once and is gone the moment anything else repaints over it. The
     // cost is a handful of small panels in an authoring dialog.
     void OnThink() override;
-
-private:
-    // Points into the decoded image kept for this path, or null when there is none. The
-    // pixels are cached per path and outlive the panel: texture ids are handed out by the
-    // surface and never given back, so one is kept per distinct path for the life of the
-    // process and creating one per paint would leak.
-    const struct ImageFilePixels* m_pImage;
 };
 
 // What the cache holds and how often each entry has actually been painted. Told apart

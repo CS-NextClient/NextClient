@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstdint>
 #include <cstdio>
 #include <cstdlib>
 #include <vector>
@@ -89,9 +90,9 @@ namespace
         }
     }
 
-    unsigned char ToByte(float value)
+    uint8_t ToByte(float value)
     {
-        return static_cast<unsigned char>(std::clamp(value, 0.0f, 1.0f) * 255.0f + 0.5f);
+        return static_cast<uint8_t>(std::clamp(value, 0.0f, 1.0f) * 255.0f + 0.5f);
     }
 
     void Ring(int x, int y, int radius, int r, int g, int b)
@@ -215,7 +216,7 @@ namespace
 
     void FillSwatch(CPixelPanel* panel, const float rgb[3], float alpha)
     {
-        unsigned char pixels[2 * 2 * 4];
+        uint8_t pixels[2 * 2 * 4];
 
         for (int i = 0; i < 4; i++)
         {
@@ -274,7 +275,7 @@ CColorPickerDialog::CColorPickerDialog(
     new Button(this, "Cancel", "#GameUI_MatEdit_Cancel", this, "cancel");
 
     // The hue bar never changes, so it is drawn once here rather than on every redraw.
-    std::vector<unsigned char> hue(256 * 4);
+    std::vector<uint8_t> hue(256 * 4);
 
     for (int x = 0; x < 256; x++)
     {
@@ -346,7 +347,7 @@ void CColorPickerDialog::PerformLayout()
 
 void CColorPickerDialog::RedrawShade()
 {
-    std::vector<unsigned char> pixels(static_cast<size_t>(kShadeWide) * kShadeTall * 4);
+    std::vector<uint8_t> pixels(static_cast<size_t>(kShadeWide) * kShadeTall * 4);
 
     for (int y = 0; y < kShadeTall; y++)
     {
@@ -377,7 +378,7 @@ void CColorPickerDialog::RedrawBars()
     float rgb[3];
     HsvToRgb(m_Hue, m_Saturation, m_Value, rgb);
 
-    std::vector<unsigned char> alpha(256 * 4);
+    std::vector<uint8_t> alpha(256 * 4);
 
     for (int x = 0; x < 256; x++)
     {

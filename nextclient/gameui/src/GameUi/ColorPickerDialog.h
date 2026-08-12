@@ -45,30 +45,7 @@ public:
         virtual void OnColorPicked(const char* param, const float rgba[4]) = 0;
     };
 
-    CColorPickerDialog(
-        vgui2::Panel* parent,
-        IListener* listener,
-        const char* param,
-        const float rgba[4],
-        const float defaults[4]
-    );
-
-    void Activate() override;
-    void OnClose() override;
-    void OnCommand(const char* command) override;
-    void PerformLayout() override;
-
-    MESSAGE_FUNC_PTR(OnTextChanged, "TextChanged", panel);
-
-    void OnStripPicked(int id, float x, float y) override;
-
 private:
-    void SetColor(const float rgba[4]);
-    void RedrawShade();
-    void RedrawBars();
-    void UpdateField();
-    void Publish();
-
     IListener* m_pListener;
     std::string m_Param;
 
@@ -95,4 +72,29 @@ private:
     // What was modal before this window took over. Restored on every close, including the
     // title bar's button and Escape, neither of which passes through the buttons below.
     vgui2::VPANEL m_PreviousModal;
+
+public:
+    CColorPickerDialog(
+        vgui2::Panel* parent,
+        IListener* listener,
+        const char* param,
+        const float rgba[4],
+        const float defaults[4]
+    );
+
+    void Activate() override;
+    void OnClose() override;
+    void OnCommand(const char* command) override;
+    void PerformLayout() override;
+
+    MESSAGE_FUNC_PTR(OnTextChanged, "TextChanged", panel);
+
+    void OnStripPicked(int id, float x, float y) override;
+
+private:
+    void SetColor(const float rgba[4]);
+    void RedrawShade();
+    void RedrawBars();
+    void UpdateField();
+    void Publish();
 };

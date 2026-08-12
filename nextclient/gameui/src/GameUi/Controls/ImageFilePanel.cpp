@@ -1,6 +1,7 @@
 #include "ImageFilePanel.h"
 
 #include <algorithm>
+#include <cstdint>
 #include <map>
 #include <string>
 #include <vector>
@@ -19,7 +20,7 @@ struct ImageFilePixels
     int texture_id = 0;
     int wide = 0;
     int tall = 0;
-    std::vector<unsigned char> rgba;
+    std::vector<uint8_t> rgba;
 
     // Diagnostic only, and mutable so a const image can still count its own paints: what
     // is asked of it is whether it is being drawn at all.
@@ -42,7 +43,7 @@ namespace
     // be paying a megabyte a frame to draw a thumbnail.
     constexpr int kCacheSize = 160;
 
-    bool ReadFile(const char* path, std::vector<unsigned char>& out)
+    bool ReadFile(const char* path, std::vector<uint8_t>& out)
     {
         FileHandle_t file = g_pFullFileSystem->Open(path, "rb");
         if (file == nullptr)
@@ -70,7 +71,7 @@ namespace
 
     // Box filter rather than nearest: these images are noise and scratches, and dropping
     // texels out of them turns a fine pattern into a different, coarser one.
-    void Downscale(const unsigned char* source, int source_wide, int source_tall, ImageFilePixels& out)
+    void Downscale(const uint8_t* source, int source_wide, int source_tall, ImageFilePixels& out)
     {
         float scale = static_cast<float>(kCacheSize) / std::max(source_wide, source_tall);
 
@@ -95,7 +96,7 @@ namespace
                 {
                     for (int sx = x0; sx < x1; sx++)
                     {
-                        const unsigned char* texel = source + (static_cast<size_t>(sy) * source_wide + sx) * 4;
+                        const uint8_t* texel = source + (static_cast<size_t>(sy) * source_wide + sx) * 4;
 
                         for (int c = 0; c < 4; c++)
                         {
@@ -106,11 +107,11 @@ namespace
                     }
                 }
 
-                unsigned char* target = out.rgba.data() + (static_cast<size_t>(y) * out.wide + x) * 4;
+                uint8_t* target = out.rgba.data() + (static_cast<size_t>(y) * out.wide + x) * 4;
 
                 for (int c = 0; c < 4; c++)
                 {
-                    target[c] = static_cast<unsigned char>(sum[c] / count);
+                    target[c] = static_cast<uint8_t>(sum[c] / count);
                 }
             }
         }
@@ -133,7 +134,7 @@ namespace
         // hit the filesystem on every frame it is visible.
         ImageFilePixels& stored = g_Images[path];
 
-        std::vector<unsigned char> file;
+        std::vector<uint8_t> file;
         if (!ReadFile(path, file))
         {
             return nullptr;

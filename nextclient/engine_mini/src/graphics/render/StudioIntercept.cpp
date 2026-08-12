@@ -272,7 +272,7 @@ namespace
     }
 }
 
-void render::Studio_PatchApi(engine_studio_api_s* api)
+void render::Studio_PatchApi(engine_studio_api_t* api)
 {
     // The table is handed out again on a level change; comparing against our own entry
     // point both detects that case and keeps a second patch from capturing itself as
@@ -318,7 +318,7 @@ render::StudioFrameStats render::Studio_TakeFrameStats()
     return stats;
 }
 
-const engine_studio_api_s* render::Studio_OriginalApi()
+const engine_studio_api_t* render::Studio_OriginalApi()
 {
     return g_Original.StudioDrawPoints != nullptr ? &g_Original : nullptr;
 }

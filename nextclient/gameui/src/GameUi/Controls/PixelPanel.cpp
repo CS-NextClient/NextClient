@@ -1,5 +1,7 @@
 #include "PixelPanel.h"
 
+#include <cstdint>
+
 #include <vgui/ISurfaceNext.h>
 
 using namespace vgui2;
@@ -17,7 +19,7 @@ CPixelPanel::CPixelPanel(Panel* parent, const char* name, int width, int height)
     SetPaintBackgroundEnabled(false);
 }
 
-void CPixelPanel::SetPixels(const unsigned char* rgba)
+void CPixelPanel::SetPixels(const uint8_t* rgba)
 {
     if (rgba == nullptr)
     {

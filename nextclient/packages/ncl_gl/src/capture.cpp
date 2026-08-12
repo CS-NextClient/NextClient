@@ -61,12 +61,12 @@ namespace ncl_gl
             return false;
         }
 
-        unsigned char header[18] = {};
+        uint8_t header[18] = {};
         header[2] = 2; // uncompressed true-colour
-        header[12] = static_cast<unsigned char>(image.width & 0xFF);
-        header[13] = static_cast<unsigned char>((image.width >> 8) & 0xFF);
-        header[14] = static_cast<unsigned char>(image.height & 0xFF);
-        header[15] = static_cast<unsigned char>((image.height >> 8) & 0xFF);
+        header[12] = static_cast<uint8_t>(image.width & 0xFF);
+        header[13] = static_cast<uint8_t>((image.width >> 8) & 0xFF);
+        header[14] = static_cast<uint8_t>(image.height & 0xFF);
+        header[15] = static_cast<uint8_t>((image.height >> 8) & 0xFF);
         header[16] = 24;
         // descriptor 0: bottom-left origin, matching the glReadPixels row order
         file.write(reinterpret_cast<const char*>(header), sizeof(header));

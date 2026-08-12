@@ -3,6 +3,8 @@
 #include <algorithm>
 #include <cstdio>
 
+#include <ncl_math/color.h>
+
 #include "common/sys_dll.h"
 #include "graphics/render/RenderConfig.h"
 #include "graphics/render/RenderOverlay.h"
@@ -29,15 +31,10 @@ namespace
     // raw so a single spike is still visible.
     constexpr float kEmaWeight = 0.05f;
 
-    struct Rgba
-    {
-        int r, g, b, a;
-    };
-
-    constexpr Rgba kPanelColor {12, 12, 12, 160};
-    constexpr Rgba kStripColor {0, 0, 0, 120};
-    constexpr Rgba kFrameColor {140, 235, 140, 255};
-    constexpr Rgba kStageColor {255, 170, 60, 255};
+    constexpr ncl_math::Color kPanelColor {12, 12, 12, 160};
+    constexpr ncl_math::Color kStripColor {0, 0, 0, 120};
+    constexpr ncl_math::Color kFrameColor {140, 235, 140, 255};
+    constexpr ncl_math::Color kStageColor {255, 170, 60, 255};
 
     float g_Frame[kHistory];
     float g_Stage[kHistory];
@@ -48,12 +45,12 @@ namespace
     float g_EmaStage;
     double g_PrevTime;
 
-    void Fill(int x, int y, int w, int h, const Rgba& color)
+    void Fill(int x, int y, int w, int h, const ncl_math::Color& color)
     {
         gEngfuncs.pfnFillRGBABlend(x, y, w, h, color.r, color.g, color.b, color.a);
     }
 
-    void DrawLabel(int x, int y, const char* text, const Rgba& color)
+    void DrawLabel(int x, int y, const char* text, const ncl_math::Color& color)
     {
         gEngfuncs.pfnDrawSetTextColor(color.r / 255.0f, color.g / 255.0f, color.b / 255.0f);
         gEngfuncs.pfnDrawConsoleString(x, y, const_cast<char*>(text));
@@ -73,7 +70,7 @@ namespace
 
     // One series as a column chart: the newest sample sits at the right edge, the
     // autoscaled maximum fills the strip.
-    void DrawSeries(int x, int y, int height, const float* history, float scale, const Rgba& color)
+    void DrawSeries(int x, int y, int height, const float* history, float scale, const ncl_math::Color& color)
     {
         for (int i = 0; i < g_Count; i++)
         {

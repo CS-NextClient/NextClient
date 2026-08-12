@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstdint>
 #include <filesystem>
 #include <vector>
 
@@ -11,7 +12,7 @@ namespace ncl_gl
     {
         int width = 0;
         int height = 0;
-        std::vector<unsigned char> bgr;
+        std::vector<uint8_t> bgr;
 
         bool ok() const { return width > 0 && height > 0; }
     };
