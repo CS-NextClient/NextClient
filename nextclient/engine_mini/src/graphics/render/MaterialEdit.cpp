@@ -371,6 +371,38 @@ namespace
     // ask for it from up here.
     void WriteStateReport();
 
+    // What one texture of a model is actually drawn from, which is not what the model on its
+    // own resolves to. A server's binding belongs to one entity and is therefore applied in
+    // the draw path rather than in Resolve, so asking the model alone can never answer with
+    // it - and the whole premise of the panel is that the author judges an edit by the model
+    // in front of them. Asked of the entity that last drew the model, which is the one that
+    // put it there.
+    const ncl_material::Material* DrawnMaterial(
+        const char* model,
+        const char* texture_name,
+        ncl_material::MaterialOrigin* origin
+    )
+    {
+        if (model != nullptr && texture_name != nullptr)
+        {
+            render::EntityMaterialQuery query;
+            query.entity_index = render::Geometry_DrawnBy(model);
+            query.texture_name = texture_name;
+
+            if (const ncl_material::Material* bound = render::ServerMaterials_BindingFor(query))
+            {
+                if (origin != nullptr)
+                {
+                    *origin = ncl_material::MaterialOrigin::Instance;
+                }
+
+                return bound;
+            }
+        }
+
+        return render::Geometry_MaterialByName(model, texture_name, origin);
+    }
+
     class MaterialEdit : public MaterialEditInterface
     {
     public:
@@ -486,7 +518,7 @@ namespace
         {
             ncl_material::MaterialOrigin origin = ncl_material::MaterialOrigin::Implicit;
 
-            if (render::Geometry_MaterialByName(model, texture_name, &origin) == nullptr)
+            if (DrawnMaterial(model, texture_name, &origin) == nullptr)
             {
                 return MaterialEditSource::None;
             }
@@ -783,7 +815,7 @@ namespace
 
         bool Begin(const char* model, const char* texture_name) override
         {
-            const ncl_material::Material* current = render::Geometry_MaterialByName(model, texture_name, nullptr);
+            const ncl_material::Material* current = DrawnMaterial(model, texture_name, nullptr);
             if (current == nullptr)
             {
                 return false;
@@ -1620,6 +1652,11 @@ int render::MaterialEdit_ShownBody(std::string_view model)
     return g_Session.active && g_Session.model == model ? g_Session.shown_body : -1;
 }
 
+bool render::MaterialEdit_PanelOpen()
+{
+    return g_PanelOpen;
+}
+
 bool render::MaterialEdit_DrivesViewmodel()
 {
     return g_PanelOpen && g_Viewmodel.overriding;
@@ -1677,7 +1714,7 @@ void render::MaterialEdit_NoteViewmodel(const cl_entity_t* entity, float now)
     // The first bone's translation, which is what a moving pose moves. Taken because a frame
     // that advances proves only that the number changed: whether the model followed it is a
     // separate question, and this is the answer to it.
-    const engine_studio_api_s* api = render::Studio_OriginalApi();
+    const engine_studio_api_t* api = render::Studio_OriginalApi();
     const float* bones = api != nullptr && api->StudioGetBoneTransform != nullptr
         ? reinterpret_cast<const float*>(api->StudioGetBoneTransform())
         : nullptr;
@@ -1725,7 +1762,10 @@ void render::MaterialEdit_NoteViewmodel(const cl_entity_t* entity, float now)
 
 int render::MaterialEdit_ViewportInset(int frame_wide)
 {
-    if (g_PanelWide <= 0 || g_ScreenWide <= 0 || frame_wide <= 0)
+    // Gated on the panel like everything else the editor puts into the running game: the
+    // width is written when the panel docks and taken back when it closes, and a panel that
+    // went away without the second half would keep a third of the frame for itself.
+    if (!g_PanelOpen || g_PanelWide <= 0 || g_ScreenWide <= 0 || frame_wide <= 0)
     {
         return 0;
     }

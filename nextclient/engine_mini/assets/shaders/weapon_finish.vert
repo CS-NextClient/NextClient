@@ -48,6 +48,9 @@ uniform vec3 uEntityLightColor[3];
 uniform vec2 uGamma;
 uniform int uFlipped;
 
+// What the bone rows were grown by, 1 for everything the game itself draws.
+uniform float uBoneScale;
+
 
 out vec2 vUv;
 out vec3 vColor;
@@ -123,6 +126,11 @@ vec3 EntityLight(vec3 base)
     vec3 adjust = vec3(0.0);
     vec3 normal = uFlipped != 0 && uChrome == 0 ? vec3(aNormal.x, -aNormal.y, aNormal.z) : aNormal;
 
+    // As in the built-in program: the rows carry the entity's scale, and these three dots
+    // are the transpose of a rotation, which is its inverse only while the rows are unit
+    // length.
+    float inverse_scale = 1.0 / uBoneScale;
+
     for (int i = 0; i < uEntityLightCount; i++)
     {
         vec3 to_light = uEntityLight[i].xyz - vec3(r0.w, r1.w, r2.w);
@@ -130,7 +138,7 @@ vec3 EntityLight(vec3 base)
             dot(to_light, vec3(r0.x, r1.x, r2.x)),
             dot(to_light, vec3(r0.y, r1.y, r2.y)),
             dot(to_light, vec3(r0.z, r1.z, r2.z))
-        );
+        ) * inverse_scale * inverse_scale;
 
         vec3 offset = aPosition - local;
         float lambert = -dot(offset, normal);
@@ -143,7 +151,7 @@ vec3 EntityLight(vec3 base)
         float square = dot(offset, offset);
         float falloff = square <= 0.0 ? 1.0 : uEntityLight[i].w / (sqrt(square) * square);
 
-        adjust += lambert * falloff * uEntityLightColor[i];
+        adjust += lambert * falloff * uEntityLightColor[i] * inverse_scale * inverse_scale;
     }
 
     if (adjust == vec3(0.0))

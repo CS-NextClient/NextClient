@@ -50,6 +50,7 @@ namespace
         kUniformEntityLightColor,
         kUniformGamma,
         kUniformFlipped,
+        kUniformBoneScale,
         kUniformCount
     };
 
@@ -70,7 +71,8 @@ namespace
         "uEntityLight",
         "uEntityLightColor",
         "uGamma",
-        "uFlipped"
+        "uFlipped",
+        "uBoneScale"
     };
 
     static_assert(kUniformCount <= ncl_gl::kMaxUniforms, "the program's location array is fixed and is written without a bound");
@@ -125,10 +127,27 @@ namespace
     float g_ScaledBones[MAXSTUDIOBONES * kBoneMatrixFloats];
 
     // The engine's studio renderer has no notion of an entity's scale - it uses that field
-    // for sprites and nothing else - so a model that has to be shown larger or smaller is
-    // scaled here, on the transforms the engine has already computed. Each bone is pushed
-    // away from the entity's own origin by the factor and its rotation grows with it, which
-    // is a uniform scale about the model's own root.
+    // for sprites and nothing else - so honouring it for everything the game draws would be
+    // this path disagreeing with the engine over a field a server may be using for something
+    // else entirely, and an A/B against the engine would never come out clean. It exists for
+    // the editor's stand-in, so it applies while the editor holds a panel and not otherwise.
+    float EntityScale(const cl_entity_t* entity)
+    {
+        if (entity == nullptr || !render::MaterialEdit_PanelOpen())
+        {
+            return 1.0f;
+        }
+
+        // Zero is what every entity nobody has scaled carries, and it means "as built".
+        return entity->curstate.scale > 0.0f ? entity->curstate.scale : 1.0f;
+    }
+
+    // Scales the transforms the engine has already computed: each bone is pushed away from
+    // the entity's own origin by the factor and its rotation grows with it, which is a
+    // uniform scale about the model's own root.
+    //
+    // The rows stop being orthonormal, and the entity light term reads them as an inverse
+    // rotation, which is why the factor is handed to the shader as well.
     const float* ScaleBones(const float* bones, int count, const float* origin, float scale)
     {
         std::memcpy(g_ScaledBones, bones, sizeof(g_ScaledBones));
@@ -690,15 +709,19 @@ namespace
     struct PendingModel
     {
         bool active;
-        float chrome_origin[3];
-        float view_right[3];
+        ncl_math::Vector3 chrome_origin;
+        ncl_math::Vector3 view_right;
         GLuint vao;
         const ncl_gl::Program* program;   // the model's default, used when a material names none
         render::StudioLighting lighting;
         bool flipped;
         float blend;
         float glow_scale;
-        float shell_color[3];
+
+        // What ScaleBones grew the bone rows by, so the entity light term can read them as
+        // the inverse rotation they stopped being.
+        float bone_scale;
+        ncl_math::Vector3 shell_color;
         EntityLights lights;
         const studiohdr_t* texture_header;
         int rendermode;
@@ -997,11 +1020,11 @@ namespace
                 glUniform1f(program->loc[kUniformShade], g_Pending.lighting.shade);
                 glUniform3fv(program->loc[kUniformColorMix], 1, g_Pending.lighting.color);
                 glUniform3fv(program->loc[kUniformLightVec], 1, g_Pending.lighting.light_vec);
-                glUniform3fv(program->loc[kUniformChromeOrigin], 1, g_Pending.chrome_origin);
-                glUniform3fv(program->loc[kUniformViewRight], 1, g_Pending.view_right);
+                glUniform3fv(program->loc[kUniformChromeOrigin], 1, g_Pending.chrome_origin.data());
+                glUniform3fv(program->loc[kUniformViewRight], 1, g_Pending.view_right.data());
                 glUniform1f(program->loc[kUniformBlend], g_Pending.blend);
                 glUniform1f(program->loc[kUniformGlowScale], g_Pending.glow_scale);
-                glUniform3fv(program->loc[kUniformShellColor], 1, g_Pending.shell_color);
+                glUniform3fv(program->loc[kUniformShellColor], 1, g_Pending.shell_color.data());
 
                 ncl_math::Vector2 gamma = GammaExponents();
                 glUniform2fv(program->loc[kUniformGamma], 1, gamma.data());
@@ -1009,6 +1032,8 @@ namespace
                 // The mirrored view model: the engine answers the mirror in the bone
                 // transforms by negating the normal's Y inside the entity light term.
                 glUniform1i(program->loc[kUniformFlipped], g_Pending.flipped ? 1 : 0);
+
+                glUniform1f(program->loc[kUniformBoneScale], g_Pending.bone_scale);
 
                 glUniform1i(program->loc[kUniformEntityLightCount], g_Pending.lights.count);
 
@@ -1258,6 +1283,11 @@ bool render::TryDrawSubmission(model_t* model, const studiohdr_t* header, void* 
         if (entity != nullptr)
         {
             render::ServerMaterials_NoteEntity(entity->index, model != nullptr ? model->name : "");
+
+            // Which entity a model was drawn for is the only thing that ties a question
+            // about a model to an answer that belongs to an entity, and the editing panel
+            // asks exactly that question about the model in front of the author.
+            render::Geometry_NoteDrawnBy(model->name, entity->index);
         }
     }
 
@@ -1353,10 +1383,9 @@ bool render::TryDrawSubmission(model_t* model, const studiohdr_t* header, void* 
             return Reject("bone transforms unavailable");
         }
 
-        // Zero is what every entity nobody has scaled carries, and it means "as built".
-        float scale = entity != nullptr ? entity->curstate.scale : 0.0f;
+        float scale = EntityScale(entity);
 
-        if (scale > 0.0f && scale != 1.0f)
+        if (scale != 1.0f)
         {
             bones = ScaleBones(bones, header->numbones, entity->origin, scale);
         }
@@ -1383,6 +1412,7 @@ bool render::TryDrawSubmission(model_t* model, const studiohdr_t* header, void* 
         g_Pending.flipped = IsFlippedViewModel(api);
         g_Pending.blend = p_r_blend != nullptr ? *p_r_blend : 1.0f;
         g_Pending.glow_scale = GlowShellScale(entity);
+        g_Pending.bone_scale = EntityScale(entity);
         g_Pending.rendermode = rendermode;
         g_Pending.texture_header = texture_header;
 
@@ -1395,20 +1425,20 @@ bool render::TryDrawSubmission(model_t* model, const studiohdr_t* header, void* 
             // it, which is why it is set rather than left as the entity's.
             g_Pending.blend = 1.0f;
 
-            ncl_math::Vector3::Ref(g_Pending.shell_color) = ShellColor(entity);
-            ncl_math::Vector3::Ref(g_Pending.chrome_origin) = ShellChromeOrigin();
+            g_Pending.shell_color = ShellColor(entity);
+            g_Pending.chrome_origin = ShellChromeOrigin();
         }
         else
         {
             // The engine builds chrome around the view: SetChromeOrigin stores the view
             // origin, and vright is the view's right vector. Both are derivable from the
             // frame's refdef, so no extra engine global has to be reached for.
-            ncl_math::Vector3::Ref(g_Pending.chrome_origin) = ncl_math::Vector3::Ref(r_refdef->vieworg);
+            g_Pending.chrome_origin = ncl_math::Vector3::Ref(r_refdef->vieworg);
         }
 
         float forward[3];
         float up[3];
-        ncl_math::AngleVectors(r_refdef->viewangles, forward, g_Pending.view_right, up);
+        ncl_math::AngleVectors(r_refdef->viewangles, forward, g_Pending.view_right.data(), up);
     }
 
     g_Pending.seen_parts++;
@@ -1431,7 +1461,10 @@ bool render::TryDrawSubmission(model_t* model, const studiohdr_t* header, void* 
         const mstudiotexture_t* texture = ResolveTexture(texture_header, skin_family, mesh.skinref);
         if (texture == nullptr || texture->width <= 0 || texture->height <= 0)
         {
-            continue;
+            // Back to the engine rather than skipped. The engine indexes the skin table
+            // unconditionally and draws the mesh; dropping it here is the one path that
+            // makes geometry disappear instead of being drawn by somebody.
+            return RejectSubmission("mesh skin reference does not resolve to a texture", queued_before, true);
         }
 
         const mstudiotexture_t* textures_base = reinterpret_cast<const mstudiotexture_t*>(

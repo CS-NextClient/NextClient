@@ -57,6 +57,11 @@ uniform vec2 uGamma;
 // Set for the mirrored view model, which the engine compensates for in the lambert.
 uniform int uFlipped;
 
+// What the bone rows were grown by, 1 for everything the game itself draws. Only the
+// entity light term needs it: that is the one place the rows are read as a rotation to be
+// inverted rather than as a transform to be applied.
+uniform float uBoneScale;
+
 uniform int uChrome;
 uniform vec3 uChromeOrigin;
 uniform vec3 uViewRight;
@@ -131,6 +136,12 @@ vec3 EntityLight(vec3 base)
     // branch that emits ordinary texture coordinates, not on the chrome one.
     vec3 normal = uFlipped != 0 && uChrome == 0 ? vec3(aNormal.x, -aNormal.y, aNormal.z) : aNormal;
 
+    // A scaled entity carries the factor in its bone rows, and the three dots below are the
+    // transpose of a rotation, which is its inverse only while the rows are unit length.
+    // Divided out here, and the result divided by the square of it: the whole term is a
+    // length over a length cubed, and every one of those lengths grew by the factor.
+    float inverse_scale = 1.0 / uBoneScale;
+
     for (int i = 0; i < uEntityLightCount; i++)
     {
         vec3 to_light = uEntityLight[i].xyz - vec3(r0.w, r1.w, r2.w);
@@ -138,7 +149,7 @@ vec3 EntityLight(vec3 base)
             dot(to_light, vec3(r0.x, r1.x, r2.x)),
             dot(to_light, vec3(r0.y, r1.y, r2.y)),
             dot(to_light, vec3(r0.z, r1.z, r2.z))
-        );
+        ) * inverse_scale * inverse_scale;
 
         vec3 offset = aPosition - local;
         float lambert = -dot(offset, normal);
@@ -151,7 +162,7 @@ vec3 EntityLight(vec3 base)
         float square = dot(offset, offset);
         float falloff = square <= 0.0 ? 1.0 : uEntityLight[i].w / (sqrt(square) * square);
 
-        adjust += lambert * falloff * uEntityLightColor[i];
+        adjust += lambert * falloff * uEntityLightColor[i] * inverse_scale * inverse_scale;
     }
 
     if (adjust == vec3(0.0))

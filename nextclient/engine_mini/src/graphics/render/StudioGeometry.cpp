@@ -75,6 +75,9 @@ namespace
         // draw path reads, and where it came from is what an author has to be told before
         // saving a file that a higher source would beat.
         std::vector<ncl_material::MaterialOrigin> origins;
+
+        // The last entity the draw path drew this model for. Zero until something does.
+        int drawn_by;
     };
 
     std::vector<std::unique_ptr<Entry>> g_Models;
@@ -672,6 +675,23 @@ const ncl_material::Material* render::Geometry_MaterialByName(
     }
 
     return nullptr;
+}
+
+void render::Geometry_NoteDrawnBy(const char* model, int entity_index)
+{
+    Entry* entry = FindByName(model);
+
+    if (entry != nullptr)
+    {
+        entry->drawn_by = entity_index;
+    }
+}
+
+int render::Geometry_DrawnBy(const char* model)
+{
+    Entry* entry = FindByName(model);
+
+    return entry != nullptr ? entry->drawn_by : 0;
 }
 
 void render::Geometry_ReloadDocuments()

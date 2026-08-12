@@ -61,11 +61,22 @@ namespace render
 
     // The material one texture of a prepared model resolved to, and where it came from.
     // Returns nullptr when the model has not been prepared or names no such texture.
+    //
+    // This is the model's own resolution and nothing above it. What a server bound belongs
+    // to an entity rather than to a model, and is applied in the draw path; ask
+    // Geometry_DrawnBy for the entity and ServerMaterials for the binding.
     const ncl_material::Material* Geometry_MaterialByName(
         const char* model,
         const char* texture_name,
         ncl_material::MaterialOrigin* origin
     );
+
+    // Which entity index last drew this model, or 0 for a model nothing has drawn. The one
+    // link between a question about a model and an answer that belongs to an entity: the
+    // editor asks about the model in front of the author, and the entity that drew it is
+    // what put it there.
+    void Geometry_NoteDrawnBy(const char* model, int entity_index);
+    int Geometry_DrawnBy(const char* model);
 
     // Makes the next resolution re-read the documents beside the models. The manifests and
     // the shaders are dropped by their own reload; this is the third input to what a model
