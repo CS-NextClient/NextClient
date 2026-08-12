@@ -9,6 +9,9 @@
 #include <cmath>
 
 #include <FileSystem.h>
+// studio.h uses vec3_t without declaring it.
+#include <tier0/basetypes.h>
+#include <studio.h>
 #include <vgui/ILocalize.h>
 #include <vgui/IScheme.h>
 #include <vgui/ISurfaceNext.h>
@@ -18,6 +21,7 @@
 #include <vgui_controls/ComboBox.h>
 #include <vgui_controls/Label.h>
 #include <vgui_controls/Slider.h>
+#include <vgui_controls/TextEntry.h>
 
 using namespace vgui2;
 
@@ -28,6 +32,24 @@ namespace
     // Where the shipped collection lives. A folder is part of a path a material references,
     // so this root and the folders under it are as permanent as the file names.
     constexpr const char* kCollectionRoot = "materials";
+
+    // Models are looked for under this one root, which the filesystem resolves in every
+    // search path it has: cstrike, cstrike_downloads and the private one engine_mini adds.
+    constexpr const char* kCatalogueRoot = "models";
+
+    // A downloaded pack is models/<pack>/<file>, and a few nest one deeper. Bounded rather
+    // than exhaustive: this walks a thousand directories as it is.
+    constexpr int kCatalogueDepth = 3;
+
+    // The walk stops here, and the count on screen says so. An installation with more models
+    // than this is not one an author picks from by scrolling anyway.
+    constexpr size_t kMaxCatalogueModels = 16384;
+
+    // How many rows are built at once. Each is a panel, and building thousands of them is
+    // both slow and pointless: what narrows the list is the filter.
+    constexpr int kMaxCatalogueRows = 200;
+
+    constexpr int kCatalogueRowHeight = 20;
 
     // What a stand-in can be scaled between. Below the lower bound the model is a speck and
     // the drag cannot get back out of it; above the upper one the engine ignores the scale.
@@ -188,6 +210,156 @@ namespace
         const ImageFilePixels* m_pImage;
     };
 
+    bool IsModelFile(const char* name)
+    {
+        const char* dot = V_strrchr(name, '.');
+
+        return dot != nullptr && V_stricmp(dot, ".mdl") == 0;
+    }
+
+    // Not deduplicated as it goes, unlike the image collection: the same folder comes back
+    // once per search path it exists in, and comparing every name against everything found so
+    // far is quadratic over thousands of files. Sorted and uniqued once at the end instead.
+    void CollectModels(const std::string& folder, int depth, std::vector<std::string>& out)
+    {
+        FileFindHandle_t handle = {};
+        std::string wildcard = folder + "/*";
+        const char* name = g_pFullFileSystem->FindFirst(wildcard.c_str(), &handle);
+
+        if (name == nullptr)
+        {
+            return;
+        }
+
+        std::vector<std::string> children;
+
+        while (name != nullptr)
+        {
+            if (g_pFullFileSystem->FindIsDirectory(handle))
+            {
+                if (V_strcmp(name, ".") != 0 && V_strcmp(name, "..") != 0)
+                {
+                    // These are deduplicated, because a folder present in two search paths
+                    // would otherwise be walked twice over.
+                    AddUnique(children, name);
+                }
+            }
+            else if (IsModelFile(name) && out.size() < kMaxCatalogueModels)
+            {
+                out.push_back(folder + "/" + name);
+            }
+
+            name = g_pFullFileSystem->FindNext(handle);
+        }
+
+        g_pFullFileSystem->FindClose(handle);
+
+        if (depth <= 0)
+        {
+            return;
+        }
+
+        // Collected before recursing: FindFirst/FindNext share one handle per walk and
+        // starting a nested one inside the loop would step on it.
+        for (const std::string& child : children)
+        {
+            CollectModels(folder + "/" + child, depth - 1, out);
+        }
+    }
+
+    bool LessIgnoreCase(const std::string& left, const std::string& right)
+    {
+        return V_stricmp(left.c_str(), right.c_str()) < 0;
+    }
+
+    bool IsDigit(char c)
+    {
+        return c >= '0' && c <= '9';
+    }
+
+    // The file identifiers as studiomdl writes them, least significant byte first.
+    constexpr int kStudioModelId = ('T' << 24) | ('S' << 16) | ('D' << 8) | 'I';
+    constexpr int kSequenceGroupId = ('Q' << 24) | ('S' << 16) | ('D' << 8) | 'I';
+
+    // Whether the file is one of the pieces the engine loads on a model's behalf rather than
+    // a model. A sequence group says so with an identifier of its own; a texture file carries
+    // the model identifier and is told apart by having no geometry at all.
+    bool IsModelPart(const std::string& path)
+    {
+        FileHandle_t file = g_pFullFileSystem->Open(path.c_str(), "rb");
+
+        if (file == nullptr)
+        {
+            return false;
+        }
+
+        studiohdr_t header = {};
+        int read = g_pFullFileSystem->Read(&header, sizeof(header), file);
+
+        g_pFullFileSystem->Close(file);
+
+        if (read != static_cast<int>(sizeof(header)))
+        {
+            return false;
+        }
+
+        return header.id != kStudioModelId || header.numbodyparts <= 0;
+    }
+
+    // studiomdl puts a model's textures in <stem>T.mdl and every sequence group past the
+    // first in <stem>NN.mdl, and the engine builds those names from the base name when it
+    // loads the model. Neither is a model of its own: loading one draws nothing.
+    //
+    // The name is only what makes a file worth asking about, and the header is what answers:
+    // "w_ak47" ends in two digits without being anybody's sequence group, and a downloaded
+    // pack holding both tree.mdl and tree02.mdl has two trees in it, not one. Opening the few
+    // files the name catches costs nothing; opening all three thousand would.
+    bool IsPartOfAnotherModel(const std::vector<std::string>& sorted, const std::string& path)
+    {
+        if (path.size() < 5)
+        {
+            return false;
+        }
+
+        size_t stem = path.size() - 4;
+        std::string base;
+
+        if (path[stem - 1] == 'T' || path[stem - 1] == 't')
+        {
+            base = path.substr(0, stem - 1) + ".mdl";
+        }
+        else if (stem >= 2 && IsDigit(path[stem - 1]) && IsDigit(path[stem - 2]))
+        {
+            base = path.substr(0, stem - 2) + ".mdl";
+        }
+        else
+        {
+            return false;
+        }
+
+        return std::binary_search(sorted.begin(), sorted.end(), base, LessIgnoreCase) && IsModelPart(path);
+    }
+
+    bool ContainsIgnoreCase(const std::string& haystack, const std::string& needle)
+    {
+        return needle.empty() || V_stristr(haystack.c_str(), needle.c_str()) != nullptr;
+    }
+
+    // One row of the model catalogue. A plain button rather than the collection's row: there
+    // is no thumbnail to draw for a model, and what shows it is the world behind the panel.
+    class CatalogueRow : public Button
+    {
+        DECLARE_CLASS_SIMPLE(CatalogueRow, Button);
+
+    public:
+        CatalogueRow(Panel* parent, Panel* owner, const char* text, const char* command) :
+            BaseClass(parent, "CatalogueRow", text, owner, command)
+        {
+            SetContentAlignment(a_west);
+            SetTextInset(4, 0);
+        }
+    };
+
     // One full pass of every instance parameter over its range, in seconds. Slow enough to
     // watch, short enough that an author does not walk away.
     constexpr float kSweepSeconds = 6.0f;
@@ -327,6 +499,10 @@ CMaterialEditDialog::CMaterialEditDialog(Panel* parent) :
     m_pStandInModel->AddActionSignalTarget(this);
     m_pStandInSequence->AddActionSignalTarget(this);
 
+    // The combo offers the model being edited and its siblings, which is the answer nine
+    // times out of ten; this is the tenth, and it opens everything installed.
+    m_pStandInBrowse = new Button(this, "StandInBrowse", "...", this, "catalogue");
+
     // Indices 0 and 1: the two angles an author turns it by. Roll is not offered - a weapon
     // lying on its side tells nobody anything about its finish. Index 2 is how large it is.
     m_pStandInYaw = new CDragValueLabel(this, "StandInYaw", "#GameUI_MatEdit_StandInYaw", this, 0);
@@ -358,6 +534,18 @@ CMaterialEditDialog::CMaterialEditDialog(Panel* parent) :
     m_pBrowserChoose = new Button(this, "BrowserChoose", "#GameUI_MatEdit_Choose", this, "browse_choose");
     m_pBrowserClear = new Button(this, "BrowserClear", "#GameUI_MatEdit_Clear", this, "browse_clear");
     m_pBrowserBack = new Button(this, "BrowserBack", "#GameUI_MatEdit_Back", this, "browse_back");
+
+    m_pCatalogueFilter = new TextEntry(this, "CatalogueFilter");
+    m_pCatalogueFilter->AddActionSignalTarget(this);
+
+    m_pCatalogueList = new CPanelListPanel(this, "CatalogueList");
+    m_pCatalogueCount = new Label(this, "CatalogueCount", "");
+
+    m_pCatalogueClear = new Button(this, "CatalogueClear", "#GameUI_MatEdit_Clear", this, "catalogue_clear");
+    m_pCatalogueRescan = new Button(this, "CatalogueRescan", "#GameUI_MatEdit_Rescan", this, "catalogue_rescan");
+    m_pCatalogueBack = new Button(this, "CatalogueBack", "#GameUI_MatEdit_Back", this, "catalogue_back");
+
+    m_CatalogueScanned = false;
 
     ShowPage(Page::Parameters);
 
@@ -513,7 +701,10 @@ void CMaterialEditDialog::PerformLayout()
         label->SetBounds(10, row + 2, 110, 18);
     }
 
-    m_pStandInModel->SetBounds(124, row, wide - 134, 22);
+    constexpr int kBrowseWidth = 30;
+
+    m_pStandInModel->SetBounds(124, row, wide - 134 - kBrowseWidth - 4, 22);
+    m_pStandInBrowse->SetBounds(wide - 10 - kBrowseWidth, row, kBrowseWidth, 22);
     row += 30;
 
     if (Panel* label = FindChildByName("StandInSequenceLabel"))
@@ -554,7 +745,8 @@ void CMaterialEditDialog::PerformLayout()
     switch (m_Page)
     {
     case Page::StandIn: m_pState->SetBounds(170, tall - 32, kButtonWide, 24); break;
-    case Page::Browser: m_pState->SetBounds(10, tall - 40, kButtonWide, 24); break;
+    case Page::Browser:
+    case Page::Catalogue: m_pState->SetBounds(10, tall - 40, kButtonWide, 24); break;
     default: m_pState->SetBounds(10, buttons_y - 26, kButtonWide, 22); break;
     }
 
@@ -569,6 +761,17 @@ void CMaterialEditDialog::PerformLayout()
     m_pBrowserBack->SetBounds(wide - 250, tall - 40, 76, 24);
     m_pBrowserClear->SetBounds(wide - 170, tall - 40, 76, 24);
     m_pBrowserChoose->SetBounds(wide - 90, tall - 40, 76, 24);
+
+    // The catalogue: what narrows it on top, what it found under that, and the rest of the
+    // panel is the list. Nothing is previewed here beside it - the model goes into the world
+    // as it is picked, and the world is already on screen.
+    m_pCatalogueFilter->SetBounds(10, 32, wide - 20, 22);
+    m_pCatalogueCount->SetBounds(10, 58, wide - 20, 18);
+    m_pCatalogueList->SetBounds(10, 80, wide - 20, std::max(tall - 130, 40));
+
+    m_pCatalogueRescan->SetBounds(wide - 250, tall - 40, 76, 24);
+    m_pCatalogueClear->SetBounds(wide - 170, tall - 40, 76, 24);
+    m_pCatalogueBack->SetBounds(wide - 90, tall - 40, 76, 24);
 }
 
 void CMaterialEditDialog::ShowPage(Page page)
@@ -592,12 +795,17 @@ void CMaterialEditDialog::ShowPage(Page page)
     };
 
     Panel* const stand_in[] = {
-        m_pStandInTarget, m_pStandInModel, m_pStandInSequence, m_pStandInYaw, m_pStandInPitch,
-        m_pStandInScale, m_pStandInFrame, m_pStandInPlaying, m_pStandInSpinning, m_pStandInPlace,
-        m_pStandInBack,
+        m_pStandInTarget, m_pStandInModel, m_pStandInBrowse, m_pStandInSequence, m_pStandInYaw,
+        m_pStandInPitch, m_pStandInScale, m_pStandInFrame, m_pStandInPlaying, m_pStandInSpinning,
+        m_pStandInPlace, m_pStandInBack,
         m_pViewmodelShown, m_pViewmodelOverride,
         FindChildByName("StandInTargetLabel"), FindChildByName("StandInModelLabel"),
         FindChildByName("StandInSequenceLabel"), FindChildByName("StandInFrameLabel")
+    };
+
+    Panel* const catalogue[] = {
+        m_pCatalogueFilter, m_pCatalogueList, m_pCatalogueCount,
+        m_pCatalogueClear, m_pCatalogueRescan, m_pCatalogueBack
     };
 
     for (Panel* panel : parameters)
@@ -624,6 +832,14 @@ void CMaterialEditDialog::ShowPage(Page page)
         }
     }
 
+    for (Panel* panel : catalogue)
+    {
+        if (panel != nullptr)
+        {
+            panel->SetVisible(page == Page::Catalogue);
+        }
+    }
+
     // The explanation belongs to the parameter page and is shown only when it has something
     // to explain, so whoever returns to that page decides it rather than this.
     m_pEmpty->SetVisible(false);
@@ -637,6 +853,7 @@ void CMaterialEditDialog::ShowPage(Page page)
     {
     case Page::Browser: SetTitle("#GameUI_MatEdit_PickTitle", true); break;
     case Page::StandIn: SetTitle("#GameUI_MatEdit_StandInTitle", true); break;
+    case Page::Catalogue: SetTitle("#GameUI_MatEdit_CatalogueTitle", true); break;
     default: SetTitle("#GameUI_MatEdit_Title", true); break;
     }
 
@@ -656,8 +873,8 @@ void CMaterialEditDialog::UpdateTargetControls()
     bool stand_in = m_Target == MaterialTarget::StandIn;
 
     Panel* const only_stand_in[] = {
-        m_pStandInModel, m_pStandInYaw, m_pStandInPitch, m_pStandInScale, m_pStandInSpinning,
-        m_pStandInPlace, FindChildByName("StandInModelLabel")
+        m_pStandInModel, m_pStandInBrowse, m_pStandInYaw, m_pStandInPitch, m_pStandInScale,
+        m_pStandInSpinning, m_pStandInPlace, FindChildByName("StandInModelLabel")
     };
 
     for (Panel* panel : only_stand_in)
@@ -746,6 +963,13 @@ void CMaterialEditDialog::ReloadStandIn()
 
     std::string current = editor->GetStandInModel();
     int active = 0;
+
+    // A model taken from the catalogue is nobody's sibling, and a combo that cannot show what
+    // is in the world would read as "nothing" over a model standing right there.
+    if (!current.empty())
+    {
+        AddUnique(m_StandInModels, current);
+    }
 
     for (size_t i = 0; i < m_StandInModels.size(); i++)
     {
@@ -1064,6 +1288,125 @@ void CMaterialEditDialog::HighlightBrowserImage(int index)
     // Put on the model at once rather than on the way out: a mask is judged on the weapon,
     // not on a thumbnail, and the way back is the button that says so.
     SetTextureParam(m_BrowserParam.c_str(), m_BrowserImages[index].c_str());
+}
+
+void CMaterialEditDialog::ShowCatalogue()
+{
+    if (!m_CatalogueScanned)
+    {
+        ScanCatalogue();
+    }
+
+    ReloadCatalogueRows();
+    ShowPage(Page::Catalogue);
+
+    m_pCatalogueFilter->RequestFocus();
+}
+
+void CMaterialEditDialog::ScanCatalogue()
+{
+    m_CatalogueScanned = true;
+    m_Catalogue.clear();
+
+    std::vector<std::string> found;
+    CollectModels(kCatalogueRoot, kCatalogueDepth, found);
+
+    std::sort(found.begin(), found.end(), LessIgnoreCase);
+    found.erase(
+        std::unique(
+            found.begin(),
+            found.end(),
+            [](const std::string& left, const std::string& right)
+            {
+                return V_stricmp(left.c_str(), right.c_str()) == 0;
+            }
+        ),
+        found.end()
+    );
+
+    for (const std::string& path : found)
+    {
+        if (!IsPartOfAnotherModel(found, path))
+        {
+            m_Catalogue.push_back(path);
+        }
+    }
+}
+
+void CMaterialEditDialog::ReloadCatalogueRows()
+{
+    m_pCatalogueList->DeleteAllItems();
+    m_CatalogueShown.clear();
+
+    char filter[128] = {};
+    m_pCatalogueFilter->GetText(filter, sizeof(filter));
+
+    std::string needle(filter);
+
+    for (size_t i = 0; i < m_Catalogue.size() && m_CatalogueShown.size() < static_cast<size_t>(kMaxCatalogueRows); i++)
+    {
+        if (ContainsIgnoreCase(m_Catalogue[i], needle))
+        {
+            m_CatalogueShown.push_back(static_cast<int>(i));
+        }
+    }
+
+    for (size_t row = 0; row < m_CatalogueShown.size(); row++)
+    {
+        const std::string& path = m_Catalogue[m_CatalogueShown[row]];
+
+        char command[32];
+        Q_snprintf(command, sizeof(command), "catalogue_pick %d", static_cast<int>(row));
+
+        // Shown without the root every one of them shares, which is the part of the path a
+        // narrow docked panel can least afford to spend.
+        const char* text = path.c_str();
+        if (V_strnicmp(text, "models/", 7) == 0)
+        {
+            text += 7;
+        }
+
+        CatalogueRow* entry = new CatalogueRow(m_pCatalogueList->GetEmbedded(), this, text, command);
+
+        entry->SetSize(1, kCatalogueRowHeight);
+        m_pCatalogueList->AddItem(entry);
+    }
+
+    if (m_Catalogue.empty())
+    {
+        // An empty list on its own does not say whether nothing matched or nothing was
+        // found at all, and the two have different answers.
+        m_pCatalogueCount->SetText("#GameUI_MatEdit_CatalogueEmpty");
+    }
+    else
+    {
+        // Two numbers rather than a sentence: how many are on screen and how many exist. A
+        // shown count that stops at the row limit is the sign to type more into the filter.
+        char count[64];
+        Q_snprintf(
+            count, sizeof(count), "%d / %d",
+            static_cast<int>(m_CatalogueShown.size()),
+            static_cast<int>(m_Catalogue.size())
+        );
+
+        m_pCatalogueCount->SetText(count);
+    }
+
+    InvalidateLayout();
+}
+
+void CMaterialEditDialog::ChooseCatalogueModel(int index)
+{
+    MaterialEditInterface* editor = Editor();
+
+    if (editor == nullptr || index < 0 || index >= static_cast<int>(m_CatalogueShown.size()))
+    {
+        return;
+    }
+
+    // Into the world at once and the page stays open, as in the collection: what tells an
+    // author whether this is the model they meant is the model, not its file name.
+    editor->SetStandInModel(m_Catalogue[m_CatalogueShown[index]].c_str());
 }
 
 void CMaterialEditDialog::ReloadModels()
@@ -1461,6 +1804,12 @@ void CMaterialEditDialog::OnTextChanged(Panel* panel)
         return;
     }
 
+    if (panel == m_pCatalogueFilter)
+    {
+        ReloadCatalogueRows();
+        return;
+    }
+
     if (panel == m_pStandInTarget)
     {
         m_Target = m_pStandInTarget->GetActiveItem() == 1 ? MaterialTarget::Viewmodel : MaterialTarget::StandIn;
@@ -1531,6 +1880,41 @@ void CMaterialEditDialog::OnCommand(const char* command)
     if (V_strncmp(command, "highlight ", 10) == 0)
     {
         HighlightBrowserImage(atoi(command + 10));
+        return;
+    }
+
+    if (V_strncmp(command, "catalogue_pick ", 15) == 0)
+    {
+        ChooseCatalogueModel(atoi(command + 15));
+        return;
+    }
+
+    if (V_stricmp(command, "catalogue") == 0)
+    {
+        ShowCatalogue();
+        return;
+    }
+
+    if (V_stricmp(command, "catalogue_clear") == 0)
+    {
+        if (MaterialEditInterface* editor = Editor())
+        {
+            editor->SetStandInModel("");
+        }
+
+        return;
+    }
+
+    if (V_stricmp(command, "catalogue_rescan") == 0)
+    {
+        ScanCatalogue();
+        ReloadCatalogueRows();
+        return;
+    }
+
+    if (V_stricmp(command, "catalogue_back") == 0)
+    {
+        ShowStandIn();
         return;
     }
 

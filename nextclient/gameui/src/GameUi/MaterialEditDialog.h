@@ -22,6 +22,7 @@ namespace vgui2
     class ComboBox;
     class Label;
     class Slider;
+    class TextEntry;
 } // namespace vgui2
 
 // Edits the material of one texture of one model on the model in front of the author, and
@@ -71,7 +72,8 @@ private:
     {
         Parameters,
         Browser,
-        StandIn
+        StandIn,
+        Catalogue
     };
 
     void ShowPage(Page page);
@@ -121,6 +123,15 @@ private:
     void ReloadBrowserImages();
     void HighlightBrowserImage(int index);
 
+    // Every model file under models/, from every search path the filesystem knows, which is
+    // what puts the downloaded and the privately precached ones beside the shipped ones. A
+    // page of its own for the same reason the collection has one, and a filter rather than a
+    // tree because an installation holds thousands of these.
+    void ShowCatalogue();
+    void ScanCatalogue();
+    void ReloadCatalogueRows();
+    void ChooseCatalogueModel(int index);
+
     bool FindParamSchema(const char* name, MaterialEditParam* out);
 
     const char* SelectedText(vgui2::ComboBox* combo, std::string& storage);
@@ -167,6 +178,7 @@ private:
     vgui2::CheckButton* m_pViewmodelOverride;
 
     vgui2::ComboBox* m_pStandInModel;
+    vgui2::Button* m_pStandInBrowse;
     vgui2::ComboBox* m_pStandInSequence;
     CDragValueLabel* m_pStandInYaw;
     CDragValueLabel* m_pStandInPitch;
@@ -199,6 +211,20 @@ private:
     std::vector<std::string> m_BrowserFolders;
     std::vector<std::string> m_BrowserImages;
     int m_BrowserHighlighted;
+
+    vgui2::TextEntry* m_pCatalogueFilter;
+    CPanelListPanel* m_pCatalogueList;
+    vgui2::Label* m_pCatalogueCount;
+    vgui2::Button* m_pCatalogueClear;
+    vgui2::Button* m_pCatalogueRescan;
+    vgui2::Button* m_pCatalogueBack;
+
+    // Every model found, and the rows currently on screen as indices into it. Scanned once
+    // and kept: the walk is over a thousand directories, and nothing installs a model while
+    // the panel is open except the author, who has the rescan button for that.
+    std::vector<std::string> m_Catalogue;
+    std::vector<int> m_CatalogueShown;
+    bool m_CatalogueScanned;
 
     Page m_Page;
 
