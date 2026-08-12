@@ -15,6 +15,7 @@ add_executable(${TARGET_NAME}
         MaterialResolveTests.cpp
         StudioMeshBuilderTests.cpp
         StudioValidateTests.cpp
+        StudioTexturesTests.cpp
         MaterialPresetTests.cpp
         ../src/hud/radar/RadarView.cpp
         ../src/hud/radar/RadarMemory.cpp

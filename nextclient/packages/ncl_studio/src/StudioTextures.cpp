@@ -12,7 +12,9 @@ namespace ncl_studio
 {
     namespace
     {
-        bool Fits(size_t size, int offset, int count, size_t element_size)
+        // The count is taken wider than the file's own int, because a table whose size is a
+        // product of two of them can be a number that does not fit one.
+        bool Fits(size_t size, int offset, int64_t count, size_t element_size)
         {
             if (offset < 0 || count < 0)
             {
@@ -27,7 +29,7 @@ namespace ncl_studio
 
             size_t available = size - start;
 
-            return element_size == 0 || static_cast<size_t>(count) <= available / element_size;
+            return element_size == 0 || static_cast<uint64_t>(count) <= available / element_size;
         }
     }
 
@@ -92,7 +94,18 @@ namespace ncl_studio
             result.textures.push_back(std::move(info));
         }
 
-        if (!Fits(size, header->skinindex, header->numskinfamilies * header->numskinref, sizeof(short)))
+        if (header->numskinfamilies < 0 || header->numskinref < 0)
+        {
+            return ncl_utils::ResultError("skin table declares a negative size");
+        }
+
+        // Widened before it is multiplied: the two dimensions come out of the file, and
+        // their product in the file's own int wraps to a small number that passes the bound
+        // it does not meet. The table would then be shorter than the dimensions say, and
+        // every reader of it indexes by those dimensions.
+        int64_t skin_values = static_cast<int64_t>(header->numskinfamilies) * header->numskinref;
+
+        if (!Fits(size, header->skinindex, skin_values, sizeof(short)))
         {
             return ncl_utils::ResultError("skin table lies outside the file");
         }
@@ -101,7 +114,7 @@ namespace ncl_studio
         result.skins.references = header->numskinref;
 
         const short* skins = reinterpret_cast<const short*>(bytes + header->skinindex);
-        size_t count = static_cast<size_t>(header->numskinfamilies) * header->numskinref;
+        size_t count = static_cast<size_t>(skin_values);
 
         for (size_t i = 0; i < count; i++)
         {
