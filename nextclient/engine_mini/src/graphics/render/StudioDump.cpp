@@ -18,6 +18,7 @@
 #include "common/common.h"
 #include "console/console.h"
 #include "graphics/render/RenderConfig.h"
+#include "graphics/render/RenderFileName.h"
 #include "graphics/render/StudioDump.h"
 
 namespace
@@ -474,12 +475,8 @@ namespace
     {
         const char* name = Cmd_Argc() > 1 ? Cmd_Argv(1) : "studio_dump";
 
-        // The name becomes a path under the game directory, and a console command is
-        // something a server can send: a name that could leave that directory is refused
-        // rather than resolved.
-        if (std::strpbrk(name, "\\/:") != nullptr || std::strstr(name, "..") != nullptr)
+        if (!render::FileName_IsPlain("r_studio_dump", name))
         {
-            Con_Printf("r_studio_dump: %s is not a plain file name\n", name);
             return;
         }
 

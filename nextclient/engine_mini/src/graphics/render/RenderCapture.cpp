@@ -12,6 +12,7 @@
 #include "console/console.h"
 #include "graphics/render/RenderCapture.h"
 #include "graphics/render/RenderConfig.h"
+#include "graphics/render/RenderFileName.h"
 #include "graphics/render/ServerMaterials.h"
 
 namespace
@@ -82,7 +83,32 @@ namespace
             return;
         }
 
+        // The pair is completed from the end of a world frame, which no map means never.
+        // Forcing the cvars now would leave r_studio_shader archived as zero if the player
+        // quits from the menu, and the shader path off on the next launch.
+        const char* level = gEngfuncs.pfnGetLevelName();
+
+        if (level == nullptr || *level == '\0')
+        {
+            Con_Printf("r_studio_ab: no map loaded, there is no frame to capture\n");
+            return;
+        }
+
+        // A second call inside an unfinished window would save the zeros this one forced as
+        // if they were the player's, and restore them for good.
+        if (g_State != CaptureState::Idle)
+        {
+            Con_Printf("r_studio_ab: a capture is already in flight\n");
+            return;
+        }
+
         const char* name = Cmd_Argc() > 1 ? Cmd_Argv(1) : "studio_ab";
+
+        if (!render::FileName_IsPlain("r_studio_ab", name))
+        {
+            return;
+        }
+
         V_strcpy_safe(g_Name, name);
 
         g_SavedStudioShader = render::g_RenderCfg.studio_shader->value;
