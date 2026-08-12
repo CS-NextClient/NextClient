@@ -479,8 +479,6 @@ CMaterialEditDialog::CMaterialEditDialog(Panel* parent) :
 
     m_pState = new Button(this, "State", "#GameUI_MatEdit_State", this, "state");
 
-    m_LoadingStandIn = false;
-
     new Label(this, "StandInTargetLabel", "#GameUI_MatEdit_Target");
 
     m_pStandInTarget = new ComboBox(this, "StandInTargetBox", 4, false);
@@ -603,11 +601,32 @@ void CMaterialEditDialog::Activate()
         editor->SetViewmodel(&viewmodel);
     }
 
+    // Seeded from the cvar rather than left where the last session put it: the switch is a
+    // report of what the game is drawing, and a box that says "compare" over a game drawing
+    // its materials is a box saying the opposite of what is on screen.
+    m_pCompare->SilentSetSelected(engine->pfnGetCvarFloat("r_studio_materials") == 0.0f);
+
     ReloadModels();
 }
 
 void CMaterialEditDialog::OnClose()
 {
+    // A close can come from outside the cross - the level ending is one - and the question
+    // this box is asking is about a panel that is already going.
+    if (m_hConfirmClose.Get() != nullptr)
+    {
+        m_hConfirmClose->Close();
+        m_hConfirmClose = nullptr;
+    }
+
+    // Everything the comparison switch suppresses is drawn by the game and not by this
+    // panel, so leaving it off would leave every material in the session off with nothing
+    // on screen saying why.
+    if (m_pCompare->IsSelected())
+    {
+        engine->pfnClientCmd("r_studio_materials 1\n");
+    }
+
     // The editor's layer is what the model in front of the author is drawn from, so it has
     // to go when the panel does; otherwise a closed panel keeps overriding the material and
     // the model never shows what its own file says.
@@ -1024,9 +1043,11 @@ void CMaterialEditDialog::ReloadStandIn()
         return;
     }
 
-    m_LoadingStandIn = true;
-
-    m_pStandInTarget->ActivateItemByRow(m_Target == MaterialTarget::StandIn ? 0 : 1);
+    // Silent throughout: vgui does not deliver a control's change signal where it is
+    // raised - a combo posts it through the message queue and a check button does the same -
+    // so a flag held around the refill is down again long before the panel hears about its
+    // own writes and takes them for the author's.
+    m_pStandInTarget->SilentActivateItemByRow(m_Target == MaterialTarget::StandIn ? 0 : 1);
 
     bool stand_in = m_Target == MaterialTarget::StandIn;
 
@@ -1061,7 +1082,7 @@ void CMaterialEditDialog::ReloadStandIn()
         }
     }
 
-    m_pStandInModel->ActivateItemByRow(active);
+    m_pStandInModel->SilentActivateItemByRow(active);
 
     ReloadStandInSequences();
 
@@ -1075,13 +1096,11 @@ void CMaterialEditDialog::ReloadStandIn()
     editor->GetAnimation(m_Target, &animation);
 
     m_pStandInFrame->SetValue(static_cast<int>(animation.frame * 1000.0f), false);
-    m_pStandInPlaying->SetSelected(animation.playing);
-    m_pStandInSpinning->SetSelected(state.spinning);
+    m_pStandInPlaying->SilentSetSelected(animation.playing);
+    m_pStandInSpinning->SilentSetSelected(state.spinning);
     UpdateScaleCaption(state.scale > 0.0f ? state.scale : 1.0f);
-    m_pViewmodelShown->SetSelected(viewmodel.shown);
-    m_pViewmodelOverride->SetSelected(viewmodel.overriding);
-
-    m_LoadingStandIn = false;
+    m_pViewmodelShown->SilentSetSelected(viewmodel.shown);
+    m_pViewmodelOverride->SilentSetSelected(viewmodel.overriding);
 }
 
 void CMaterialEditDialog::ReloadStandInSequences()
@@ -1096,12 +1115,6 @@ void CMaterialEditDialog::ReloadStandInSequences()
 
     MaterialAnimation animation;
     editor->GetAnimation(m_Target, &animation);
-
-    // Saved rather than set: this is called both on its own and from the middle of a reload
-    // that is already holding the flag, and clearing it there would let the rest of that
-    // reload push half a state back at the model.
-    bool loading = m_LoadingStandIn;
-    m_LoadingStandIn = true;
 
     m_pStandInSequence->RemoveAll();
 
@@ -1120,10 +1133,8 @@ void CMaterialEditDialog::ReloadStandInSequences()
 
     if (animation.sequence_count > 0)
     {
-        m_pStandInSequence->ActivateItemByRow(std::clamp(animation.sequence, 0, animation.sequence_count - 1));
+        m_pStandInSequence->SilentActivateItemByRow(std::clamp(animation.sequence, 0, animation.sequence_count - 1));
     }
-
-    m_LoadingStandIn = loading;
 }
 
 void CMaterialEditDialog::StepStandIn()
@@ -1165,19 +1176,15 @@ void CMaterialEditDialog::TakeOverViewmodel()
         return;
     }
 
-    // Held over the message this sends: the push that follows reads the switch itself.
-    bool loading = m_LoadingStandIn;
-    m_LoadingStandIn = true;
-
-    m_pViewmodelOverride->SetSelected(true);
-
-    m_LoadingStandIn = loading;
+    // Silent: the push that follows reads the switch itself, and the signal would come back
+    // as a second push after this one had already finished.
+    m_pViewmodelOverride->SilentSetSelected(true);
 }
 
 void CMaterialEditDialog::PushStandIn()
 {
     MaterialEditInterface* editor = Editor();
-    if (editor == nullptr || m_LoadingStandIn)
+    if (editor == nullptr)
     {
         return;
     }
@@ -1548,9 +1555,14 @@ void CMaterialEditDialog::ReloadModels()
     // that does not say which of the two reasons it is costs an evening.
     bool shader_path_on = engine->pfnGetCvarFloat("r_studio_shader") != 0.0f;
 
-    m_pEmpty->SetVisible(count == 0);
-    m_pEnableShader->SetVisible(count == 0 && !shader_path_on);
-    m_pRows->SetVisible(count != 0);
+    // All three belong to the parameter page, and this runs from every activation - which a
+    // dialog already open on the collection or the model tab also gets. Without the page in
+    // the condition they are shown over whichever page the author is on.
+    bool parameters = m_Page == Page::Parameters;
+
+    m_pEmpty->SetVisible(parameters && count == 0);
+    m_pEnableShader->SetVisible(parameters && count == 0 && !shader_path_on);
+    m_pRows->SetVisible(parameters && count != 0);
 
     if (count == 0)
     {
@@ -2198,6 +2210,15 @@ void CMaterialEditDialog::SaveDocument()
         // One weapon is three model files, and an author who saves only the viewmodel finds
         // out from somebody else's screenshot. Every other prepared model carrying a texture
         // of this name gets the same material.
+        //
+        // A neighbour refusing is an ordinary outcome and not a corner: the client side
+        // refuses to overwrite a document that does not parse, and fails on a file it cannot
+        // open. Reported rather than dropped, or "Saved" would be the panel's answer to a
+        // save that wrote one file out of three.
+        std::string failures;
+        int written = 1;
+        int attempted = 1;
+
         for (int i = 0; i < editor->GetModelCount(); i++)
         {
             const char* other = editor->GetModelName(i);
@@ -2209,12 +2230,42 @@ void CMaterialEditDialog::SaveDocument()
 
             for (int t = 0; t < editor->GetTextureCount(other); t++)
             {
-                if (V_stricmp(editor->GetTextureName(other, t), m_Texture.c_str()) == 0)
+                if (V_stricmp(editor->GetTextureName(other, t), m_Texture.c_str()) != 0)
                 {
-                    editor->Save(other, error, sizeof(error));
-                    break;
+                    continue;
                 }
+
+                attempted++;
+
+                char other_error[256] = {};
+
+                if (editor->Save(other, other_error, sizeof(other_error)))
+                {
+                    written++;
+                }
+                else if (failures.empty())
+                {
+                    failures = std::string(other) + ": " + other_error;
+                }
+
+                break;
             }
+        }
+
+        if (written != attempted)
+        {
+            char report[256];
+            Q_snprintf(report, sizeof(report), "%d/%d, %s", written, attempted, failures.c_str());
+
+            wchar_t* head = g_pVGuiLocalize->Find("#GameUI_MatEdit_SavedPartly");
+            wchar_t detail[512];
+            g_pVGuiLocalize->ConvertANSIToUnicode(report, detail, sizeof(detail));
+
+            wchar_t text[768];
+            V_snwprintf(text, sizeof(text) / sizeof(wchar_t), L"%s%s", head != nullptr ? head : L"", detail);
+
+            m_pValidation->SetText(text);
+            return;
         }
     }
 
@@ -2283,7 +2334,7 @@ void CMaterialEditDialog::OnSliderMoved(Panel* panel)
 {
     MaterialEditInterface* editor = Editor();
 
-    if (panel != m_pStandInFrame || editor == nullptr || m_LoadingStandIn)
+    if (panel != m_pStandInFrame || editor == nullptr)
     {
         return;
     }

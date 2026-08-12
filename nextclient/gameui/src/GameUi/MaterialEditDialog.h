@@ -39,37 +39,6 @@ class CMaterialEditDialog :
 {
     DECLARE_CLASS_SIMPLE(CMaterialEditDialog, CEditorPanel);
 
-public:
-    explicit CMaterialEditDialog(vgui2::Panel* parent);
-
-    void Activate() override;
-    void OnClose() override;
-    void OnCommand(const char* command) override;
-    void OnThink() override;
-    void PerformLayout() override;
-
-    // The frame's cross. On a page opened from a tab it goes back to that tab, which is what
-    // a cross over a list of images means; on a tab it asks first, because everything an
-    // author has not saved lives in the editor's layer and closing drops it.
-    void OnCloseFrameButtonPressed() override;
-
-    MESSAGE_FUNC_PTR(OnTextChanged, "TextChanged", panel);
-    MESSAGE_FUNC_PTR(OnCheckButtonChecked, "CheckButtonChecked", panel);
-    MESSAGE_FUNC_PTR(OnSliderMoved, "SliderMoved", panel);
-
-    // A row changed a value: push it into the editor's layer, which is what the model in
-    // front of the author is drawn from.
-    void OnRowChanged();
-
-    // The browser chose an image for a texture parameter.
-    void SetTextureParam(const char* param, const char* path);
-
-    void OnColorPicked(const char* param, const float rgba[4]) override;
-
-    // The stand-in's yaw and pitch are turned the same way every other number in this panel
-    // is: by dragging its caption.
-    void OnDragValue(int index, int pixels, bool fine, bool coarse) override;
-
 private:
     // What the panel is showing. One value rather than a flag per page: with a flag each
     // page only knows how to hide the page it was written against, and a page added later
@@ -81,70 +50,6 @@ private:
         StandIn,
         Catalogue
     };
-
-    void ShowPage(Page page);
-
-    // The two halves of the editor an author moves between at will: the material of a texture
-    // and the model it is on. Tabs rather than a button and a way back, because neither is a
-    // step in the other's flow and both are returned to constantly.
-    void ShowTab(Page page);
-
-    // The copy of a model put into the world to be judged from outside. A page of its own
-    // rather than another row: it has as many controls as a small dialog, and the panel
-    // already knows how to swap what it is showing.
-    void ShowStandIn();
-    void ReloadStandIn();
-    void ReloadStandInSequences();
-    void StepStandIn();
-    void PushStandIn();
-
-    // Which of the two models on that page is being talked about.
-    void UpdateTargetControls();
-
-    void UpdateScaleCaption(float scale);
-    void TakeOverViewmodel();
-
-    // A model in the scene was clicked: it becomes the one being edited.
-    void OnScenePicked(const char* model) override;
-
-    void ReloadModels();
-    void ReloadTextures();
-    void ReloadPreview();
-    void ApplyPreview();
-    void ReloadPrograms();
-    void BeginEditing();
-    void BuildRows();
-    void UpdateSource();
-    void UpdateValidation();
-    void SaveDocument();
-    void StepSweep();
-
-    // Flies the camera while a mouse button is held over the world: the mouse turns it and
-    // the movement keys move it. Polled rather than handled: the panel holds the modal
-    // surface, so vgui drops every click that lands outside it and there is nothing to
-    // route. The keyboard is part of the same held gesture because the panel owns it the
-    // rest of the time, and a W meant for a texture path must not be a step forward.
-    // The shipped collection, shown in place of the parameter list rather than in a window
-    // of its own. This panel already floats over the running game; a second floating window
-    // on top of it is one more thing to place, to raise and to lose behind the first.
-    void ShowBrowser(const char* param);
-    void CloseBrowser();
-    void ScanBrowserFolders();
-    void ReloadBrowserImages();
-    void HighlightBrowserImage(int index);
-
-    // Every model file under models/, from every search path the filesystem knows, which is
-    // what puts the downloaded and the privately precached ones beside the shipped ones. A
-    // page of its own for the same reason the collection has one, and a filter rather than a
-    // tree because an installation holds thousands of these.
-    void ShowCatalogue();
-    void ScanCatalogue();
-    void ReloadCatalogueRows();
-    void ChooseCatalogueModel(int index);
-
-    bool FindParamSchema(const char* name, MaterialEditParam* out);
-
-    const char* SelectedText(vgui2::ComboBox* combo, std::string& storage);
 
     vgui2::Button* m_pTabMaterial;
     vgui2::Button* m_pTabModel;
@@ -212,8 +117,6 @@ private:
     // with a different model's animations.
     std::string m_StandInSequences;
 
-    bool m_LoadingStandIn;
-
     std::string m_BrowserParam;
 
     // What the parameter held when the collection was opened. Everything looked at on the
@@ -250,4 +153,100 @@ private:
     // is a material the author has not actually checked.
     bool m_Sweeping;
     float m_SweepPhase;
+
+public:
+    explicit CMaterialEditDialog(vgui2::Panel* parent);
+
+    void Activate() override;
+    void OnClose() override;
+    void OnCommand(const char* command) override;
+    void OnThink() override;
+    void PerformLayout() override;
+
+    // The frame's cross. On a page opened from a tab it goes back to that tab, which is what
+    // a cross over a list of images means; on a tab it asks first, because everything an
+    // author has not saved lives in the editor's layer and closing drops it.
+    void OnCloseFrameButtonPressed() override;
+
+    MESSAGE_FUNC_PTR(OnTextChanged, "TextChanged", panel);
+    MESSAGE_FUNC_PTR(OnCheckButtonChecked, "CheckButtonChecked", panel);
+    MESSAGE_FUNC_PTR(OnSliderMoved, "SliderMoved", panel);
+
+    // A row changed a value: push it into the editor's layer, which is what the model in
+    // front of the author is drawn from.
+    void OnRowChanged();
+
+    // The browser chose an image for a texture parameter.
+    void SetTextureParam(const char* param, const char* path);
+
+    void OnColorPicked(const char* param, const float rgba[4]) override;
+
+    // The stand-in's yaw and pitch are turned the same way every other number in this panel
+    // is: by dragging its caption.
+    void OnDragValue(int index, int pixels, bool fine, bool coarse) override;
+
+private:
+    void ShowPage(Page page);
+
+    // The two halves of the editor an author moves between at will: the material of a texture
+    // and the model it is on. Tabs rather than a button and a way back, because neither is a
+    // step in the other's flow and both are returned to constantly.
+    void ShowTab(Page page);
+
+    // The copy of a model put into the world to be judged from outside. A page of its own
+    // rather than another row: it has as many controls as a small dialog, and the panel
+    // already knows how to swap what it is showing.
+    void ShowStandIn();
+    void ReloadStandIn();
+    void ReloadStandInSequences();
+    void StepStandIn();
+    void PushStandIn();
+
+    // Which of the two models on that page is being talked about.
+    void UpdateTargetControls();
+
+    void UpdateScaleCaption(float scale);
+    void TakeOverViewmodel();
+
+    // A model in the scene was clicked: it becomes the one being edited.
+    void OnScenePicked(const char* model) override;
+
+    void ReloadModels();
+    void ReloadTextures();
+    void ReloadPreview();
+    void ApplyPreview();
+    void ReloadPrograms();
+    void BeginEditing();
+    void BuildRows();
+    void UpdateSource();
+    void UpdateValidation();
+    void SaveDocument();
+    void StepSweep();
+
+    // Flies the camera while a mouse button is held over the world: the mouse turns it and
+    // the movement keys move it. Polled rather than handled: the panel holds the modal
+    // surface, so vgui drops every click that lands outside it and there is nothing to
+    // route. The keyboard is part of the same held gesture because the panel owns it the
+    // rest of the time, and a W meant for a texture path must not be a step forward.
+    // The shipped collection, shown in place of the parameter list rather than in a window
+    // of its own. This panel already floats over the running game; a second floating window
+    // on top of it is one more thing to place, to raise and to lose behind the first.
+    void ShowBrowser(const char* param);
+    void CloseBrowser();
+    void ScanBrowserFolders();
+    void ReloadBrowserImages();
+    void HighlightBrowserImage(int index);
+
+    // Every model file under models/, from every search path the filesystem knows, which is
+    // what puts the downloaded and the privately precached ones beside the shipped ones. A
+    // page of its own for the same reason the collection has one, and a filter rather than a
+    // tree because an installation holds thousands of these.
+    void ShowCatalogue();
+    void ScanCatalogue();
+    void ReloadCatalogueRows();
+    void ChooseCatalogueModel(int index);
+
+    bool FindParamSchema(const char* name, MaterialEditParam* out);
+
+    const char* SelectedText(vgui2::ComboBox* combo, std::string& storage);
 };
