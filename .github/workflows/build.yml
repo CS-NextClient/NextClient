@@ -23,6 +23,10 @@ jobs:
         with:
           submodules: recursive
           fetch-depth: 0
+          # The shipped material images are in LFS, and nothing reads them at build time:
+          # without this every one of them is packaged as its pointer file and the defect
+          # only shows up in an installed release.
+          lfs: true
 
       - name: Cache vcpkg packages
         uses: actions/cache@v4
