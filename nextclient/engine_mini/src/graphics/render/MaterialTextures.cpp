@@ -11,7 +11,15 @@
 #include "graphics/gl_local.h"
 #include "graphics/render/MaterialTextures.h"
 #include "graphics/texture_loader.h"
+#include "graphics/texture_processing.h"
 #include "resource/texture_manager/Texture.h"
+
+// The tool that predicts this path answers from the shared constant, so the two cannot be
+// changed apart.
+static_assert(
+    static_cast<int64_t>(tex::kTextureMaxSize) * tex::kTextureMaxSize == ncl_material::kMaxImagePixels,
+    "the shared image ceiling and the upload path's own no longer agree"
+);
 
 namespace
 {
@@ -61,12 +69,6 @@ unsigned int render::MaterialTexture_Get(const char* path)
         return 0;
     }
 
-    if (!ncl_material::IsAdmissibleTexturePath(path, kMaxTexturePathLength))
-    {
-        Con_Printf("render: material texture \"%s\" is not an admissible path\n", path);
-        return 0;
-    }
-
     EnsureRegistered();
 
     for (const Entry& entry : g_Textures)
@@ -75,6 +77,17 @@ unsigned int render::MaterialTexture_Get(const char* path)
         {
             return entry.texture;
         }
+    }
+
+    // Remembered exactly like a failure to load, and for the same reason: this is asked
+    // once per mesh per frame, so a refusal that is not cached is a console line per frame
+    // for as long as the model is on screen.
+    if (!ncl_material::IsAdmissibleTexturePath(path, kMaxTexturePathLength))
+    {
+        Con_Printf("render: material texture \"%s\" is not an admissible path\n", path);
+        g_Textures.push_back(Entry {path, 0u});
+
+        return 0;
     }
 
     tex::Texture texture {};

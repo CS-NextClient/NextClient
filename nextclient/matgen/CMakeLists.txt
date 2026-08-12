@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 3.21)
 project(matgen)
 
 find_package(ZLIB REQUIRED)
+find_package(imageinfo CONFIG REQUIRED)
 
 set(CMAKE_CXX_STANDARD 23)
 
@@ -30,7 +31,12 @@ cmrc_add_resource_library(
 # should not.
 target_link_libraries(${PROJECT_NAME} PRIVATE
         ncl_material::ncl_material
+        ncl_math::ncl_math
         ncl_studio::ncl_studio
+        # The header the client's own upload path parses images with, so that this tool
+        # accepts exactly the formats the client decodes rather than everything a decoder
+        # happens to recognise.
+        imageinfo::imageinfo
         stb::stb
         ZLIB::ZLIB
         ${PROJECT_NAME}::rc

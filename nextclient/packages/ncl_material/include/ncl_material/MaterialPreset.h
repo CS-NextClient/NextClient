@@ -57,6 +57,16 @@ namespace ncl_material
     // The above, plus an extension the texture loader actually reads.
     bool IsAdmissibleTexturePath(std::string_view path, size_t max_length);
 
+    // What the client's upload path will accept of a material image. Declared here rather
+    // than beside that path, because the offline tool exists to answer for the client and a
+    // rule it restated in its own words was a rule the two disagreed on.
+    //
+    // The ceiling is on the number of pixels and not on either side, so a long strip is
+    // admissible where a square of the same area is; and only these two formats are decoded,
+    // whatever a file is named.
+    inline constexpr int64_t kMaxImagePixels = 1024ll * 1024ll;
+    inline constexpr const char* kImageFormats = "TGA or PNG";
+
     ncl_utils::ResultT<MaterialPreset> ParseMaterialPreset(std::string_view json, const PresetBudget& budget);
 
     // One material as a preset would carry it, for an author to paste into one. Written

@@ -9,8 +9,8 @@
 #include <ncl_material/MaterialParse.h>
 #include <ncl_material/MaterialResolve.h>
 #include <ncl_material/MaterialPreset.h>
+#include <imageinfo.hpp>
 #include <tao/json.hpp>
-#include <stb/stb_image.h>
 
 #include "Manifests.h"
 #include "Model.h"
@@ -19,11 +19,6 @@ namespace matgen
 {
     namespace
     {
-        // The client's own ceiling for an image it will upload. A material that names a
-        // larger one draws nothing, and finding that out in somebody else's game is the
-        // whole reason this command exists.
-        constexpr int kTextureMaxSize = 1024;
-
         // The renderer bounds a material image path at this; the server table is stricter
         // still, and the tool reports both because a document that only the client accepts
         // cannot be handed to a server.
@@ -67,26 +62,36 @@ namespace matgen
                 return;
             }
 
-            int width = 0;
-            int height = 0;
-            int components = 0;
+            // Parsed the way the client parses it, with the same two formats allowed, rather
+            // than by asking a decoder what the bytes happen to be: stb reads a dozen
+            // formats, and a JPEG named .png passes that and then draws nothing in the game.
+            imageinfo::ImageInfo info = imageinfo::parse<imageinfo::RawDataReader>(
+                imageinfo::RawData(data.data(), data.size()),
+                {imageinfo::kFormatTga, imageinfo::kFormatPng},
+                true
+            );
 
-            if (!stbi_info_from_memory(data.data(), static_cast<int>(data.size()), &width, &height, &components))
+            if (!info.ok())
             {
-                report.Fail("\"" + path + "\" is not an image the client can decode: " + stbi_failure_reason());
+                report.Fail("\"" + path + "\" is not " + ncl_material::kImageFormats + ", whatever it is named");
                 return;
             }
 
-            if (width > kTextureMaxSize || height > kTextureMaxSize)
+            int64_t width = info.size().width;
+            int64_t height = info.size().height;
+
+            // The client bounds the area rather than either side, so a strip is admissible
+            // where a square of the same pixel count is.
+            if (width * height > ncl_material::kMaxImagePixels)
             {
                 report.Fail(
                     "\"" + path + "\" is " + std::to_string(width) + "x" + std::to_string(height) +
-                    ", the client refuses anything over " + std::to_string(kTextureMaxSize)
+                    ", over the " + std::to_string(ncl_material::kMaxImagePixels) + " pixels the client will upload"
                 );
                 return;
             }
 
-            std::printf("  - %s  %dx%d\n", path.c_str(), width, height);
+            std::printf("  - %s  %lldx%lld\n", path.c_str(), static_cast<long long>(width), static_cast<long long>(height));
         }
     }
 

@@ -5,6 +5,8 @@
 #include <cstdio>
 #include <filesystem>
 
+#include <ncl_math/color.h>
+
 #include "Png.h"
 
 namespace matgen
@@ -14,16 +16,11 @@ namespace matgen
         constexpr int kMinSize = 64;
         constexpr int kMaxSize = 2048;
 
-        struct Rgba
-        {
-            uint8_t r, g, b, a;
-        };
-
         // Bright and fully opaque, because the point of the template is to be visible over
         // whatever the author paints under it.
-        constexpr Rgba kWire = {80, 255, 130, 255};
+        constexpr ncl_math::Color kWire = {80, 255, 130, 255};
 
-        void Plot(Image& image, int x, int y, const Rgba& colour)
+        void Plot(Image& image, int x, int y, const ncl_math::Color& colour)
         {
             if (x < 0 || y < 0 || x >= image.width || y >= image.height)
             {
@@ -37,7 +34,7 @@ namespace matgen
             texel[3] = colour.a;
         }
 
-        void DrawLine(Image& image, int x0, int y0, int x1, int y1, const Rgba& colour)
+        void DrawLine(Image& image, int x0, int y0, int x1, int y1, const ncl_math::Color& colour)
         {
             int dx = std::abs(x1 - x0);
             int dy = -std::abs(y1 - y0);
