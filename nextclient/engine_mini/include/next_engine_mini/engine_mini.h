@@ -41,5 +41,5 @@ public:
     virtual MaterialEditInterface* GetMaterialEdit() = 0;
 };
 
-#define ENGINE_MINI_INTERFACE_VERSION "EngineMini019"
+#define ENGINE_MINI_INTERFACE_VERSION "EngineMini020"
 

@@ -215,6 +215,12 @@ public:
     virtual void SetStandInModel(const char* path) = 0;
     virtual const char* GetStandInModel() = 0;
 
+    // The model put in the author's hands, when a particular one has been asked for. Empty is
+    // the weapon the game gave them. Any model will do: what a viewmodel is, to everything
+    // below the panel, is the model the engine hands over as the view entity.
+    virtual void SetViewmodelModel(const char* path) = 0;
+    virtual const char* GetViewmodelModel() = 0;
+
     virtual void GetStandIn(MaterialStandIn* out) = 0;
     virtual void SetStandIn(const MaterialStandIn* state) = 0;
 

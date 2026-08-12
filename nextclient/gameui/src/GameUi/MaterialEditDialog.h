@@ -21,6 +21,7 @@ namespace vgui2
     class CheckButton;
     class ComboBox;
     class Label;
+    class QueryBox;
     class Slider;
     class TextEntry;
 } // namespace vgui2
@@ -46,6 +47,11 @@ public:
     void OnCommand(const char* command) override;
     void OnThink() override;
     void PerformLayout() override;
+
+    // The frame's cross. On a page opened from a tab it goes back to that tab, which is what
+    // a cross over a list of images means; on a tab it asks first, because everything an
+    // author has not saved lives in the editor's layer and closing drops it.
+    void OnCloseFrameButtonPressed() override;
 
     MESSAGE_FUNC_PTR(OnTextChanged, "TextChanged", panel);
     MESSAGE_FUNC_PTR(OnCheckButtonChecked, "CheckButtonChecked", panel);
@@ -78,11 +84,15 @@ private:
 
     void ShowPage(Page page);
 
+    // The two halves of the editor an author moves between at will: the material of a texture
+    // and the model it is on. Tabs rather than a button and a way back, because neither is a
+    // step in the other's flow and both are returned to constantly.
+    void ShowTab(Page page);
+
     // The copy of a model put into the world to be judged from outside. A page of its own
     // rather than another row: it has as many controls as a small dialog, and the panel
     // already knows how to swap what it is showing.
     void ShowStandIn();
-    void CloseStandIn();
     void ReloadStandIn();
     void ReloadStandInSequences();
     void StepStandIn();
@@ -136,6 +146,11 @@ private:
 
     const char* SelectedText(vgui2::ComboBox* combo, std::string& storage);
 
+    vgui2::Button* m_pTabMaterial;
+    vgui2::Button* m_pTabModel;
+
+    vgui2::DHANDLE<vgui2::QueryBox> m_hConfirmClose;
+
     vgui2::ComboBox* m_pModel;
     vgui2::ComboBox* m_pTexture;
     vgui2::ComboBox* m_pProgram;
@@ -187,8 +202,6 @@ private:
     vgui2::CheckButton* m_pStandInPlaying;
     vgui2::CheckButton* m_pStandInSpinning;
     vgui2::Button* m_pStandInPlace;
-    vgui2::Button* m_pStandInBack;
-    vgui2::Button* m_pStandIn;
     vgui2::Button* m_pState;
 
     MaterialTarget m_Target;

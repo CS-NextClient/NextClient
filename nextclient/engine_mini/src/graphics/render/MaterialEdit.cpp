@@ -61,6 +61,10 @@ namespace
     // would take the weapon out of every player's hands for the whole session.
     MaterialViewmodel g_Viewmodel = {true, false, {}};
 
+    // Which model the panel has asked to be holding. Empty is the weapon the game gave the
+    // author, which is what this is until somebody chooses otherwise.
+    std::string g_ViewmodelPath;
+
     // One list per target, in MaterialTarget order.
     std::string g_SequenceNames[static_cast<int>(MaterialTarget::Count)];
 
@@ -514,6 +518,29 @@ namespace
         const char* GetStandInModel() override
         {
             return g_StandIn.model.c_str();
+        }
+
+        void SetViewmodelModel(const char* path) override
+        {
+            std::string wanted = path != nullptr ? path : "";
+
+            // Same reason as the stand-in: the panel pushes the whole page on every change,
+            // and dropping the animations on each of those would empty the list under the
+            // author's cursor.
+            if (wanted == g_ViewmodelPath)
+            {
+                return;
+            }
+
+            g_ViewmodelPath = wanted;
+
+            g_SequenceNames[static_cast<int>(MaterialTarget::Viewmodel)].clear();
+            g_Viewmodel.animation.sequence_count = 0;
+        }
+
+        const char* GetViewmodelModel() override
+        {
+            return g_ViewmodelPath.c_str();
         }
 
         void GetStandIn(MaterialStandIn* out) override
@@ -1373,7 +1400,12 @@ namespace
         );
         PrintAnimation("", g_StandIn.state.animation, MaterialTarget::StandIn);
 
-        StateLine("viewmodel  shown %s, driven by the panel %s\n", YesNo(g_Viewmodel.shown), YesNo(g_Viewmodel.overriding));
+        StateLine(
+            "viewmodel  shown %s, driven by the panel %s, asked for %s\n",
+            YesNo(g_Viewmodel.shown),
+            YesNo(g_Viewmodel.overriding),
+            g_ViewmodelPath.empty() ? "the game's own" : g_ViewmodelPath.c_str()
+        );
         PrintAnimation("", g_Viewmodel.animation, MaterialTarget::Viewmodel);
 
         StateLine("client     %s\n", g_ClientReport.empty() ? "silent" : g_ClientReport.c_str());

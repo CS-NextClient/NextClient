@@ -104,6 +104,40 @@ namespace
     // the weapon, and its animations are not the previous weapon's.
     model_t* g_ViewmodelModel;
 
+    // The model the panel asked to be holding, and what that path resolved to. Remembered
+    // because the path is read every frame while the lookup behind it is not free.
+    std::string g_ViewmodelWantedPath;
+    model_t* g_ViewmodelWanted;
+
+    // A path to a loaded model, by whichever of the two loaders can answer for it. The answer
+    // is remembered, including a failure, so a model that is not there is looked for once
+    // rather than on every frame the panel is open.
+    model_t* ResolveModel(const char* path, std::string& resolved_path, model_t*& resolved)
+    {
+        if (resolved_path == path)
+        {
+            return resolved;
+        }
+
+        int index = 0;
+        model_t* model = gEngfuncs.CL_LoadModel(path, &index);
+
+        if (model == nullptr)
+        {
+            model = LoadOutsidePrecache(path);
+        }
+
+        if (model == nullptr)
+        {
+            gEngfuncs.Con_Printf("r_mat_editor: cannot load %s\n", path);
+        }
+
+        resolved_path = path;
+        resolved = model;
+
+        return model;
+    }
+
     // Which animations a model has, by name. Only the client can answer it: the panel is
     // given a path or nothing at all, and the engine is what turns either into a header.
     void PublishSequences(MaterialTarget target, model_t* model)
@@ -367,6 +401,8 @@ void MaterialPreview_ApplyViewmodel(ref_params_s* pparams)
         // Nothing is published while no panel is open, so the next one to open republishes
         // rather than trusting what a closed panel left behind.
         g_ViewmodelModel = nullptr;
+        g_ViewmodelWantedPath.clear();
+        g_ViewmodelWanted = nullptr;
         return;
     }
 
@@ -377,8 +413,22 @@ void MaterialPreview_ApplyViewmodel(ref_params_s* pparams)
         return;
     }
 
-    // Republished on the frame the weapon changes: what is in the author's hands is whatever
-    // they last switched to, and its animations are not the previous one's.
+    // A model the panel asked for takes the weapon's place. For this frame only, like the
+    // hiding below: the engine puts the weapon's model back before it asks the client for the
+    // view again, so nothing here has to be undone.
+    const char* wanted = g_Editor->GetViewmodelModel();
+
+    if (wanted != nullptr && *wanted != '\0')
+    {
+        if (model_t* chosen = ResolveModel(wanted, g_ViewmodelWantedPath, g_ViewmodelWanted))
+        {
+            view_model->model = chosen;
+        }
+    }
+
+    // Republished on the frame the model changes, whichever of the two changed it: what is in
+    // the author's hands is whatever they last switched to or chose, and its animations are
+    // not the previous one's.
     if (view_model->model != g_ViewmodelModel)
     {
         g_ViewmodelModel = view_model->model;
@@ -436,6 +486,8 @@ void MaterialPreview_VidInit()
     // just went away.
     g_ModelsOutsidePrecache.clear();
     g_LoadedPath.clear();
+    g_ViewmodelWantedPath.clear();
+    g_ViewmodelWanted = nullptr;
 }
 
 void MaterialPreview_CreateEntities()

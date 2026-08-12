@@ -20,6 +20,7 @@
 #include <vgui_controls/CheckButton.h>
 #include <vgui_controls/ComboBox.h>
 #include <vgui_controls/Label.h>
+#include <vgui_controls/QueryBox.h>
 #include <vgui_controls/Slider.h>
 #include <vgui_controls/TextEntry.h>
 
@@ -59,6 +60,11 @@ namespace
     constexpr int kThumbSize = 40;
     constexpr int kBrowserRowHeight = 44;
     constexpr int kBrowserPreviewSize = 150;
+
+    // The tab strip sits under the title bar, and every page starts below it.
+    constexpr int kTabTop = 28;
+    constexpr int kTabHeight = 22;
+    constexpr int kPageTop = kTabTop + kTabHeight + 6;
 
     bool IsImage(const char* name)
     {
@@ -420,6 +426,9 @@ CMaterialEditDialog::CMaterialEditDialog(Panel* parent) :
     SetSizeable(false);
     SetDeleteSelfOnClose(true);
 
+    m_pTabMaterial = new Button(this, "TabMaterial", "#GameUI_MatEdit_TabMaterial", this, "tab_material");
+    m_pTabModel = new Button(this, "TabModel", "#GameUI_MatEdit_TabModel", this, "tab_model");
+
     m_pModel = new ComboBox(this, "Model", 16, false);
     m_pTexture = new ComboBox(this, "Texture", 16, false);
     m_pProgram = new ComboBox(this, "Program", 8, false);
@@ -468,7 +477,6 @@ CMaterialEditDialog::CMaterialEditDialog(Panel* parent) :
     m_pEmpty->SetWrap(true);
     m_pEnableShader = new Button(this, "EnableShader", "#GameUI_MatEdit_EnableShader", this, "enable_shader");
 
-    m_pStandIn = new Button(this, "StandIn", "#GameUI_MatEdit_StandIn", this, "standin");
     m_pState = new Button(this, "State", "#GameUI_MatEdit_State", this, "state");
 
     m_LoadingStandIn = false;
@@ -519,7 +527,6 @@ CMaterialEditDialog::CMaterialEditDialog(Panel* parent) :
     m_pStandInSpinning->AddActionSignalTarget(this);
 
     m_pStandInPlace = new Button(this, "StandInPlace", "#GameUI_MatEdit_StandInPlace", this, "standin_place");
-    m_pStandInBack = new Button(this, "StandInBack", "#GameUI_MatEdit_Back", this, "standin_back");
 
     m_BrowserHighlighted = -1;
 
@@ -582,6 +589,20 @@ void CMaterialEditDialog::Activate()
 {
     BaseClass::Activate();
 
+    // The weapon in the author's hands stands between the camera and everything the editor is
+    // for, and it is not what the panel was opened to look at. It comes back from the switch
+    // on the model tab, and the game gets it back when the panel closes.
+    if (MaterialEditInterface* editor = Editor())
+    {
+        MaterialViewmodel viewmodel;
+        editor->GetViewmodel(&viewmodel);
+
+        viewmodel.shown = false;
+        viewmodel.overriding = false;
+
+        editor->SetViewmodel(&viewmodel);
+    }
+
     ReloadModels();
 }
 
@@ -597,8 +618,10 @@ void CMaterialEditDialog::OnClose()
         // that is closing.
         Editor()->SetStandInModel("");
 
-        // The hands go back to the game's own for the same reason: closed with them hidden
-        // or held on one frame, they would stay that way with nothing left to switch back.
+        // The hands go back to the game's own for the same reason: closed with them hidden,
+        // held on one frame or holding a model of the panel's choosing, they would stay that
+        // way with nothing left to switch back.
+        Editor()->SetViewmodelModel("");
         MaterialViewmodel viewmodel;
         Editor()->GetViewmodel(&viewmodel);
         viewmodel.shown = true;
@@ -623,26 +646,31 @@ void CMaterialEditDialog::PerformLayout()
     int field_x = 10 + label_width;
     int field_width = wide - field_x - 10;
 
+    int tab_wide = (wide - 24) / 2;
+
+    m_pTabMaterial->SetBounds(10, kTabTop, tab_wide, kTabHeight);
+    m_pTabModel->SetBounds(14 + tab_wide, kTabTop, tab_wide, kTabHeight);
+
     const char* const kLabels[] = {"ModelLabel", "TextureLabel", "ProgramLabel"};
 
     for (int i = 0; i < 3; i++)
     {
         if (Panel* label = FindChildByName(kLabels[i]))
         {
-            label->SetBounds(10, 34 + i * 26, label_width - 4, 18);
+            label->SetBounds(10, kPageTop + 2 + i * 26, label_width - 4, 18);
         }
     }
 
     constexpr int kRefreshWidth = 74;
 
-    m_pModel->SetBounds(field_x, 32, field_width - kRefreshWidth - 4, 22);
-    m_pRefresh->SetBounds(wide - 10 - kRefreshWidth, 32, kRefreshWidth, 22);
-    m_pTexture->SetBounds(field_x, 58, field_width, 22);
-    m_pProgram->SetBounds(field_x, 84, field_width, 22);
+    m_pModel->SetBounds(field_x, kPageTop, field_width - kRefreshWidth - 4, 22);
+    m_pRefresh->SetBounds(wide - 10 - kRefreshWidth, kPageTop, kRefreshWidth, 22);
+    m_pTexture->SetBounds(field_x, kPageTop + 26, field_width, 22);
+    m_pProgram->SetBounds(field_x, kPageTop + 52, field_width, 22);
 
-    m_pSource->SetBounds(10, 110, wide - 20, 18);
-    m_pEmpty->SetBounds(16, 138, wide - 32, 60);
-    m_pEnableShader->SetBounds(16, 206, 220, 24);
+    m_pSource->SetBounds(10, kPageTop + 78, wide - 20, 18);
+    m_pEmpty->SetBounds(16, kPageTop + 106, wide - 32, 60);
+    m_pEnableShader->SetBounds(16, kPageTop + 174, 220, 24);
 
     // The bottom of the panel, stacked upwards: the four buttons on a row of their own, the
     // two switches above them, then what the model is shown as, then what the material has
@@ -657,7 +685,7 @@ void CMaterialEditDialog::PerformLayout()
     int shown_y = compare_y - 28;
     int validation_y = shown_y - 34;
 
-    m_pRows->SetBounds(10, 132, wide - 20, std::max(validation_y - 6 - 132, 40));
+    m_pRows->SetBounds(10, kPageTop + 100, wide - 20, std::max(validation_y - 6 - (kPageTop + 100), 40));
     m_pValidation->SetBounds(10, validation_y, wide - 20, 30);
 
     int half = (wide - 20) / 2;
@@ -678,15 +706,14 @@ void CMaterialEditDialog::PerformLayout()
     m_pCompare->SetBounds(10, compare_y, 220, 20);
     m_pSiblings->SetBounds(10, siblings_y, 260, 20);
 
-    m_pStandIn->SetBounds(10, buttons_y, kButtonWide, 24);
-    m_pSweep->SetBounds(10 + (kButtonWide + kButtonGap), buttons_y, kButtonWide, 24);
-    m_pStub->SetBounds(10 + 2 * (kButtonWide + kButtonGap), buttons_y, kButtonWide, 24);
-    m_pSave->SetBounds(10 + 3 * (kButtonWide + kButtonGap), buttons_y, kButtonWide, 24);
+    m_pSweep->SetBounds(10, buttons_y, kButtonWide, 24);
+    m_pStub->SetBounds(10 + (kButtonWide + kButtonGap), buttons_y, kButtonWide, 24);
+    m_pSave->SetBounds(10 + 2 * (kButtonWide + kButtonGap), buttons_y, kButtonWide, 24);
 
     // The stand-in page, laid out over the same area the parameter list uses. What belongs
     // to one target only shares its rows with the other target's: exactly one of the two is
     // on screen, and stacking them instead would leave a hole in whichever is shown.
-    int row = 40;
+    int row = kPageTop + 8;
 
     if (Panel* label = FindChildByName("StandInTargetLabel"))
     {
@@ -739,7 +766,6 @@ void CMaterialEditDialog::PerformLayout()
     m_pStandInScale->SetBounds(10, row, 200, 20);
 
     m_pStandInPlace->SetBounds(10, tall - 32, 150, 24);
-    m_pStandInBack->SetBounds(wide - 90, tall - 32, 76, 24);
 
     // Wherever the page it is shown over leaves room for it.
     switch (m_Page)
@@ -752,11 +778,11 @@ void CMaterialEditDialog::PerformLayout()
 
     int list_width = wide - kBrowserPreviewSize - 30;
 
-    m_pBrowserFolder->SetBounds(10, 32, list_width, 22);
-    m_pBrowserList->SetBounds(10, 60, list_width, tall - 110);
+    m_pBrowserFolder->SetBounds(10, kPageTop, list_width, 22);
+    m_pBrowserList->SetBounds(10, kPageTop + 28, list_width, std::max(tall - kPageTop - 78, 40));
 
-    m_pBrowserPreview->SetBounds(wide - kBrowserPreviewSize - 10, 60, kBrowserPreviewSize, kBrowserPreviewSize);
-    m_pBrowserPath->SetBounds(wide - kBrowserPreviewSize - 10, 60 + kBrowserPreviewSize + 6, kBrowserPreviewSize, 40);
+    m_pBrowserPreview->SetBounds(wide - kBrowserPreviewSize - 10, kPageTop + 28, kBrowserPreviewSize, kBrowserPreviewSize);
+    m_pBrowserPath->SetBounds(wide - kBrowserPreviewSize - 10, kPageTop + 34 + kBrowserPreviewSize, kBrowserPreviewSize, 40);
 
     m_pBrowserBack->SetBounds(wide - 250, tall - 40, 76, 24);
     m_pBrowserClear->SetBounds(wide - 170, tall - 40, 76, 24);
@@ -765,9 +791,9 @@ void CMaterialEditDialog::PerformLayout()
     // The catalogue: what narrows it on top, what it found under that, and the rest of the
     // panel is the list. Nothing is previewed here beside it - the model goes into the world
     // as it is picked, and the world is already on screen.
-    m_pCatalogueFilter->SetBounds(10, 32, wide - 20, 22);
-    m_pCatalogueCount->SetBounds(10, 58, wide - 20, 18);
-    m_pCatalogueList->SetBounds(10, 80, wide - 20, std::max(tall - 130, 40));
+    m_pCatalogueFilter->SetBounds(10, kPageTop, wide - 20, 22);
+    m_pCatalogueCount->SetBounds(10, kPageTop + 26, wide - 20, 18);
+    m_pCatalogueList->SetBounds(10, kPageTop + 48, wide - 20, std::max(tall - kPageTop - 98, 40));
 
     m_pCatalogueRescan->SetBounds(wide - 250, tall - 40, 76, 24);
     m_pCatalogueClear->SetBounds(wide - 170, tall - 40, 76, 24);
@@ -784,7 +810,6 @@ void CMaterialEditDialog::ShowPage(Page page)
     Panel* const parameters[] = {
         m_pModel, m_pTexture, m_pProgram, m_pSource, m_pRows, m_pValidation,
         m_pCompare, m_pSiblings, m_pSweep, m_pSave, m_pStub, m_pRefresh, m_pSkin, m_pBody,
-        m_pStandIn,
         FindChildByName("ModelLabel"), FindChildByName("TextureLabel"), FindChildByName("ProgramLabel"),
         FindChildByName("SkinLabel"), FindChildByName("BodyLabel")
     };
@@ -797,7 +822,7 @@ void CMaterialEditDialog::ShowPage(Page page)
     Panel* const stand_in[] = {
         m_pStandInTarget, m_pStandInModel, m_pStandInBrowse, m_pStandInSequence, m_pStandInYaw,
         m_pStandInPitch, m_pStandInScale, m_pStandInFrame, m_pStandInPlaying, m_pStandInSpinning,
-        m_pStandInPlace, m_pStandInBack,
+        m_pStandInPlace,
         m_pViewmodelShown, m_pViewmodelOverride,
         FindChildByName("StandInTargetLabel"), FindChildByName("StandInModelLabel"),
         FindChildByName("StandInSequenceLabel"), FindChildByName("StandInFrameLabel")
@@ -849,6 +874,11 @@ void CMaterialEditDialog::ShowPage(Page page)
     // when something goes wrong is not something they should have to leave first.
     m_pState->SetVisible(true);
 
+    // Both tabs are on every page, including the two opened from them: a browser is a step
+    // inside a tab, not a place an author should have to walk back out of.
+    m_pTabMaterial->SetSelected(page == Page::Parameters);
+    m_pTabModel->SetSelected(page == Page::StandIn || page == Page::Catalogue);
+
     switch (page)
     {
     case Page::Browser: SetTitle("#GameUI_MatEdit_PickTitle", true); break;
@@ -865,6 +895,54 @@ void CMaterialEditDialog::ShowPage(Page page)
     InvalidateLayout();
 }
 
+void CMaterialEditDialog::ShowTab(Page page)
+{
+    if (page == Page::Parameters)
+    {
+        // The list can have grown while the model tab was up: putting a stand-in into the
+        // world is what makes its model prepared, and a prepared model is one that can be
+        // edited.
+        ShowPage(Page::Parameters);
+        ReloadModels();
+
+        return;
+    }
+
+    ShowStandIn();
+}
+
+void CMaterialEditDialog::OnCloseFrameButtonPressed()
+{
+    if (m_Page == Page::Browser)
+    {
+        CloseBrowser();
+        return;
+    }
+
+    if (m_Page == Page::Catalogue)
+    {
+        ShowStandIn();
+        return;
+    }
+
+    if (m_hConfirmClose.Get() != nullptr)
+    {
+        return;
+    }
+
+    // Asked rather than done: what an author has been turning for the last ten minutes is the
+    // editor's layer, it is not written anywhere until Save, and the cross is next to nothing
+    // else that is destructive.
+    QueryBox* box = new QueryBox("#GameUI_MatEdit_CloseTitle", "#GameUI_MatEdit_CloseText", this);
+
+    box->SetOKButtonText("#GameUI_MatEdit_CloseOk");
+    box->SetOKCommand(new KeyValues("Command", "command", "close_confirmed"));
+    box->AddActionSignalTarget(this);
+    box->DoModal();
+
+    m_hConfirmClose = box;
+}
+
 // Half of this page belongs to the copy in the world and half to the weapon in the author's
 // hands; what they share is one model on one frame of one animation. The two halves sit on
 // the same rows because only one of them is ever being talked about.
@@ -872,9 +950,11 @@ void CMaterialEditDialog::UpdateTargetControls()
 {
     bool stand_in = m_Target == MaterialTarget::StandIn;
 
+    // The model is chosen for both: the hands hold whatever the panel was asked to put in
+    // them, and the game's own weapon is one of the answers rather than the only one.
     Panel* const only_stand_in[] = {
-        m_pStandInModel, m_pStandInBrowse, m_pStandInYaw, m_pStandInPitch, m_pStandInScale,
-        m_pStandInSpinning, m_pStandInPlace, FindChildByName("StandInModelLabel")
+        m_pStandInYaw, m_pStandInPitch, m_pStandInScale,
+        m_pStandInSpinning, m_pStandInPlace
     };
 
     for (Panel* panel : only_stand_in)
@@ -935,14 +1015,6 @@ void CMaterialEditDialog::ShowStandIn()
     ShowPage(Page::StandIn);
 }
 
-void CMaterialEditDialog::CloseStandIn()
-{
-    ShowPage(Page::Parameters);
-
-    // The list can have grown while the stand-in was up: putting one into the world is what
-    // makes its model prepared, and a prepared model is one the panel can edit.
-    ReloadModels();
-}
 
 void CMaterialEditDialog::ReloadStandIn()
 {
@@ -956,12 +1028,20 @@ void CMaterialEditDialog::ReloadStandIn()
 
     m_pStandInTarget->ActivateItemByRow(m_Target == MaterialTarget::StandIn ? 0 : 1);
 
+    bool stand_in = m_Target == MaterialTarget::StandIn;
+
     CollectSiblings(m_Model, m_StandInModels);
 
     m_pStandInModel->RemoveAll();
-    m_pStandInModel->AddItem("#GameUI_MatEdit_StandInNone", nullptr);
 
-    std::string current = editor->GetStandInModel();
+    // Row zero means "none" for the copy in the world and "whatever the game is holding" for
+    // the hands: one is an absence, the other is a weapon nobody chose.
+    m_pStandInModel->AddItem(
+        stand_in ? "#GameUI_MatEdit_StandInNone" : "#GameUI_MatEdit_ViewmodelGameModel",
+        nullptr
+    );
+
+    std::string current = stand_in ? editor->GetStandInModel() : editor->GetViewmodelModel();
     int active = 0;
 
     // A model taken from the catalogue is nobody's sibling, and a combo that cannot show what
@@ -1120,6 +1200,15 @@ void CMaterialEditDialog::PushStandIn()
     }
     else
     {
+        int row = m_pStandInModel->GetActiveItem();
+
+        // Row zero is the weapon the game is holding, so the chosen models start one later.
+        editor->SetViewmodelModel(
+            row > 0 && row - 1 < static_cast<int>(m_StandInModels.size())
+                ? m_StandInModels[row - 1].c_str()
+                : ""
+        );
+
         MaterialViewmodel viewmodel;
         editor->GetViewmodel(&viewmodel);
         viewmodel.shown = m_pViewmodelShown->IsSelected();
@@ -1404,9 +1493,26 @@ void CMaterialEditDialog::ChooseCatalogueModel(int index)
         return;
     }
 
+    const std::string& path = m_Catalogue[m_CatalogueShown[index]];
+
     // Into the world at once and the page stays open, as in the collection: what tells an
     // author whether this is the model they meant is the model, not its file name.
-    editor->SetStandInModel(m_Catalogue[m_CatalogueShown[index]].c_str());
+    if (m_Target == MaterialTarget::StandIn)
+    {
+        editor->SetStandInModel(path.c_str());
+        return;
+    }
+
+    editor->SetViewmodelModel(path.c_str());
+
+    // Shown with it: the hands are out of the frame until asked for, and a model chosen for
+    // them that stays invisible looks like a model that failed to load.
+    MaterialViewmodel viewmodel;
+    editor->GetViewmodel(&viewmodel);
+
+    viewmodel.shown = true;
+
+    editor->SetViewmodel(&viewmodel);
 }
 
 void CMaterialEditDialog::ReloadModels()
@@ -1983,15 +2089,21 @@ void CMaterialEditDialog::OnCommand(const char* command)
         return;
     }
 
-    if (V_stricmp(command, "standin") == 0)
+    if (V_stricmp(command, "tab_material") == 0)
     {
-        ShowStandIn();
+        ShowTab(Page::Parameters);
         return;
     }
 
-    if (V_stricmp(command, "standin_back") == 0)
+    if (V_stricmp(command, "tab_model") == 0)
     {
-        CloseStandIn();
+        ShowTab(Page::StandIn);
+        return;
+    }
+
+    if (V_stricmp(command, "close_confirmed") == 0)
+    {
+        Close();
         return;
     }
 
