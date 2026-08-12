@@ -197,6 +197,26 @@ namespace ncl_material
             {
                 schema.default_value = ParseDefault(*fallback, schema.type, context + ".default");
                 schema.has_default = true;
+
+                // Held to the schema's own range. A default outside it is a value a material
+                // is given by the parameter that declares the values are not allowed there,
+                // and the two rules are written a dozen lines apart in the same object.
+                if (schema.has_range)
+                {
+                    int components = schema.type == ParamType::Vec4 ? 4 : 1;
+
+                    for (int i = 0; i < components; i++)
+                    {
+                        float component = schema.type == ParamType::Vec4
+                            ? schema.default_value.vec4[i]
+                            : schema.default_value.scalar;
+
+                        if (component < schema.min_value || component > schema.max_value)
+                        {
+                            throw ParseError(context + ".default: outside the declared range");
+                        }
+                    }
+                }
             }
 
             schema.label = ParseOptionalString(value, "label", context);
