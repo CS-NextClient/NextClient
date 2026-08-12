@@ -73,6 +73,11 @@ namespace
     ncl_math::Vector3 g_ViewmodelBone;
     bool g_ViewmodelSampled;
 
+    // The game's own weapon animation, kept for as long as the panel is driving instead.
+    bool g_ViewmodelHeld;
+    int g_HeldWeaponSequence;
+    float g_HeldWeaponStartTime;
+
     // One list per target, in MaterialTarget order.
     std::string g_SequenceNames[static_cast<int>(MaterialTarget::Count)];
 
@@ -247,6 +252,30 @@ namespace
         }
 
         return true;
+    }
+
+    // How long one run of a sequence lasts, as the model declares it. Needed because the
+    // engine poses the weapon from a moment in time rather than from a frame, so a frame has
+    // to be expressed as one.
+    float SequenceSeconds(model_t* model, int sequence)
+    {
+        const studiohdr_t* header = static_cast<const studiohdr_t*>(Mod_Extradata(model));
+
+        if (header == nullptr || sequence < 0 || sequence >= header->numseq)
+        {
+            return 0.0f;
+        }
+
+        const mstudioseqdesc_t* description = reinterpret_cast<const mstudioseqdesc_t*>(
+            reinterpret_cast<const uint8_t*>(header) + header->seqindex
+        ) + sequence;
+
+        if (description->fps <= 0.0f || description->numframes <= 1)
+        {
+            return 0.0f;
+        }
+
+        return static_cast<float>(description->numframes - 1) / description->fps;
     }
 
     // A model's own box, which is not in model_t: the studio loader leaves those bounds at
@@ -1596,27 +1625,46 @@ bool render::MaterialEdit_DrivesViewmodel()
     return g_PanelOpen && g_Viewmodel.overriding;
 }
 
-void render::MaterialEdit_ApplyViewmodel(cl_entity_t* entity, float now)
+void render::MaterialEdit_ApplyViewmodel(cl_entity_t* entity, float now, int* weapon_sequence, float* weapon_start_time)
 {
-    if (entity == nullptr || !MaterialEdit_DrivesViewmodel())
+    if (weapon_sequence == nullptr || weapon_start_time == nullptr)
     {
         return;
     }
 
+    if (!MaterialEdit_DrivesViewmodel())
+    {
+        // Put back the moment the panel lets go. These two belong to the game, and a weapon
+        // left on the panel's frame would stand there until the next animation the game
+        // happens to play.
+        if (g_ViewmodelHeld)
+        {
+            *weapon_sequence = g_HeldWeaponSequence;
+            *weapon_start_time = g_HeldWeaponStartTime;
+            g_ViewmodelHeld = false;
+        }
+
+        return;
+    }
+
+    if (!g_ViewmodelHeld)
+    {
+        g_HeldWeaponSequence = *weapon_sequence;
+        g_HeldWeaponStartTime = *weapon_start_time;
+        g_ViewmodelHeld = true;
+    }
+
     const MaterialAnimation& animation = g_Viewmodel.animation;
 
-    entity->curstate.sequence = animation.sequence;
-    entity->curstate.frame = animation.frame * 255.0f;
-
-    // Now, so the renderer adds nothing of its own to the frame: what it adds is the time
-    // since this was set, times the rate.
-    entity->curstate.animtime = now;
-    entity->curstate.framerate = 1.0f;
-
-    // The latched half is left to the renderer, which maintains it and knows what its fields
-    // mean. Writing them from here was writing a frame counted one way into a field counted
-    // another, and setting the previous animation time to the current one turns the origin
-    // interpolation into a division by nothing.
+    // Written to the client state, not to the entity. R_DrawViewModel rewrites the whole
+    // animation of the view entity from these two immediately before it draws it - frame to
+    // zero, sequence and animtime to these - so anything written on the entity is discarded
+    // unread, however late it is written.
+    //
+    // What the renderer then estimates is (now - start) * fps, and the frame it lands on is
+    // therefore chosen by placing the start that many seconds in the past.
+    *weapon_sequence = animation.sequence;
+    *weapon_start_time = now - animation.frame * SequenceSeconds(entity != nullptr ? entity->model : nullptr, animation.sequence);
 }
 
 void render::MaterialEdit_NoteViewmodel(const cl_entity_t* entity, float now)

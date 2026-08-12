@@ -30,14 +30,18 @@ namespace render
     void MaterialEdit_SetAppliedInset(int pixels);
     int MaterialEdit_AppliedInset();
 
-    // Puts the panel's animation on the weapon in the author's hands, at the last moment
-    // before it is drawn.
+    // Puts the panel's animation on the weapon in the author's hands, by saying it in the
+    // only terms the engine reads: the sequence and the moment it started.
     //
-    // It has to be this late. The engine rewrites that entity's whole animation state from
-    // its own cl.weaponsequence and cl.weaponstarttime immediately before drawing it, so
-    // anything written earlier - by the client, a frame's worth of work earlier - is thrown
-    // away without a trace. The stand-in has no such owner and is driven from the client.
-    void MaterialEdit_ApplyViewmodel(struct cl_entity_s* entity, float now);
+    // Writing the entity does not work at any point, however late. R_DrawViewModel rewrites
+    // the view entity's whole animation state from these two immediately before it draws,
+    // inside the same call, so the entity carries the game's animation no matter who wrote
+    // what on it beforehand. The stand-in has no such owner and is driven from the client.
+    //
+    // Both are the caller's to hand over: this file is the panel's side of the editor, and
+    // the client state belongs to the engine side. They are restored when the panel stops
+    // driving, so the game gets its weapon back where it left it.
+    void MaterialEdit_ApplyViewmodel(struct cl_entity_s* entity, float now, int* weapon_sequence, float* weapon_start_time);
 
     // Whether the panel is driving that animation at all. The engine's own preparation pass
     // has to be skipped while it is, because that pass poses the weapon once with the game's

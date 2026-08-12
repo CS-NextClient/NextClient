@@ -240,9 +240,8 @@ void R_DrawViewModel()
 {
     OPTICK_EVENT();
 
-    // After R_PreDrawViewModel, which is where the engine puts its own animation back on the
-    // weapon, and before the draw that reads it.
-    render::MaterialEdit_ApplyViewmodel(&cl->viewent, cl->time);
+    // Before the draw, which is where the engine poses the weapon from these two.
+    render::MaterialEdit_ApplyViewmodel(&cl->viewent, cl->time, &cl->weaponsequence, &cl->weaponstarttime);
 
     eng()->R_DrawViewModel.InvokeChained();
 
@@ -263,16 +262,12 @@ void R_PreDrawViewModel()
 {
     OPTICK_EVENT();
 
-    // The engine's pass puts its own animation back on the weapon and poses it once with
-    // that, which is exactly what the panel is being asked to override. Skipped rather than
-    // undone: undoing it afterwards still leaves the renderer having seen both.
-    //
-    // What is given up while the panel drives the weapon is the firing of animation events
-    // and the seeding of attachment points - neither of which an author scrubbing through a
-    // reload wants anyway.
+    // This pass poses the weapon a first time and fires the animation's events while doing
+    // it. Skipped while the panel drives, because an author standing on one frame of a reload
+    // does not want that frame's sound fired on every frame the panel holds it. The pose it
+    // would have built is built again by the draw itself, from the same two values.
     if (render::MaterialEdit_DrivesViewmodel())
     {
-        render::MaterialEdit_ApplyViewmodel(&cl->viewent, cl->time);
         return;
     }
 
