@@ -26,6 +26,7 @@
 #include "graphics/render/RenderConfig.h"
 #include "graphics/render/ServerMaterials.h"
 #include "graphics/render/ShaderManager.h"
+#include "graphics/render/StudioIntercept.h"
 #include "common/model.h"
 #include "graphics/render/StudioGeometry.h"
 
@@ -64,6 +65,13 @@ namespace
     // Which model the panel has asked to be holding. Empty is the weapon the game gave the
     // author, which is what this is until somebody chooses otherwise.
     std::string g_ViewmodelPath;
+
+    // The previous frame's answer, so the report can say whether anything moved rather than
+    // only what it currently is.
+    float g_ViewmodelFrame;
+    float g_ViewmodelPosed;
+    ncl_math::Vector3 g_ViewmodelBone;
+    bool g_ViewmodelSampled;
 
     // One list per target, in MaterialTarget order.
     std::string g_SequenceNames[static_cast<int>(MaterialTarget::Count)];
@@ -1618,18 +1626,50 @@ void render::MaterialEdit_NoteViewmodel(const cl_entity_t* entity, float now)
         return;
     }
 
-    char line[256];
+    // The first bone's translation, which is what a moving pose moves. Taken because a frame
+    // that advances proves only that the number changed: whether the model followed it is a
+    // separate question, and this is the answer to it.
+    const engine_studio_api_s* api = render::Studio_OriginalApi();
+    const float* bones = api != nullptr && api->StudioGetBoneTransform != nullptr
+        ? reinterpret_cast<const float*>(api->StudioGetBoneTransform())
+        : nullptr;
+
+    ncl_math::Vector3 bone;
+
+    if (bones != nullptr)
+    {
+        // Three rows of four, translation in the last column of each.
+        bone = ncl_math::Vector3 {bones[3], bones[7], bones[11]};
+    }
+
+    // What the renderer settled on, as it wrote it back: R_StudioSetupBones ends by storing
+    // the frame it posed the model at, so this is its answer rather than our request.
+    float posed = entity->latched.prevframe;
+
+    float frame_moved = g_ViewmodelSampled ? entity->curstate.frame - g_ViewmodelFrame : 0.0f;
+    float posed_moved = g_ViewmodelSampled ? posed - g_ViewmodelPosed : 0.0f;
+    float bone_moved = g_ViewmodelSampled ? (bone - g_ViewmodelBone).Length() : 0.0f;
+
+    g_ViewmodelFrame = entity->curstate.frame;
+    g_ViewmodelPosed = posed;
+    g_ViewmodelBone = bone;
+    g_ViewmodelSampled = true;
+
+    char line[320];
     Q_snprintf(
         line, sizeof(line),
-        "%s, sequence %d, frame %.1f, animtime %.2f, rate %.2f, now %.2f, previous frame %.1f sequence %d",
+        "%s, sequence %d, frame %.1f, animtime %.2f, rate %.2f, now %.2f, posed at %.1f; "
+        "since the frame before: frame %+.2f, posed %+.2f, first bone %.3f",
         entity->model != nullptr ? entity->model->name : "no model",
         entity->curstate.sequence,
         entity->curstate.frame,
         entity->curstate.animtime,
         entity->curstate.framerate,
         now,
-        entity->latched.prevframe,
-        entity->latched.prevsequence
+        posed,
+        frame_moved,
+        posed_moved,
+        bone_moved
     );
 
     g_ViewmodelDraw = line;

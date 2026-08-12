@@ -243,9 +243,13 @@ void R_DrawViewModel()
     // After R_PreDrawViewModel, which is where the engine puts its own animation back on the
     // weapon, and before the draw that reads it.
     render::MaterialEdit_ApplyViewmodel(&cl->viewent, cl->time);
-    render::MaterialEdit_NoteViewmodel(&cl->viewent, cl->time);
 
     eng()->R_DrawViewModel.InvokeChained();
+
+    // Noted after the draw rather than before it: what the report is asked for is what the
+    // renderer did with the state, and both the frame it settled on and the bones it built
+    // exist only once it has run.
+    render::MaterialEdit_NoteViewmodel(&cl->viewent, cl->time);
 }
 
 void R_PolyBlend()
