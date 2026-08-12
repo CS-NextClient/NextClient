@@ -1,5 +1,9 @@
 #include "engine.h"
 
+#include <cstring>
+
+#include <Windows.h>
+
 #include <glad/glad.h>
 #include "graphics/render/RenderDevice.h"
 
@@ -111,7 +115,13 @@ void render::Debug_Apply()
         return;
     }
 
-    int level = g_RenderCfg.debug_output != nullptr ? static_cast<int>(g_RenderCfg.debug_output->value) : 0;
+    // The cvar does not exist yet the first time this runs. It is registered in Draw_Init,
+    // and the context - with the shader warm-up this switch is there to instrument - is
+    // created before that, so the command line is the only switch available that early. It
+    // is the same escape hatch, and there for the same reason, as -noshaderwarmup.
+    int level = g_RenderCfg.debug_output != nullptr
+        ? static_cast<int>(g_RenderCfg.debug_output->value)
+        : (std::strstr(GetCommandLineA(), "-gldebug") != nullptr ? 2 : 0);
 
     if (level <= 0)
     {
