@@ -39,8 +39,12 @@ public:
     void CollectDebugInfo(std::vector<std::string>& out_lines) override;
 
 private:
-    // Puts everything this entity wears on the renderer, in one order: the materials first,
-    // then what is written over them. The renderer remakes its copy of a material whenever
-    // the material is set, so the two always go together and in this order.
-    void Dress(const Dressed& dressed) const;
+    // Rebuilds one drawn index from every entity that reports it, rather than from the one
+    // that just changed. Several bound edicts resolve to the same drawn one - every weapon a
+    // player carries is invisible and reports the player - so an entity that cleared the
+    // index and dressed only itself would undress the others.
+    //
+    // Within one entity the materials go on before the values written over them, because the
+    // renderer remakes its copy of a material whenever the material is set.
+    void Redress(uint32_t entity_index) const;
 };

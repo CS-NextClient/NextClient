@@ -94,37 +94,45 @@ const std::vector<ClientNclEntityFieldDescriptor>& MaterialSyncSystem::Fields() 
     return g_Fields;
 }
 
-void MaterialSyncSystem::Dress(const Dressed& dressed) const
+void MaterialSyncSystem::Redress(uint32_t entity_index) const
 {
-    if (dressed.entity_index == 0)
+    if (entity_index == 0)
     {
         return;
     }
 
-    int index = static_cast<int>(dressed.entity_index);
+    int index = static_cast<int>(entity_index);
 
     render::ServerMaterials_ClearBindings(index);
 
-    for (const auto& [preset_id, name_id] : dressed.materials)
+    for (const auto& [entity_id, dressed] : entities_)
     {
-        const char* preset = CL_StringRegistryGetString(preset_id);
-        const char* name = CL_StringRegistryGetString(name_id);
-
-        if (preset != nullptr && name != nullptr)
+        if (dressed.entity_index != entity_index)
         {
-            render::ServerMaterials_SetBinding(index, preset, name);
+            continue;
         }
-    }
 
-    for (const auto& [key_id, steps] : dressed.params)
-    {
-        const char* key = CL_StringRegistryGetString(key_id);
-
-        if (key != nullptr)
+        for (const auto& [preset_id, name_id] : dressed.materials)
         {
-            // Signed again: the server wrote a step count, which can be either side of the
-            // parameter's zero, through an unsigned field.
-            render::ServerMaterials_SetParam(index, key, static_cast<int16_t>(steps));
+            const char* preset = CL_StringRegistryGetString(preset_id);
+            const char* name = CL_StringRegistryGetString(name_id);
+
+            if (preset != nullptr && name != nullptr)
+            {
+                render::ServerMaterials_SetBinding(index, preset, name);
+            }
+        }
+
+        for (const auto& [key_id, steps] : dressed.params)
+        {
+            const char* key = CL_StringRegistryGetString(key_id);
+
+            if (key != nullptr)
+            {
+                // Signed again: the server wrote a step count, which can be either side of
+                // the parameter's zero, through an unsigned field.
+                render::ServerMaterials_SetParam(index, key, static_cast<int16_t>(steps));
+            }
         }
     }
 }
@@ -151,9 +159,12 @@ void MaterialSyncSystem::OnCreate(uint16_t entity_id, const NclEntityFields& fie
         ApplyParams(*params, dressed.params);
     }
 
-    Dress(dressed);
+    // Recorded before it is put on: Redress builds the index out of the entities it knows.
+    uint32_t entity_index = dressed.entity_index;
 
     entities_[entity_id] = std::move(dressed);
+
+    Redress(entity_index);
 }
 
 void MaterialSyncSystem::OnUpdate(uint16_t entity_id, uint16_t field_mask, const NclEntityFields& fields)
@@ -166,6 +177,7 @@ void MaterialSyncSystem::OnUpdate(uint16_t entity_id, uint16_t field_mask, const
     }
 
     Dressed& dressed = it->second;
+    uint32_t previous_index = dressed.entity_index;
 
     if (field_mask & FIELD_ENTITY_INDEX)
     {
@@ -173,12 +185,6 @@ void MaterialSyncSystem::OnUpdate(uint16_t entity_id, uint16_t field_mask, const
 
         if (index_it != fields.end())
         {
-            // What was dressed under the old index is not this entity any more.
-            if (dressed.entity_index != 0)
-            {
-                render::ServerMaterials_ClearBindings(static_cast<int>(dressed.entity_index));
-            }
-
             dressed.entity_index = std::get<uint32_t>(index_it->second.value);
         }
     }
@@ -199,7 +205,14 @@ void MaterialSyncSystem::OnUpdate(uint16_t entity_id, uint16_t field_mask, const
         }
     }
 
-    Dress(dressed);
+    // The index it left has to be rebuilt too: whoever else reports it is still wearing
+    // something, and this entity's share of it has just gone.
+    if (previous_index != dressed.entity_index)
+    {
+        Redress(previous_index);
+    }
+
+    Redress(dressed.entity_index);
 }
 
 void MaterialSyncSystem::OnDestroy(uint16_t entity_id)
@@ -211,12 +224,11 @@ void MaterialSyncSystem::OnDestroy(uint16_t entity_id)
         return;
     }
 
-    if (it->second.entity_index != 0)
-    {
-        render::ServerMaterials_ClearBindings(static_cast<int>(it->second.entity_index));
-    }
+    uint32_t entity_index = it->second.entity_index;
 
     entities_.erase(it);
+
+    Redress(entity_index);
 }
 
 void MaterialSyncSystem::OnClear()
