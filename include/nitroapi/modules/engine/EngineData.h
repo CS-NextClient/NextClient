@@ -660,5 +660,11 @@ namespace nitroapi
 
         // int lightmap_textures[MAX_LIGHTMAPS]
         int (*lightmap_textures)[64]                    = nullptr;
+
+        // vgui2::ISurface* g_pSurface, the surface the engine's own vgui2 code draws through
+        void** vgui2_surface                            = nullptr;
+
+        // bool VGui_InitInterfacesList(const char* module, CreateInterfaceFn* factories, int count)
+        NitroFunction<bool, const char*, void*, int>    VGui_InitInterfacesList;
     };
 }

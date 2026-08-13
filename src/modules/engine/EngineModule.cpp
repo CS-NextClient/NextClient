@@ -101,6 +101,7 @@ namespace nitroapi
         RegisterVar(&engine_data_->maxTransObjs, "maxTransObjs");
         RegisterVar(&engine_data_->gLoadSky, "gLoadSky");
         RegisterVar(&engine_data_->lightmap_textures, "lightmap_textures");
+        RegisterVar(&engine_data_->vgui2_surface, "vgui2_surface");
 
         RegisterFuncCdecl<StaticHookId::Cbuf_AddText>(&engine_data_->Cbuf_AddText);
         RegisterFuncCdecl<StaticHookId::CL_QueueHTTPDownload>(&engine_data_->CL_QueueHTTPDownload);
@@ -324,6 +325,7 @@ namespace nitroapi
         RegisterFuncCdecl<StaticHookId::VGUI2_Draw_Init>(&engine_data_->VGUI2_Draw_Init);
         RegisterFuncCdecl<StaticHookId::Cmd_AddCommand>(&engine_data_->Cmd_AddCommand);
         RegisterFuncCdecl<StaticHookId::VGUI2_Draw_SetTextColor>(&engine_data_->VGUI2_Draw_SetTextColor);
+        RegisterFuncCdecl<StaticHookId::VGui_InitInterfacesList>(&engine_data_->VGui_InitInterfacesList);
         RegisterFuncCdecl<StaticHookId::DT_SetRenderState>(&engine_data_->DT_SetRenderState);
         RegisterFuncCdecl<StaticHookId::R_ForceCVars>(&engine_data_->R_ForceCVars);
         RegisterFuncCdecl<StaticHookId::GL_LoadTexture2>(&engine_data_->GL_LoadTexture2);

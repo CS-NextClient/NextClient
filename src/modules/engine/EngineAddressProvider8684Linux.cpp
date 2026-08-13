@@ -220,6 +220,7 @@ namespace nitroapi
         { StaticHookId::VGUI2_Draw_Init,            SearchConfig("VGUI2_Draw_Init", SearchType::ExportFunc) },
         { StaticHookId::Cmd_AddCommand,             SearchConfig("Cmd_AddCommand", SearchType::ExportFunc) },
         { StaticHookId::VGUI2_Draw_SetTextColor,    SearchConfig("VGUI2_Draw_SetTextColor", SearchType::ExportFunc) },
+        { StaticHookId::VGui_InitInterfacesList,    SearchConfig() },
         { StaticHookId::DT_SetRenderState,          SearchConfig("DT_SetRenderState", SearchType::ExportFunc) },
         { StaticHookId::R_ForceCVars,               SearchConfig("R_ForceCVars", SearchType::ExportFunc) },
         { StaticHookId::GL_LoadTexture2,            SearchConfig("GL_LoadTexture2", SearchType::ExportFunc) },
@@ -320,5 +321,6 @@ namespace nitroapi
         { "maxTransObjs",                           SearchConfig("maxTransObjs", SearchType::ExportFunc) },
         { "gLoadSky",                               SearchConfig("gLoadSky", SearchType::ExportFunc) },
         { "lightmap_textures",                      SearchConfig("lightmap_textures", SearchType::ExportFunc) },
+        { "vgui2_surface",                          SearchConfig() },
     };
 }

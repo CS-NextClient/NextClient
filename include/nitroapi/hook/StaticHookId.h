@@ -335,6 +335,8 @@ namespace nitroapi
         SDL_GetError,
         SDL_GL_GetProcAddress,
 
+        VGui_InitInterfacesList,
+
         LAST_ITEM
     };
 }
