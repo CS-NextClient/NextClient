@@ -1,5 +1,7 @@
 #include "engine.h"
 
+#include <cmath>
+
 #include <optick.h>
 #include <common/mem.h>
 
@@ -13,6 +15,11 @@
 
 ViewmodelFrustumCalculator g_ViewmodelFrustumCalculator;
 
+static bool IsVec3Finite(const vec3_t v)
+{
+    return std::isfinite(v[0]) && std::isfinite(v[1]) && std::isfinite(v[2]);
+}
+
 int CL_FxBlend(cl_entity_t* e)
 {
     OPTICK_EVENT();
@@ -23,6 +30,10 @@ int CL_FxBlend(cl_entity_t* e)
 float GlowBlend(cl_entity_t* pEntity)
 {
     OPTICK_EVENT();
+
+    // the engine traces to r_entorigin, which R_SetupAttachmentPoint moves to an attachment point when curstate.body != 0
+    if (!IsVec3Finite(r_refdef->vieworg) || !IsVec3Finite(*p_r_entorigin))
+        return 0.0f;
 
     return eng()->GlowBlend.InvokeChained(pEntity);
 }

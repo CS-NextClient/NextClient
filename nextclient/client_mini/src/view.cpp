@@ -1,3 +1,4 @@
+#include <cmath>
 #include <cstring>
 
 #include "main.h"
@@ -95,6 +96,29 @@ static float Map(float value, float low1, float high1, float low2, float high2)
 	return low2 + (value - low1) * (high2 - low2) / (high1 - low1);
 }
 
+static float BobPhase(double time, float cycle_len)
+{
+	float cycle = static_cast<float>(time - static_cast<int>(time / cycle_len) * cycle_len) / cycle_len;
+
+	if (!(cycle >= 0.0f && cycle < 1.0f))
+		cycle = 0.0f;
+
+	return cycle;
+}
+
+static bool IsVec3Finite(const float* v)
+{
+	return std::isfinite(v[0]) && std::isfinite(v[1]) && std::isfinite(v[2]);
+}
+
+static float ClampBobFinite(float bob, float lo, float hi)
+{
+	if (!std::isfinite(bob))
+		return 0.0f;
+
+	return std::clamp(bob, lo, hi);
+}
+
 static void V_CalcBob_CSGO(ref_params_t *pparams)
 {
 	float speed;
@@ -125,8 +149,14 @@ static void V_CalcBob_CSGO(ref_params_t *pparams)
 	cs 1.6's default cl_bobcycle value (0.8) will look right */
 	bobCycle = (((1000.0f - 150.0f) / 3.5f) * 0.001f) * cl_bobcycle->value * 1.25f;
 
-	cycle = g_bobVars.bobTime - (int)(g_bobVars.bobTime / bobCycle) * bobCycle;
-	cycle /= bobCycle;
+	if (bobCycle <= 0.0f)
+	{
+		g_bobVars.vertBob = 0.0f;
+		g_bobVars.horBob = 0.0f;
+		return;
+	}
+
+	cycle = BobPhase(g_bobVars.bobTime, bobCycle);
 
 	if (cycle < cl_bobup->value)
 		cycle = M_PI_F * cycle / cl_bobup->value;
@@ -140,8 +170,11 @@ static void V_CalcBob_CSGO(ref_params_t *pparams)
 
 	g_bobVars.vertBob = speed * (bobScale * cl_bobamt_vert->value);
 	g_bobVars.vertBob = (g_bobVars.vertBob * 0.3f + g_bobVars.vertBob * 0.7f * sinf(cycle));
-	g_bobVars.vertBob = std::clamp(g_bobVars.vertBob - lowerAmt, -8.f, 4.f);
+	g_bobVars.vertBob = ClampBobFinite(g_bobVars.vertBob - lowerAmt, -8.f, 4.f);
 
+	// CS:GO 1.0.0.40 expression (via csldr) kept as is: the cast counts half-cycles but the product
+	// subtracts double cycles, so the value runs negative without bound. At cl_bobup 0.5 the sine equals
+	// BobPhase(bobTime, bobCycle * 2); any other cl_bobup makes the lateral bob jump every half-cycle, as in CS:GO.
 	cycle = g_bobVars.bobTime - (int)(g_bobVars.bobTime / bobCycle * 2) * bobCycle * 2;
 	cycle /= bobCycle * 2;
 
@@ -152,7 +185,7 @@ static void V_CalcBob_CSGO(ref_params_t *pparams)
 
 	g_bobVars.horBob = speed * (bobScale * cl_bobamt_lat->value);
 	g_bobVars.horBob = g_bobVars.horBob * 0.3f + g_bobVars.horBob * 0.7f * sinf(cycle);
-	g_bobVars.horBob = std::clamp(g_bobVars.horBob, -7.f, 4.f);
+	g_bobVars.horBob = ClampBobFinite(g_bobVars.horBob, -7.f, 4.f);
 }
 
 static void V_AddBob_CSGO(ref_params_t *pparams, vec3_t origin, vec3_t front, vec3_t side)
@@ -172,8 +205,10 @@ static float V_CalcBob(ref_params_t *pparams)
 
     bobtime += pparams->frametime;
 
-    float cycle = (float)(bobtime - (int)(bobtime / cl_bobcycle->value) * cl_bobcycle->value);
-    cycle /= cl_bobcycle->value;
+    if (cl_bobcycle->value <= 0.0f)
+        return 0.0f;
+
+    float cycle = BobPhase(bobtime, cl_bobcycle->value);
 
     if (cycle < cl_bobup->value)
         cycle = M_PI_F * cycle / cl_bobup->value;
@@ -182,7 +217,7 @@ static float V_CalcBob(ref_params_t *pparams)
 
     float bob = Vector2DLength(pparams->simvel) * cl_bob->value;
     bob = bob * 0.3f + bob * 0.7f * sinf(cycle);
-    return std::clamp(bob, -7.f, 4.f);
+    return ClampBobFinite(bob, -7.f, 4.f);
 }
 
 static void V_AddLag_HL2(ref_params_t *pparams, vec3_t origin, vec3_t front)
@@ -477,6 +512,13 @@ void ViewCalcRefdef(ref_params_s *pparams, V_CalcRefdefNext next)
     }
 
     FovThink();
+
+    // a NaN coordinate in the refdef sends the engine's SV_RecursiveHullCheck into an endless loop
+    if (!IsVec3Finite(pparams->vieworg))
+        VectorCopy(pparams->simorg, pparams->vieworg);
+
+    if (!IsVec3Finite(pparams->viewangles))
+        VectorCopy(pparams->cl_viewangles, pparams->viewangles);
 }
 
 static void V_SetViewmodelOverrides(cl_entity_t* view_model)
