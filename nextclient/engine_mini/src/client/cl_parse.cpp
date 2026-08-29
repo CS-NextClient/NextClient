@@ -481,6 +481,13 @@ void CL_ReadPackets()
                 CL_ProcessFile_0(TRUE, res_descriptor.get_filename().c_str());
             }
         }
+
+        if (client_stateex.privateResListState == PrivateResListState::RerunBatchResources)
+        {
+            client_stateex.privateResListState = PrivateResListState::Active;
+            Con_DPrintf(ConLogType::Info, "privateResListState = Active\n");
+            CL_StartResourceDownloading("Verifying and downloading resources 2...\n", false);
+        }
     }
 
     if (cls->state < ca_connected || cls->demoplayback || *realtime - cls->netchan.last_received <= cl_timeout->value)

@@ -17,4 +17,3 @@ void Netchan_Clear(netchan_t* chan);
 qboolean NET_GetPacket(netsrc_t sock);
 qboolean NET_GetPacket_0();
 
-void NET_SendPacketPost(netsrc_t sock, int length, void *data, netadr_t to, int result);

@@ -76,6 +76,8 @@ extern sfx_t** p_known_sfx;
 extern int* p_num_sfx;
 extern int* p_gHostSpawnCount;
 extern netadr_t* p_net_local_adr;
+extern int* p_ip_sockets;
+extern int* p_ipx_sockets;
 extern netadr_t* p_g_GameServerAddress;
 extern float* p_g_LastScreenUpdateTime;
 extern int* p_maxTransObjs;

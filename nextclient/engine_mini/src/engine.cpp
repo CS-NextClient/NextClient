@@ -16,6 +16,7 @@
 
 #include "common/common.h"
 #include "common/net_chan.h"
+#include "common/net_ws.h"
 #include "common/model.h"
 #include "common/zone.h"
 #include "common/host.h"
@@ -111,6 +112,8 @@ sfx_t** p_known_sfx;
 int* p_num_sfx;
 int* p_gHostSpawnCount;
 netadr_t* p_net_local_adr;
+int* p_ip_sockets;
+int* p_ipx_sockets;
 netadr_t* p_g_GameServerAddress;
 float* p_g_LastScreenUpdateTime;
 int* p_maxTransObjs;
@@ -226,6 +229,8 @@ static void EngineMiniUninitialize()
     p_num_sfx = nullptr;
     p_gHostSpawnCount = nullptr;
     p_net_local_adr = nullptr;
+    p_ip_sockets = nullptr;
+    p_ipx_sockets = nullptr;
     p_g_GameServerAddress = nullptr;
     p_g_LastScreenUpdateTime = nullptr;
     p_maxTransObjs = nullptr;
@@ -388,6 +393,8 @@ static void OnGameInitializing(void* mainwindow, HDC* pmaindc, HGLRC* pbaseRC, c
     v.Assign(p_num_sfx, GET_VARIABLE_NAME(p_num_sfx), eng()->num_sfx);
     v.Assign(p_gHostSpawnCount, GET_VARIABLE_NAME(p_gHostSpawnCount), eng()->gHostSpawnCount);
     v.Assign(p_net_local_adr, GET_VARIABLE_NAME(p_net_local_adr), eng()->net_local_adr);
+    v.Assign(p_ip_sockets, GET_VARIABLE_NAME(p_ip_sockets), eng()->ip_sockets);
+    v.Assign(p_ipx_sockets, GET_VARIABLE_NAME(p_ipx_sockets), eng()->ipx_sockets);
     v.Assign(p_g_GameServerAddress, GET_VARIABLE_NAME(p_g_GameServerAddress), eng()->g_GameServerAddress);
     v.Assign(p_g_LastScreenUpdateTime, GET_VARIABLE_NAME(p_g_LastScreenUpdateTime), eng()->g_LastScreenUpdateTime);
     v.Assign(p_maxTransObjs, GET_VARIABLE_NAME(p_maxTransObjs), eng()->maxTransObjs);
@@ -407,7 +414,8 @@ static void OnGameInitializing(void* mainwindow, HDC* pmaindc, HGLRC* pbaseRC, c
     //
     // Hooks that completely replace engine functions
     //
-    g_Unsubs.emplace_back(eng()->Netchan_CopyFileFragments   |= [](netchan_t *chan, const auto& next)                                  { return Netchan_CopyFileFragments(chan); } );
+    g_Unsubs.emplace_back(eng()->NET_SendPacket              |= [](netsrc_t sock, int length, void* data, netadr_t to, const auto& next) { NET_SendPacket(sock, length, data, to); });
+    g_Unsubs.emplace_back(eng()->Netchan_CopyFileFragments   |= [](netchan_t* chan, const auto& next)                                  { return Netchan_CopyFileFragments(chan); } );
     g_Unsubs.emplace_back(eng()->SVC_TimeScale               |= [](const auto& next)                                                   { CL_Parse_Timescale(); });
     g_Unsubs.emplace_back(eng()->SVC_SendCvarValue           |= [](const auto& next)                                                   { CL_Send_CvarValue(); });
     g_Unsubs.emplace_back(eng()->CL_HTTPUpdate               |= [](const auto& next)                                                   { CL_HTTPUpdate(); } );
@@ -486,10 +494,6 @@ static void OnGameInitializing(void* mainwindow, HDC* pmaindc, HGLRC* pbaseRC, c
 
     g_Unsubs.emplace_back(eng()->CL_HTTPCancel_f += []() {
         CL_HTTPCancel_f();
-    });
-
-    g_Unsubs.emplace_back(eng()->NET_SendPacket += [](netsrc_t sock, int length, void *data, netadr_t to, int result) {
-        NET_SendPacketPost(sock, length, data, to, result);
     });
 
     g_Unsubs.emplace_back(eng()->Cbuf_AddText += [](const char *text, sizebuf_t *buf, char* result) {

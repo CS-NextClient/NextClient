@@ -320,15 +320,3 @@ qboolean NET_GetPacket_0()
 
     return eng()->NET_GetPacket_0.InvokeChained();
 }
-
-void NET_SendPacketPost(netsrc_t sock, int length, void *data, netadr_t to, int result)
-{
-    OPTICK_EVENT();
-
-    if (client_stateex.privateResListState == PrivateResListState::RerunBatchResources)
-    {
-        client_stateex.privateResListState = PrivateResListState::Active;
-        Con_DPrintf(ConLogType::Info, "privateResListState = Active\n");
-        CL_StartResourceDownloading("Verifying and downloading resources 2...\n", false);
-    }
-}
