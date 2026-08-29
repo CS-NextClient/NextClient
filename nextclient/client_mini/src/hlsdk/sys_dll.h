@@ -7,7 +7,11 @@
 #endif
 
 template<class... TArgs>
-void Sys_Error(const char* error, TArgs&&... args) { eng()->Sys_Error.GetFunc()(error, std::forward<TArgs>(args)...); }
+void Sys_Error(const char* error, TArgs&&... args)
+{
+    eng()->Sys_Error.GetChainedFunc()(error, std::forward<TArgs>(args)...);
+    std::unreachable();
+}
 
 template<class... TArgs>
 char* Con_Printf(const char* format, TArgs&&... args) { return eng()->Con_Printf.GetFunc()(format, std::forward<TArgs>(args)...); }
