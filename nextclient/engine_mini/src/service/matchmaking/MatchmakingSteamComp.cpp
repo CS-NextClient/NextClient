@@ -10,12 +10,16 @@ using namespace taskcoro;
 
 MatchmakingSteamComp::MatchmakingSteamComp()
 {
+    ct_ = CancellationToken::Create();
+
     source_query_ = std::make_shared<MultiSourceQuery>(750, 3);
-    matchmaking_service_ = std::make_shared<MatchmakingService>(source_query_);
+    matchmaking_service_ = MatchmakingService::Create(source_query_);
 }
 
 MatchmakingSteamComp::~MatchmakingSteamComp()
 {
+    ct_->SetCanceled();
+
     for (auto& [request_id, request] : server_requests_)
     {
         MatchmakingSteamComp::CancelQuery(request_id);
@@ -289,13 +293,15 @@ void MatchmakingSteamComp::RefreshServer(HServerListRequest request_id, int serv
 
     auto& request_data = std::get<ServerListRequestData>(server_requests_[request_id]);
 
-    TaskCoro::RunInMainThread([this](HServerListRequest request_id, int server_id, std::shared_ptr<CancellationToken> ct) -> result<void>
+    TaskCoro::RunInMainThread([this, shutdown_ct = ct_, request_id, server_id, ct = request_data.cancellation_token]() -> result<void>
     {
+        shutdown_ct->ThrowIfCancelled();
         ct->ThrowIfCancelled();
 
         servernetadr_t net_addr = std::get<ServerListRequestData>(server_requests_[request_id]).servers[server_id].m_NetAdr;
 
         gameserveritem_t gameserver = co_await matchmaking_service_->RefreshServer(net_addr.GetIP(), net_addr.GetQueryPort());
+        shutdown_ct->ThrowIfCancelled();
         ct->ThrowIfCancelled();
 
         if (!server_requests_.contains(request_id))
@@ -318,7 +324,7 @@ void MatchmakingSteamComp::RefreshServer(HServerListRequest request_id, int serv
             OPTICK_EVENT("MatchmakingSteamComp::RefreshServer - response_callback->ServerFailedToRespond")
             request_data.response_callback->ServerFailedToRespond(request_id, server_id);
         }
-    }, request_id, server_id, request_data.cancellation_token);
+    });
 }
 
 HServerQuery MatchmakingSteamComp::PingServer(uint32 ip, uint16 port, ISteamMatchmakingPingResponse* response_callback)

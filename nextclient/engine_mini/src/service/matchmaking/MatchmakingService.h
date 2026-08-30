@@ -1,4 +1,6 @@
 #pragma once
+#include <memory>
+
 #include <concurrencpp/results/result.h>
 #include <taskcoro/CancellationToken.h>
 #include <steam/steam_api.h>
@@ -9,7 +11,7 @@
 
 namespace service::matchmaking
 {
-    class MatchmakingService
+    class MatchmakingService : public std::enable_shared_from_this<MatchmakingService>
     {
     public:
         struct ServerInfo
@@ -44,9 +46,9 @@ namespace service::matchmaking
         std::shared_ptr<MasterClientCacheInterface> internet_ms_cache_client_{};
         bool internet_ms_force_use_cache_{};
 
-    public:
         explicit MatchmakingService(std::shared_ptr<MultiSourceQuery> source_query);
 
+    public:
         concurrencpp::result<std::vector<ServerInfo>> RequestServerList(
             ServerListSource server_list_source,
             std::function<void(const ServerInfo&)> server_answered_callback,
@@ -97,5 +99,8 @@ namespace service::matchmaking
 
         static bool IsServerListForcedToBeEmpty(const std::vector<ServerInfo>& servers);
         static gameserveritem_t ConvertToGameServerItem(const SQResponseInfo<SQ_INFO>& sq_info);
+
+    public:
+        static std::shared_ptr<MatchmakingService> Create(std::shared_ptr<MultiSourceQuery> source_query);
     };
 }

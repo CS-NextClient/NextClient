@@ -16,6 +16,7 @@ namespace service::matchmaking
         std::unordered_map<HServerListRequest, std::variant<SteamServersListRequestData, ServerListRequestData>> server_requests_{};
         std::shared_ptr<MultiSourceQuery> source_query_{};
         std::shared_ptr<MatchmakingService> matchmaking_service_{};
+        std::shared_ptr<taskcoro::CancellationToken> ct_{};
 
     public:
         explicit MatchmakingSteamComp();

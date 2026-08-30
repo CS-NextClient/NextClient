@@ -29,6 +29,8 @@ result<std::vector<MatchmakingService::ServerInfo>> MatchmakingService::RequestS
     std::shared_ptr<CancellationToken> cancellation_token
 )
 {
+    std::shared_ptr<MatchmakingService> keep_alive = shared_from_this();
+
     std::shared_ptr<MasterClientFactoryInterface> factory;
     bool* force_use_cache;
 
@@ -72,7 +74,7 @@ result<void> MatchmakingService::RefreshServerList(
 )
 {
     auto caller_ctx = SynchronizationContext::Current();
-    return TaskCoro::RunInThreadPool(&MatchmakingService::RefreshServerListThreaded, this,
+    return TaskCoro::RunInThreadPool(&MatchmakingService::RefreshServerListThreaded, shared_from_this(),
         gameservers,
         std::move(server_answered_callback),
         std::move(cancellation_token),
@@ -251,7 +253,7 @@ result<std::vector<MatchmakingService::ServerInfo>> MatchmakingService::RequestS
 )
 {
     auto caller_ctx = SynchronizationContext::Current();
-    return TaskCoro::RunInThreadPool(&MatchmakingService::RequestServerListThreaded, this,
+    return TaskCoro::RunInThreadPool(&MatchmakingService::RequestServerListThreaded, shared_from_this(),
         ms_client,
         server_answered_callback,
         cancellation_token,
@@ -337,4 +339,9 @@ gameserveritem_t MatchmakingService::ConvertToGameServerItem(const SQResponseInf
     }
 
     return server;
+}
+
+std::shared_ptr<MatchmakingService> MatchmakingService::Create(std::shared_ptr<MultiSourceQuery> source_query)
+{
+    return std::shared_ptr<MatchmakingService>(new MatchmakingService(std::move(source_query)));
 }
