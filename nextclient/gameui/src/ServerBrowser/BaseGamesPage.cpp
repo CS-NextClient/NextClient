@@ -726,7 +726,7 @@ bool CBaseGamesPage::CheckSecondaryFilters(serveritem_t &server)
     if (m_bFilterNoEmptyServers && GetHumanPlayerCount(server.gs) < 1)
         return false;
 
-    if (m_bFilterNoFullServers && GetHumanPlayerCount(server.gs) >= server.gs.m_nMaxPlayers)
+    if (m_bFilterNoFullServers && IsServerFull(server.gs))
         return false;
 
     if (m_iPingFilter && server.gs.m_nPing > m_iPingFilter)

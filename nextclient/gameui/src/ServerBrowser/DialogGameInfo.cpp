@@ -233,7 +233,7 @@ void CDialogGameInfo::PerformLayout()
 
     if (m_pAutoRetry->IsSelected())
     {
-        if (GetHumanPlayerCount(server_item_) < server_item_.m_nMaxPlayers)
+        if (!IsServerFull(server_item_))
             m_pInfoLabel->SetText("#ServerBrowser_PressJoinToConnect");
         else if (m_pAutoRetryJoin->IsSelected())
             m_pInfoLabel->SetText("#ServerBrowser_JoinWhenSlotIsFree");
@@ -253,7 +253,7 @@ void CDialogGameInfo::PerformLayout()
         m_pInfoLabel->SetText("");
     }
 
-    if (m_bServerHadSuccessfulResponse && (server_item_.m_nPlayers + server_item_.m_nBotPlayers) == 0)
+    if (m_bServerHadSuccessfulResponse && server_item_.m_nPlayers == 0)
         m_pPlayerList->SetEmptyListText("#ServerBrowser_ServerHasNoPlayers");
     else
         m_pPlayerList->SetEmptyListText("#ServerBrowser_ServerNotResponding");
@@ -324,7 +324,7 @@ void CDialogGameInfo::ServerResponded(gameserveritem_t &server)
     }
     else if (m_pAutoRetry->IsSelected())
     {
-        if (GetHumanPlayerCount(server_item_) < server_item_.m_nMaxPlayers)
+        if (!IsServerFull(server_item_))
         {
             surface()->PlaySound("servers/game_ready.wav");
             FlashWindow();
@@ -456,7 +456,7 @@ bool CDialogGameInfo::ConnectToServer()
         return false;
     }
 
-    if (GetHumanPlayerCount(server_item_) >= server_item_.m_nMaxPlayers)
+    if (IsServerFull(server_item_))
     {
         m_bServerFull = true;
         m_bShowAutoRetryToggle = true;
