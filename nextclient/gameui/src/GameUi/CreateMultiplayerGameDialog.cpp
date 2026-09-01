@@ -154,6 +154,13 @@ CCreateMultiplayerGameDialog::~CCreateMultiplayerGameDialog()
     }
 }
 
+void CCreateMultiplayerGameDialog::Activate()
+{
+    m_pServerPage->RefreshMapList();
+
+    BaseClass::Activate();
+}
+
 void CCreateMultiplayerGameDialog::OnKeyCodeTyped(vgui2::KeyCode code)
 {
     if (!GameUI().IsInLevel() && code == vgui2::KEY_ESCAPE)

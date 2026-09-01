@@ -248,6 +248,26 @@ void CCreateMultiplayerGameServerPage::LoadMapList()
     m_pMapList->ActivateItem( 0 );
 }
 
+void CCreateMultiplayerGameServerPage::RefreshMapList()
+{
+    char selected_map[DATA_STR_LENGTH];
+    selected_map[0] = 0;
+
+    KeyValues *selected_item = m_pMapList->GetActiveItemUserData();
+    if (selected_item)
+    {
+        strncpy(selected_map, selected_item->GetString("mapname", ""), sizeof(selected_map) - 1);
+        selected_map[sizeof(selected_map) - 1] = 0;
+    }
+
+    LoadMapList();
+
+    if (selected_map[0])
+    {
+        SetMap(selected_map);
+    }
+}
+
 bool CCreateMultiplayerGameServerPage::IsRandomMapSelected()
 {
     const char *mapname = m_pMapList->GetActiveItemUserData()->GetString("mapname");

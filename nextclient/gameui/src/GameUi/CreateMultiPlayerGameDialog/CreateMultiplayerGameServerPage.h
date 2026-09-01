@@ -37,6 +37,8 @@ public:
     bool IsRandomMapSelected();
     const char *GetMapName();
 
+    void RefreshMapList();
+
     // CS Bots
     void SetBotQuota( int quota );
     void SetBotsEnabled( bool enabled );
