@@ -4,9 +4,11 @@
 #include <parsemsg.h>
 #include "triangleapi.h"
 
-constexpr static auto KILL_RARITY_SPRITE = "sprites/kill_rarity.spr";
-constexpr static int DEATHNOTICE_TOP = 32;
-constexpr static int DEATHNOTICE_RIGHT = 16;
+constexpr static auto kKillRaritySprite = "sprites/kill_rarity.spr";
+constexpr static int kDeathNoticeTop = 32;
+constexpr static int kDeathNoticeRight = 16;
+
+constexpr static int kSpectatorTopBarHeight = 64;
 
 static int MsgFunc_DeathMsg(const char* pszName, int iSize, void* pbuf) {
 	BEGIN_READ(pbuf, iSize);
@@ -261,7 +263,7 @@ void HudDeathNotice::Init() {
 }
 
 void HudDeathNotice::VidInit() {
-	kill_rarity_sprite_ = LoadSprite(KILL_RARITY_SPRITE);
+	kill_rarity_sprite_ = LoadSprite(kKillRaritySprite);
 
 	skull_sprite_index_ = gHUD()->GetSpriteIndex("d_skull");
 	draw_string_font_height_ = DrawConsoleStringHeight();
@@ -375,6 +377,13 @@ void HudDeathNotice::Draw(float flTime) {
 	int screen_w, screen_h;
 	GetScreenResolution(screen_w, screen_h);
 
+	int notices_top_units = kDeathNoticeTop;
+
+	if(g_iUser1 != 0)
+		notices_top_units += kSpectatorTopBarHeight;
+
+	const int notices_top = static_cast<int>(notices_top_units * (screen_h / 480.0f) + 0.5f);
+
 	for(auto notice = notice_rows_.begin(); notice != notice_rows_.end(); ) {
 		if(notice->display_time < flTime) {
 			notice = notice_rows_.erase(notice);
@@ -393,12 +402,9 @@ void HudDeathNotice::Draw(float flTime) {
 			weapon_sprite_h = gHUD()->GetSpriteHeight(notice->weapon_sprite_index);
 		}
 
-		y = (DEATHNOTICE_TOP * (screen_h / 480.0f) + 0.5f) 
+		y = notices_top
 			+ ((notice_box_height_ + notice_box_outline_width_ * 2 + notice_boxes_gap_) * i);
-		x = screen_w - DEATHNOTICE_RIGHT - weapon_sprite_full_w;
-
-		if(g_iUser1 != 0)
-			y += 80;
+		x = screen_w - kDeathNoticeRight - weapon_sprite_full_w;
 
 		int weapon_sprite_optimal_y = y + ((notice_box_height_ - weapon_sprite_h) / 2);
 		int kill_rarity_sprite_optimal_y = y + ((notice_box_height_ - kill_rarity_sprite_height_) / 2);
@@ -427,14 +433,14 @@ void HudDeathNotice::Draw(float flTime) {
 		if(notice->is_should_dead_highlight) {
 			DrawRect(
 				x - notice_box_padding_x_, y, 
-				screen_w - DEATHNOTICE_RIGHT + notice_box_padding_x_, y + notice_box_height_,
+				screen_w - kDeathNoticeRight + notice_box_padding_x_, y + notice_box_height_,
 				150, 0, 20, 100
 			);
 		}
 		else if(notice->is_should_kill_highlight) {
 			DrawOutlinedRect(
 				x - notice_box_padding_x_, y, 
-				screen_w - DEATHNOTICE_RIGHT + notice_box_padding_x_, y + notice_box_height_, 
+				screen_w - kDeathNoticeRight + notice_box_padding_x_, y + notice_box_height_, 
 				0, 0, 0, 100, 
 				notice_box_outline_width_, 230, 20, 0, 255
 			);
@@ -442,7 +448,7 @@ void HudDeathNotice::Draw(float flTime) {
 		else {
 			DrawRect(
 				x - notice_box_padding_x_, y, 
-				screen_w - DEATHNOTICE_RIGHT + notice_box_padding_x_, y + notice_box_height_,
+				screen_w - kDeathNoticeRight + notice_box_padding_x_, y + notice_box_height_,
 				0, 0, 0, 100
 			);
 		}
