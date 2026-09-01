@@ -148,6 +148,7 @@ protected:
     vgui2::ToggleButton *m_pFilter{};
 
 private:
+    void UpdateServerListItem(serveritem_t &server, bool sort_on_add);
     void ClearMasterFilter();
     void RecalculateMasterFilter();
     static std::wstring FormatUnixTime(const char* format, uint32_t unix_time);

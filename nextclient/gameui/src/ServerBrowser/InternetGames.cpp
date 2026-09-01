@@ -54,9 +54,6 @@ void CInternetGames::ServerResponded(serveritem_t &server)
 {
     BaseClass::ServerResponded(server);
 
-    if (m_pGameList->IsValidItemID(server.listEntryID))
-        m_pGameList->SetItemVisible(server.listEntryID, true);
-
     server_refresh_count_++;
 
     if (m_pGameList->GetItemCount() > 0 && list_refreshing_)

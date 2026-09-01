@@ -368,11 +368,8 @@ void CBaseGamesPage::UpdateGameFilter()
     }
 }
 
-void CBaseGamesPage::ServerResponded(serveritem_t &server)
+void CBaseGamesPage::UpdateServerListItem(serveritem_t &server, bool sort_on_add)
 {
-    if (!CheckPrimaryFilters(server) || !CheckSecondaryFilters(server))
-        return;
-
     KeyValues *kv;
     bool newItem = !m_pGameList->IsValidItemID(server.listEntryID) || m_pGameList->GetItemUserData(server.listEntryID) != server.serverID;
 
@@ -411,9 +408,32 @@ void CBaseGamesPage::ServerResponded(serveritem_t &server)
         kv->SetString("Ping", "");
 
     if (newItem)
-        server.listEntryID = m_pGameList->AddItem(kv, server.serverID, false, true);
+    {
+        server.listEntryID = m_pGameList->AddItem(kv, server.serverID, false, sort_on_add);
+        kv->deleteThis();
+    }
     else
+    {
         m_pGameList->ApplyItemChanges(server.listEntryID);
+    }
+}
+
+void CBaseGamesPage::ServerResponded(serveritem_t &server)
+{
+    if (!CheckPrimaryFilters(server) || !CheckSecondaryFilters(server))
+    {
+        if (m_pGameList->IsValidItemID(server.listEntryID))
+        {
+            m_pGameList->SetItemVisible(server.listEntryID, false);
+            UpdateRefreshStatusText();
+        }
+
+        return;
+    }
+
+    UpdateServerListItem(server, true);
+
+    m_pGameList->SetItemVisible(server.listEntryID, true);
 
     UpdateRefreshStatusText();
 
@@ -521,23 +541,7 @@ void CBaseGamesPage::ApplyGameFilters()
         else if (server.hadSuccessfulResponse)
         {
             if (!m_pGameList->IsValidItemID(server.listEntryID))
-            {
-                auto *kv = new KeyValues("Server");
-                kv->SetString("name", server.gs.GetName().c_str());
-                kv->SetString("map", server.gs.m_szMap);
-                kv->SetString("GameDir", server.gs.m_szGameDir);
-                kv->SetString("GameDesc", server.gs.m_szGameDescription);
-
-                char buf[256];
-                sprintf(buf, "%d / %d", GetHumanPlayerCount(server.gs), server.gs.m_nMaxPlayers);
-                kv->SetString("Players", buf);
-                kv->SetInt("Ping", server.gs.m_nPing);
-                kv->SetInt("password", server.gs.m_bPassword ? 1 : 0);
-                kv->SetInt("Secure", server.gs.m_bSecure ? 1 : 0);
-                kv->SetInt("ValidSteamAccount", server.gs.m_steamID.IsValid() ? 1 : 0);
-
-                server.listEntryID = m_pGameList->AddItem(kv, server.serverID, false, false);
-            }
+                UpdateServerListItem(server, false);
 
             m_pGameList->SetItemVisible(server.listEntryID, true);
         }
@@ -739,9 +743,7 @@ bool CBaseGamesPage::CheckSecondaryFilters(serveritem_t &server)
                                       (!server.gs.m_bSecure && m_iSelectedSecureFilterRow == kSecureFilterRowSecure))
         return false;
 
-    int count = Q_strlen(m_szMapFilter);
-
-    if (count && Q_strnicmp(server.gs.m_szMap, m_szMapFilter, count))
+    if (m_szMapFilter[0] && !Q_stristr(server.gs.m_szMap, m_szMapFilter))
         return false;
 
     return true;
