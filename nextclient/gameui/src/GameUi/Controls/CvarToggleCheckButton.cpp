@@ -1,5 +1,6 @@
 #include "GameUi.h"
 #include "CvarToggleCheckButton.h"
+#include "cvar_context_menu.h"
 #include <vgui/IVGui.h>
 #include "tier1/KeyValues.h"
 #include "IGameUIFuncs.h"
@@ -26,6 +27,37 @@ CCvarToggleCheckButton::CCvarToggleCheckButton(Panel *parent, const char *panelN
 CCvarToggleCheckButton::~CCvarToggleCheckButton(void)
 {
     free(m_pszCvarName);
+}
+
+void CCvarToggleCheckButton::SetDefaultValue(bool value)
+{
+    m_bDefaultValue = value;
+    m_bHasDefaultValue = true;
+}
+
+bool CCvarToggleCheckButton::ResetToDefaultValue()
+{
+    if (!m_bHasDefaultValue)
+        return false;
+
+    SetSelected(m_bDefaultValue);
+
+    return true;
+}
+
+void CCvarToggleCheckButton::OnMousePressed(vgui2::MouseCode code)
+{
+    if (code == vgui2::MOUSE_RIGHT && CvarContextMenu_Show(this, m_pContextMenu, m_pszCvarName, m_bHasDefaultValue))
+    {
+        return;
+    }
+
+    BaseClass::OnMousePressed(code);
+}
+
+void CCvarToggleCheckButton::OnResetToDefault(void)
+{
+    ResetToDefaultValue();
 }
 
 void CCvarToggleCheckButton::Paint(void)

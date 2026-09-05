@@ -15,7 +15,6 @@ class CCvarToggleCheckButton;
 class CCvarTextEntry;
 class CCvarSlider;
 
-class CrosshairImagePanel;
 class CMultiplayerAdvancedDialog;
 
 class COptionsSubMultiplayer : public vgui2::PropertyPage
@@ -48,11 +47,6 @@ private:
     MESSAGE_FUNC(OnApplyButtonEnable, "ControlModified");
 
 private:
-    void InitCrosshairSizeList();
-    void InitCrosshairColorEntries();
-    void InitCrosshairTypeEntries();
-    void ApplyCrosshairColorChanges();
-    void RedrawCrosshairImage();
     void ColorForName(char const *pszColorName, int &r, int &g, int &b);
     void RemapLogoPalette(char *filename, int r, int g, int b);
 
@@ -68,13 +62,6 @@ private:
     CCvarToggleCheckButton *m_pHighQualityModelCheckBox;
 
     vgui2::Dar<CCvarToggleCheckButton *> m_cvarToggleCheckButtons;
-
-    CLabeledCommandComboBox *m_pCrosshairSize;
-    CLabeledCommandComboBox *m_pCrosshairColorComboBox;
-    CLabeledCommandComboBox *m_pCrosshairTypeComboBox;
-    CCvarToggleCheckButton *m_pCrosshairTranslucencyCheckbox;
-    CCvarToggleCheckButton *m_pCrosshairDynamic;
-    CrosshairImagePanel *m_pCrosshairImage;
 
     int m_nLogoR, m_nLogoG, m_nLogoB;
 

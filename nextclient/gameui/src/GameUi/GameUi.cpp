@@ -48,6 +48,7 @@ static IServerBrowserEx *g_pServerBrowser = nullptr;
 static IBaseSystem* g_pBaseSystem = nullptr;
 static IGameClientExports* g_pGameClientExports = nullptr;
 static EngineMiniInterface* g_pEngineMini = nullptr;
+static ScenePreviewInterface* g_pScenePreview;
 static vgui2::DHANDLE<CDemoPlayerDialog> g_hDemoPlayerDialog;
 vgui2::DHANDLE<CLoadingDialog> g_hLoadingDialog;
 static CGameUI g_GameUI;
@@ -60,6 +61,7 @@ CGameUI &GameUI() { return g_GameUI; }
 IBaseSystem* SystemWrapper() { return g_pBaseSystem; }
 IGameClientExports* GameClientExports() { return g_pGameClientExports; }
 EngineMiniInterface* EngineMini() { return g_pEngineMini; }
+ScenePreviewInterface* ScenePreview() { return g_pScenePreview; }
 
 namespace vgui2
 {
@@ -149,7 +151,8 @@ void CGameUI::Initialize(CreateInterfaceFn *factories, int count)
     }
 
     g_pServerBrowser = (IServerBrowserEx*)CreateInterface(SERVERBROWSEREX_INTERFACE_VERSION, NULL);
-    g_pEngineMini = (EngineMiniInterface*)Sys_GetFactory("next_engine_mini.dll")(ENGINE_MINI_INTERFACE_VERSION, NULL);
+    g_pEngineMini = reinterpret_cast<EngineMiniInterface*>(Sys_GetFactory("next_engine_mini.dll")(ENGINE_MINI_INTERFACE_VERSION, NULL));
+    g_pScenePreview = reinterpret_cast<ScenePreviewInterface*>(Sys_GetFactory("next_engine_mini.dll")(SCENE_PREVIEW_INTERFACE_VERSION, NULL));
 
     g_pVGuiLocalize->AddFile(g_pFullFileSystem, "resource/gameui_%language%.txt");
     g_pVGuiLocalize->AddFile(g_pFullFileSystem, "resource/valve_%language%.txt");

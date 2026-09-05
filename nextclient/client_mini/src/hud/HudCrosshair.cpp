@@ -3,6 +3,9 @@
 #include "../shared_util.h"
 #include "../main.h"
 
+#include <crosshair/crosshair.h>
+#include <cvars/cvar_defaults.h>
+
 HudCrosshair::HudCrosshair(nitroapi::NitroApiInterface *nitro_api) :
     nitroapi::NitroApiHelper(nitro_api),
     screeninfo_{sizeof(SCREENINFO)}
@@ -23,7 +26,7 @@ HudCrosshair::~HudCrosshair()
 
 void HudCrosshair::Init()
 {
-    cl_crosshair_type_ = cl_enginefunc()->pfnRegisterVariable("cl_crosshair_type", "0", FCVAR_ARCHIVE);
+    cl_crosshair_type_ = cl_enginefunc()->pfnRegisterVariable(cvars::kCrosshairType.name, cvars::kCrosshairType.value, FCVAR_ARCHIVE);
     cl_crosshair_color_ = cl_enginefunc()->pfnGetCvarPointer("cl_crosshair_color");
     cl_crosshair_size_ = cl_enginefunc()->pfnGetCvarPointer("cl_crosshair_size");
     cl_crosshair_translucent_ = cl_enginefunc()->pfnGetCvarPointer("cl_crosshair_translucent");
@@ -83,7 +86,7 @@ void HudCrosshair::DrawCrosshair(float flTime, int weaponid)
         }
         case WEAPON_AK47:
         {
-            iDistance = 4;
+            iDistance = crosshair::kRifleGap;
             iDeltaDistance = 4;
             break;
         }
@@ -161,7 +164,7 @@ void HudCrosshair::DrawCrosshair(float flTime, int weaponid)
                     case WEAPON_M249:
                     case WEAPON_SG552:
                     {
-                        flLimitSpeed = 140;
+                        flLimitSpeed = crosshair::kRifleRunSpeed;
                         break;
                     }
                     case WEAPON_P90:
@@ -176,7 +179,7 @@ void HudCrosshair::DrawCrosshair(float flTime, int weaponid)
                     }
                 }
                 if (Vector(g_LastPlayerState.client.velocity).Length() > flLimitSpeed && (accuracy_flags & 2))
-                    iDistance *= 1.5f;
+                    iDistance *= crosshair::kRunSpread;
             }
         }
         else
@@ -202,7 +205,7 @@ void HudCrosshair::DrawCrosshair(float flTime, int weaponid)
     }
     else
     {
-        m_flCrosshairDistance -= (1.3f * m_flCrosshairDistance + 10.f) * (float)*eng()->host_frametime;
+        m_flCrosshairDistance = crosshair::Decay(m_flCrosshairDistance, (float)*eng()->host_frametime);
     }
 
     if (*cl()->g_iShotsFired > 600)
@@ -213,7 +216,7 @@ void HudCrosshair::DrawCrosshair(float flTime, int weaponid)
     if ((float)iDistance > m_flCrosshairDistance)
         m_flCrosshairDistance = (float)iDistance;
 
-    int iBarSize = (m_flCrosshairDistance - iDistance) * 0.5f + 5;
+    int iBarSize = crosshair::BarSize(m_flCrosshairDistance, iDistance);
 
     CalculateCrosshairColor();
     CalculateCrosshairDrawMode();
@@ -222,8 +225,8 @@ void HudCrosshair::DrawCrosshair(float flTime, int weaponid)
     float flCrosshairDistance = m_flCrosshairDistance;
     if (screeninfo_.iWidth != m_iCrosshairScaleBase)
     {
-        flCrosshairDistance = m_flCrosshairDistance * (float)screeninfo_.iWidth / (float)m_iCrosshairScaleBase;
-        iBarSize = screeninfo_.iWidth * iBarSize / m_iCrosshairScaleBase;
+        flCrosshairDistance = crosshair::ScaledDistance(m_flCrosshairDistance, screeninfo_.iWidth, m_iCrosshairScaleBase);
+        iBarSize = crosshair::ScaledBarSize(iBarSize, screeninfo_.iWidth, m_iCrosshairScaleBase);
     }
 
     if (cl()->gHUD->m_NightVision->m_fOn)
@@ -302,57 +305,9 @@ void HudCrosshair::CalculateCrosshairSize()
     if (!value || V_strcmp(value, m_szLastCrosshairSize) == 0)
         return;
 
-    int size = -1;
+    m_iCrosshairScaleBase = crosshair::ScaleBase(crosshair::SizeIndex(value), screeninfo_.iWidth);
 
-    if (!V_stricmp(value, "auto"))
-        size = 0;
-    else if (!V_stricmp(value, "small"))
-        size = 1;
-    else if (!V_stricmp(value, "medium"))
-        size = 2;
-    else if (!V_stricmp(value, "large"))
-        size = 3;
-    else if (!V_stricmp(value, "extra_small"))
-        size = 4;
-
-    switch (size)
-    {
-        default:
-        case 0:
-        {
-            if (screeninfo_.iWidth >= 1024)
-                m_iCrosshairScaleBase = 640;
-            else if (screeninfo_.iWidth >= 800)
-                m_iCrosshairScaleBase = 800;
-            else
-                m_iCrosshairScaleBase = 1024;
-
-            break;
-        }
-        case 1:
-        {
-            m_iCrosshairScaleBase = 1024;
-            break;
-        }
-        case 2:
-        {
-            m_iCrosshairScaleBase = 800;
-            break;
-        }
-        case 3:
-        {
-            m_iCrosshairScaleBase = 640;
-            break;
-        }
-        case 4:
-        {
-            m_iCrosshairScaleBase = 1400;
-            break;
-        }
-    }
-
-    if (size > -1)
-        V_strcpy_safe(m_szLastCrosshairSize, value);
+    V_strcpy_safe(m_szLastCrosshairSize, value);
 }
 
 void HudCrosshair::CalculateCrosshairColor()
@@ -421,11 +376,11 @@ void HudCrosshair::CalculateCrosshairDrawMode()
 
 void HudCrosshair::DrawCrosshairEx(int iBarSize, float flCrosshairDistance, bool bAdditive, int r, int g, int b, int a)
 {
-    auto eCrosshairType = (CrossHairType)std::clamp((int)cl_crosshair_type_->value, 0, (int)CrossHairType::END_VAL - 1);
+    int type = std::clamp((int)cl_crosshair_type_->value, 0, crosshair::kTypeCount - 1);
 
     void (*pfnFillRGBA)(int x, int y, int w, int h, int r, int g, int b, int a) = bAdditive ? cl_enginefunc()->pfnFillRGBA : cl_enginefunc()->pfnFillRGBABlend;
 
-    if (eCrosshairType == CrossHairType::Circle)
+    if (type == crosshair::kTypeCircle)
     {
         float radius = (iBarSize / 2) + flCrosshairDistance;
         int count = (int)((cos(M_PI / 4) * radius) + 0.5);
@@ -444,16 +399,16 @@ void HudCrosshair::DrawCrosshairEx(int iBarSize, float flCrosshairDistance, bool
             pfnFillRGBA((screeninfo_.iWidth / 2) - size, (screeninfo_.iHeight / 2) - i, 1, 1, r, g, b, a);
         }
     }
-    else if (eCrosshairType == CrossHairType::Cross || eCrosshairType == CrossHairType::T)
+    else if (type == crosshair::kTypeCross || type == crosshair::kTypeT)
     {
         pfnFillRGBA((screeninfo_.iWidth / 2) + (int)flCrosshairDistance, screeninfo_.iHeight / 2, iBarSize, 1, r, g, b, a);
         pfnFillRGBA((screeninfo_.iWidth / 2) - (int)flCrosshairDistance - iBarSize + 1, screeninfo_.iHeight / 2, iBarSize, 1, r, g, b, a);
         pfnFillRGBA(screeninfo_.iWidth / 2, (screeninfo_.iHeight / 2) + (int)flCrosshairDistance, 1, iBarSize, r, g, b, a);
-        if (eCrosshairType != CrossHairType::T)
+        if (type != crosshair::kTypeT)
             pfnFillRGBA(screeninfo_.iWidth / 2, (screeninfo_.iHeight / 2) - (int)flCrosshairDistance - iBarSize + 1, 1, iBarSize, r, g, b, a);
 
     }
-    else if (eCrosshairType == CrossHairType::Dot)
+    else if (type == crosshair::kTypeDot)
     {
         pfnFillRGBA((screeninfo_.iWidth / 2) - 1, (screeninfo_.iHeight / 2) - 1, 3, 3, r, g, b, a);
     }

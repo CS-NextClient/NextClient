@@ -16,6 +16,7 @@ public:
 
     void OnKeyCodeTyped(vgui2::KeyCode code) override;
     void OpenTab(const char* tabName);
+    void OpenCrosshairSettings();
 
 public:
     void Activate(void);
@@ -28,6 +29,7 @@ public:
 
 private:
     class COptionsSubMultiplayer *m_pOptionsSubMultiplayer;
+    class COptionsSubGame *m_pOptionsSubGame;
     class COptionsSubKeyboard *m_pOptionsSubKeyboard;
     class COptionsSubMouse *m_pOptionsSubMouse;
     class COptionsSubAudio *m_pOptionsSubAudio;

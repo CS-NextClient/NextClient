@@ -7,8 +7,13 @@ include(GoogleTest)
 add_executable(${TARGET_NAME}
         #CmdCheckerBindTests.cpp
         CmdCheckerTests.cpp
+        WavefrontParserTests.cpp
         mocks/CmdCheckerConfigProviderMock.h
         mocks/LoggerMock.h
+)
+
+target_compile_definitions(${TARGET_NAME} PRIVATE
+        NEXTCLIENT_ASSETS_DIR="${NEXTCLIENT_ROOT}/assets"
 )
 
 target_link_libraries(${TARGET_NAME} PRIVATE

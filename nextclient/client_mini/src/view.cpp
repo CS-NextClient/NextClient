@@ -7,6 +7,11 @@
 #include <maintypes.h>
 #include <pm_movevars.h>
 
+#include <cvars/cvar_defaults.h>
+#include <ncl_math/scalar.h>
+#include <view/view_bob.h>
+#include <view/view_lag.h>
+
 #include "viewmodel_overrides.h"
 #include "fov.h"
 #include "camera.h"
@@ -43,34 +48,39 @@ static cvar_t *viewmodel_lag_speed;
 
 static cvar_t *spec_pip;
 
+static cvar_t *RegisterViewCvar(const cvars::CvarDefault& cvar)
+{
+    return gEngfuncs.pfnRegisterVariable(cvar.name, cvar.value, FCVAR_ARCHIVE);
+}
+
 void ViewInit()
 {
-    viewmodel_disable_shift = gEngfuncs.pfnRegisterVariable("viewmodel_disable_shift", "0", FCVAR_ARCHIVE);
+    viewmodel_disable_shift = RegisterViewCvar(cvars::kViewmodelDisableShift);
 
-    viewmodel_offset_x = gEngfuncs.pfnRegisterVariable("viewmodel_offset_x", "0", FCVAR_ARCHIVE);
-    viewmodel_offset_y = gEngfuncs.pfnRegisterVariable("viewmodel_offset_y", "0", FCVAR_ARCHIVE);
-    viewmodel_offset_z = gEngfuncs.pfnRegisterVariable("viewmodel_offset_z", "0", FCVAR_ARCHIVE);
+    viewmodel_offset_x = RegisterViewCvar(cvars::kViewmodelOffsetX);
+    viewmodel_offset_y = RegisterViewCvar(cvars::kViewmodelOffsetY);
+    viewmodel_offset_z = RegisterViewCvar(cvars::kViewmodelOffsetZ);
 
-    cl_bobstyle = gEngfuncs.pfnRegisterVariable("cl_bobstyle", "0", FCVAR_ARCHIVE);
+    cl_bobstyle = RegisterViewCvar(cvars::kBobStyle);
 
-    cl_bobcycle = gEngfuncs.pfnGetCvarPointer("cl_bobcycle");
-    cl_bobup = gEngfuncs.pfnGetCvarPointer("cl_bobup");
-    cl_bob = gEngfuncs.pfnGetCvarPointer("cl_bob");
+    cl_bobcycle = gEngfuncs.pfnGetCvarPointer(cvars::kBobCycle.name);
+    cl_bobup = gEngfuncs.pfnGetCvarPointer(cvars::kBobUp.name);
+    cl_bob = gEngfuncs.pfnGetCvarPointer(cvars::kBob.name);
 
     cl_bobcycle->flags |= FCVAR_ARCHIVE;
     cl_bobup->flags |= FCVAR_ARCHIVE;
 
-    cl_bobamt_vert = gEngfuncs.pfnRegisterVariable("cl_bobamt_vert", "0.13", FCVAR_ARCHIVE);
-    cl_bobamt_lat = gEngfuncs.pfnRegisterVariable("cl_bobamt_lat", "0.32", FCVAR_ARCHIVE);
-    cl_bob_lower_amt = gEngfuncs.pfnRegisterVariable("cl_bob_lower_amt", "8", FCVAR_ARCHIVE);
-    cl_bob_camera = gEngfuncs.pfnRegisterVariable("cl_bob_camera", "1", FCVAR_ARCHIVE);
+    cl_bobamt_vert = RegisterViewCvar(cvars::kBobAmtVert);
+    cl_bobamt_lat = RegisterViewCvar(cvars::kBobAmtLat);
+    cl_bob_lower_amt = RegisterViewCvar(cvars::kBobLowerAmt);
+    cl_bob_camera = RegisterViewCvar(cvars::kBobCamera);
 
-    cl_rollangle = gEngfuncs.pfnRegisterVariable("cl_rollangle", "0", FCVAR_ARCHIVE);
-    cl_rollspeed = gEngfuncs.pfnRegisterVariable("cl_rollspeed", "200", FCVAR_ARCHIVE);
+    cl_rollangle = RegisterViewCvar(cvars::kRollAngle);
+    cl_rollspeed = RegisterViewCvar(cvars::kRollSpeed);
 
-    viewmodel_lag_style = gEngfuncs.pfnRegisterVariable("viewmodel_lag_style", "0", FCVAR_ARCHIVE);
-    viewmodel_lag_scale = gEngfuncs.pfnRegisterVariable("viewmodel_lag_scale", "1.0", FCVAR_ARCHIVE);
-    viewmodel_lag_speed = gEngfuncs.pfnRegisterVariable("viewmodel_lag_speed", "8.0", FCVAR_ARCHIVE);
+    viewmodel_lag_style = RegisterViewCvar(cvars::kViewmodelLagStyle);
+    viewmodel_lag_scale = RegisterViewCvar(cvars::kViewmodelLagScale);
+    viewmodel_lag_speed = RegisterViewCvar(cvars::kViewmodelLagSpeed);
 
     spec_pip = gEngfuncs.pfnGetCvarPointer("spec_pip");
 
@@ -82,142 +92,27 @@ void ViewVidInit()
     V_ResetViewmodelOverrides();
 }
 
-struct
-{
-    float bobTime;
-    float lastBobTime;
-    float lastSpeed;
-    float vertBob;
-    float horBob;
-} g_bobVars;
-
-static float Map(float value, float low1, float high1, float low2, float high2)
-{
-	return low2 + (value - low1) * (high2 - low2) / (high1 - low1);
-}
-
-static float BobPhase(double time, float cycle_len)
-{
-	float cycle = static_cast<float>(time - static_cast<int>(time / cycle_len) * cycle_len) / cycle_len;
-
-	if (!(cycle >= 0.0f && cycle < 1.0f))
-		cycle = 0.0f;
-
-	return cycle;
-}
+static view_bob::ClassicBobState g_ClassicBobState;
+static view_bob::ModernBobState g_ModernBobState;
 
 static bool IsVec3Finite(const float* v)
 {
 	return std::isfinite(v[0]) && std::isfinite(v[1]) && std::isfinite(v[2]);
 }
 
-static float ClampBobFinite(float bob, float lo, float hi)
+static view_bob::BobParams GetBobParams()
 {
-	if (!std::isfinite(bob))
-		return 0.0f;
+    view_bob::BobParams params;
+    params.style = static_cast<int>(cl_bobstyle->value);
+    params.bob = cl_bob->value;
+    params.bob_cycle = cl_bobcycle->value;
+    params.bob_up = cl_bobup->value;
+    params.amt_vert = cl_bobamt_vert->value;
+    params.amt_lat = cl_bobamt_lat->value;
+    params.lower_amt = cl_bob_lower_amt->value;
+    params.camera_bob = cl_bob_camera->value != 0;
 
-	return std::clamp(bob, lo, hi);
-}
-
-static void V_CalcBob_CSGO(ref_params_t *pparams)
-{
-	float speed;
-	float maxSpeedDelta;
-	float lowerAmt;
-	float bobOffset;
-	float bobCycle;
-	float bobScale;
-	float cycle;
-
-	speed = Vector2DLength(pparams->simvel);
-
-	maxSpeedDelta = std::max(0.f, (pparams->time - g_bobVars.lastBobTime) * 620.f);
-
-	speed = std::clamp(speed, g_bobVars.lastSpeed - maxSpeedDelta, g_bobVars.lastSpeed + maxSpeedDelta);
-	speed = std::clamp(speed, -320.f, 320.f);
-
-	g_bobVars.lastSpeed = speed;
-
-	lowerAmt = cl_bob_lower_amt->value * (speed * 0.001f);
-
-	bobOffset = Map(speed, 0, 320, 0, 1);
-
-	g_bobVars.bobTime += (pparams->time - g_bobVars.lastBobTime) * bobOffset;
-	g_bobVars.lastBobTime = pparams->time;
-
-	/* scale the bob by 1.25, this wasn't in 10040 but this way
-	cs 1.6's default cl_bobcycle value (0.8) will look right */
-	bobCycle = (((1000.0f - 150.0f) / 3.5f) * 0.001f) * cl_bobcycle->value * 1.25f;
-
-	if (bobCycle <= 0.0f)
-	{
-		g_bobVars.vertBob = 0.0f;
-		g_bobVars.horBob = 0.0f;
-		return;
-	}
-
-	cycle = BobPhase(g_bobVars.bobTime, bobCycle);
-
-	if (cycle < cl_bobup->value)
-		cycle = M_PI_F * cycle / cl_bobup->value;
-	else
-		cycle = M_PI_F + M_PI_F * (cycle - cl_bobup->value) / (1.0f - cl_bobup->value);
-
-	bobScale = 0.00625f;
-
-	if (!pparams->onground)
-		bobScale = 0.00125f;
-
-	g_bobVars.vertBob = speed * (bobScale * cl_bobamt_vert->value);
-	g_bobVars.vertBob = (g_bobVars.vertBob * 0.3f + g_bobVars.vertBob * 0.7f * sinf(cycle));
-	g_bobVars.vertBob = ClampBobFinite(g_bobVars.vertBob - lowerAmt, -8.f, 4.f);
-
-	// CS:GO 1.0.0.40 expression (via csldr) kept as is: the cast counts half-cycles but the product
-	// subtracts double cycles, so the value runs negative without bound. At cl_bobup 0.5 the sine equals
-	// BobPhase(bobTime, bobCycle * 2); any other cl_bobup makes the lateral bob jump every half-cycle, as in CS:GO.
-	cycle = g_bobVars.bobTime - (int)(g_bobVars.bobTime / bobCycle * 2) * bobCycle * 2;
-	cycle /= bobCycle * 2;
-
-	if (cycle < cl_bobup->value)
-		cycle = M_PI_F * cycle / cl_bobup->value;
-	else
-		cycle = M_PI_F + M_PI_F * (cycle - cl_bobup->value) / (1.0f - cl_bobup->value);
-
-	g_bobVars.horBob = speed * (bobScale * cl_bobamt_lat->value);
-	g_bobVars.horBob = g_bobVars.horBob * 0.3f + g_bobVars.horBob * 0.7f * sinf(cycle);
-	g_bobVars.horBob = ClampBobFinite(g_bobVars.horBob, -7.f, 4.f);
-}
-
-static void V_AddBob_CSGO(ref_params_t *pparams, vec3_t origin, vec3_t front, vec3_t side)
-{
-    V_CalcBob_CSGO(pparams);
-
-    VectorMA_2(front, g_bobVars.vertBob * 0.4f, origin);
-
-    origin[2] += g_bobVars.vertBob * 0.1f;
-
-    VectorMA_2(side, g_bobVars.horBob * 0.2f, origin);
-}
-
-static float V_CalcBob(ref_params_t *pparams)
-{
-    static double bobtime;
-
-    bobtime += pparams->frametime;
-
-    if (cl_bobcycle->value <= 0.0f)
-        return 0.0f;
-
-    float cycle = BobPhase(bobtime, cl_bobcycle->value);
-
-    if (cycle < cl_bobup->value)
-        cycle = M_PI_F * cycle / cl_bobup->value;
-    else
-        cycle = M_PI_F + M_PI_F * (cycle - cl_bobup->value) / (1.0f - cl_bobup->value);
-
-    float bob = Vector2DLength(pparams->simvel) * cl_bob->value;
-    bob = bob * 0.3f + bob * 0.7f * sinf(cycle);
-    return ClampBobFinite(bob, -7.f, 4.f);
+    return params;
 }
 
 static void V_AddLag_HL2(ref_params_t *pparams, vec3_t origin, vec3_t front)
@@ -290,7 +185,7 @@ static bool GetLagAngles(float time, vec3_t dest)
 		else
 		{
 			float next_time = FROM_STEP(step + 1);
-			float frac = Map(time, step_time, next_time, 0, 1);
+			float frac = ncl_math::Remap(time, step_time, next_time, 0, 1);
 			AngleLerp(angles->value, next_angles->value, frac, dest);
 		}
 	}
@@ -309,7 +204,7 @@ static void V_AddLag_CSS(ref_params_t *pparams, vec3_t origin, vec3_t angles, ve
 	AddLagAngles(pparams->time, angles);
 
 	vec3_t prev_angles;
-	if (!GetLagAngles(pparams->time - 0.1f, prev_angles))
+	if (!GetLagAngles(pparams->time - view_lag::kCssDelay, prev_angles))
 		return;
 
 	vec3_t delta_angles;
@@ -365,27 +260,35 @@ static void CalcCustomRefdef(ref_params_t *pparams)
         VectorMA_2(up, 1, vm->origin);
     }
 
-    if ((int)cl_bobstyle->value == 2)
+    view_bob::BobParams bob_params = GetBobParams();
+    view_bob::BobOffsets offsets;
+    float classic_bob = 0.0f;
+
+    if (bob_params.style == view_bob::kStyleModern)
     {
-        V_AddBob_CSGO(pparams, vm->origin, front, side);
+        offsets = view_bob::PlaceModernBob(view_bob::StepModernBob(
+            g_ModernBobState, bob_params, pparams->time, Vector2DLength(pparams->simvel), pparams->onground != 0));
     }
     else
     {
-        float bob = V_CalcBob(pparams);
-        VectorMA_2(front, bob * 0.4f, vm->origin);
+        classic_bob = view_bob::StepClassicBob(
+            g_ClassicBobState, bob_params, pparams->frametime, Vector2DLength(pparams->simvel));
 
-        if ((int)cl_bobstyle->value == 1)
-        {
-            vm->curstate.angles[0] -= bob * 0.3f;
-            vm->curstate.angles[1] -= bob * 0.5f;
-            vm->curstate.angles[2] -= bob;
-        }
+        offsets = view_bob::PlaceClassicBob(classic_bob, bob_params.style);
+    }
 
-        if (cl_bob_camera->value)
-        {
-            pparams->vieworg[2] += bob;
-            vm->origin[2] += bob;
-        }
+    VectorMA_2(front, offsets.forward, vm->origin);
+    vm->origin[2] += offsets.up;
+    VectorMA_2(side, offsets.side, vm->origin);
+
+    vm->curstate.angles[0] -= offsets.pitch;
+    vm->curstate.angles[1] -= offsets.yaw;
+    vm->curstate.angles[2] -= offsets.roll;
+
+    if (bob_params.style != view_bob::kStyleModern && bob_params.camera_bob)
+    {
+        pparams->vieworg[2] += classic_bob;
+        vm->origin[2] += classic_bob;
     }
 
     switch ((int)viewmodel_lag_style->value)
@@ -513,7 +416,8 @@ void ViewCalcRefdef(ref_params_s *pparams, V_CalcRefdefNext next)
 
     FovThink();
 
-    // a NaN coordinate in the refdef sends the engine's SV_RecursiveHullCheck into an endless loop
+    // every engine consumer reads this refdef (traces, sound spatialization, PVS), and a NaN
+    // coordinate makes SV_RecursiveHullCheck spin forever
     if (!IsVec3Finite(pparams->vieworg))
         VectorCopy(pparams->simorg, pparams->vieworg);
 

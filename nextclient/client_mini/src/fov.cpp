@@ -3,6 +3,8 @@
 #include "fov.h"
 #include "parsemsg.h"
 
+#include <view/view_fov.h>
+
 static int MsgFunc_SetFOVEx(const char *pszName, int iSize, void *pbuf);
 
 cvar_t* fov_horplus;
@@ -12,9 +14,9 @@ cvar_t* vm_fov_scale;
 
 float fovDifference = 1;
 
-float currentFov = kFovDefault;
-float destFov = kFovDefault;
-float initialFov = kFovDefault;
+float currentFov = view_fov::kDefault;
+float destFov = view_fov::kDefault;
+float initialFov = view_fov::kDefault;
 float fovTime;
 float fovLerp;
 
@@ -29,17 +31,14 @@ static float CalcCurrentFov()
     w = (float)scr.iWidth;
     h = (float)scr.iHeight;
 
-    float fovOffset = std::clamp(fov_angle->value, kFovMin, kFovMax) - kFovDefault;
+    float fovOffset = std::clamp(fov_angle->value, view_fov::kMin, view_fov::kMax) - view_fov::kDefault;
 
-    if (fov_horplus->value && ((float) (w / h) != 0.75f))
-        return RAD2DEG(atan(tan(DEG2RAD(currentFov + fovOffset) / 2) * (w / h * 0.75f))) * 2;
-
-    return currentFov + fovOffset;
+    return view_fov::ScreenFov(currentFov + fovOffset, w / h, fov_horplus->value != 0.0f);
 }
 
 static void SetFov(float fov)
 {
-    fovDifference = fov / kFovDefault;
+    fovDifference = fov / view_fov::kDefault;
     currentFov = fov;
 }
 
@@ -116,7 +115,7 @@ static int MsgFunc_SetFOVEx(const char *pszName, int iSize, void *pbuf)
     float lerp = READ_FLOAT();
 
     if (fov < 1 || fov > 180)
-        fov = kFovDefault;
+        fov = view_fov::kDefault;
 
     SetLerpFov(fov, lerp);
 
@@ -129,7 +128,7 @@ int FovMsgFunc_SetFOV(const char *pszName, int iSize, void *pbuf, UserMsg_SetFOV
     int fov = READ_BYTE();
 
     if (fov < 1 || fov > 180)
-        fov = kFovDefault;
+        fov = view_fov::kDefault;
 
     SetLerpFov(fov, std::clamp(fov_lerp->value, 0.f, 0.8f));
 
@@ -141,5 +140,5 @@ void FovHUD_UpdateClientData(client_data_t *cdata, float flTime, int result)
     cdata->fov = CalcCurrentFov();
 
     if (vm_fov_scale)
-        vm_fov_scale->value = currentFov / kFovDefault;
+        vm_fov_scale->value = currentFov / view_fov::kDefault;
 }

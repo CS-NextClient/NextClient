@@ -51,6 +51,10 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
         nitro_utils::nitro_utils
         data_encoding::data_encoding
         concurrencpp::concurrencpp
+        view::view
+        cvars::cvars
+        ncl_math::ncl_math
+        crosshair::crosshair
         Ws2_32.lib
 )
 

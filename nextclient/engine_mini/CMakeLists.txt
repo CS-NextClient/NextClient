@@ -50,6 +50,8 @@ target_link_libraries(${PROJECT_NAME} ${TARGET_LIBRARIES_SCOPE}
         TaskCoro::TaskCoro
         ncl_utils::ncl_utils
         hwid_collector::hwid_collector
+        cvars::cvars
+        ncl_math::ncl_math
         easyloggingpp::easyloggingpp
         cpr::cpr
         optic::optic

@@ -4,15 +4,6 @@
 #include "nitroapi/NitroApiHelper.h"
 #include "HudBase.h"
 
-enum class CrossHairType
-{
-    Cross,
-    T,
-    Circle,
-    Dot,
-    END_VAL
-};
-
 class HudCrosshair : public HudBase, public nitroapi::NitroApiHelper
 {
     std::vector<std::shared_ptr<nitroapi::Unsubscriber>> unsubscribers_;

@@ -23,6 +23,7 @@ extern IGameConsoleNext* g_GameConsoleNext;
 extern vgui2::ILocalize* g_pLocalize;
 
 extern cl_enginefunc_t gEngfuncs;
+extern r_studio_interface_t* pStudioAPI;
 extern enginefuncs_t g_engfuncs;
 extern sizebuf_t* net_message;
 extern netadr_t* net_from;

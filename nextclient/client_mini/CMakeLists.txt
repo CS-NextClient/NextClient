@@ -81,6 +81,9 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
         nitro_api::nitro_api
         NextClient::gameui
         optic::optic
+        view::view
+        cvars::cvars
+        crosshair::crosshair
 )
 
 if (MSVC)

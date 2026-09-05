@@ -1,6 +1,7 @@
 #include "GameUi.h"
 #include "OptionsSubMultiplayer.h"
 #include "MultiplayerAdvancedDialog.h"
+#include "OptionsDialog.h"
 #include <cstdio>
 
 #include <vgui_controls/Button.h>
@@ -54,142 +55,6 @@ static ColorItem_t itemlist[] =
         { "#Valve_Dkgray", 36, 36, 36 },
     };
 
-static ColorItem_t s_crosshairColors[] =
-    {
-        { "#Valve_Green", 50, 250, 50 },
-        { "#Valve_Red", 250, 50, 50 },
-        { "#Valve_Blue", 50, 50, 250 },
-        { "#Valve_Yellow", 250, 250, 50 },
-        { "#Valve_Ltblue", 50, 250, 250 },
-        { "#GameUI_White", 250, 250, 250 }
-    };
-
-enum class CrossHairType
-{
-    Cross = 0,
-    T,
-    Circle,
-    Dot,
-    END_VAL
-};
-
-static const int NumCrosshairColors = sizeof(s_crosshairColors) / sizeof(s_crosshairColors[0]);
-
-class CrosshairImagePanel : public vgui2::ImagePanel
-{
-    typedef ImagePanel BaseClass;
-
-public:
-    CrosshairImagePanel(Panel *parent, const char *name, CCvarToggleCheckButton *pAdditive);
-
-public:
-    virtual void Paint(void);
-
-public:
-    void UpdateCrosshair(int r, int g, int b, int size, CrossHairType type);
-    void DrawCrosshairEx(int iBarSize, float flCrosshairDistance, bool bAdditive, int r, int g, int b, int a);
-
-protected:
-    CrossHairType m_eCrosshairType;
-    int m_R, m_G, m_B;
-    int m_barSize;
-    int m_barGap;
-    CCvarToggleCheckButton *m_pAdditive;
-};
-
-CrosshairImagePanel::CrosshairImagePanel(Panel *parent, const char *name, CCvarToggleCheckButton *pAdditive) :
-    ImagePanel(parent, name)
-{
-    m_pAdditive = pAdditive;
-
-    UpdateCrosshair(50, 250, 50, 0, CrossHairType::Cross);
-}
-
-void CrosshairImagePanel::UpdateCrosshair(int r, int g, int b, int size, CrossHairType type)
-{
-    m_R = r;
-    m_G = g;
-    m_B = b;
-
-    m_eCrosshairType = type;
-
-    int screenWide, screenTall;
-    vgui2::surface()->GetScreenSize(screenWide, screenTall);
-
-    if (size == 0)
-    {
-        if (screenWide <= 640)
-            size = 2;
-        else if (screenWide < 1024)
-            size = 3;
-        else
-            size = 4;
-    }
-
-    int scaleBase;
-
-    switch (size)
-    {
-        case 4: scaleBase = 640; break;
-        case 3: scaleBase = 800; break;
-        case 2: scaleBase = 1024; break;
-        case 1: scaleBase = 1400; break;
-        default: scaleBase = 1024; break;
-    }
-
-    m_barSize = (int)9 * screenWide / scaleBase;
-    m_barGap = (int)5 * screenWide / scaleBase;
-}
-
-void CrosshairImagePanel::Paint(void)
-{
-    BaseClass::Paint();
-
-    if (!m_pAdditive)
-        return;
-
-    int wide, tall;
-    GetSize(wide, tall);
-
-    bool additive = m_pAdditive->IsSelected();
-    int alpha = (int)((float)255 * vgui2::surface()->DrawGetAlphaMultiplier());
-
-    void (*pfnFillRGBA)(int x, int y, int w, int h, int r, int g, int b, int a) = additive ? engine->pfnFillRGBA : engine->pfnFillRGBABlend;
-
-    if (m_eCrosshairType == CrossHairType::Circle)
-    {
-        float radius = (m_barSize / 2) + m_barGap;
-        int count = (int)((cos(M_PI / 4) * radius) + 0.5);
-
-        for (int i = 0; i < count; i++)
-        {
-            int size = sqrt((radius * radius) - (float)(i * i));
-
-            pfnFillRGBA((wide / 2) + i, (tall / 2) + size, 1, 1, m_R, m_G, m_B, alpha);
-            pfnFillRGBA((wide / 2) + i, (tall / 2) - size, 1, 1, m_R, m_G, m_B, alpha);
-            pfnFillRGBA((wide / 2) - i, (tall / 2) + size, 1, 1, m_R, m_G, m_B, alpha);
-            pfnFillRGBA((wide / 2) - i, (tall / 2) - size, 1, 1, m_R, m_G, m_B, alpha);
-            pfnFillRGBA((wide / 2) + size, (tall / 2) + i, 1, 1, m_R, m_G, m_B, alpha);
-            pfnFillRGBA((wide / 2) + size, (tall / 2) - i, 1, 1, m_R, m_G, m_B, alpha);
-            pfnFillRGBA((wide / 2) - size, (tall / 2) + i, 1, 1, m_R, m_G, m_B, alpha);
-            pfnFillRGBA((wide / 2) - size, (tall / 2) - i, 1, 1, m_R, m_G, m_B, alpha);
-        }
-    }
-    else if (m_eCrosshairType == CrossHairType::Cross || m_eCrosshairType == CrossHairType::T)
-    {
-        pfnFillRGBA((wide / 2) + (int)m_barGap, tall / 2, m_barSize, 1, m_R, m_G, m_B, alpha);
-        pfnFillRGBA((wide / 2) - (int)m_barGap - m_barSize + 1, tall / 2, m_barSize, 1, m_R, m_G, m_B, alpha);
-        pfnFillRGBA(wide / 2, (tall / 2) + (int)m_barGap, 1, m_barSize, m_R, m_G, m_B, alpha);
-        if (m_eCrosshairType != CrossHairType::T)
-            pfnFillRGBA(wide / 2, (tall / 2) - (int)m_barGap - m_barSize + 1, 1, m_barSize, m_R, m_G, m_B, alpha);
-
-    }
-    else if (m_eCrosshairType == CrossHairType::Dot)
-    {
-        pfnFillRGBA((wide / 2) - 1, (tall / 2) - 1, 3, 3, m_R, m_G, m_B, alpha);
-    }
-}
-
 COptionsSubMultiplayer::COptionsSubMultiplayer(vgui2::Panel *parent) : vgui2::PropertyPage(parent, "OptionsSubMultiplayer")
 {
     vgui2::Button *cancel = new vgui2::Button(this, "Cancel", "#GameUI_Cancel");
@@ -222,20 +87,10 @@ COptionsSubMultiplayer::COptionsSubMultiplayer(vgui2::Panel *parent) : vgui2::Pr
     m_nLogoG = 255;
     m_nLogoB = 255;
 
-    m_pCrosshairSize = new CLabeledCommandComboBox(this, "CrosshairSizeComboBox");
-    m_pCrosshairColorComboBox = new CLabeledCommandComboBox(this, "CrosshairColorComboBox");
-    m_pCrosshairTypeComboBox = new CLabeledCommandComboBox(this, "CrosshairTypeComboBox");
-    m_pCrosshairTranslucencyCheckbox = new CCvarToggleCheckButton(this, "CrosshairTranslucencyCheckbox", "#GameUI_Translucent", "cl_crosshair_translucent");
-    m_pCrosshairDynamic = new CCvarToggleCheckButton(this, "CrosshairDynamic", "#GameUI_CrosshairDynamic", "cl_dynamiccrosshair");
-    m_pCrosshairImage = new CrosshairImagePanel(this, "CrosshairImage", m_pCrosshairTranslucencyCheckbox);
+    vgui2::Button *crosshair = new vgui2::Button(this, "CrosshairSettings", "#GameUI_CrosshairSettingsBtn");
+    crosshair->SetCommand("CrosshairSettings");
 
     LoadControlSettings("Resource\\OptionsSubMultiplayer.res");
-
-    InitCrosshairTypeEntries();
-    InitCrosshairColorEntries();
-    InitCrosshairSizeList();
-
-    RedrawCrosshairImage();
 }
 
 COptionsSubMultiplayer::~COptionsSubMultiplayer(void)
@@ -244,6 +99,16 @@ COptionsSubMultiplayer::~COptionsSubMultiplayer(void)
 
 void COptionsSubMultiplayer::OnCommand(const char *command)
 {
+    if (!stricmp(command, "CrosshairSettings"))
+    {
+        COptionsDialog *options = dynamic_cast<COptionsDialog *>(GetParent()->GetParent());
+
+        if (options)
+            options->OpenCrosshairSettings();
+
+        return;
+    }
+
     if (!stricmp(command, "Advanced"))
     {
         if (!m_hMultiplayerAdvancedDialog.Get())
@@ -321,84 +186,6 @@ void COptionsSubMultiplayer::InitLogoColorEntries(void)
     m_pColorList->AddActionSignalTarget(this);
 }
 
-void COptionsSubMultiplayer::InitCrosshairColorEntries(void)
-{
-    if (m_pCrosshairColorComboBox == NULL)
-        return;
-
-    int selected = 0;
-    int cr = 0, cg = 0, cb = 0;
-    const char *color = engine->pfnGetCvarString("cl_crosshair_color");
-
-    if (color)
-        sscanf(color, "%d %d %d", &cr, &cg, &cb);
-
-    m_pCrosshairColorComboBox->Reset();
-    m_pCrosshairColorComboBox->DeleteAllItems();
-
-    for (int i = 0; i < NumCrosshairColors; i++)
-    {
-        if (s_crosshairColors[i].r == cr && s_crosshairColors[i].g == cg && s_crosshairColors[i].b == cb)
-            selected = i;
-
-        char command[256];
-        sprintf(command, "cl_crosshair_color \"%d %d %d\"\n", s_crosshairColors[i].r, s_crosshairColors[i].g, s_crosshairColors[i].b);
-        m_pCrosshairColorComboBox->AddItem(s_crosshairColors[i].name, command);
-    }
-
-    m_pCrosshairColorComboBox->SetInitialItem(selected);
-    m_pColorList->AddActionSignalTarget(this);
-}
-
-void COptionsSubMultiplayer::InitCrosshairTypeEntries()
-{
-    if (m_pCrosshairTypeComboBox == nullptr)
-        return;
-
-    m_pCrosshairTypeComboBox->Reset();
-    m_pCrosshairTypeComboBox->DeleteAllItems();
-
-    m_pCrosshairTypeComboBox->AddItem("#GameUI_Crosshair_Cross", "cl_crosshair_type 0");
-    m_pCrosshairTypeComboBox->AddItem("#GameUI_Crosshair_TShape", "cl_crosshair_type 1");
-    m_pCrosshairTypeComboBox->AddItem("#GameUI_Crosshair_Circle", "cl_crosshair_type 2");
-    m_pCrosshairTypeComboBox->AddItem("#GameUI_Crosshair_Dot", "cl_crosshair_type 3");
-
-    int value = std::clamp((int)engine->pfnGetCvarFloat("cl_crosshair_type"), 0, (int)CrossHairType::END_VAL);
-    m_pCrosshairTypeComboBox->SetInitialItem(value);
-}
-
-void COptionsSubMultiplayer::InitCrosshairSizeList()
-{
-    if (m_pCrosshairSize == NULL)
-        return;
-
-    m_pCrosshairSize->Reset();
-    m_pCrosshairSize->DeleteAllItems();
-
-    m_pCrosshairSize->AddItem("#GameUI_Auto", "cl_crosshair_size auto");
-    m_pCrosshairSize->AddItem("#GameUI_ExtraSmall", "cl_crosshair_size extra_small");
-    m_pCrosshairSize->AddItem("#GameUI_Small", "cl_crosshair_size small");
-    m_pCrosshairSize->AddItem("#GameUI_Medium", "cl_crosshair_size medium");
-    m_pCrosshairSize->AddItem("#GameUI_Large", "cl_crosshair_size large");
-
-    auto value = engine->pfnGetCvarString("cl_crosshair_size");
-
-    if (!value)
-        return;
-
-    int initialScale = atoi(value);
-
-    switch (tolower(value[0]))
-    {
-        case 'e': initialScale = 1; break;
-        case 's': initialScale = 2; break;
-        case 'm': initialScale = 3; break;
-        case 'l': initialScale = 4; break;
-    }
-
-    m_pCrosshairSize->SetInitialItem(initialScale);
-}
-
 void COptionsSubMultiplayer::RemapLogo(void)
 {
     char logoname[256];
@@ -428,14 +215,6 @@ void COptionsSubMultiplayer::OnTextChanged(vgui2::Panel *panel)
 
     if (panel == m_pLogoList || panel == m_pColorList)
         RemapLogo();
-
-    if (panel == m_pCrosshairSize
-        || panel == m_pCrosshairTranslucencyCheckbox
-        || panel == m_pCrosshairColorComboBox
-        || panel == m_pCrosshairTypeComboBox)
-    {
-        RedrawCrosshairImage();
-    }
 }
 
 void COptionsSubMultiplayer::OnSliderMoved(KeyValues *data)
@@ -561,12 +340,6 @@ void COptionsSubMultiplayer::OnResetData(void)
     m_pLogoList->Reset();
     m_pColorList->Reset();
     m_pHighQualityModelCheckBox->Reset();
-    m_pCrosshairTranslucencyCheckbox->Reset();
-    m_pCrosshairDynamic->Reset();
-
-    InitCrosshairTypeEntries();
-    InitCrosshairColorEntries();
-    InitCrosshairSizeList();
 }
 
 void COptionsSubMultiplayer::OnApplyChanges(void)
@@ -585,20 +358,6 @@ void COptionsSubMultiplayer::OnApplyChanges(void)
         if (toggleButton->IsVisible() && toggleButton->IsEnabled())
             toggleButton->ApplyChanges();
     }
-
-    if (m_pCrosshairSize != NULL)
-        m_pCrosshairSize->ApplyChanges();
-
-    if (m_pCrosshairTypeComboBox != NULL)
-        m_pCrosshairTypeComboBox->ApplyChanges();
-
-    if (m_pCrosshairTranslucencyCheckbox != NULL)
-        m_pCrosshairTranslucencyCheckbox->ApplyChanges();
-
-    if (m_pCrosshairDynamic != NULL)
-        m_pCrosshairDynamic->ApplyChanges();
-
-    ApplyCrosshairColorChanges();
 
     const char *colorname = m_pColorList->GetActiveItemCommand();
 
@@ -639,34 +398,6 @@ void COptionsSubMultiplayer::OnApplyChanges(void)
 
             g_pFullFileSystem->Close(file);
         }
-    }
-}
-
-void COptionsSubMultiplayer::ApplyCrosshairColorChanges(void)
-{
-    if (m_pCrosshairColorComboBox == NULL)
-        return;
-
-    char cmd[256];
-    cmd[0] = 0;
-
-    int i = m_pCrosshairColorComboBox->GetActiveItem();
-    Q_snprintf(cmd, sizeof(cmd), "cl_crosshair_color \"%d %d %d\"\n", s_crosshairColors[i].r, s_crosshairColors[i].g, s_crosshairColors[i].b);
-    engine->pfnClientCmd(cmd);
-}
-
-void COptionsSubMultiplayer::RedrawCrosshairImage(void)
-{
-    if (m_pCrosshairColorComboBox == NULL)
-        return;
-
-    if (m_pCrosshairImage && m_pCrosshairSize && m_pCrosshairTypeComboBox)
-    {
-        int size = m_pCrosshairSize->GetActiveItem();
-        int colorIndex = m_pCrosshairColorComboBox->GetActiveItem();
-        auto type = (CrossHairType)m_pCrosshairTypeComboBox->GetActiveItem();
-
-        m_pCrosshairImage->UpdateCrosshair(s_crosshairColors[colorIndex].r, s_crosshairColors[colorIndex].g, s_crosshairColors[colorIndex].b, size, type);
     }
 }
 

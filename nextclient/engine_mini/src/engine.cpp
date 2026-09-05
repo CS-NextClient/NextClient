@@ -4,6 +4,7 @@
 #include <Registry.h>
 #include <easylogging++.h>
 #include <graphics/gl_draw.h>
+#include <cvars/cvar_defaults.h>
 #include <next_engine_mini/engine_mini.h>
 #include <nitro_utils/PtrValidator.h>
 #include <nitro_utils/poor_reflection_utils.h>
@@ -24,6 +25,8 @@
 #include "graphics/gl_local.h"
 #include "graphics/detailtexture.h"
 #include "graphics/color_scheme.h"
+#include "graphics/preview/preview.h"
+#include "graphics/preview/preview_model.h"
 #include "client/client.h"
 #include "client/cl_main.h"
 #include "client/download.h"
@@ -292,6 +295,9 @@ static void OnGameUninitializing()
     if (g_pTaskCoroImpl)
         g_pTaskCoroImpl->ShutdownUpdateExecutor();
 
+    Preview_Shutdown();
+    PreviewModel_RestoreStudioApi();
+
     PROTECTOR_Shutdown();
     CL_CvarsSandboxShutdown();
     CL_StringRegistryShutdown();
@@ -548,6 +554,13 @@ static void OnGameInitializing(void* mainwindow, HDC* pmaindc, HGLRC* pbaseRC, c
         }
     });
 
+    g_Unsubs.emplace_back(client()->HUD_GetStudioModelInterface |= [](int version, struct r_studio_interface_s** ppinterface, struct engine_studio_api_s* pstudio, const auto& next) {
+        // The client copies the table when it answers, so the patch has to be in before the call.
+        PreviewModel_PatchStudioApi(pstudio);
+
+        return next->Invoke(version, ppinterface, pstudio);
+    });
+
     g_Unsubs.emplace_back(client()->HUD_GetStudioModelInterface += [](int version, struct r_studio_interface_s **ppinterface, struct engine_studio_api_s *pstudio, int result) {
         pStudioAPI = *ppinterface;
     });
@@ -608,7 +621,9 @@ static void OnGameInitialized()
         return;
     }
 
-    viewmodel_fov = gEngfuncs.pfnRegisterVariable("viewmodel_fov", std::to_string(90.f).c_str(), FCVAR_ARCHIVE);
+    viewmodel_fov = gEngfuncs.pfnRegisterVariable(cvars::kViewmodelFov.name, cvars::kViewmodelFov.value, FCVAR_ARCHIVE);
+
+    Preview_Init();
 
     CL_CreateHttpDownloadManager(g_pGameUi, g_pLocalize, g_SettingGuard);
     JSAPI_Init();

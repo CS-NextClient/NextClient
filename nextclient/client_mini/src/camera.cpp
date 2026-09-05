@@ -4,6 +4,8 @@
 
 #include <studio.h>
 
+#include <cvars/cvar_defaults.h>
+
 /* animate camera using a viewmodel attachment */
 
 static cvar_t *camera_movement_scale;
@@ -11,8 +13,11 @@ static cvar_t *camera_movement_interp;
 
 void CameraInit()
 {
-	camera_movement_scale = gEngfuncs.pfnRegisterVariable("camera_movement_scale", "1", FCVAR_ARCHIVE);
-	camera_movement_interp = gEngfuncs.pfnRegisterVariable("camera_movement_interp", "0", FCVAR_ARCHIVE);
+	camera_movement_scale = gEngfuncs.pfnRegisterVariable(
+		cvars::kCameraMovementScale.name, cvars::kCameraMovementScale.value, FCVAR_ARCHIVE);
+
+	camera_movement_interp = gEngfuncs.pfnRegisterVariable(
+		cvars::kCameraMovementInterp.name, cvars::kCameraMovementInterp.value, FCVAR_ARCHIVE);
 }
 
 static mstudioanim_t *GetAnim(studiohdr_t *hdr, model_t *model, mstudioseqdesc_t *seqdesc)
