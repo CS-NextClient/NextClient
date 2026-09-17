@@ -6,6 +6,22 @@
 #include <next_filesystem/IFileSystemNext.h>
 #include <next_gameui/IGameConsoleNext.h>
 #include <nitro_utils/config/ConfigProviderInterface.h>
+#include <goldsrc/client_api.h>
+#include <goldsrc/cvar.h>
+#include <goldsrc/engine/client_state.h>
+#include <goldsrc/engine/cmd.h>
+#include <goldsrc/engine/model.h>
+#include <goldsrc/engine/net.h>
+#include <goldsrc/engine/resource.h>
+#include <goldsrc/engine/server_state.h>
+#include <goldsrc/engine/sound.h>
+#include <goldsrc/engine/video.h>
+#include <goldsrc/entity.h>
+#include <goldsrc/keys.h>
+#include <goldsrc/server_api.h>
+#include <goldsrc/studio_api.h>
+#include <goldsrc/types.h>
+#include <goldsrc/view.h>
 #include "client/http_download/HttpDownloadManager.h"
 #include "client/client_stateex.h"
 
@@ -22,88 +38,91 @@ extern IGameConsole* g_GameConsole;
 extern IGameConsoleNext* g_GameConsoleNext;
 extern vgui2::ILocalize* g_pLocalize;
 
-extern cl_enginefunc_t gEngfuncs;
-extern enginefuncs_t g_engfuncs;
-extern sizebuf_t* net_message;
-extern netadr_t* net_from;
+extern goldsrc::cl_enginefunc_t gEngfuncs;
+extern goldsrc::enginefuncs_t g_engfuncs;
+extern goldsrc::sizebuf_t* net_message;
+extern goldsrc::netadr_t* net_from;
 extern int* pMsg_readcount;
 extern double* realtime;
 extern double* host_frametime;
-extern qboolean* gfExtendedError;
+extern goldsrc::qboolean* gfExtendedError;
 const int kDownloadFileSize = 256;
 extern char* gDownloadFile;
 const int kDisconnectReasonSize = 256;
 extern char* gszDisconnectReason;
 extern client_stateex_t client_stateex;
-extern cmd_source_t* cmd_source;
-extern client_static_t* cls;
-extern server_static_t* g_psvs;
-extern server_t* g_psv;
-extern qboolean* g_bMajorMapChange;
-extern CareerStateType* p_g_careerState;
-extern model_t** loadmodel;
+extern goldsrc::cmd_source_t* cmd_source;
+extern goldsrc::client_static_t* cls;
+extern goldsrc::client_state_t* cl;
+extern "C" goldsrc::modfuncs_t g_modfuncs;
+extern goldsrc::r_studio_interface_t* pStudioAPI;
+extern goldsrc::server_static_t* g_psvs;
+extern goldsrc::server_t* g_psv;
+extern goldsrc::qboolean* g_bMajorMapChange;
+extern goldsrc::CareerStateType* p_g_careerState;
+extern goldsrc::model_t** loadmodel;
 extern int* cl_playerindex;
-extern cl_entity_t** p_cl_entities;
+extern goldsrc::cl_entity_t** p_cl_entities;
 extern bool* p_noclip_anglehack;
-extern cache_user_t** p_loadcache;
+extern goldsrc::cache_user_t** p_loadcache;
 extern unsigned char** p_loadbuf;
 extern int* p_loadsize;
-extern qboolean* p_host_initialized;
-extern cl_enginefunc_dst_t* p_g_engdstAddrs;
-extern nitroapi::viddef_t* p_vid;
+extern goldsrc::qboolean* p_host_initialized;
+extern goldsrc::cl_enginefunc_dst_t* p_g_engdstAddrs;
+extern goldsrc::viddef_t* p_vid;
 extern int* p_currenttexture;
-extern cl_entity_t** p_currententity;
+extern goldsrc::cl_entity_t** p_currententity;
 extern float* p_r_blend;
 extern vec3_t* p_r_entorigin;
-extern qboolean* p_g_bUserFogOn;
+extern goldsrc::qboolean* p_g_bUserFogOn;
 extern int* p_numTransObjs;
-extern nitroapi::transObjRef** p_transObjects;
-extern qboolean* p_mtexenabled;
-extern cl_entity_t* p_r_worldentity;
-extern qboolean* p_mirror;
+extern goldsrc::transObjRef** p_transObjects;
+extern goldsrc::qboolean* p_mtexenabled;
+extern goldsrc::cl_entity_t* p_r_worldentity;
+extern goldsrc::qboolean* p_mirror;
 extern int* p_c_brush_polys;
 extern int* p_c_alias_polys;
 extern int* p_cl_numvisedicts;
-extern cl_entity_t** p_cl_visedicts;
-extern qboolean* p_isFogEnabled;
-extern refdef_t* r_refdef;
+extern goldsrc::cl_entity_t** p_cl_visedicts;
+extern goldsrc::qboolean* p_isFogEnabled;
+extern goldsrc::refdef_t* r_refdef;
 extern float* p_g_SND_VoiceOverdrive;
 extern int* p_cszrawsentences;
-extern char *(*p_rgpszrawsentence)[CVOXFILESENTENCEMAX];
+extern char* (*p_rgpszrawsentence)[goldsrc::CVOXFILESENTENCEMAX];
 extern float* p_scr_con_current;
-extern keydest_t* p_key_dest;
-extern sfx_t** p_known_sfx;
+extern goldsrc::keydest_t* p_key_dest;
+extern goldsrc::sfx_t** p_known_sfx;
 extern int* p_num_sfx;
 extern int* p_gHostSpawnCount;
-extern netadr_t* p_net_local_adr;
-extern netadr_t* p_g_GameServerAddress;
+extern goldsrc::netadr_t* p_net_local_adr;
+extern goldsrc::netadr_t* p_g_GameServerAddress;
 extern float* p_g_LastScreenUpdateTime;
 extern int* p_maxTransObjs;
 
-extern cvar_t* fs_startup_timings;
-extern cvar_t* fs_lazy_precache;
-extern cvar_t* fs_precache_timings;
-extern cvar_t* fs_perf_warnings;
-extern cvar_t* cl_download_ingame;
-extern cvar_t* cl_shownet;
-extern cvar_t* cl_timeout;
-extern cvar_t* scr_downloading;
-extern cvar_t* host_framerate;
-extern cvar_t* sys_ticrate;
-extern cvar_t* gl_vsync;
-extern cvar_t* snd_show;
-extern cvar_t* chase_active;
-extern cvar_t* fps_override;
-extern cvar_t* fps_max;
-extern cvar_t* sys_timescale;
-extern cvar_t* developer;
-extern cvar_t* sv_cheats;
-extern cvar_t* gl_dither_cvar;
-extern cvar_t* gl_spriteblend;
-extern cvar_t* r_drawentities;
-extern cvar_t* r_norefresh;
-extern cvar_t* r_speeds;
-extern cvar_t* viewmodel_fov;
+extern goldsrc::cvar_t* fs_startup_timings;
+extern goldsrc::cvar_t* fs_lazy_precache;
+extern goldsrc::cvar_t* fs_precache_timings;
+extern goldsrc::cvar_t* fs_perf_warnings;
+extern goldsrc::cvar_t* cl_download_ingame;
+extern goldsrc::cvar_t* cl_shownet;
+extern goldsrc::cvar_t* cl_timeout;
+extern goldsrc::cvar_t* scr_downloading;
+extern goldsrc::cvar_t* host_framerate;
+extern goldsrc::cvar_t* sys_ticrate;
+extern goldsrc::cvar_t* gl_vsync;
+extern goldsrc::cvar_t* snd_show;
+extern goldsrc::cvar_t* chase_active;
+extern goldsrc::cvar_t* fps_override;
+extern goldsrc::cvar_t* fps_max;
+extern goldsrc::cvar_t* sys_timescale;
+extern goldsrc::cvar_t* developer;
+extern goldsrc::cvar_t* sv_cheats;
+extern goldsrc::cvar_t* gl_dither_cvar;
+extern goldsrc::cvar_t* gl_spriteblend;
+extern goldsrc::cvar_t* r_drawentities;
+extern goldsrc::cvar_t* r_norefresh;
+extern goldsrc::cvar_t* r_speeds;
+extern goldsrc::cvar_t* viewmodel_fov;
 
 extern bool g_bIsDedicatedServer;
 
@@ -118,24 +137,36 @@ extern NclmVerificatorInterface* g_NclmVerificator;
 void ConfigureEngineElppLogger();
 
 // common/common.cpp
-int COM_SizeofResourceList(resource_t *pList, resourceinfo_t *ri);
-void COM_ClearCustomizationList(customization_t* pHead, qboolean bCleanDecals);
+int COM_SizeofResourceList(goldsrc::resource_t* pList, goldsrc::resourceinfo_t* ri);
+void COM_ClearCustomizationList(goldsrc::customization_t* pHead, goldsrc::qboolean bCleanDecals);
+extern char** com_argv;
+void COM_HexConvert(const char* pszInput, int nInputLength, unsigned char* pOutput);
+char* COM_BinPrintf(unsigned char* buf, int length);
+void COM_ExplainDisconnection(goldsrc::qboolean bPrint, const char* fmt, ...);
+void COM_FileBase(const char* in, char* out);
+int COM_CheckParm(const char* parm);
+void COM_InitArgv(int argc, char* argv[]);
+unsigned char* COM_LoadFile(const char* path, int usehunk, int* pLength);
+unsigned char* COM_LoadFileLimit(const char* path, int pos, int cbmax, int* pcbread, FileHandle_t* phFile);
+unsigned char* COM_LoadFileForMe(const char* filename, int* pLength);
 
 // client/cl_custom.cpp
 bool IsSafeFileToDownload(const std::string &filename);
-void CL_AddToResourceList(resource_t *pResource, resource_t *pList);
-void CL_RemoveFromResourceList(resource_t *pResource);
-void CL_MoveToOnHandList(resource_t *pResource);
+void CL_AddToResourceList(goldsrc::resource_t* pResource, goldsrc::resource_t* pList);
+void CL_RemoveFromResourceList(goldsrc::resource_t* pResource);
+void CL_MoveToOnHandList(goldsrc::resource_t* pResource);
 
 // client/cl_parse.cpp
 void CL_StartResourceDownloading(const char *pszMessage, bool bCustom);
 void CL_ClearResourceLists();
 void CL_CreateResourceList();
 void CL_DeallocateDynamicData();
+void CL_ReadPackets();
+goldsrc::qboolean CL_RequestMissingResources();
 
 // common/hpak.cpp
-bool HPAK_GetDataPointer(const char *filename, resource_t *pResource, uint8_t **buffer, int *bufsize);
-void HPAK_AddLump(qboolean bUseQueue, const char* pakname, resource_t* pResource, uint8_t* pData, FileHandle_t fpSource);
+bool HPAK_GetDataPointer(const char* filename, goldsrc::resource_t* pResource, uint8_t** buffer, int* bufsize);
+void HPAK_AddLump(goldsrc::qboolean bUseQueue, const char* pakname, goldsrc::resource_t* pResource, uint8_t* pData, FileHandle_t fpSource);
 void HPAK_FlushHostQueue();
 
 // cl_pmove.cpp
@@ -143,3 +174,37 @@ void CL_SetSolidEntities();
 
 // host_cmd.cpp
 void Host_Map_f();
+
+// cdll_int.cpp
+extern "C" void ClientDLL_DrawNormalTriangles();
+extern "C" void ClientDLL_DrawTransparentTriangles();
+
+// client/s_main.cpp
+void S_ExtraUpdate();
+
+// common/crtlib.cpp
+char* va(const char* format, ...);
+
+// common/md5.cpp
+BOOL MD5_Hash_File(unsigned char digest[16], char* pszFileName, BOOL bUsefopen, BOOL bSeed, unsigned int seed[4]);
+
+// common/munge.cpp
+void COM_Munge2(unsigned char* data, int len, int seq);
+
+// common/net_msg.cpp
+void MSG_BeginReading();
+const char* MSG_ReadString();
+const char* MSG_ReadStringLine();
+void MSG_WriteByte(goldsrc::sizebuf_t* sb, int c);
+void MSG_WriteShort(goldsrc::sizebuf_t* sb, int c);
+void MSG_WriteLong(goldsrc::sizebuf_t* sb, int c);
+void MSG_WriteString(goldsrc::sizebuf_t* sb, const char* s);
+void MSG_WriteBuf(goldsrc::sizebuf_t* sb, int iSize, void* buf);
+int MSG_ReadByte();
+int MSG_ReadLong();
+float MSG_ReadFloat();
+
+// common/sizebuf.cpp
+void SZ_Clear(goldsrc::sizebuf_t* buf);
+void SZ_Write(goldsrc::sizebuf_t* buf, const void* data, int length);
+void* SZ_GetSpace(goldsrc::sizebuf_t* buf, int length);

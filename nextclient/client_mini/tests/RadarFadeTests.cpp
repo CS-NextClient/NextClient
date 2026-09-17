@@ -1,8 +1,6 @@
 #include <gtest/gtest.h>
 
-// screenfade.h references `byte` without defining it, so the typedef must come first.
-typedef unsigned char byte;
-#include <screenfade.h>
+#include <goldsrc/view.h>
 
 #include "RadarFade.h"
 
@@ -14,7 +12,7 @@ namespace
 
 TEST(RadarFadeAlpha, ExpiredFadeReturnsZero)
 {
-    screenfade_t sf = {};
+    goldsrc::screenfade_t sf = {};
     sf.fadeReset = 1.0f;
     sf.fadeEnd = 1.0f;
     sf.fadealpha = 255;
@@ -24,7 +22,7 @@ TEST(RadarFadeAlpha, ExpiredFadeReturnsZero)
 
 TEST(RadarFadeAlpha, FadeOutPeakClampsToFadeAlpha)
 {
-    screenfade_t sf = {};
+    goldsrc::screenfade_t sf = {};
     sf.fadeSpeed = 100.0f;
     sf.fadeEnd = 3.0f;
     sf.fadealpha = 200;
@@ -36,7 +34,7 @@ TEST(RadarFadeAlpha, FadeOutPeakClampsToFadeAlpha)
 
 TEST(RadarFadeAlpha, FadeOutDecaysBelowThreshold)
 {
-    screenfade_t sf = {};
+    goldsrc::screenfade_t sf = {};
     sf.fadeSpeed = -100.0f;
     sf.fadeEnd = 3.0f;
     sf.fadealpha = 200;
@@ -48,7 +46,7 @@ TEST(RadarFadeAlpha, FadeOutDecaysBelowThreshold)
 
 TEST(RadarFadeAlpha, StayoutHoldsAtFadeAlpha)
 {
-    screenfade_t sf = {};
+    goldsrc::screenfade_t sf = {};
     sf.fadealpha = 180;
     sf.fadeFlags = kFadeStayout;
     EXPECT_EQ(RadarFade_ComputeAlpha(sf, 5.0), 180);
@@ -56,7 +54,7 @@ TEST(RadarFadeAlpha, StayoutHoldsAtFadeAlpha)
 
 TEST(RadarFadeNearWhite, TrueOnlyForWhiteFade)
 {
-    screenfade_t sf = {};
+    goldsrc::screenfade_t sf = {};
     sf.fader = 255;
     sf.fadeg = 255;
     sf.fadeb = 255;

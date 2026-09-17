@@ -159,6 +159,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
         NextClient::engine_mini
         optic::optic
         glad::glad
+        data_types::data_types
         ncl_math::ncl_math
         ncl_gl::ncl_gl
         ncl_utils::ncl_utils

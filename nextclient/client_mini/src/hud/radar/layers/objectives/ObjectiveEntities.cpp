@@ -1,6 +1,9 @@
 #include "ObjectiveEntities.h"
 
 #include <cstring>
+#include <goldsrc/client_api.h>
+#include <goldsrc/engine/model.h>
+#include <goldsrc/entity.h>
 
 #include "main.h"
 
@@ -11,7 +14,7 @@ void ObjectiveEntities::OnVidInit()
     model_kind_.clear(); // model pointers are only stable within a level
 }
 
-ObjectiveEntities::ModelKind ObjectiveEntities::ClassifyModel(const model_t* model)
+ObjectiveEntities::ModelKind ObjectiveEntities::ClassifyModel(const goldsrc::model_t* model)
 {
     auto it = model_kind_.find(model);
 
@@ -52,7 +55,7 @@ void ObjectiveEntities::CollectEntities(const RadarFrame& frame)
     bomb_ = BombEnt{};
     hostage_count_ = 0;
 
-    cl_entity_t* local = frame.ctx.local;
+    goldsrc::cl_entity_t* local = frame.ctx.local;
 
     if (!local)
     {
@@ -61,7 +64,7 @@ void ObjectiveEntities::CollectEntities(const RadarFrame& frame)
 
     int message_num = local->curstate.messagenum;
 
-    auto consider = [&](int i, cl_entity_t* ent) {
+    auto consider = [&](int i, goldsrc::cl_entity_t* ent) {
         if (!ent || !ent->model || ent->curstate.messagenum != message_num)
         {
             return false;
@@ -94,13 +97,16 @@ void ObjectiveEntities::CollectEntities(const RadarFrame& frame)
         return true;
     };
 
-    // TODO AI: херня какая-то, устаревшие данные будут на протяжении kTestInterval сек
+    // Rediscovering the set walks every edict above the player slots, so it rides the same
+    // kTestInterval cadence as the sight tests instead of running per frame. Only the membership
+    // goes stale in between: an objective that spawns then reaches the radar one sweep late, while
+    // the entities already found are re-read every frame.
     if (test_due_)
     {
-        // GetMaxClients()+1, not MAX_PLAYERS+1: fewer slots puts objectives at or below MAX_PLAYERS.
+        // GetMaxClients()+1, not goldsrc::cstrike::MAX_PLAYERS+1: fewer slots puts objectives at or below goldsrc::cstrike::MAX_PLAYERS.
         objective_ents_.clear();
         
-        for (int i = gEngfuncs.GetMaxClients() + 1; cl_entity_t* ent = gEngfuncs.GetEntityByIndex(i); i++)
+        for (int i = gEngfuncs.GetMaxClients() + 1; goldsrc::cl_entity_t* ent = gEngfuncs.GetEntityByIndex(i); i++)
         {
             if (consider(i, ent))
             {

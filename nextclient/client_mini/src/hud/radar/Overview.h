@@ -1,8 +1,8 @@
 #pragma once
 
-#include "MapRender.h"
+#include <goldsrc/fwd.h>
 
-typedef struct model_s model_t;
+#include "MapRender.h"
 
 struct overview_t
 {
@@ -33,7 +33,7 @@ class RadarOverview
 {
 private:
     overview_t data_{};
-    model_t* map_sprite_{};
+    goldsrc::model_t* map_sprite_{};
     RuntimeMap runtime_{};
     char loaded_map_[64]{};
     RadarMapMode loaded_mode_ = RadarMapMode::None;
@@ -54,7 +54,7 @@ public:
     {
         return data_;
     }
-    model_t* get_sprite() const
+    goldsrc::model_t* get_sprite() const
     {
         return map_sprite_;
     }

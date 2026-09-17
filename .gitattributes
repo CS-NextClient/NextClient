@@ -1,0 +1,4 @@
+# provenance.py writes the allowlist with newline="\n" while core.autocrlf checks it out with CRLF,
+# so without this rule every gate run marks the file modified at unchanged content. Fixing it here
+# rather than in the tool keeps the endings from depending on the machine's git settings.
+/.github/provenance-allowlist.json text eol=lf

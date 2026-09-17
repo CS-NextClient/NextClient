@@ -3,42 +3,50 @@
 #include "main.h"
 
 #include <ncl_math/vec3.h>
-#include <studio.h>
+#include <cstdint>
+
+#include <goldsrc/client_api.h>
+#include <goldsrc/cvar.h>
+#include <goldsrc/engine/model.h>
+#include <goldsrc/entity.h>
+#include <goldsrc/format/studio.h>
+#include <goldsrc/types.h>
+#include <goldsrc/view.h>
 
 /* animate camera using a viewmodel attachment */
 
-static cvar_t *camera_movement_scale;
-static cvar_t *camera_movement_interp;
+static goldsrc::cvar_t* camera_movement_scale;
+static goldsrc::cvar_t* camera_movement_interp;
 
 void CameraInit()
 {
-	camera_movement_scale = gEngfuncs.pfnRegisterVariable("camera_movement_scale", "1", FCVAR_ARCHIVE);
-	camera_movement_interp = gEngfuncs.pfnRegisterVariable("camera_movement_interp", "0", FCVAR_ARCHIVE);
+	camera_movement_scale = gEngfuncs.pfnRegisterVariable("camera_movement_scale", "1", goldsrc::FCVAR_ARCHIVE);
+	camera_movement_interp = gEngfuncs.pfnRegisterVariable("camera_movement_interp", "0", goldsrc::FCVAR_ARCHIVE);
 }
 
-static mstudioanim_t *GetAnim(studiohdr_t *hdr, model_t *model, mstudioseqdesc_t *seqdesc)
+static goldsrc::mstudioanim_t* GetAnim(goldsrc::studiohdr_t* hdr, goldsrc::model_t* model, goldsrc::mstudioseqdesc_t* seqdesc)
 {
-	byte *data;
-	cache_user_t *seqs;
+	uint8_t* data;
+	goldsrc::cache_user_t* seqs;
 
 	if (!seqdesc->seqgroup)
-		return (mstudioanim_t *)((byte *)hdr + seqdesc->animindex);
+		return (goldsrc::mstudioanim_t*)((uint8_t*)hdr + seqdesc->animindex);
 
-	seqs = (cache_user_t *)model->submodels;
-	data = (byte *)seqs[seqdesc->seqgroup].data;
+	seqs = (goldsrc::cache_user_t*)model->submodels;
+	data = (uint8_t*)seqs[seqdesc->seqgroup].data;
 
-	return (mstudioanim_t *)&data[seqdesc->animindex];
+	return (goldsrc::mstudioanim_t*)&data[seqdesc->animindex];
 }
 
-static float UnpackScale(int frame, mstudioanim_t *anim, int offset)
+static float UnpackScale(int frame, goldsrc::mstudioanim_t* anim, int offset)
 {
 	int index;
-	mstudioanimvalue_t *bone_frame;
+	goldsrc::mstudioanimvalue_t* bone_frame;
 
 	if (!offset)
 		return 0;
 
-	bone_frame = (mstudioanimvalue_t *)((byte *)anim + offset);
+	bone_frame = (goldsrc::mstudioanimvalue_t*)((uint8_t*)anim + offset);
 	index = frame;
 
 	while (1)
@@ -58,7 +66,7 @@ static float UnpackScale(int frame, mstudioanim_t *anim, int offset)
 	return (float)bone_frame[index].value;
 }
 
-static void UnpackRotation(vec3_t angles, int frame, mstudiobone_t *bone, mstudioanim_t *anim)
+static void UnpackRotation(vec3_t angles, int frame, goldsrc::mstudiobone_t* bone, goldsrc::mstudioanim_t* anim)
 {
 	/* unpack the bone rotation */
 	angles[0] = (bone->value[3] + bone->scale[3] *
@@ -71,17 +79,17 @@ static void UnpackRotation(vec3_t angles, int frame, mstudiobone_t *bone, mstudi
 		UnpackScale(frame, anim, anim->offset[5])) * ncl_math::kRad2Deg;
 }
 
-static int GetCameraBone(studiohdr_t *hdr)
+static int GetCameraBone(goldsrc::studiohdr_t* hdr)
 {
 	int i;
-	mstudioattachment_t *a;
-	mstudiobone_t *b;
+	goldsrc::mstudioattachment_t* a;
+	goldsrc::mstudiobone_t* b;
 
-	a = (mstudioattachment_t *)((byte *)hdr + hdr->attachmentindex);
+	a = (goldsrc::mstudioattachment_t*)((uint8_t*)hdr + hdr->attachmentindex);
 
 	for (i = 0; i < hdr->numattachments; i++, a++)
 	{
-		b = (mstudiobone_t *)((byte *)hdr + hdr->boneindex) + a->bone;
+		b = (goldsrc::mstudiobone_t*)((uint8_t*)hdr + hdr->boneindex) + a->bone;
 		if (!strcmp(b->name, "camera"))
 			return a->bone;
 	}
@@ -89,17 +97,17 @@ static int GetCameraBone(studiohdr_t *hdr)
 	return -1;
 }
 
-static void CameraCalcMovement(cl_entity_t *vm, vec3_t angles)
+static void CameraCalcMovement(goldsrc::cl_entity_t* vm, vec3_t angles)
 {
 	float clientTime = gEngfuncs.GetClientTime();
 
-	model_t *model;
-	studiohdr_t *hdr;
+	goldsrc::model_t* model;
+	goldsrc::studiohdr_t* hdr;
 	int bone_index;
 	int sequence;
-	mstudioseqdesc_t *seqdesc;
-	mstudioanim_t *anim;
-	mstudiobone_t *bone;
+	goldsrc::mstudioseqdesc_t* seqdesc;
+	goldsrc::mstudioanim_t* anim;
+	goldsrc::mstudiobone_t* bone;
 	float anim_time, t;
 	int frame, next_frame;
 	vec3_t angles1, angles2;
@@ -110,7 +118,7 @@ static void CameraCalcMovement(cl_entity_t *vm, vec3_t angles)
 	if (!model)
 		return;
 
-	hdr = (studiohdr_t *)model->cache.data;
+	hdr = (goldsrc::studiohdr_t*)model->cache.data;
 	if (!hdr)
 		return;
 
@@ -122,10 +130,10 @@ static void CameraCalcMovement(cl_entity_t *vm, vec3_t angles)
 	if (sequence >= hdr->numseq)
 		sequence = 0;
 
-	seqdesc = (mstudioseqdesc_t *)((byte *)hdr + hdr->seqindex) + sequence;
+	seqdesc = (goldsrc::mstudioseqdesc_t*)((uint8_t*)hdr + hdr->seqindex) + sequence;
 
 	anim = GetAnim(hdr, model, seqdesc) + bone_index;
-	bone = (mstudiobone_t *)((byte *)hdr + hdr->boneindex) + bone_index;
+	bone = (goldsrc::mstudiobone_t*)((uint8_t*)hdr + hdr->boneindex) + bone_index;
 
 	anim_time = (clientTime - vm->curstate.animtime) * seqdesc->fps;
 
@@ -133,7 +141,7 @@ static void CameraCalcMovement(cl_entity_t *vm, vec3_t angles)
 	next_frame = frame + 1;
 	t = anim_time - frame;
 
-	if (seqdesc->flags & STUDIO_LOOPING)
+	if (seqdesc->flags & goldsrc::STUDIO_LOOPING)
 	{
 		frame %= seqdesc->numframes;
 		next_frame %= seqdesc->numframes;
@@ -151,9 +159,9 @@ static void CameraCalcMovement(cl_entity_t *vm, vec3_t angles)
 	return;
 }
 
-void CameraApplyMovement(ref_params_t *pparams)
+void CameraApplyMovement(goldsrc::ref_params_t* pparams)
 {
-	static studiohdr_t *last_hdr;
+	static goldsrc::studiohdr_t* last_hdr;
 	static vec3_t prevMove, curMove;
 	static float lerpTime;
 
@@ -161,16 +169,16 @@ void CameraApplyMovement(ref_params_t *pparams)
 
 	vec3_t new_movement;
 	float scale;
-	cl_entity_t *vm;
-	model_t *model;
-	studiohdr_t *hdr;
+	goldsrc::cl_entity_t* vm;
+	goldsrc::model_t* model;
+	goldsrc::studiohdr_t* hdr;
 
 	vm = gEngfuncs.GetViewModel();
 	CameraCalcMovement(vm, new_movement);
 
 	/* check if weapon has changed */
 	model = vm->model;
-	hdr = model ? (studiohdr_t *)model->cache.data : NULL;
+	hdr = model ? (goldsrc::studiohdr_t*)model->cache.data : NULL;
 
 	if (hdr != last_hdr)
 	{

@@ -10,6 +10,7 @@
 #include <ncl_gl/loader.h>
 #include <glad/glad.h>
 #include <Windows.h>
+#include <goldsrc/engine/model.h>
 
 namespace
 {
@@ -23,7 +24,7 @@ namespace
     }
 
     // Surfedge sign is the edge direction: positive takes the first vertex, negative the second.
-    const float* GetSurfVertex(model_t* world, msurface_t* s, int e)
+    const float* GetSurfVertex(goldsrc::model_t* world, goldsrc::msurface_t* s, int e)
     {
         int se = world->surfedges[s->firstedge + e];
         int v = se > 0 ? world->edges[se].v[0] : world->edges[-se].v[1];
@@ -31,11 +32,11 @@ namespace
         return world->vertexes[v].position;
     }
 
-    float ComputeSurfaceUpZ(const msurface_t* s)
+    float ComputeSurfaceUpZ(const goldsrc::msurface_t* s)
     {
         float nz = s->plane->normal[2];
 
-        if (s->flags & SURF_PLANEBACK)
+        if (s->flags & goldsrc::SURF_PLANEBACK)
         {
             nz = -nz;
         }
@@ -51,15 +52,15 @@ namespace
         ncl_math::Aabb2 box;
     };
 
-    int CollectSkyFaces(model_t* world, std::span<SkyFace> out)
+    int CollectSkyFaces(goldsrc::model_t* world, std::span<SkyFace> out)
     {
         int nsky = 0;
 
         for (int i = 0; i < world->numsurfaces && nsky < (int)out.size(); i++)
         {
-            msurface_t* s = &world->surfaces[i];
+            goldsrc::msurface_t* s = &world->surfaces[i];
 
-            if (!(s->flags & SURF_DRAWSKY) || !s->plane)
+            if (!(s->flags & goldsrc::SURF_DRAWSKY) || !s->plane)
             {
                 continue;
             }
@@ -105,15 +106,15 @@ namespace
     }
 
     // Not the world Z bounds: sky and pits squash every floor into a flat band and wash out the shading.
-    void ComputeFloorZRange(model_t* world, float& out_min, float& out_max)
+    void ComputeFloorZRange(goldsrc::model_t* world, float& out_min, float& out_max)
     {
         float fzmin = 1.0e9f, fzmax = -1.0e9f;
 
         for (int i = 0; i < world->numsurfaces; i++)
         {
-            msurface_t* s = &world->surfaces[i];
+            goldsrc::msurface_t* s = &world->surfaces[i];
 
-            if ((s->flags & (SURF_DRAWSKY | SURF_DRAWTILED)) || !s->plane)
+            if ((s->flags & (goldsrc::SURF_DRAWSKY | goldsrc::SURF_DRAWTILED)) || !s->plane)
             {
                 continue;
             }
@@ -136,7 +137,7 @@ namespace
     }
 
     void DrawSurfaces(
-        model_t* world,
+        goldsrc::model_t* world,
         bool textured,
         const int (*lightmap_textures)[64],
         std::span<const SkyFace> skies,
@@ -146,9 +147,9 @@ namespace
     {
         for (int i = 0; i < world->numsurfaces; i++)
         {
-            msurface_t* s = &world->surfaces[i];
+            goldsrc::msurface_t* s = &world->surfaces[i];
 
-            if (s->flags & (SURF_DRAWSKY | SURF_DRAWTILED))
+            if (s->flags & (goldsrc::SURF_DRAWSKY | goldsrc::SURF_DRAWTILED))
             {
                 continue;
             }
@@ -211,7 +212,7 @@ namespace
                 glActiveTexture(GL_TEXTURE0);
                 glBindTexture(GL_TEXTURE_2D, s->texinfo->texture->gl_texturenum);
 
-                for (glpoly_t* poly = s->polys; poly; poly = poly->next)
+                for (goldsrc::glpoly_t* poly = s->polys; poly; poly = poly->next)
                 {
                     glBegin(GL_POLYGON);
 
@@ -274,7 +275,7 @@ namespace
 
     // The atlas is unbuilt for the first frames after level load: rendering then multiplies by
     // stale ids and comes out black. False means retry on a later frame.
-    bool IsLightmapAtlasReady(model_t* world, const int (*lightmap_textures)[64])
+    bool IsLightmapAtlasReady(goldsrc::model_t* world, const int (*lightmap_textures)[64])
     {
         if (!lightmap_textures)
         {
@@ -283,9 +284,9 @@ namespace
 
         for (int i = 0; i < world->numsurfaces; i++)
         {
-            msurface_t* s = &world->surfaces[i];
+            goldsrc::msurface_t* s = &world->surfaces[i];
 
-            if ((s->flags & (SURF_DRAWSKY | SURF_DRAWTILED)) || !s->plane || s->lightmaptexturenum < 0)
+            if ((s->flags & (goldsrc::SURF_DRAWSKY | goldsrc::SURF_DRAWTILED)) || !s->plane || s->lightmaptexturenum < 0)
             {
                 continue;
             }
@@ -299,7 +300,7 @@ namespace
         return false;
     }
 
-    bool ComputeMapExtent(model_t* world, MapExtent& out)
+    bool ComputeMapExtent(goldsrc::model_t* world, MapExtent& out)
     {
         float cx = (world->mins[0] + world->maxs[0]) * 0.5f;
         float cy = (world->mins[1] + world->maxs[1]) * 0.5f;
@@ -465,7 +466,7 @@ namespace
     }
 } // namespace
 
-RuntimeMap MapRender_Generate(model_t* world, bool textured, bool slice)
+RuntimeMap MapRender_Generate(goldsrc::model_t* world, bool textured, bool slice)
 {
     RuntimeMap rm{};
 

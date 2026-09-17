@@ -1,8 +1,8 @@
 #pragma once
 
-// extra_player_info_t::teamnumber, typed. The values are the SDK's TEAM_* (cdll_dll.h),
-// which HudRadarAdvanced static_asserts. A mod is free to send a number outside the set;
-// it then compares unequal to every enumerator, which is what the call sites want.
+// goldsrc::cstrike::extra_player_info_t::teamnumber, typed; the enumerators equal
+// goldsrc::cstrike::TEAM_* of goldsrc/cstrike/game.h. A mod may send a number outside
+// the set, which then compares unequal to every enumerator.
 enum class RadarTeam : int
 {
     Unassigned = 0,

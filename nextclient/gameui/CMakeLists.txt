@@ -47,6 +47,7 @@ target_include_directories(${PROJECT_NAME} PRIVATE
 
 target_link_libraries(${PROJECT_NAME} PRIVATE
         hl1_source_sdk::hl1_source_sdk
+        goldsrc::abi
         NextClient::engine_mini
         NextClient::client_mini
         nitro_utils::nitro_utils

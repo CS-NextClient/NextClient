@@ -1,6 +1,7 @@
 #include "GameUi.h"
 #include "CvarNegateCheckButton.h"
 #include <vgui/IVGui.h>
+#include <goldsrc/client_api.h>
 #include "tier1/KeyValues.h"
 
 CCvarNegateCheckButton::CCvarNegateCheckButton(vgui2::Panel *parent, const char *panelName, const char *text, const char *cvarname) : vgui2::CheckButton(parent, panelName, text)

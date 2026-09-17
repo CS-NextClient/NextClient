@@ -1,5 +1,8 @@
 #include "cl_parsefn.h"
 
+#include <goldsrc/cvar.h>
+#include <goldsrc/engine/client_state.h>
+
 void CL_Parse_Timescale()
 {
 	auto value = MSG_ReadFloat();

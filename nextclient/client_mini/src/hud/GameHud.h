@@ -1,6 +1,7 @@
 #pragma once
 
 #include <memory>
+#include <goldsrc/cvar.h>
 
 #include "HudAmmo.h"
 #include "HudHealth.h"
@@ -44,5 +45,5 @@ private:
     void FetchCvars();
 
 public:
-    cvar_t* cl_righthand;
+    goldsrc::cvar_t* cl_righthand;
 };

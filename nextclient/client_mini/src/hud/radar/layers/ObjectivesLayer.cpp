@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <goldsrc/client_api.h>
 
 #include "main.h"
 

@@ -1,8 +1,7 @@
 #pragma once
 
 #include <ncl_math/vec3.h>
-
-typedef struct model_s model_t;
+#include <goldsrc/fwd.h>
 
 struct BombSite
 {
@@ -45,12 +44,12 @@ private:
         bool has_origin;
     };
 
-    void Parse(model_t* world);
+    void Parse(goldsrc::model_t* world);
 
     // A truncated block still yields its partial keys, unvalidated.
     static char* ParseEntityKeys(char* data, EntityKeys& out);
 
-    static bool BombSiteCenter(model_t* world, const EntityKeys& keys, ncl_math::Vector2& out);
+    static bool BombSiteCenter(goldsrc::model_t* world, const EntityKeys& keys, ncl_math::Vector2& out);
 
     void AssignSiteLetters();
 };

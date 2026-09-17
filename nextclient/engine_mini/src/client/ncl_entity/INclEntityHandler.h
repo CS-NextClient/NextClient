@@ -4,9 +4,16 @@
 #include <vector>
 
 #include <tier0/basetypes.h>
-#include <const.h>
 
 #include <ankerl/unordered_dense.h>
+#include <goldsrc/fwd.h>
+
+// The vendored ncl_entity headers name edict_t unqualified; this resolves it on the client as type_resolver.h does on the server.
+namespace ncl_entity
+{
+    using edict_t = goldsrc::edict_t;
+}
+
 #include <nextclientapi_amxx/ncl_entity.h>
 
 struct ClientNclEntityFieldDescriptor

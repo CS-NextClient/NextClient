@@ -50,10 +50,9 @@ because a virtual list would bury the order that this file calls load-bearing.
   advances the throttled line-of-sight cadence before the per-function guard; hoisting the
   `hud_radar_objectives` check into `Draw` freezes that timestamp and fires a full edict rescan with
   a stale one when objectives come back on.
-- **Player and hostage tables are sized from `RadarLimits.h`.** `MAX_PLAYERS` and `MAX_HOSTAGES`
-  live in the client SDK, which the engine-free headers here cannot include, so the bounds are
-  restated once and tied back to the SDK by the static_asserts in `HudRadarAdvanced.cpp`. A local
-  copy of either number is how a table silently ends up one size and its writer another.
+- **Player and hostage tables are sized from `RadarLimits.h`.** The bounds are restated once there
+  and tied to `goldsrc::cstrike::MAX_PLAYERS` and `MAX_HOSTAGES` by the static_asserts beside them.
+  A local copy of either number is how a table silently ends up one size and its writer another.
 - **Entity sweeps are bounded by the engine, not by a constant.** Start at `GetMaxClients() + 1` and
   stop when `GetEntityByIndex` returns null. The live edict ceiling comes from `-num_edicts` and
   exceeds the SDK's `MAX_EDICTS`.

@@ -18,7 +18,9 @@
 #include <vgui/ISystem.h>
 #include <utils/TaskRun.h>
 #include <utils/TaskRunImpl.h>
+#include <Windows.h>
 #include <shellapi.h>
+#include <goldsrc/client_api.h>
 
 #include "vgui_controls/Controls.h"
 #include "vgui_controls/MessageBox.h"
@@ -75,7 +77,7 @@ static CGameUI g_GameUI;
 static HWND g_MainWindow = nullptr;
 static WNDPROC g_MainWindowProc = nullptr;
 
-cl_enginefunc_t* engine = nullptr;
+goldsrc::cl_enginefunc_t* engine = nullptr;
 
 CGameUI &GameUI() { return g_GameUI; }
 IBaseSystem* SystemWrapper() { return g_pBaseSystem; }
@@ -222,7 +224,7 @@ void CGameUI::Initialize(CreateInterfaceFn *factories, int count)
     vgui2::surface()->SetAllowHTMLJavaScript(true);
 }
 
-void CGameUI::Start(cl_enginefuncs_s *engineFuncs, int interfaceVersion, void *system)
+void CGameUI::Start(goldsrc::cl_enginefunc_t* engineFuncs, int interfaceVersion, void* system)
 {
     engine = engineFuncs;
     g_pBaseSystem = (IBaseSystem*)system;

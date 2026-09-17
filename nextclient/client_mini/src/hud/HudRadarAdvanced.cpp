@@ -7,12 +7,18 @@
 
 #include "main.h"
 
-#include <screenfade.h>
+#include <goldsrc/client_api.h>
+#include <goldsrc/cstrike/game.h>
+#include <goldsrc/cstrike/hud.h>
+#include <goldsrc/cstrike/hud_elements.h>
+#include <goldsrc/cvar.h>
+#include <goldsrc/engine/model.h>
+#include <goldsrc/entity.h>
+#include <goldsrc/pmove.h>
+#include <goldsrc/view.h>
 #include <ncl_math/vec3.h>
 #include <ncl_math/color.h>
 #include <next_client_mini/radar_cvars.h>
-#include <pm_defs.h>
-#include <pm_movevars.h>
 
 #include "radar/Overview.h"
 #include "radar/RadarConfig.h"
@@ -33,13 +39,10 @@ namespace
     constexpr RadarCvarDef kMapScaleCvar = RadarCvarDef_Get("hud_radar_map_scale");
     static_assert(kScaleCvar.name && kMapScaleCvar.name);
 
-    static_assert(static_cast<int>(RadarTeam::Unassigned) == TEAM_UNASSIGNED);
-    static_assert(static_cast<int>(RadarTeam::Terrorist) == TEAM_TERRORIST);
-    static_assert(static_cast<int>(RadarTeam::CounterTerrorist) == TEAM_CT);
-    static_assert(static_cast<int>(RadarTeam::Spectator) == TEAM_SPECTATOR);
-
-    static_assert(kRadarMaxPlayers == MAX_PLAYERS, "player table size mismatch");
-    static_assert(kRadarMaxHostages == MAX_HOSTAGES, "hostage table size mismatch");
+    static_assert(static_cast<int>(RadarTeam::Unassigned) == goldsrc::cstrike::TEAM_UNASSIGNED);
+    static_assert(static_cast<int>(RadarTeam::Terrorist) == goldsrc::cstrike::TEAM_TERRORIST);
+    static_assert(static_cast<int>(RadarTeam::CounterTerrorist) == goldsrc::cstrike::TEAM_CT);
+    static_assert(static_cast<int>(RadarTeam::Spectator) == goldsrc::cstrike::TEAM_SPECTATOR);
 
     constexpr float kRunSpeedFallback = 320.0f;
 
@@ -171,7 +174,7 @@ bool HudRadarAdvanced::ShouldDraw()
         return true;
     }
 
-    if (m_iHideHUDDisplay & HIDEHUD_HEALTH)
+    if (m_iHideHUDDisplay & goldsrc::cstrike::HIDEHUD_HEALTH)
     {
         return false;
     }
@@ -179,7 +182,7 @@ bool HudRadarAdvanced::ShouldDraw()
     // The suit bit is set on every spawn, mid-round CSDM respawns included. Not m_fPlayerDead:
     // the stock client freezes it while observing in first person and clears it only on the
     // next CurWeapon, so it can stay stale-dead after a respawn and wrongly hide the radar.
-    if (!(m_iWeaponBits & (1 << WEAPON_SUIT)))
+    if (!(m_iWeaponBits & (1 << goldsrc::cstrike::WEAPON_SUIT)))
     {
         return false;
     }
@@ -199,7 +202,7 @@ void HudRadarAdvanced::UpdateFrameContext(bool spectating, float flTime)
     ctx_ = FrameContext{};
     ctx_.spectating = spectating;
 
-    if (cl_entity_t* local = cl_enginefunc()->GetLocalPlayer())
+    if (goldsrc::cl_entity_t* local = cl_enginefunc()->GetLocalPlayer())
     {
         ctx_.local = local;
         ctx_.self_idx = local->index;
@@ -268,7 +271,7 @@ void HudRadarAdvanced::UpdatePolicy(float flTime)
     }
 
     int message_num = ctx_.local->curstate.messagenum;
-    int max_clients = std::min<int>(MAX_PLAYERS, cl_enginefunc()->GetMaxClients());
+    int max_clients = std::min<int>(goldsrc::cstrike::MAX_PLAYERS, cl_enginefunc()->GetMaxClients());
 
     for (int i = 1; i <= max_clients; i++)
     {
@@ -277,14 +280,14 @@ void HudRadarAdvanced::UpdatePolicy(float flTime)
             continue;
         }
 
-        extra_player_info_t& ext = cl()->g_PlayerExtraInfo[i];
+        goldsrc::cstrike::extra_player_info_t& ext = cl()->g_PlayerExtraInfo[i];
 
         if (ext.dead || RadarTeam_From(ext.teamnumber) != ctx_.local_team)
         {
             continue;
         }
 
-        cl_entity_t* ent = cl_enginefunc()->GetEntityByIndex(i);
+        goldsrc::cl_entity_t* ent = cl_enginefunc()->GetEntityByIndex(i);
         bool live = ent && ent->player && ent->curstate.messagenum == message_num;
         ncl_math::Vector2 live_pos = live ? ncl_math::Vector2{ent->origin[0], ent->origin[1]} : ncl_math::Vector2{};
 
@@ -374,7 +377,7 @@ int HudRadarAdvanced::ComputeFlashAlpha(ncl_math::Color& color)
 {
     // The engine blends the screen fade onto the 3D scene before the HUD is drawn, so a
     // flashbang leaves the radar fully readable unless it is washed here too.
-    screenfade_t fade;
+    goldsrc::screenfade_t fade;
     std::memset(&fade, 0, sizeof(fade));
     cl_enginefunc()->pfnGetScreenFade(&fade);
 

@@ -1,5 +1,7 @@
 #include "sys_dll.h"
 
+#include <goldsrc/client_api.h>
+
 double Sys_FloatTime()
 {
     return eng()->Sys_FloatTime.InvokeChained();

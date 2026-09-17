@@ -3,59 +3,63 @@
 #include "../../utils.h"
 #include "hud_sprite_store.h"
 #include "hud_sprite_parser.h"
-#include "parsemsg.h"
+#include <data_types/MessageReader.h>
+#include <goldsrc/entity.h>
+
+static void HudSprite_ParseParams(MessageReader& reader);
 
 int HudSprite_Parser(const char* name, int size, void* buffer)
 {
-    BEGIN_READ(buffer, size);
-    HudSprite_ParseParams();
+    MessageReader reader(buffer, size);
+    HudSprite_ParseParams(reader);
     return 1;
 }
 
-void HudSprite_ParseParams()
+static void HudSprite_ParseParams(MessageReader& reader)
 {
-    int channel = std::clamp(READ_BYTE(), 0, HudSpriteStore::MAX_HUD_SPRITES - 1);
-    const char* spritePath = READ_STRING();
-    if (spritePath == nullptr || !spritePath[0] || !IsSafeSpriteFilePath(spritePath)) {
+    int channel = std::clamp(reader.ReadByte(), 0, HudSpriteStore::MAX_HUD_SPRITES - 1);
+    std::string spritePath = reader.ReadString();
+    if (spritePath.empty() || !IsSafeSpriteFilePath(spritePath))
+    {
         Con_DPrintf("HudSprite_ParseParams: invalid spritePath\n");
         g_GameHud->get_sprite_store()->ClearSprite(channel);
         return;
     }
-    const bool isFullScreen = std::clamp(READ_BYTE(), 0, 1);
-    const auto red = READ_BYTE();
-    const auto green = READ_BYTE();
-    const auto blue = READ_BYTE();
-    const auto alpha = READ_BYTE();
-    const auto frame = READ_SHORT();
-    const auto frameRate = READ_FLOAT();
-    const auto inTime = READ_FLOAT();
-    const auto holdTime = READ_FLOAT();
-    const auto outTime = READ_FLOAT();
+    const bool isFullScreen = std::clamp(reader.ReadByte(), 0, 1);
+    const auto red = reader.ReadByte();
+    const auto green = reader.ReadByte();
+    const auto blue = reader.ReadByte();
+    const auto alpha = reader.ReadByte();
+    const auto frame = reader.ReadShort();
+    const auto frameRate = reader.ReadFloat();
+    const auto inTime = reader.ReadFloat();
+    const auto holdTime = reader.ReadFloat();
+    const auto outTime = reader.ReadFloat();
     auto hudSprite = (new HudSprite())
-        ->setSpritePath(spritePath)
-        ->setFullScreen(isFullScreen)
-        ->setSpriteColor(red, green, blue)
-        ->setAlpha(alpha)
-        ->setFrame(static_cast<float>(frame == -1 ? 0 : frame))
-        ->setFrameRate(frameRate)
-        ->setTimings(inTime, holdTime, outTime)
-        ->setLooping(frame == -1);
+                         ->setSpritePath(spritePath.c_str())
+                         ->setFullScreen(isFullScreen)
+                         ->setSpriteColor(red, green, blue)
+                         ->setAlpha(alpha)
+                         ->setFrame(static_cast<float>(frame == -1 ? 0 : frame))
+                         ->setFrameRate(frameRate)
+                         ->setTimings(inTime, holdTime, outTime)
+                         ->setLooping(frame == -1);
     if (!isFullScreen) {
-        const auto x = READ_FLOAT();
-        const auto y = READ_FLOAT();
-        const auto left = READ_SHORT();
-        const auto top = READ_SHORT();
-        const auto right = READ_SHORT();
-        const auto bottom = READ_SHORT();
-        const auto scaleX = READ_FLOAT();
-        const auto scaleY = READ_FLOAT();
+        const auto x = reader.ReadFloat();
+        const auto y = reader.ReadFloat();
+        const auto left = reader.ReadShort();
+        const auto top = reader.ReadShort();
+        const auto right = reader.ReadShort();
+        const auto bottom = reader.ReadShort();
+        const auto scaleX = reader.ReadFloat();
+        const auto scaleY = reader.ReadFloat();
         hudSprite
             ->setPosition(x, y)
             ->setSpriteRect(left, top, right, bottom)
             ->setScale(scaleX, scaleY);
     }
 
-    const auto renderMode = std::clamp(READ_BYTE(), (int)kRenderNormal, (int)kRenderTransAdd);
+    const auto renderMode = std::clamp(reader.ReadByte(), (int)goldsrc::kRenderNormal, (int)goldsrc::kRenderTransAdd);
 
     hudSprite->setRenderMode(renderMode);
 

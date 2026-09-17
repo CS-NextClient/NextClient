@@ -35,6 +35,7 @@
 #endif
 
 #include <Windows.h>
+#include <goldsrc/types.h>
 #include "hlsdk.h"
 
 struct glwstate_t
@@ -48,9 +49,9 @@ struct glwstate_t
 
     HINSTANCE hinstOpenGL; // HINSTANCE for the OpenGL library
 
-    qboolean minidriver;
-    qboolean allowdisplaydepthchange;
-    qboolean mcd_accelerated;
+    goldsrc::qboolean minidriver;
+    goldsrc::qboolean allowdisplaydepthchange;
+    goldsrc::qboolean mcd_accelerated;
 
     FILE *log_fp;
 };

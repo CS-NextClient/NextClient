@@ -6,6 +6,9 @@
 #include "main.h"
 
 #include <ncl_math/scalar.h>
+#include <goldsrc/client_api.h>
+#include <goldsrc/cvar.h>
+#include <goldsrc/entity.h>
 
 #include "hud/radar/RadarBroadcast.h"
 #include "hud/radar/RadarDraw.h"
@@ -25,7 +28,7 @@ namespace
     constexpr float kEaseRate = 16.0f; // 1/s
     constexpr float kSnapDist = 200.0f; // world units
 
-    constexpr int kHistoryMask = HISTORY_MAX - 1;
+    constexpr int kHistoryMask = goldsrc::HISTORY_MAX - 1;
 
     // Snaps instead of easing past kSnapDist, so a re-purposed message does not sweep across the map.
     ncl_math::Vector2 EaseMarker(ncl_math::Vector2 pos, ncl_math::Vector2 target, float dt)
@@ -41,7 +44,7 @@ namespace
     }
 
     // Mirrors the engine's CL_InterpolateModel; ent->origin alone steps at the server update rate.
-    bool InterpEntityXY(cl_entity_t* ent, float target, ncl_math::Vector2& out)
+    bool InterpEntityXY(goldsrc::cl_entity_t* ent, float target, ncl_math::Vector2& out)
     {
         int cur = ent->current_position;
         int idx0 = cur & kHistoryMask;
@@ -67,8 +70,8 @@ namespace
             }
         }
 
-        const position_history_t& ph0 = ent->ph[idx0];
-        const position_history_t& ph1 = ent->ph[idx1];
+        const goldsrc::position_history_t& ph0 = ent->ph[idx0];
+        const goldsrc::position_history_t& ph1 = ent->ph[idx1];
 
         if (ph1.animtime == 0.0f || ph0.animtime <= ph1.animtime)
         {

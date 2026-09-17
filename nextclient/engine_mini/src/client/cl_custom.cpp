@@ -1,5 +1,7 @@
 #include "../engine.h"
 #include <nitro_utils/string_utils.h>
+#include <goldsrc/engine/client_state.h>
+#include <goldsrc/engine/resource.h>
 #include "../console/console.h"
 #include "../common/sys_dll.h"
 
@@ -52,7 +54,7 @@ bool IsSafeFileToDownload(const std::string &filename)
     return false;
 }
 
-void CL_AddToResourceList(resource_t *pResource, resource_t *pList)
+void CL_AddToResourceList(goldsrc::resource_t* pResource, goldsrc::resource_t* pList)
 {
     if (pResource->pPrev != nullptr || pResource->pNext != nullptr)
     {
@@ -69,7 +71,7 @@ void CL_AddToResourceList(resource_t *pResource, resource_t *pList)
     pList->pPrev = pResource;
 }
 
-void CL_RemoveFromResourceList(resource_t *pResource)
+void CL_RemoveFromResourceList(goldsrc::resource_t* pResource)
 {
     if (pResource->pPrev == nullptr || pResource->pNext == nullptr)
         Sys_Error("mislinked resource in CL_RemoveFromResourceList\n");
@@ -83,7 +85,7 @@ void CL_RemoveFromResourceList(resource_t *pResource)
     pResource->pNext = nullptr;
 }
 
-void CL_MoveToOnHandList(resource_t *pResource)
+void CL_MoveToOnHandList(goldsrc::resource_t* pResource)
 {
     if (!pResource)
     {

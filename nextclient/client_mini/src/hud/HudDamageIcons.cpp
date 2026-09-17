@@ -1,6 +1,10 @@
 #include "HudDamageIcons.h"
 #include "DrawUtils.h"
 #include <ncl_math/color.h>
+#include <goldsrc/client_api.h>
+#include <goldsrc/cstrike/game.h>
+#include <goldsrc/cstrike/hud.h>
+#include <goldsrc/cstrike/hud_elements.h>
 
 HudDamageIcons::HudDamageIcons(nitroapi::NitroApiInterface* nitro_api)
 	: HudBaseHelper(nitro_api)
@@ -17,7 +21,7 @@ void HudDamageIcons::VidInit() {
 }
 
 void HudDamageIcons::Draw(float flTime) {
-	if (m_iHideHUDDisplay & HIDEHUD_HEALTH || cl_enginefunc()->IsSpectateOnly())
+	if (m_iHideHUDDisplay & goldsrc::cstrike::HIDEHUD_HEALTH || cl_enginefunc()->IsSpectateOnly())
 		return;
 		
 	if (!m_bitsDamage)
@@ -26,15 +30,16 @@ void HudDamageIcons::Draw(float flTime) {
 	size_t i;
 	int a;
 
-	ncl_math::Color color = DrawUtils::UnpackRGB(RGB_YELLOWISH);
+	ncl_math::Color color = DrawUtils::UnpackRGB(goldsrc::cstrike::RGB_YELLOWISH);
 
 	a = (int)(fabs(sin(flTime * 2)) * 256.0);
 	color = DrawUtils::ScaleColors(color, a);
 
 	// Draw all the items
-	for (i = 0; i < NUM_DMG_TYPES; i++) {
+	for (i = 0; i < goldsrc::cstrike::NUM_DMG_TYPES; i++)
+	{
 		if (m_bitsDamage & damage_flags_[i]) {
-			DAMAGE_IMAGE* pdmg = &m_dmg[i];
+			goldsrc::cstrike::DAMAGE_IMAGE* pdmg = &m_dmg[i];
 
 			SPR_Set(gHUD()->GetSprite(gHUD()->m_Health->m_HUD_dmg_bio + i), color.r, color.g, color.b);
 			SPR_DrawAdditive(0, pdmg->x, pdmg->y,
@@ -43,11 +48,12 @@ void HudDamageIcons::Draw(float flTime) {
 	}
 
 	// check for bits that should be expired
-	for (i = 0; i < NUM_DMG_TYPES; i++) {
-		DAMAGE_IMAGE* pdmg = &m_dmg[i];
+	for (i = 0; i < goldsrc::cstrike::NUM_DMG_TYPES; i++)
+	{
+		goldsrc::cstrike::DAMAGE_IMAGE* pdmg = &m_dmg[i];
 
 		if (m_bitsDamage & damage_flags_[i]) {
-			pdmg->fExpire = std::min(flTime + DMG_IMAGE_LIFE, pdmg->fExpire);
+			pdmg->fExpire = std::min(flTime + goldsrc::cstrike::DMG_IMAGE_LIFE, pdmg->fExpire);
 
 			if (pdmg->fExpire <= flTime // when the time has expired
 				&& a < 40) // and the flash is at the low point of the cycle
@@ -58,7 +64,8 @@ void HudDamageIcons::Draw(float flTime) {
 				pdmg->x = pdmg->y = 0;
 
 				// move everyone above down
-				for (size_t j = 0; j < NUM_DMG_TYPES; j++) {
+				for (size_t j = 0; j < goldsrc::cstrike::NUM_DMG_TYPES; j++)
+				{
 					pdmg = &gHUD()->m_Health->m_dmg[j];
 					if ((pdmg->y) && (pdmg->y < y))
 						pdmg->y += sprite_height_;

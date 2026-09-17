@@ -3,13 +3,13 @@
 #include <array>
 
 #include <ncl_math/vec3.h>
+#include <goldsrc/fwd.h>
 
 #include "RadarLimits.h"
 #include "RadarTeam.h"
 
 class RadarPolicy;
 class SmokeRegistry;
-struct extra_player_info_t;
 
 // Only enemies already in the local player's PVS can be spotted: an enemy that only a
 // remote teammate can see has no position on the client.
@@ -89,7 +89,7 @@ private:
         RadarTeam my_team;
         int max_clients; // GetMaxClients(), never the array size
         int msgnum; // the local player's snapshot number: an entity from an older one is stale
-        extra_player_info_t* extra;
+        goldsrc::cstrike::extra_player_info_t* extra;
     };
 
     void AddLocalViewer();

@@ -2,9 +2,6 @@
 
 #include "tier1/interface.h"
 #include "steam/steam_api.h"
-#include "vmodes.h"
-#include "quakedef.h"
-#include "APIProxy.h"
 #include "IGameUI.h"
 
 enum class GuiConnectionSource

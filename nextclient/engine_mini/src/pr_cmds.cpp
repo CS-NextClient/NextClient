@@ -1,7 +1,10 @@
+#include <goldsrc/server_api.h>
+#include <goldsrc/types.h>
+
 #include "engine.h"
 #include "common/filesystem.h"
 
-qboolean PF_IsMapValid_I(const char *mapname)
+goldsrc::qboolean PF_IsMapValid_I(const char* mapname)
 {
     char cBuf[42];
 	if (!mapname || mapname[0] == '\0')
@@ -11,7 +14,7 @@ qboolean PF_IsMapValid_I(const char *mapname)
     return FS_FileExists(cBuf);
 }
 
-qboolean PF_IsDedicatedServer()
+goldsrc::qboolean PF_IsDedicatedServer()
 {
     return g_engfuncs.pfnIsDedicatedServer();
 }

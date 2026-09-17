@@ -7,6 +7,8 @@
 #include "main.h"
 
 #include <strtools.h>
+#include <goldsrc/client_api.h>
+#include <goldsrc/engine/model.h>
 
 #include "RadarLimits.h"
 #include "RadarUtil.h"
@@ -81,7 +83,7 @@ void RadarOverview::EnsureLoaded(RadarMapMode mode)
     // The world model exists before its surfaces are parsed on the first frames after a
     // level change; leave the map uncommitted and retry each frame until it is ready, so
     // the radar fills in by itself instead of needing a mode toggle.
-    model_t* world = gEngfuncs.hudGetModelByIndex(1);
+    goldsrc::model_t* world = gEngfuncs.hudGetModelByIndex(1);
 
     if (!world || world->numsurfaces <= 0 || !world->surfaces)
     {

@@ -9,6 +9,8 @@
 
 #include <ncl_math/vec3.h>
 #include <ncl_math/color.h>
+#include <goldsrc/client_api.h>
+#include <goldsrc/cvar.h>
 
 #include "RadarDraw.h"
 #include "RadarView.h"
@@ -39,7 +41,7 @@ namespace
     constexpr ncl_math::Color kTextColor{255, 235, 120};
     constexpr ncl_math::Color kBatchColor{130, 190, 255};
 
-    cvar_t* g_Enabled;
+    goldsrc::cvar_t* g_Enabled;
 
     float g_Total[kHistory];
     float g_Blur[kHistory];

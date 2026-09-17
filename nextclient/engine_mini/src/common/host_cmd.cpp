@@ -1,3 +1,9 @@
+#include <goldsrc/engine/client_state.h>
+#include <goldsrc/engine/cmd.h>
+#include <goldsrc/engine/server_state.h>
+#include <goldsrc/server_api.h>
+#include <goldsrc/types.h>
+
 #include "../engine.h"
 #include "sys_dll.h"
 #include "cvar.h"
@@ -7,13 +13,14 @@
 #include "../vgui_int.h"
 #include "../server/sv_remoteaccess.h"
 #include "../client/cl_scrn.h"
+#include "client/cl_main.h"
 
 void Host_InitializeGameDLL()
 {
     eng()->Host_InitializeGameDLL();
 }
 
-void Host_Map(qboolean bIsDemo, const char* mapstring, const char* mapName, qboolean loadGame)
+void Host_Map(goldsrc::qboolean bIsDemo, const char* mapstring, const char* mapName, goldsrc::qboolean loadGame)
 {
     eng()->Host_Map(bIsDemo, mapstring, mapName, loadGame);
 }
@@ -22,31 +29,31 @@ void Host_Map_f()
 {
     char mapstring[64];
     char name[64];
-    CareerStateType careerState = *p_g_careerState;
+    goldsrc::CareerStateType careerState = *p_g_careerState;
 
-    if (*cmd_source != src_command)
+    if (*cmd_source != goldsrc::src_command)
     {
-        *p_g_careerState = CAREER_NONE;
+        *p_g_careerState = goldsrc::CAREER_NONE;
         return;
     }
 
     if (g_engfuncs.pfnCmd_Argc() > 1 && Q_strlen(g_engfuncs.pfnCmd_Args()) > 54)
     {
-        *p_g_careerState = CAREER_NONE;
+        *p_g_careerState = goldsrc::CAREER_NONE;
         Con_Printf("map change failed: command string is too long.\n");
         return;
     }
 
     if (g_engfuncs.pfnCmd_Argc() < 2)
     {
-        *p_g_careerState = CAREER_NONE;
+        *p_g_careerState = goldsrc::CAREER_NONE;
         Con_Printf("map <levelname> : changes server to specified map\n");
         return;
     }
 
     CL_Disconnect();
-    if (careerState == CAREER_LOADING)
-        *p_g_careerState = CAREER_LOADING;
+    if (careerState == goldsrc::CAREER_LOADING)
+        *p_g_careerState = goldsrc::CAREER_LOADING;
 
     if (COM_CheckParm("-steam") && PF_IsDedicatedServer())
         *g_bMajorMapChange = TRUE;
@@ -101,9 +108,9 @@ void Host_Map_f()
     ContinueLoadingProgressBar("Server", 11, 0.0);
     NotifyDedicatedServerUI("UpdateMap");
 
-    if (*p_g_careerState == CAREER_LOADING)
+    if (*p_g_careerState == goldsrc::CAREER_LOADING)
     {
-        *p_g_careerState = CAREER_PLAYING;
+        *p_g_careerState = goldsrc::CAREER_PLAYING;
         SetCareerAudioState(1);
     }
     else

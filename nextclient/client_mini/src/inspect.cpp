@@ -1,9 +1,13 @@
 #include "hlsdk.h"
-#include <event_api.h>
-#include <studio.h>
-#include <weapontype.h>
-#include <cbase.h>
-#include <weapons.h>
+#include <cstdint>
+
+#include <goldsrc/client_api.h>
+#include <goldsrc/cstrike/weapons.h>
+#include <goldsrc/engine/model.h>
+#include <goldsrc/entity.h>
+#include <goldsrc/event_api.h>
+#include <goldsrc/format/studio.h>
+#include <goldsrc/types.h>
 #include "main.h"
 #include "utils.h"
 
@@ -13,13 +17,13 @@ static float oldViewAnimTime;
 static int oldViewSequence;
 static int g_LastSetInspectAnimation;
 
-static void SetInspectTime(studiohdr_t *hdr, int seq)
+static void SetInspectTime(goldsrc::studiohdr_t* hdr, int seq)
 {
     float duration;
     float inspectStartTime;
-    mstudioseqdesc_t *desc;
+    goldsrc::mstudioseqdesc_t* desc;
 
-    desc = (mstudioseqdesc_t *)((byte *)hdr + hdr->seqindex) + seq;
+    desc = (goldsrc::mstudioseqdesc_t*)((uint8_t*)hdr + hdr->seqindex) + seq;
 
     duration = (float)desc->numframes / desc->fps;
 
@@ -75,14 +79,14 @@ static int LookupInspect(int curSequence, int weaponID)
     if (weaponID >= sizeof(inspectAnims) / sizeof(int))
         return inspectAnims[0];
 
-    if (weaponID == WEAPON_USP)
+    if (weaponID == goldsrc::cstrike::WEAPON_USP)
     {
-        if ((curSequence >= USP_UNSIL_IDLE) &&
+        if ((curSequence >= goldsrc::cstrike::USP_UNSIL_IDLE) &&
             (curSequence != inspectAnims[weaponID]))
             return inspectAnims[weaponID] + 1;
     }
-    else if (weaponID == WEAPON_M4A1)
-        if ((curSequence >= M4A1_UNSIL_IDLE) &&
+    else if (weaponID == goldsrc::cstrike::WEAPON_M4A1)
+        if ((curSequence >= goldsrc::cstrike::M4A1_UNSIL_IDLE) &&
             (curSequence != inspectAnims[weaponID]))
             return inspectAnims[weaponID] + 1;
 
@@ -91,11 +95,11 @@ static int LookupInspect(int curSequence, int weaponID)
 
 static void Inspect_f()
 {
-    cl_entity_t *vm;
-    studiohdr_t *studiohdr;
+    goldsrc::cl_entity_t* vm;
+    goldsrc::studiohdr_t* studiohdr;
     int sequence;
 
-    weapon_data_t* weapondata = &g_LastPlayerState.weapondata[g_LastPlayerState.client.m_iId];
+    goldsrc::weapon_data_t* weapondata = &g_LastPlayerState.weapondata[g_LastPlayerState.client.m_iId];
     vm = gEngfuncs.GetViewModel();
 
     if (!vm || !vm->model || !IsDefaultModelPath(vm->model->name))
@@ -119,39 +123,39 @@ static void Inspect_f()
     switch (g_CurrentWeaponId)
     {
         /* these weapons have no inspect anims */
-        case WEAPON_NONE:
-        case WEAPON_HEGRENADE:
-        case WEAPON_C4:
-        case WEAPON_SMOKEGRENADE:
-        case WEAPON_FLASHBANG:
-        case WEAPON_SHIELDGUN:
+        case goldsrc::cstrike::WEAPON_NONE:
+        case goldsrc::cstrike::WEAPON_HEGRENADE:
+        case goldsrc::cstrike::WEAPON_C4:
+        case goldsrc::cstrike::WEAPON_SMOKEGRENADE:
+        case goldsrc::cstrike::WEAPON_FLASHBANG:
+        case goldsrc::cstrike::WEAPON_SHIELDGUN:
             return;
 
             /* don't inspect if doing silencer stuff on usp/m4a1 */
-        case WEAPON_USP:
+        case goldsrc::cstrike::WEAPON_USP:
 
             switch (vm->curstate.sequence)
             {
-                case USP_ATTACH_SILENCER:
-                case USP_DETACH_SILENCER:
+                case goldsrc::cstrike::USP_ATTACH_SILENCER:
+                case goldsrc::cstrike::USP_DETACH_SILENCER:
                     return;
             }
 
             break;
 
-        case WEAPON_M4A1:
+        case goldsrc::cstrike::WEAPON_M4A1:
 
             switch (vm->curstate.sequence)
             {
-                case M4A1_ATTACH_SILENCER:
-                case M4A1_DETACH_SILENCER:
+                case goldsrc::cstrike::M4A1_ATTACH_SILENCER:
+                case goldsrc::cstrike::M4A1_DETACH_SILENCER:
                     return;
             }
 
             break;
     }
 
-    studiohdr = (studiohdr_t *)vm->model->cache.data;
+    studiohdr = (goldsrc::studiohdr_t*)vm->model->cache.data;
     if (!studiohdr)
         return;
 
@@ -176,14 +180,14 @@ static bool IsIdleSequence(int seq)
     /* handle idle animations that aren't 0 */
     switch (g_CurrentWeaponId)
     {
-        case WEAPON_ELITE:
-            return seq == ELITE_IDLE_LEFTEMPTY;
-        case WEAPON_USP:
-            return seq == USP_UNSIL_IDLE;
-        case WEAPON_GLOCK18:
-            return seq == GLOCK18_IDLE2 || seq == GLOCK18_IDLE3;
-        case WEAPON_M4A1:
-            return seq == M4A1_UNSIL_IDLE;
+        case goldsrc::cstrike::WEAPON_ELITE:
+            return seq == goldsrc::cstrike::ELITE_IDLE_LEFTEMPTY;
+        case goldsrc::cstrike::WEAPON_USP:
+            return seq == goldsrc::cstrike::USP_UNSIL_IDLE;
+        case goldsrc::cstrike::WEAPON_GLOCK18:
+            return seq == goldsrc::cstrike::GLOCK18_IDLE2 || seq == goldsrc::cstrike::GLOCK18_IDLE3;
+        case goldsrc::cstrike::WEAPON_M4A1:
+            return seq == goldsrc::cstrike::M4A1_UNSIL_IDLE;
     }
 
     return false;
@@ -193,7 +197,7 @@ void InspectThink()
 {
     if (inspectEndTime > gEngfuncs.GetClientTime())
     {
-        cl_entity_t *vm = gEngfuncs.GetViewModel();
+        goldsrc::cl_entity_t* vm = gEngfuncs.GetViewModel();
 
         if (vm && vm->curstate.animtime != oldViewAnimTime && IsIdleSequence(vm->curstate.sequence))
         {

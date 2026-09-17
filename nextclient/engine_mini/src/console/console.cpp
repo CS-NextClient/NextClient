@@ -1,7 +1,8 @@
 #include "console.h"
 
 #include <fstream>
-#include <common.h>
+#include <goldsrc/cvar.h>
+#include <goldsrc/engine/client_state.h>
 
 #include "../common/filesystem.h"
 #include "../common/sys_dll.h"
@@ -35,7 +36,7 @@ void Con_Init()
 void Con_DPrintf(ConLogType type, const char* format, ...)
 {
     if (developer->value == 0.0 ||
-        *p_scr_con_current != 0.0 && cls->state == ca_active)
+        *p_scr_con_current != 0.0 && cls->state == goldsrc::ca_active)
         return;
 
     char text[4096];

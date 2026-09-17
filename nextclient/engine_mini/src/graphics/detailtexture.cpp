@@ -5,6 +5,8 @@
 #include <SDL_opengl.h>
 #include <optick.h>
 #include <ankerl/unordered_dense.h>
+#include <goldsrc/cvar.h>
+#include <goldsrc/types.h>
 
 #include "common/cvar.h"
 #include "common/filesystem.h"
@@ -35,8 +37,8 @@ struct DetailMap
     unsigned int _oglDetailId = 0;
 };
 
-static cvar_t r_detailtextures{"r_detailtextures", const_cast<char*>("1"), FCVAR_ARCHIVE};
-static cvar_t r_detailtexturessupported{"r_detailtexturessupported", const_cast<char*>("1"), FCVAR_SPONLY};
+static goldsrc::cvar_t r_detailtextures{"r_detailtextures", const_cast<char*>("1"), goldsrc::FCVAR_ARCHIVE};
+static goldsrc::cvar_t r_detailtexturessupported{"r_detailtexturessupported", const_cast<char*>("1"), goldsrc::FCVAR_SPONLY};
 
 static bool detTexSupported;
 static bool g_detTexLoaded;
@@ -105,7 +107,7 @@ void DT_LoadDetailTexture(const char* diffuseName, int diffuseId)
     }
 }
 
-qboolean DT_SetRenderState(int diffuseId)
+goldsrc::qboolean DT_SetRenderState(int diffuseId)
 {
     if (!detTexSupported || r_detailtextures.value == 0.0f)
     {

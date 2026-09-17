@@ -1,8 +1,10 @@
 #include "GameHud.h"
+#include <goldsrc/client_api.h>
+
 #include "radar/RadarConfig.h"
 #include "radar/RadarDebug.h"
 
-extern cl_enginefunc_t gEngfuncs;
+extern goldsrc::cl_enginefunc_t gEngfuncs;
 
 GameHud::GameHud(nitroapi::NitroApiInterface* nitro_api)
 {

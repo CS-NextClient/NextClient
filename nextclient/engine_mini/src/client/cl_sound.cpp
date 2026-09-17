@@ -9,12 +9,16 @@
 
 #include <format>
 #include <iterator>
+#include <goldsrc/engine/client_state.h>
+#include <goldsrc/engine/sound.h>
+#include <goldsrc/limits.h>
+#include <goldsrc/types.h>
 
 namespace
 {
-    sfx_t* GetReplacementSfx(int entnum, int entchannel, sfx_t* sfx)
+    goldsrc::sfx_t* GetReplacementSfx(int entnum, int entchannel, goldsrc::sfx_t* sfx)
     {
-        if (entchannel != CHAN_WEAPON && entchannel != CHAN_ITEM)
+        if (entchannel != goldsrc::CHAN_WEAPON && entchannel != goldsrc::CHAN_ITEM)
         {
             return nullptr;
         }
@@ -30,12 +34,12 @@ namespace
             return nullptr;
         }
 
-        if (cls == nullptr || cl == nullptr || cls->state != ca_active)
+        if (cls == nullptr || cl == nullptr || cls->state != goldsrc::ca_active)
         {
             return nullptr;
         }
 
-        if (entnum < 1 || entnum > MAX_CLIENTS)
+        if (entnum < 1 || entnum > goldsrc::MAX_CLIENTS)
         {
             return nullptr;
         }
@@ -58,7 +62,7 @@ namespace
     }
 } // namespace
 
-sfx_t* S_PrecacheSound(char* sample)
+goldsrc::sfx_t* S_PrecacheSound(char* sample)
 {
     OPTICK_EVENT();
 
@@ -68,8 +72,8 @@ sfx_t* S_PrecacheSound(char* sample)
 void S_StartDynamicSoundHook(
     int entnum,
     int entchannel,
-    sfx_t* sfx,
-    vec_t* origin,
+    goldsrc::sfx_t* sfx,
+    goldsrc::vec_t* origin,
     float fvol,
     float attenuation,
     int flags,
@@ -79,7 +83,7 @@ void S_StartDynamicSoundHook(
 {
     OPTICK_EVENT();
 
-    sfx_t* replacement_sfx = GetReplacementSfx(entnum, entchannel, sfx);
+    goldsrc::sfx_t* replacement_sfx = GetReplacementSfx(entnum, entchannel, sfx);
     if (replacement_sfx)
     {
         next->Invoke(entnum, entchannel, replacement_sfx, origin, fvol, attenuation, flags, pitch);
@@ -89,7 +93,7 @@ void S_StartDynamicSoundHook(
     next->Invoke(entnum, entchannel, sfx, origin, fvol, attenuation, flags, pitch);
 }
 
-void S_StopAllSounds(qboolean clear)
+void S_StopAllSounds(goldsrc::qboolean clear)
 {
     OPTICK_EVENT();
 
@@ -100,14 +104,14 @@ void S_UnloadSounds(const std::unordered_set<std::string>& names)
 {
     OPTICK_EVENT();
 
-    sfx_t* known_sfx = *p_known_sfx;
+    goldsrc::sfx_t* known_sfx = *p_known_sfx;
     int num_sfx = *p_num_sfx;
 
     std::string buf;
 
     for (int i = 0; i < num_sfx; i++)
     {
-        sfx_t* sfx = &known_sfx[i];
+        goldsrc::sfx_t* sfx = &known_sfx[i];
 
         buf.clear();
         std::format_to(std::back_inserter(buf), "{}{}", DEFAULT_SOUNDPATH, sfx->name);

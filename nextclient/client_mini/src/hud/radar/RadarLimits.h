@@ -1,11 +1,15 @@
 #pragma once
 
-// Engine bounds this directory has to mirror.
+#include <goldsrc/cstrike/hud.h>
 
-// From the client SDK's hud.h, which the engine-free half of this directory (and the unit
-// tests that compile it) cannot include; HudRadarAdvanced static_asserts both against the SDK.
+// Engine bounds this directory has to mirror. Literals rather than aliases of the goldsrc
+// constants: a change on the engine side has to stop the build, not silently resize the tables.
+
 inline constexpr int kRadarMaxPlayers = 64;
 inline constexpr int kRadarMaxHostages = 24;
+
+static_assert(kRadarMaxPlayers == goldsrc::cstrike::MAX_PLAYERS, "player table size mismatch");
+static_assert(kRadarMaxHostages == goldsrc::cstrike::MAX_HOSTAGES, "hostage table size mismatch");
 
 // The largest set any feature feeds through MarkerFeed, which is the player one.
 inline constexpr int kRadarMaxMarkers = kRadarMaxPlayers;

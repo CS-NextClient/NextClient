@@ -4,6 +4,7 @@
 #include <vector>
 
 #include <ankerl/unordered_dense.h>
+#include <goldsrc/engine/sound.h>
 
 #include "INclEntityHandler.h"
 
@@ -12,7 +13,7 @@ class WeaponSyncSystem : public INclEntityHandler
     struct WeaponData
     {
         uint32_t weapon_id;
-        ankerl::unordered_dense::map<sfx_t*, sfx_t*> sound_overrides;
+        ankerl::unordered_dense::map<goldsrc::sfx_t*, goldsrc::sfx_t*> sound_overrides;
     };
 
     ankerl::unordered_dense::map<uint16_t, WeaponData> entity_to_weapon_;
@@ -26,8 +27,9 @@ public:
     void OnClear() override;
     void CollectDebugInfo(std::vector<std::string>& out_lines) override;
 
-    const ankerl::unordered_dense::map<sfx_t*, sfx_t*>& GetOverrides(uint32_t weapon_id) const;
+    const ankerl::unordered_dense::map<goldsrc::sfx_t*, goldsrc::sfx_t*>& GetOverrides(uint32_t weapon_id) const;
 
 private:
-    void ApplyDelta(const ncl_entity::ArrayStringIdPairsDelta& delta, ankerl::unordered_dense::map<sfx_t*, sfx_t*>& overrides);
+    void ApplyDelta(const ncl_entity::ArrayStringIdPairsDelta& delta,
+                    ankerl::unordered_dense::map<goldsrc::sfx_t*, goldsrc::sfx_t*>& overrides);
 };

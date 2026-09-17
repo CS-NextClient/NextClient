@@ -11,8 +11,11 @@
 #include <strtools.h>
 #include <ncl_math/vec3.h>
 #include <next_client_mini/radar_cvars.h>
-#include <pm_defs.h>
-#include <pm_movevars.h>
+#include <goldsrc/client_api.h>
+#include <goldsrc/cstrike/hud.h>
+#include <goldsrc/cvar.h>
+#include <goldsrc/entity.h>
+#include <goldsrc/pmove.h>
 
 #include "hud/radar/RadarConfig.h"
 #include "hud/radar/RadarDraw.h"
@@ -247,10 +250,10 @@ float PlayersLayer::ComputeHighlightConeSpread(const RadarFrame& frame)
     return std::clamp(fov, 10.0f, 130.0f) * 0.5f * ncl_math::kDeg2Rad;
 }
 
-bool PlayersLayer::ResolvePlayerSpot(const RadarFrame& frame, int i, bool is_self, cl_entity_t* ent, PlayerSpot& out)
+bool PlayersLayer::ResolvePlayerSpot(const RadarFrame& frame, int i, bool is_self, goldsrc::cl_entity_t* ent, PlayerSpot& out)
 {
-    cl_entity_t* local = frame.ctx.local;
-    extra_player_info_t& ext = client()->g_PlayerExtraInfo[i];
+    goldsrc::cl_entity_t* local = frame.ctx.local;
+    goldsrc::cstrike::extra_player_info_t& ext = client()->g_PlayerExtraInfo[i];
     RadarTeam team = RadarTeam_From(ext.teamnumber);
     bool live = ent && ent->player && ent->curstate.messagenum == local->curstate.messagenum;
     bool is_ally = is_self || (team == frame.ctx.highlight_team && frame.ctx.highlight_team != RadarTeam::Unassigned);
@@ -338,7 +341,9 @@ bool PlayersLayer::IsTeleported(int player, ncl_math::Vector2 pos, float run_spe
     return (pos - prev_pos_[player]).LengthSqr() > frame_move * frame_move;
 }
 
-void PlayersLayer::UpdatePlayerTrail(const RadarFrame& frame, int player, const cl_entity_t* ent,
+void PlayersLayer::UpdatePlayerTrail(const RadarFrame& frame,
+                                     int player,
+                                     const goldsrc::cl_entity_t* ent,
     ncl_math::Vector2 world, ncl_math::Color color, bool offscreen, bool teleported)
 {
     // An offscreen player's samples would all clamp onto the rim as a squiggle under the
@@ -354,7 +359,7 @@ void PlayersLayer::UpdatePlayerTrail(const RadarFrame& frame, int player, const 
         return;
     }
 
-    if (teleported || (ent && (ent->curstate.effects & EF_NOINTERP)))
+    if (teleported || (ent && (ent->curstate.effects & goldsrc::EF_NOINTERP)))
     {
         tracks_.Clear(player);
     }
@@ -374,7 +379,7 @@ void PlayersLayer::FillPlayerJob(
     bool is_self,
     RadarTeam team,
     const PlayerSpot& spot,
-    const extra_player_info_t& ext,
+    const goldsrc::cstrike::extra_player_info_t& ext,
     int dot,
     PlayerJob& job
 ) const
@@ -431,7 +436,7 @@ std::span<const PlayersLayer::PlayerJob> PlayersLayer::CollectPlayerJobs(const R
 
     for (int i = 1; i <= max_clients; i++)
     {
-        extra_player_info_t& ext = client()->g_PlayerExtraInfo[i];
+        goldsrc::cstrike::extra_player_info_t& ext = client()->g_PlayerExtraInfo[i];
 
         if (ext.dead)
         {
@@ -448,7 +453,7 @@ std::span<const PlayersLayer::PlayerJob> PlayersLayer::CollectPlayerJobs(const R
             continue;
         }
 
-        cl_entity_t* ent = gEngfuncs.GetEntityByIndex(i);
+        goldsrc::cl_entity_t* ent = gEngfuncs.GetEntityByIndex(i);
         PlayerSpot spot;
 
         if (!ResolvePlayerSpot(frame, i, is_self, ent, spot))
@@ -576,7 +581,7 @@ void PlayersLayer::DrawNames(const RadarFrame& frame, std::span<const PlayerJob>
             continue;
         }
         
-        hud_player_info_t info;
+        goldsrc::hud_player_info_t info;
         std::memset(&info, 0, sizeof(info));
         gEngfuncs.pfnGetPlayerInfo(job.index, &info);
 

@@ -4,8 +4,11 @@
 #include <array>
 #include <unordered_map>
 
-#include <parsemsg.h>
+#include <data_types/MessageReader.h>
 #include <nitro_utils/string_utils.h>
+#include <goldsrc/client_api.h>
+#include <goldsrc/cvar.h>
+#include <goldsrc/engine/client_state.h>
 
 #include "client.h"
 #include "../console/console.h"
@@ -115,7 +118,7 @@ namespace
             if (it == kAllowedCvars.cend())
                 continue;
 
-            cvar_t* cvar = gEngfuncs.pfnGetCvarPointer(kv->GetName());
+            goldsrc::cvar_t* cvar = gEngfuncs.pfnGetCvarPointer(kv->GetName());
             if (cvar == nullptr)
                 continue;
 
@@ -133,7 +136,7 @@ namespace
 
         for (auto& cvar_name : kAllowedCvars)
         {
-            cvar_t* cvar = gEngfuncs.pfnGetCvarPointer(cvar_name.c_str());
+            goldsrc::cvar_t* cvar = gEngfuncs.pfnGetCvarPointer(cvar_name.c_str());
             if (cvar == nullptr)
                 continue;
 
@@ -162,7 +165,7 @@ namespace
 
     void CvarSet_Hook(const char* name, const char* value, nitroapi::NextHandlerInterface<void, const char*, const char*>* next)
     {
-        if (!g_CvarsSandboxAvailable || cls->state != ca_active || !g_SandboxedCvars.contains(name))
+        if (!g_CvarsSandboxAvailable || cls->state != goldsrc::ca_active || !g_SandboxedCvars.contains(name))
         {
             next->Invoke(name, value);
             return;
@@ -200,16 +203,18 @@ namespace
         if (!g_CvarsSandboxAvailable)
             return 1;
 
-        BEGIN_READ(pbuf, iSize);
+        MessageReader reader(pbuf, iSize);
 
-        int cvars_count = READ_BYTE();
+        int cvars_count = reader.ReadByte();
         for (int i = 0; i < cvars_count; i++)
         {
-            int msg_cvar_index = READ_BYTE();
-            std::string msg_cvar_value = READ_STRING();
+            int msg_cvar_index = reader.ReadByte();
+            std::string msg_cvar_value = reader.ReadString();
 
-            if (!READ_OK())
+            if (reader.is_overflowed())
+            {
                 break;
+            }
 
             if (msg_cvar_index < 0 || msg_cvar_index >= kAllowedCvars.size())
                 continue;
@@ -220,7 +225,7 @@ namespace
             if (has_illegal_symbols)
                 continue;
 
-            cvar_t* cvar = gEngfuncs.pfnGetCvarPointer(kAllowedCvars[msg_cvar_index].c_str());
+            goldsrc::cvar_t* cvar = gEngfuncs.pfnGetCvarPointer(kAllowedCvars[msg_cvar_index].c_str());
             if (cvar == nullptr)
                 continue;
 

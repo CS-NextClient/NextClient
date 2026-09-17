@@ -10,6 +10,7 @@
 #include <vgui_controls/QueryBox.h>
 #include <KeyValues.h>
 #include <next_client_mini/radar_cvars.h>
+#include <goldsrc/client_api.h>
 
 #include "GameUi/GameUi.h"
 

@@ -1,4 +1,8 @@
 #include "HudRadar.h"
+#include <goldsrc/client_api.h>
+#include <goldsrc/cstrike/game.h>
+#include <goldsrc/cstrike/hud_elements.h>
+
 #include "HudRadarAdvanced.h"
 #include "radar/RadarConfig.h"
 
@@ -14,7 +18,7 @@ void HudRadar::Draw(float flTime) {
 		return;
 	}
 
-	if (m_iHideHUDDisplay & HIDEHUD_HEALTH || cl_enginefunc()->IsSpectateOnly())
+	if (m_iHideHUDDisplay & goldsrc::cstrike::HIDEHUD_HEALTH || cl_enginefunc()->IsSpectateOnly())
 		return;
 
     GetAllPlayersInfo();

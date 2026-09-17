@@ -4,6 +4,7 @@
 
 #include <vgui/VGUI2.h>
 #include <IGameUI.h>
+#include <goldsrc/client_api.h>
 #include <GameUINext.h>
 #include <ISystemModule.h>
 #include <vgui_controls/Panel.h>
@@ -28,7 +29,7 @@ public:
 
 public:
     virtual void Initialize(CreateInterfaceFn *factories, int count);
-    virtual void Start(cl_enginefuncs_s *engineFuncs, int interfaceVersion, void *system);
+    virtual void Start(goldsrc::cl_enginefunc_t* engineFuncs, int interfaceVersion, void* system);
     virtual void Shutdown();
     virtual int ActivateGameUI();
     virtual int ActivateDemoUI();
@@ -105,7 +106,7 @@ private:
 extern CGameUI& GameUI();
 extern vgui2::Panel* StaticPanel();
 extern IBaseSystem* SystemWrapper();
-extern cl_enginefunc_t* engine;
+extern goldsrc::cl_enginefunc_t* engine;
 extern vgui2::DHANDLE<CLoadingDialog> g_hLoadingDialog;
 extern IGameClientExports* GameClientExports();
 extern EngineMiniInterface* EngineMini();

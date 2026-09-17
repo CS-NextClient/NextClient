@@ -1,5 +1,12 @@
 #pragma once
 
+#include <cstdint>
+
+#include <goldsrc/client_api.h>
+#include <goldsrc/cstrike/game.h>
+#include <goldsrc/cstrike/hud.h>
+#include <strtools.h>
+
 #include "nitroapi/NitroApiHelper.h"
 #include "nitroapi/NitroApiInterface.h"
 
@@ -16,14 +23,14 @@ protected:
 	int& m_iWeaponBits;
 	int& m_iFontHeight;
 
-	pfnEngSrc_pfnSPR_Set_t SPR_Set;
-	pfnEngSrc_pfnSPR_Draw_t SPR_Draw;
-	pfnEngSrc_pfnSPR_DrawAdditive_t SPR_DrawAdditive;
-	pfnEngSrc_pfnSPR_DrawHoles_t SPR_DrawHoles;
-	pfnEngSrc_pfnSPR_Height_t SPR_Height;
-	pfnEngSrc_pfnSPR_Width_t SPR_Width;
-	pfnEngSrc_pfnFillRGBA_t FillRGBA;
-	pfnEngSrc_pfnFillRGBABlend_t FillRGBABlend;
+	goldsrc::pfnEngSrc_pfnSPR_Set_t SPR_Set;
+	goldsrc::pfnEngSrc_pfnSPR_Draw_t SPR_Draw;
+	goldsrc::pfnEngSrc_pfnSPR_DrawAdditive_t SPR_DrawAdditive;
+	goldsrc::pfnEngSrc_pfnSPR_DrawHoles_t SPR_DrawHoles;
+	goldsrc::pfnEngSrc_pfnSPR_Height_t SPR_Height;
+	goldsrc::pfnEngSrc_pfnSPR_Width_t SPR_Width;
+	goldsrc::pfnEngSrc_pfnFillRGBA_t FillRGBA;
+	goldsrc::pfnEngSrc_pfnFillRGBABlend_t FillRGBABlend;
 
 public:
 	HudBaseHelper(nitroapi::NitroApiInterface* nitro_api)
@@ -44,15 +51,16 @@ public:
 		FillRGBABlend = cl_enginefunc()->pfnFillRGBABlend;
 	}
 
-	inline HSPRITE_t LoadSprite(const char* pszName) {
+	inline goldsrc::HSPRITE_t LoadSprite(const char* pszName)
+	{
 		char sz[256];
 		Q_snprintf(sz, sizeof(sz), pszName, 640);
 		return cl_enginefunc()->pfnSPR_Load(sz);
 	}
 
 	inline void GetScreenResolution(int& w, int& h) {
-		SCREENINFO screen;
-		screen.iSize = sizeof(SCREENINFO);
+		goldsrc::SCREENINFO screen;
+		screen.iSize = sizeof(goldsrc::SCREENINFO);
 		cl_enginefunc()->pfnGetScreenInfo(&screen);
 		w = screen.iWidth;
 		h = screen.iHeight;
@@ -63,14 +71,14 @@ public:
 	}
 
 	inline bool IsValidClientIndex(int clientIndex) {
-		return clientIndex > 0 && clientIndex <= MAX_PLAYERS;
+		return clientIndex > 0 && clientIndex <= goldsrc::cstrike::MAX_PLAYERS;
 	}
 
 	float* GetClientColor(int clientIndex) {
 		switch (cl()->g_PlayerExtraInfo[clientIndex].teamnumber) {
-		case TEAM_TERRORIST:
+		case goldsrc::cstrike::TEAM_TERRORIST:
 			return g_ColorRed;
-		case TEAM_CT:
+		case goldsrc::cstrike::TEAM_CT:
 			return g_ColorBlue;
 		default:
 			return g_ColorGrey;
@@ -98,14 +106,21 @@ public:
 	}
 
 	inline void DrawRect(int x1, int y1, int x2, int y2,
-		byte r, byte g, byte b, byte a
+		uint8_t r, uint8_t g, uint8_t b, uint8_t a
 	) {
 		FillRGBABlend(x1, y1, (x2 - x1), (y2 - y1), r, g, b, a);
 	}
 
 	void DrawOutlinedRect(int x1, int y1, int x2, int y2, 
-		byte r, byte g, byte b, byte a, int outline_width, 
-		byte outline_r, byte outline_g, byte outline_b, byte outline_a
+		uint8_t r,
+		uint8_t g,
+		uint8_t b,
+		uint8_t a,
+		int outline_width,
+		uint8_t outline_r,
+		uint8_t outline_g,
+		uint8_t outline_b,
+		uint8_t outline_a
 	) {
 		DrawRect(x1, y1, x2, y2, r, g, b, a);
 

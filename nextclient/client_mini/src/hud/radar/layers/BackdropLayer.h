@@ -1,6 +1,7 @@
 #pragma once
 
 #include <ncl_math/vec3.h>
+#include <goldsrc/engine/model.h>
 
 #include "hud/radar/Overview.h"
 #include "hud/radar/RadarFrame.h"
@@ -25,7 +26,7 @@ class BackdropLayer
 
     // Wrap state persists per texture object, so edge clamp is set once per loaded sprite,
     // not per tile.
-    model_t* clamped_sprite_{};
+    goldsrc::model_t* clamped_sprite_{};
 
 public:
     explicit BackdropLayer(SmokeRegistry& smoke);
@@ -44,7 +45,7 @@ private:
     void DrawBackground(const RadarFrame& frame);
     void DrawRuntimeMap(const RadarFrame& frame);
     void DrawOverviewTiles(const RadarFrame& frame);
-    void EnsureSpriteClamped(model_t* map, int total_frames);
+    void EnsureSpriteClamped(goldsrc::model_t* map, int total_frames);
     void DrawOverviewTile(const RadarBox& box, const TileCorners& corners, bool masked);
     void DrawSmoke(const RadarFrame& frame);
     void DrawBorder(const RadarFrame& frame);

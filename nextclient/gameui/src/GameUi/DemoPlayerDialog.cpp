@@ -30,14 +30,7 @@
 #include "DemoEventsDialog.h"
 
 #include <basetypes.h>
-#include <common.h>
-#include <cvardef.h>
-#include <pm_defs.h>
-#include <kbutton.h>
-#include <r_efx.h>
-#include <r_studioint.h>
 
-#include <custom.h>
 #include <IWorld.h>
 #include <IEngineWrapper.h>
 #include <IDirector.h>

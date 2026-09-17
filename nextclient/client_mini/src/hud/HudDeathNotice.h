@@ -7,6 +7,8 @@
 #include <utility>
 #include <vector>
 #include <memory>
+#include <goldsrc/client_api.h>
+#include <goldsrc/cvar.h>
 
 enum DeathMessageFlags {
 	// float[3]
@@ -37,9 +39,9 @@ enum KillRarity {
 };
 
 class HudDeathNotice : public HudBase, public HudBaseHelper {
-	cvar_t* cvar_deathnotice_time_;
-	cvar_t* cvar_deathnotice_max_;
-	cvar_t* cvar_deathnotice_old_;
+	goldsrc::cvar_t* cvar_deathnotice_time_;
+	goldsrc::cvar_t* cvar_deathnotice_max_;
+	goldsrc::cvar_t* cvar_deathnotice_old_;
 
 	enum RarityFrame {
 		HEADSHOT,
@@ -55,7 +57,7 @@ class HudDeathNotice : public HudBase, public HudBaseHelper {
 
 public:	
 	struct wpn_icon_override_t {
-		HSPRITE_t sprite;
+		goldsrc::HSPRITE_t sprite;
 		int frame;
 		int rendermode;
 		vec3_t color;
@@ -87,7 +89,7 @@ private:
 	std::vector<notice_row_t> notice_rows_;
 	wpn_icon_override_t next_custom_weapon_sprite_{};
 	
-	HSPRITE_t kill_rarity_sprite_ {};
+	goldsrc::HSPRITE_t kill_rarity_sprite_{};
 	float kill_rarity_sprite_scale_;
 	float kill_rarity_sprite_alpha_;
 	int kill_rarity_sprite_rendermode_;
@@ -107,7 +109,7 @@ private:
 	int notice_boxes_gap_;
 
 	int DrawScaledSprite(
-		HSPRITE_t* sprite, int frame,
+		goldsrc::HSPRITE_t* sprite, int frame,
 		int x, int y, float scale,
 		int rendermode, vec3_t color, float alpha);
 	int DrawKillRaritySprite(RarityFrame type, int x, int y);

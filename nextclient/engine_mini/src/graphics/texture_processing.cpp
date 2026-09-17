@@ -5,6 +5,7 @@
 
 #include <magic_enum/magic_enum.hpp>
 #include <optick.h>
+#include <goldsrc/cvar.h>
 
 #include "console/console.h"
 #include "graphics/gl_local.h"

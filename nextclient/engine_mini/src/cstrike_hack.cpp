@@ -1,4 +1,7 @@
 #include "cstrike_hack.h"
+#include <goldsrc/limits.h>
+#include <goldsrc/server_api.h>
+
 #include "engine.h"
 
 bool g_bCS_CZ_Flags_Initialized;
@@ -11,7 +14,7 @@ bool g_bIsHL1;
 
 void SetCStrikeFlags()
 {
-    char gamedir[MAX_OSPATH];
+    char gamedir[goldsrc::MAX_OSPATH];
     g_engfuncs.pfnGetGameDir(gamedir);
 
     if (g_bCS_CZ_Flags_Initialized)

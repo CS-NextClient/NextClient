@@ -24,7 +24,8 @@
 #include <vgui_controls/RichText.h>
 
 #include "IGameUIFuncs.h"
-#include "keydefs.h"
+#include <goldsrc/client_api.h>
+#include <goldsrc/cvar.h>
 #include "FileSystem.h"
 #include "LoadingDialog.h"
 #include <Windows.h>
@@ -375,7 +376,7 @@ void CGameConsoleDialog::RebuildCompletionList(const char *text)
     }
 
     // walk the cvarlist looking for all the matches
-    cvar_t *cvar = engine->GetFirstCvarPtr();
+    goldsrc::cvar_t* cvar = engine->GetFirstCvarPtr();
     while (cvar)
     {
         if (V_stristr(cvar->name, text) != 0)

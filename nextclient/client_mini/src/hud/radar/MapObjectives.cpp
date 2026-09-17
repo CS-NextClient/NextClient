@@ -8,6 +8,9 @@
 #include "main.h"
 
 #include <strtools.h>
+#include <goldsrc/client_api.h>
+#include <goldsrc/engine/model.h>
+#include <goldsrc/format/bsp.h>
 
 #include "RadarLimits.h"
 #include "RadarUtil.h"
@@ -56,7 +59,7 @@ namespace
 
 void RadarMapObjectives::EnsureLoaded()
 {
-    model_t* world = gEngfuncs.hudGetModelByIndex(1);
+    goldsrc::model_t* world = gEngfuncs.hudGetModelByIndex(1);
 
     if (!world || !world->entities || !world->submodels)
     {
@@ -130,7 +133,7 @@ char* RadarMapObjectives::ParseEntityKeys(char* data, EntityKeys& out)
     }
 }
 
-bool RadarMapObjectives::BombSiteCenter(model_t* world, const EntityKeys& keys, ncl_math::Vector2& out)
+bool RadarMapObjectives::BombSiteCenter(goldsrc::model_t* world, const EntityKeys& keys, ncl_math::Vector2& out)
 {
     if (keys.model[0] == '*')
     {
@@ -141,7 +144,7 @@ bool RadarMapObjectives::BombSiteCenter(model_t* world, const EntityKeys& keys, 
             return false;
         }
 
-        dmodel_t& sm = world->submodels[n];
+        goldsrc::dmodel_t& sm = world->submodels[n];
         out = {(sm.mins[0] + sm.maxs[0]) * 0.5f, (sm.mins[1] + sm.maxs[1]) * 0.5f};
         return true;
     }
@@ -191,7 +194,7 @@ void RadarMapObjectives::AssignSiteLetters()
     }
 }
 
-void RadarMapObjectives::Parse(model_t* world)
+void RadarMapObjectives::Parse(goldsrc::model_t* world)
 {
     char* data = world->entities;
     char token[kComParseTokenSize];

@@ -4,6 +4,8 @@
 #include "GameUi.h"
 #include <vgui_controls/Label.h>
 #include "FileSystem.h"
+#include <cstdint>
+#include <goldsrc/client_api.h>
 // memdbgon must be the last include file in a .cpp file!!!
 #include <tier0/memdbgon.h>
 
@@ -846,7 +848,7 @@ bool CDescription::InitFromFile(const char *pszFileName)
 
     int len = g_pFullFileSystem->Size(file);
 
-    byte *buffer = new unsigned char[len];
+    uint8_t* buffer = new uint8_t[len];
     Assert(buffer);
     g_pFullFileSystem->Read(buffer, len, file);
     g_pFullFileSystem->Close(file);

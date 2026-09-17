@@ -1,8 +1,7 @@
 #pragma once
 
 #include <ncl_math/aabb.h>
-
-typedef struct model_s model_t;
+#include <goldsrc/fwd.h>
 
 struct RuntimeMap
 {
@@ -11,5 +10,5 @@ struct RuntimeMap
     bool valid;
 };
 
-RuntimeMap MapRender_Generate(model_t* world, bool textured, bool slice);
+RuntimeMap MapRender_Generate(goldsrc::model_t* world, bool textured, bool slice);
 void MapRender_Free(RuntimeMap& map);

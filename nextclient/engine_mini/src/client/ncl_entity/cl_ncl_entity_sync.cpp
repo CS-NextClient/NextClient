@@ -5,8 +5,8 @@
 #include <string>
 
 #include <tier0/basetypes.h>
-#include <const.h>
-#include <parsemsg.h>
+#include <goldsrc/client_api.h>
+#include <data_types/MessageReader.h>
 
 #include "console/console.h"
 
@@ -18,34 +18,34 @@ namespace
 
     std::array<std::unique_ptr<INclEntityHandler>, 8> g_Handlers;
 
-    ncl_entity::FieldValue ReadFieldValue(ncl_entity::FieldType type, bool is_delta)
+    ncl_entity::FieldValue ReadFieldValue(MessageReader& reader, ncl_entity::FieldType type, bool is_delta)
     {
         switch (type)
         {
             case ncl_entity::FieldType::BYTE:
-                return ncl_entity::FieldValue{static_cast<uint8_t>(READ_BYTE())};
+                return ncl_entity::FieldValue{static_cast<uint8_t>(reader.ReadByte())};
 
             case ncl_entity::FieldType::USHORT:
             case ncl_entity::FieldType::STRING_ID:
-                return ncl_entity::FieldValue{static_cast<uint16_t>(READ_SHORT())};
+                return ncl_entity::FieldValue{static_cast<uint16_t>(reader.ReadShort())};
 
             case ncl_entity::FieldType::UINT:
                 {
-                    int val = READ_LONG();
+                    int val = reader.ReadLong();
                     return ncl_entity::FieldValue{*reinterpret_cast<uint32_t*>(&val)};
                 }
 
             case ncl_entity::FieldType::FLOAT:
-                return ncl_entity::FieldValue{READ_FLOAT()};
+                return ncl_entity::FieldValue{reader.ReadFloat()};
 
             case ncl_entity::FieldType::COORD:
-                return ncl_entity::FieldValue{(READ_COORD())};
+                return ncl_entity::FieldValue{(reader.ReadCoord())};
 
             case ncl_entity::FieldType::ARRAY_STRING_ID_PAIRS:
             case ncl_entity::FieldType::ARRAY_STRING_ID_PAIRS_DELTA:
                 {
-                    uint8_t added_count = READ_BYTE();
-                    if (!READ_OK())
+                    uint8_t added_count = reader.ReadByte();
+                    if (reader.is_overflowed())
                     {
                         return ncl_entity::FieldValue{ncl_entity::ArrayStringIdPairsDelta{}};
                     }
@@ -59,13 +59,13 @@ namespace
                     delta.added.reserve(added_count);
                     for (uint8_t i = 0; i < added_count; ++i)
                     {
-                        uint16_t orig = static_cast<uint16_t>(READ_SHORT());
-                        uint16_t repl = static_cast<uint16_t>(READ_SHORT());
+                        uint16_t orig = static_cast<uint16_t>(reader.ReadShort());
+                        uint16_t repl = static_cast<uint16_t>(reader.ReadShort());
                         delta.added.emplace_back(orig, repl);
                     }
 
-                    uint8_t removed_count = READ_BYTE();
-                    if (!READ_OK())
+                    uint8_t removed_count = reader.ReadByte();
+                    if (reader.is_overflowed())
                     {
                         return ncl_entity::FieldValue{std::move(delta)};
                     }
@@ -73,8 +73,8 @@ namespace
                     delta.removed.reserve(removed_count);
                     for (uint8_t i = 0; i < removed_count; ++i)
                     {
-                        uint16_t orig = static_cast<uint16_t>(READ_SHORT());
-                        uint16_t repl = static_cast<uint16_t>(READ_SHORT());
+                        uint16_t orig = static_cast<uint16_t>(reader.ReadShort());
+                        uint16_t repl = static_cast<uint16_t>(reader.ReadShort());
                         delta.removed.emplace_back(orig, repl);
                     }
 
@@ -92,16 +92,16 @@ namespace
 
     int MsgFunc_EntitySyncCreate(const char* msg_name, int size, void* buf)
     {
-        BEGIN_READ(buf, size);
+        MessageReader reader(buf, size);
 
-        uint8_t type_id = READ_BYTE();
-        if (!READ_OK())
+        uint8_t type_id = reader.ReadByte();
+        if (reader.is_overflowed())
         {
             return 1;
         }
 
-        uint16_t entity_id = static_cast<uint16_t>(READ_SHORT());
-        if (!READ_OK())
+        uint16_t entity_id = static_cast<uint16_t>(reader.ReadShort());
+        if (reader.is_overflowed())
         {
             return 1;
         }
@@ -115,10 +115,10 @@ namespace
         fields.reserve(g_Handlers[type_id]->Fields().size());
         for (const ClientNclEntityFieldDescriptor& field : g_Handlers[type_id]->Fields())
         {
-            fields[field.field_bit] = ReadFieldValue(field.type, false);
+            fields[field.field_bit] = ReadFieldValue(reader, field.type, false);
         }
 
-        if (!READ_OK())
+        if (reader.is_overflowed())
         {
             return 1;
         }
@@ -130,22 +130,22 @@ namespace
 
     int MsgFunc_EntitySyncUpdate(const char* msg_name, int size, void* buf)
     {
-        BEGIN_READ(buf, size);
+        MessageReader reader(buf, size);
 
-        uint8_t type_id = READ_BYTE();
-        if (!READ_OK())
+        uint8_t type_id = reader.ReadByte();
+        if (reader.is_overflowed())
         {
             return 1;
         }
 
-        uint16_t entity_id = static_cast<uint16_t>(READ_SHORT());
-        if (!READ_OK())
+        uint16_t entity_id = static_cast<uint16_t>(reader.ReadShort());
+        if (reader.is_overflowed())
         {
             return 1;
         }
 
-        uint16_t field_mask = static_cast<uint16_t>(READ_SHORT());
-        if (!READ_OK())
+        uint16_t field_mask = static_cast<uint16_t>(reader.ReadShort());
+        if (reader.is_overflowed())
         {
             return 1;
         }
@@ -161,11 +161,11 @@ namespace
         {
             if (field_mask & field.field_bit)
             {
-                fields[field.field_bit] = ReadFieldValue(field.type, true);
+                fields[field.field_bit] = ReadFieldValue(reader, field.type, true);
             }
         }
 
-        if (!READ_OK())
+        if (reader.is_overflowed())
         {
             return 1;
         }
@@ -177,16 +177,16 @@ namespace
 
     int MsgFunc_EntitySyncDestroy(const char* msg_name, int size, void* buf)
     {
-        BEGIN_READ(buf, size);
+        MessageReader reader(buf, size);
 
-        uint8_t type_id = READ_BYTE();
-        if (!READ_OK())
+        uint8_t type_id = reader.ReadByte();
+        if (reader.is_overflowed())
         {
             return 1;
         }
 
-        uint16_t entity_id = static_cast<uint16_t>(READ_SHORT());
-        if (!READ_OK())
+        uint16_t entity_id = static_cast<uint16_t>(reader.ReadShort());
+        if (reader.is_overflowed())
         {
             return 1;
         }

@@ -2,13 +2,18 @@
 #include "fov.h"
 #include "inspect.h"
 
-#include <studio.h>
+#include <cstdint>
+
+#include <goldsrc/engine/model.h>
+#include <goldsrc/entity.h>
+#include <goldsrc/format/studio.h>
+#include <goldsrc/studio_api.h>
 
 namespace
 {
-    studiohdr_t* GetTextureHeader(model_t* model)
+    goldsrc::studiohdr_t* GetTextureHeader(goldsrc::model_t* model)
     {
-        studiohdr_t* studiohdr = static_cast<studiohdr_t*>(IEngineStudio.Mod_Extradata(model));
+        goldsrc::studiohdr_t* studiohdr = static_cast<goldsrc::studiohdr_t*>(IEngineStudio.Mod_Extradata(model));
         if (studiohdr == nullptr || studiohdr->textureindex != 0)
         {
             return studiohdr;
@@ -25,40 +30,40 @@ namespace
         strcpy(name, model->name);
         strcpy(name + len - 4, "T.mdl");
 
-        model_t* texture_model = IEngineStudio.Mod_ForName(name, false);
+        goldsrc::model_t* texture_model = IEngineStudio.Mod_ForName(name, false);
         if (texture_model == nullptr)
         {
             return nullptr;
         }
 
-        return static_cast<studiohdr_t*>(IEngineStudio.Mod_Extradata(texture_model));
+        return static_cast<goldsrc::studiohdr_t*>(IEngineStudio.Mod_Extradata(texture_model));
     }
 
     // R_GLStudioDrawPoints alpha-tests masked meshes against fixed 0.5 while their fragment alpha is modulated
     // by r_blend, so renderamt < 128 discards every fragment and the mesh disappears; for non-normal rendermodes
     // the mask is dropped for the draw and transparent texels are resolved by blending instead (texel alpha is 0)
-    bool ShouldUnmaskTextures(cl_entity_t* entity, int flags)
+    bool ShouldUnmaskTextures(goldsrc::cl_entity_t* entity, int flags)
     {
-        return (flags & STUDIO_RENDER) && entity->curstate.rendermode != kRenderNormal && entity->model != nullptr &&
-               entity->model->type == mod_studio;
+        return (flags & goldsrc::STUDIO_RENDER) && entity->curstate.rendermode != goldsrc::kRenderNormal && entity->model != nullptr &&
+               entity->model->type == goldsrc::mod_studio;
     }
 
-    int UnmaskTextures(model_t* model, mstudiotexture_t** unmasked)
+    int UnmaskTextures(goldsrc::model_t* model, goldsrc::mstudiotexture_t** unmasked)
     {
-        studiohdr_t* texturehdr = GetTextureHeader(model);
+        goldsrc::studiohdr_t* texturehdr = GetTextureHeader(model);
         if (texturehdr == nullptr)
         {
             return 0;
         }
 
-        mstudiotexture_t* textures = reinterpret_cast<mstudiotexture_t*>((byte*)texturehdr + texturehdr->textureindex);
+        goldsrc::mstudiotexture_t* textures = reinterpret_cast<goldsrc::mstudiotexture_t*>((uint8_t*)texturehdr + texturehdr->textureindex);
 
         int count = 0;
-        for (int i = 0; i < texturehdr->numtextures && count < MAXSTUDIOSKINS; i++)
+        for (int i = 0; i < texturehdr->numtextures && count < goldsrc::MAXSTUDIOSKINS; i++)
         {
-            if (textures[i].flags & STUDIO_NF_MASKED)
+            if (textures[i].flags & goldsrc::STUDIO_NF_MASKED)
             {
-                textures[i].flags &= ~STUDIO_NF_MASKED;
+                textures[i].flags &= ~goldsrc::STUDIO_NF_MASKED;
                 unmasked[count++] = &textures[i];
             }
         }
@@ -66,24 +71,24 @@ namespace
         return count;
     }
 
-    void RemaskTextures(mstudiotexture_t** unmasked, int count)
+    void RemaskTextures(goldsrc::mstudiotexture_t** unmasked, int count)
     {
         for (int i = 0; i < count; i++)
         {
-            unmasked[i]->flags |= STUDIO_NF_MASKED;
+            unmasked[i]->flags |= goldsrc::STUDIO_NF_MASKED;
         }
     }
 } // namespace
 
 int StudioDrawModel(int flags)
 {
-    cl_entity_t* entity = IEngineStudio.GetCurrentEntity();
+    goldsrc::cl_entity_t* entity = IEngineStudio.GetCurrentEntity();
 
     if (entity == IEngineStudio.GetViewEntity())
     {
         // StudioSetRenderamt recalculates r_blend via CL_FxBlend, which returns renderamt regardless of rendermode;
-        // calling it for kRenderNormal (renderamt 0) zeroes r_blend and alpha test discards masked meshes entirely
-        if (entity->curstate.rendermode != kRenderNormal)
+        // calling it for goldsrc::kRenderNormal (renderamt 0) zeroes r_blend and alpha test discards masked meshes entirely
+        if (entity->curstate.rendermode != goldsrc::kRenderNormal)
         {
             IEngineStudio.StudioSetRenderamt(entity->curstate.renderamt);
         }
@@ -93,7 +98,7 @@ int StudioDrawModel(int flags)
 
     if (ShouldUnmaskTextures(entity, flags))
     {
-        mstudiotexture_t* unmasked[MAXSTUDIOSKINS];
+        goldsrc::mstudiotexture_t* unmasked[goldsrc::MAXSTUDIOSKINS];
         int count = UnmaskTextures(entity->model, unmasked);
 
         int result = g_OriginalStudio.StudioDrawModel(flags);
@@ -105,13 +110,13 @@ int StudioDrawModel(int flags)
     return g_OriginalStudio.StudioDrawModel(flags);
 }
 
-int StudioDrawPlayer(int flags, entity_state_t* pplayer)
+int StudioDrawPlayer(int flags, goldsrc::entity_state_t* pplayer)
 {
-    cl_entity_t* entity = IEngineStudio.GetCurrentEntity();
+    goldsrc::cl_entity_t* entity = IEngineStudio.GetCurrentEntity();
 
     if (entity != nullptr && ShouldUnmaskTextures(entity, flags))
     {
-        mstudiotexture_t* unmasked[MAXSTUDIOSKINS];
+        goldsrc::mstudiotexture_t* unmasked[goldsrc::MAXSTUDIOSKINS];
         int count = UnmaskTextures(entity->model, unmasked);
 
         int result = g_OriginalStudio.StudioDrawPlayer(flags, pplayer);

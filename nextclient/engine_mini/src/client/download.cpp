@@ -1,3 +1,5 @@
+#include <goldsrc/engine/client_state.h>
+
 #include "../engine.h"
 #include "http_download/DownloadLoggerAggregator.h"
 
@@ -44,7 +46,7 @@ bool CL_RemoveDonwloadFileLogger(DownloadFileLoggerInterface* logger)
 
 void CL_HTTPSetDownloadUrl(const std::string& url)
 {
-    if (cls->state == cactive_t::ca_active)
+    if (cls->state == goldsrc::cactive_t::ca_active)
         return;
 
     g_HttpDownloadManager->SetUrl(url);

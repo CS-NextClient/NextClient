@@ -33,7 +33,7 @@
 #include "GameConsole.h"
 #include "PlayerListDialog.h"
 
-#include <keydefs.h>
+#include <goldsrc/client_api.h>
 
 #include <nitro_utils/string_utils.h>
 

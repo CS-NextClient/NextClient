@@ -15,6 +15,7 @@
 #include <KeyValues.h>
 #include <vgui/Cursor.h>
 #include <vgui_controls/Panel.h>
+#include <goldsrc/client_api.h>
 
 // memdbgon must be the last include file in a .cpp file!!!
 #include <tier0/memdbgon.h>

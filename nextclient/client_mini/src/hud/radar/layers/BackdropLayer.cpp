@@ -5,7 +5,11 @@
 
 #include "main.h"
 
-#include <triangleapi.h>
+#include <goldsrc/client_api.h>
+#include <goldsrc/cvar.h>
+#include <goldsrc/engine/model.h>
+#include <goldsrc/entity.h>
+#include <goldsrc/triangle_api.h>
 #include <ncl_math/aabb.h>
 #include <ncl_math/clip.h>
 #include <ncl_math/color.h>
@@ -132,7 +136,7 @@ void BackdropLayer::DrawRuntimeMap(const RadarFrame& frame)
     );
 }
 
-void BackdropLayer::EnsureSpriteClamped(model_t* map, int total_frames)
+void BackdropLayer::EnsureSpriteClamped(goldsrc::model_t* map, int total_frames)
 {
     if (map == clamped_sprite_)
     {
@@ -140,7 +144,7 @@ void BackdropLayer::EnsureSpriteClamped(model_t* map, int total_frames)
     }
 
     // GL_LINEAR samples past the tile edges and leaves transparent seams between tiles.
-    triangleapi_t* tri = gEngfuncs.pTriAPI;
+    goldsrc::triangleapi_t* tri = gEngfuncs.pTriAPI;
 
     for (int i = 0; i < total_frames; i++)
     {
@@ -153,12 +157,12 @@ void BackdropLayer::EnsureSpriteClamped(model_t* map, int total_frames)
 
 void BackdropLayer::DrawOverviewTile(const RadarBox& box, const TileCorners& corners, bool masked)
 {
-    triangleapi_t* tri = gEngfuncs.pTriAPI;
+    goldsrc::triangleapi_t* tri = gEngfuncs.pTriAPI;
 
     if (masked)
     {
         // The mask shader discards outside the box; clipping here would cut its feathered rim.
-        tri->Begin(TRI_QUADS);
+        tri->Begin(goldsrc::TRI_QUADS);
         tri->TexCoord2f(0, 0);
         tri->Vertex3f(corners.base.x, corners.base.y, 0.0f);
         tri->TexCoord2f(0, 1);
@@ -185,7 +189,7 @@ void BackdropLayer::DrawOverviewTile(const RadarBox& box, const TileCorners& cor
         return;
     }
 
-    tri->Begin(TRI_TRIANGLE_FAN);
+    tri->Begin(goldsrc::TRI_TRIANGLE_FAN);
 
     for (int i = 0; i < cn; i++)
     {
@@ -198,7 +202,7 @@ void BackdropLayer::DrawOverviewTile(const RadarBox& box, const TileCorners& cor
 
 void BackdropLayer::DrawOverviewTiles(const RadarFrame& frame)
 {
-    model_t* map = overview_.get_sprite();
+    goldsrc::model_t* map = overview_.get_sprite();
 
     if (!map)
     {
@@ -209,9 +213,9 @@ void BackdropLayer::DrawOverviewTiles(const RadarFrame& frame)
     const RadarTransform& transform = frame.t;
     float opacity = ComputeOpacityFraction();
 
-    triangleapi_t* tri = gEngfuncs.pTriAPI;
-    tri->RenderMode(kRenderTransAlpha);
-    tri->CullFace(TRI_NONE);
+    goldsrc::triangleapi_t* tri = gEngfuncs.pTriAPI;
+    tri->RenderMode(goldsrc::kRenderTransAlpha);
+    tri->CullFace(goldsrc::TRI_NONE);
     tri->Color4f(1.0f, 1.0f, 1.0f, opacity);
 
     EnsureSpriteClamped(map, transform.total_frames);
@@ -264,7 +268,7 @@ void BackdropLayer::DrawOverviewTiles(const RadarFrame& frame)
         RadarDraw_EndMask();
     }
 
-    tri->RenderMode(kRenderNormal);
+    tri->RenderMode(goldsrc::kRenderNormal);
 }
 
 void BackdropLayer::DrawSmoke(const RadarFrame& frame)

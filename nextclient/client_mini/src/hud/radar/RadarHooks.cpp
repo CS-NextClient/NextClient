@@ -9,7 +9,9 @@
 #include "main.h"
 
 #include <next_client_mini/client_mini.h>
-#include <parsemsg.h>
+#include <data_types/MessageReader.h>
+#include <goldsrc/client_api.h>
+#include <goldsrc/event_api.h>
 
 #include "RadarBroadcast.h"
 #include "HudTextZone.h"
@@ -17,14 +19,14 @@
 
 namespace
 {
-    pfnEngSrc_pfnDrawConsoleString_t g_OrigDrawConsoleString;
-    pfnEngSrc_pfnDrawConsoleStringLen_t g_OrigDrawConsoleStringLen;
-    pfnEngSrc_pfnDrawString_t g_OrigDrawString;
-    pfnEngSrc_pfnDrawCharacter_t g_OrigDrawCharacter;
-    pfnEngSrc_pfnVGUI2DrawCharacter_t g_OrigVGUI2DrawCharacter;
-    pfnEngSrc_pfnVGUI2DrawCharacterAdd_t g_OrigVGUI2DrawCharacterAdd;
-    pfnEngSrc_pfnDrawSetTextColor_t g_OrigDrawSetTextColor;
-    cl_enginefunc_t* g_PatchedEngTable;
+    goldsrc::pfnEngSrc_pfnDrawConsoleString_t g_OrigDrawConsoleString;
+    goldsrc::pfnEngSrc_pfnDrawConsoleStringLen_t g_OrigDrawConsoleStringLen;
+    goldsrc::pfnEngSrc_pfnDrawString_t g_OrigDrawString;
+    goldsrc::pfnEngSrc_pfnDrawCharacter_t g_OrigDrawCharacter;
+    goldsrc::pfnEngSrc_pfnVGUI2DrawCharacter_t g_OrigVGUI2DrawCharacter;
+    goldsrc::pfnEngSrc_pfnVGUI2DrawCharacterAdd_t g_OrigVGUI2DrawCharacterAdd;
+    goldsrc::pfnEngSrc_pfnDrawSetTextColor_t g_OrigDrawSetTextColor;
+    goldsrc::cl_enginefunc_t* g_PatchedEngTable;
 
     // VGUI2DrawCharacter takes no colour argument: it draws in the engine's ambient colour,
     // set by DrawSetTextColor. Track it so a buffered glyph replays in its own colour.
@@ -216,14 +218,14 @@ namespace
     }
 
     RadarSinks g_Sinks;
-    void (*g_OrigCreatesmoke)(event_args_t*);
+    void (*g_OrigCreatesmoke)(goldsrc::event_args_t*);
 
     bool IsNonZero(const ncl_math::Vector3& v)
     {
         return std::fabs(v.x) > 1.0f || std::fabs(v.y) > 1.0f || std::fabs(v.z) > 1.0f;
     }
 
-    void CreateSmoke_Hook(event_args_t* args)
+    void CreateSmoke_Hook(goldsrc::event_args_t* args)
     {
         // The exact centre rides in angles for the per-second puffs and in origin for the
         // detonation, which is the event with iparam2 == 1.
@@ -242,7 +244,7 @@ namespace
         }
     }
 
-    void CL_HookEventHandler(char* name, void (*cb)(event_args_t*), CL_HookEventNext next)
+    void CL_HookEventHandler(char* name, void (*cb)(goldsrc::event_args_t*), CL_HookEventNext next)
     {
         if (name && std::strstr(name, "createsmoke"))
         {
@@ -256,11 +258,11 @@ namespace
 
     int UserMsg_BombDropHandler(const char* name, int size, void* data, UserMsg_RadarMsgNext next)
     {
-        BEGIN_READ(data, size);
-        float x = READ_COORD();
-        float y = READ_COORD();
-        float z = READ_COORD();
-        int planted = READ_BYTE();
+        MessageReader reader(data, size);
+        float x = reader.ReadCoord();
+        float y = reader.ReadCoord();
+        float z = reader.ReadCoord();
+        int planted = reader.ReadByte();
 
         ncl_math::Vector3 pos{x, y, z};
         float time = gEngfuncs.GetClientTime();
@@ -292,12 +294,12 @@ namespace
 
     int UserMsg_HostagePosHandler(const char* name, int size, void* data, UserMsg_RadarMsgNext next)
     {
-        BEGIN_READ(data, size);
-        READ_BYTE(); // 1 on the batch a spawning player gets, 0 on the periodic updates
-        int index = READ_BYTE();
-        float x = READ_COORD();
-        float y = READ_COORD();
-        READ_COORD(); // z, unused on the 2D radar
+        MessageReader reader(data, size);
+        reader.ReadByte(); // 1 on the batch a spawning player gets, 0 on the periodic updates
+        int index = reader.ReadByte();
+        float x = reader.ReadCoord();
+        float y = reader.ReadCoord();
+        reader.ReadCoord(); // z, unused on the 2D radar
 
         if (g_Sinks.broadcast)
         {
@@ -309,8 +311,8 @@ namespace
 
     int UserMsg_HostageKHandler(const char* name, int size, void* data, UserMsg_RadarMsgNext next)
     {
-        BEGIN_READ(data, size);
-        int index = READ_BYTE();
+        MessageReader reader(data, size);
+        int index = reader.ReadByte();
 
         if (g_Sinks.broadcast)
         {
@@ -326,7 +328,7 @@ namespace
 // table would not reach it. NextClient's HUD text uses the engine table and stays unshifted.
 void RadarHooks_PatchHudText()
 {
-    cl_enginefunc_t* ef = g_NitroApi->GetClientData()->gEngfuncs;
+    goldsrc::cl_enginefunc_t* ef = g_NitroApi->GetClientData()->gEngfuncs;
 
     if (!ef || g_OrigDrawConsoleString)
     {

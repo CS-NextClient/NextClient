@@ -3,6 +3,8 @@
 #include "main.h"
 
 #include <next_client_mini/radar_cvars.h>
+#include <goldsrc/client_api.h>
+#include <goldsrc/cvar.h>
 
 #include "RadarDraw.h"
 
@@ -12,10 +14,10 @@ namespace
 {
     // A name missing from the shared table registers a null name and crashes loudly at
     // startup, instead of silently registering a wrong default.
-    cvar_t* RegisterCvar(const char* name)
+    goldsrc::cvar_t* RegisterCvar(const char* name)
     {
         RadarCvarDef def = RadarCvarDef_Get(name);
-        return gEngfuncs.pfnRegisterVariable(const_cast<char*>(def.name), const_cast<char*>(def.default_value), FCVAR_ARCHIVE);
+        return gEngfuncs.pfnRegisterVariable(const_cast<char*>(def.name), const_cast<char*>(def.default_value), goldsrc::FCVAR_ARCHIVE);
     }
 } // namespace
 

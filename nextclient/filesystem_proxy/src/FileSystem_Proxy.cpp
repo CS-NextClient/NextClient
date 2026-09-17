@@ -1,6 +1,10 @@
 #include "FileSystem_Proxy.h"
 #include <strtools.h>
 #include <cstdio>
+
+// tier0's commonmacros.h defines ARRAYSIZE, winnt.h defines it again with different text. This
+// unit uses neither, so winnt.h's own definition is the one left standing.
+#undef ARRAYSIZE
 #include <Windows.h>
 #include <format>
 #include <nitro_utils/string_utils.h>

@@ -32,6 +32,7 @@
 
 #include <csetjmp>
 #include <io.h>
+#include <goldsrc/client_api.h>
 
 #include "ImageLib/LoadBMP.h"
 

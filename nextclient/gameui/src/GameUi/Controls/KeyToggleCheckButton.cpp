@@ -1,6 +1,7 @@
 #include "GameUi.h"
 #include "KeyToggleCheckButton.h"
 #include <vgui/IVGui.h>
+#include <goldsrc/client_api.h>
 #include "IGameUIFuncs.h"
 
 CKeyToggleCheckButton::CKeyToggleCheckButton(Panel *parent, const char *panelName, const char *text, char const *key, char const *cmdname) : CheckButton(parent, panelName, text)

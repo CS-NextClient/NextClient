@@ -3,6 +3,9 @@
 #include <optick.h>
 #include <imageinfo.hpp>
 #include <stb/stb_image.h>
+#include <goldsrc/client_api.h>
+#include <goldsrc/cvar.h>
+#include <goldsrc/limits.h>
 
 #include "common/memory/ScratchArena.h"
 #include "common/memory/g_scratch_allocator.h"
@@ -189,7 +192,7 @@ namespace tex
         ScratchArena arena(g_ScratchAllocator);
         uint8_t* data = arena.AllocateArray<uint8_t>(array_size);
 
-        char new_filename[MAX_OSPATH];
+        char new_filename[goldsrc::MAX_OSPATH];
         V_sprintf_safe(new_filename, "gfx/%s.tga", filename);
 
         int width, height;

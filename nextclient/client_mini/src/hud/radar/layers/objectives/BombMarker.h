@@ -1,6 +1,7 @@
 #pragma once
 
 #include <ncl_math/vec3.h>
+#include <goldsrc/fwd.h>
 
 #include "hud/radar/RadarFrame.h"
 #include "ObjectiveEntities.h"
@@ -8,7 +9,6 @@
 class RadarVisibility;
 class RadarPolicy;
 class RadarBroadcast;
-typedef struct cvar_s cvar_t;
 
 // The C4, from whichever of the three feeds serves the local player this frame.
 class BombMarker
@@ -41,7 +41,7 @@ class BombMarker
     bool visible_{};
 
     // Resolved once: an engine cvar lookup walks a linked list.
-    cvar_t* ex_interp_{};
+    goldsrc::cvar_t* ex_interp_{};
 
 public:
     explicit BombMarker(RadarVisibility& visibility, const RadarPolicy& policy, const RadarBroadcast& broadcast);

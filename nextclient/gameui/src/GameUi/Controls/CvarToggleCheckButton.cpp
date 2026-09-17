@@ -3,6 +3,7 @@
 #include <vgui/IVGui.h>
 #include "tier1/KeyValues.h"
 #include "IGameUIFuncs.h"
+#include <goldsrc/client_api.h>
 
 #include <tier0/memdbgon.h>
 

@@ -1,5 +1,6 @@
 #include "HudAmmo.h"
-#include <parsemsg.h>
+#include <data_types/MessageReader.h>
+#include <data_types/MessageWriter.h>
 
 HudAmmo::HudAmmo(nitroapi::NitroApiInterface* nitro_api) :
     HudBaseHelper(nitro_api)
@@ -16,16 +17,15 @@ HudAmmo::~HudAmmo()
 
 void HudAmmo::AmmoXHook(const char* name, int size, void* data)
 {
-    BEGIN_READ(data, size);
-    int ammoid = READ_BYTE();
-    int amount = READ_BYTE();
+    MessageReader reader(data, size);
+    int ammoid = reader.ReadByte();
+    int amount = reader.ReadByte();
 
     // fix invalid ammoid value, the original client.dll accesses the gWR.rgWeapons by this index without checking
     if (ammoid < 0 || ammoid > 31)
     {
-        BufferWriter buffer_writer;
-        buffer_writer.Init(static_cast<unsigned char*>(data), size);
-        buffer_writer.WriteByte(0);
-        buffer_writer.WriteByte(amount);
+        MessageWriter writer(data, size);
+        writer.WriteByte(0);
+        writer.WriteByte(amount);
     }
 }

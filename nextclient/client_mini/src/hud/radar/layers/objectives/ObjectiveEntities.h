@@ -7,12 +7,10 @@
 #include <vector>
 
 #include <ncl_math/vec3.h>
+#include <goldsrc/fwd.h>
 
 #include "hud/radar/RadarFrame.h"
 #include "hud/radar/RadarLimits.h"
-
-typedef struct cl_entity_s cl_entity_t;
-typedef struct model_s model_t;
 
 // The bomb and hostage entities the radar draws from, resolved once a frame. The edict sweep is
 // throttled and its result cached, so most frames only re-read the entities found last time.
@@ -22,7 +20,7 @@ public:
     struct BombEnt
     {
         bool found;
-        cl_entity_t* ent;
+        goldsrc::cl_entity_t* ent;
         bool planted;
         ncl_math::Vector2 pos; // snapshot origin; the consumer interpolates
     };
@@ -43,7 +41,7 @@ private:
     };
 
     // Keyed on the model pointer: valid within one level, cleared in OnVidInit.
-    std::unordered_map<const model_t*, ModelKind> model_kind_;
+    std::unordered_map<const goldsrc::model_t*, ModelKind> model_kind_;
 
     BombEnt bomb_{};
     std::array<HostageEnt, kRadarMaxHostages> hostages_{};
@@ -78,5 +76,5 @@ public:
     }
 
 private:
-    ModelKind ClassifyModel(const model_t* model);
+    ModelKind ClassifyModel(const goldsrc::model_t* model);
 };

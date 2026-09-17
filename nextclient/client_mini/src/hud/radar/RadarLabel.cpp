@@ -3,6 +3,7 @@
 #include "main.h"
 
 #include <ncl_math/scalar.h>
+#include <goldsrc/client_api.h>
 
 #include "RadarDraw.h"
 

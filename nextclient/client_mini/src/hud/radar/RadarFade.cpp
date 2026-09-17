@@ -1,12 +1,8 @@
 #include "RadarFade.h"
 
-// screenfade.h references `byte` but does not define it; provide the typedef here
-// instead of pulling in the heavy client main.h just for it, so this fade math stays
-// free of engine/client headers and unit-testable.
-typedef unsigned char byte;
-#include <screenfade.h>
-
 #include <algorithm>
+
+#include <goldsrc/view.h>
 
 namespace
 {
@@ -15,7 +11,7 @@ namespace
     constexpr int kFadeStayout = 0x0004;
 } // namespace
 
-int RadarFade_ComputeAlpha(const screenfade_t& sf, double time)
+int RadarFade_ComputeAlpha(const goldsrc::screenfade_t& sf, double time)
 {
     if (sf.fadeReset < time && sf.fadeEnd < time && !(sf.fadeFlags & kFadeStayout))
     {
@@ -48,7 +44,7 @@ int RadarFade_ComputeAlpha(const screenfade_t& sf, double time)
     return std::max(0, alpha);
 }
 
-bool RadarFade_IsNearWhite(const screenfade_t& sf)
+bool RadarFade_IsNearWhite(const goldsrc::screenfade_t& sf)
 {
     bool result = sf.fader >= 200 && sf.fadeg >= 200 && sf.fadeb >= 200;
     return result;

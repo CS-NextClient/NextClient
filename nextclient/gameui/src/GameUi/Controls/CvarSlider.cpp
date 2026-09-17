@@ -4,6 +4,7 @@
 #include "tier1/KeyValues.h"
 #include <vgui/IVGui.h>
 #include <vgui_controls/propertypage.h>
+#include <goldsrc/client_api.h>
 
 #define CVARSLIDER_SCALE_FACTOR 100.0f
 

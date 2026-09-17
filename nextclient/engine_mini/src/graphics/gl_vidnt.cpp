@@ -4,6 +4,8 @@
 #include <Windows.h>
 #include <common/cvar.h>
 #include <glad/glad.h>
+#include <goldsrc/cvar.h>
+#include <goldsrc/types.h>
 
 #include "common/cmd.h"
 #include "common/sys_dll.h"
@@ -20,24 +22,24 @@ static const char* gl_renderer;
 static const char* gl_version;
 
 // Cvars mirrored from the engine's R_Init
-static cvar_t gl_dither_cvar_tmp{"gl_dither", const_cast<char*>("1"), FCVAR_ARCHIVE, 1.f};
-static cvar_t gl_spriteblend_cvar_tmp{"gl_spriteblend", const_cast<char*>("1"), FCVAR_ARCHIVE, 1.f};
-cvar_t* r_lightmap;
-cvar_t* gl_clear;
-cvar_t* r_novis;
-cvar_t* r_fullbright;
-cvar_t* gl_monolights;
-cvar_t* gl_wireframe;
-cvar_t* r_dynamic;
-cvar_t* gl_alphamin;
-cvar_t* gl_polyoffset;
+static goldsrc::cvar_t gl_dither_cvar_tmp{"gl_dither", const_cast<char*>("1"), goldsrc::FCVAR_ARCHIVE, 1.f};
+static goldsrc::cvar_t gl_spriteblend_cvar_tmp{"gl_spriteblend", const_cast<char*>("1"), goldsrc::FCVAR_ARCHIVE, 1.f};
+goldsrc::cvar_t* r_lightmap;
+goldsrc::cvar_t* gl_clear;
+goldsrc::cvar_t* r_novis;
+goldsrc::cvar_t* r_fullbright;
+goldsrc::cvar_t* gl_monolights;
+goldsrc::cvar_t* gl_wireframe;
+goldsrc::cvar_t* r_dynamic;
+goldsrc::cvar_t* gl_alphamin;
+goldsrc::cvar_t* gl_polyoffset;
 
 // These globals are mirrored by the original engine's hw.dll; the engine's
 // rendering code reads its own copies, so both must be kept in sync.
 int TEXTURE0_SGIS = QGL_TEXTURE0_SGIS;
 int TEXTURE1_SGIS = QGL_TEXTURE1_SGIS;
 int TEXTURE2_SGIS = QGL_TEXTURE2_SGIS;
-qboolean bSupportsNPOTTextures;
+goldsrc::qboolean bSupportsNPOTTextures;
 int gl_mtexable;
 
 // and these:
@@ -151,7 +153,7 @@ void GL_Config()
     // Host_Init() call order:
     //   GL_Init -> VID_Init -> Draw_Init -> ... -> R_Init
     // Draw_Init sub-calls reference gl_dither and gl_spriteblend, but the engine
-    // only registers them later in R_Init. Pre-assign temporary cvar_t objects
+    // only registers them later in R_Init. Pre-assign temporary goldsrc::cvar_t objects
     // here so the pointers are valid when Draw_Init runs.
     gl_dither_cvar = &gl_dither_cvar_tmp;
     gl_spriteblend = &gl_spriteblend_cvar_tmp;

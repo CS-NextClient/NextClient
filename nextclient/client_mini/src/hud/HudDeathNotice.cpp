@@ -1,40 +1,49 @@
 #include "HudDeathNotice.h"
 #include "../main.h"
 #include "../utils.h"
-#include <parsemsg.h>
-#include "triangleapi.h"
+#include <data_types/MessageReader.h>
+#include <goldsrc/client_api.h>
+#include <goldsrc/cstrike/hud.h>
+#include <goldsrc/cvar.h>
+#include <goldsrc/engine/client_state.h>
+#include <goldsrc/engine/model.h>
+#include <goldsrc/entity.h>
+#include <goldsrc/fwd.h>
+#include <goldsrc/pmove.h>
+#include <goldsrc/triangle_api.h>
 
 constexpr static auto KILL_RARITY_SPRITE = "sprites/kill_rarity.spr";
 constexpr static int DEATHNOTICE_TOP = 32;
 constexpr static int DEATHNOTICE_RIGHT = 16;
 
 static int MsgFunc_DeathMsg(const char* pszName, int iSize, void* pbuf) {
-	BEGIN_READ(pbuf, iSize);
+	MessageReader reader(pbuf, iSize);
 
-	const int killer_id = READ_BYTE();
-	const int victim_id = READ_BYTE();
-	const bool is_headshot = READ_BYTE();
-	std::string killed_with = READ_STRING();
+	const int killer_id = reader.ReadByte();
+	const int victim_id = reader.ReadByte();
+	const bool is_headshot = reader.ReadByte();
+	std::string killed_with = reader.ReadString();
 
 	int assistant_id = 0;
 	int kill_rarity_flags = 0;
 
 	if(is_headshot)
 		kill_rarity_flags |= KILLRARITY_HEADSHOT;
-	
-	auto extra_flags = (DeathMessageFlags)READ_LONG();
-	if(READ_OK()) {
+
+	auto extra_flags = (DeathMessageFlags)reader.ReadLong();
+	if (!reader.is_overflowed())
+	{
 		if(extra_flags & PLAYERDEATH_POSITION) {
-			READ_COORD();
-			READ_COORD();
-			READ_COORD();
+			reader.ReadCoord();
+			reader.ReadCoord();
+			reader.ReadCoord();
 		}
 
 		if(extra_flags & PLAYERDEATH_ASSISTANT)
-			assistant_id = READ_BYTE();
+			assistant_id = reader.ReadByte();
 
 		if(extra_flags & PLAYERDEATH_KILLRARITY)
-			kill_rarity_flags = READ_LONG();
+			kill_rarity_flags = reader.ReadLong();
 	}
 
 	auto hud = g_GameHud->get_deathnotice();
@@ -43,7 +52,7 @@ static int MsgFunc_DeathMsg(const char* pszName, int iSize, void* pbuf) {
 	hud->HandleAmxxKillAssistCaseIfSo(killer_id, assistant_id, &notice);
 
 	if(hud->IsValidClientIndex(killer_id)) {
-		hud_player_info_t killer_info;
+		goldsrc::hud_player_info_t killer_info;
 		gEngfuncs.pfnGetPlayerInfo(killer_id, &killer_info);
 
 		if(notice.killer_name.empty() && killer_info.name != nullptr)
@@ -58,7 +67,7 @@ static int MsgFunc_DeathMsg(const char* pszName, int iSize, void* pbuf) {
 	bool is_local_player_victim = false;
 
 	if(hud->IsValidClientIndex(victim_id)) {
-		hud_player_info_t victim_info;
+		goldsrc::hud_player_info_t victim_info;
 		gEngfuncs.pfnGetPlayerInfo(victim_id, &victim_info);
 
 		if(victim_info.name != nullptr)
@@ -73,7 +82,7 @@ static int MsgFunc_DeathMsg(const char* pszName, int iSize, void* pbuf) {
 	}
 
 	if(hud->IsValidClientIndex(assistant_id)) {
-		hud_player_info_t assistant_info;
+		goldsrc::hud_player_info_t assistant_info;
 		gEngfuncs.pfnGetPlayerInfo(assistant_id, &assistant_info);
 
 		if(assistant_info.name != nullptr)
@@ -105,25 +114,26 @@ static int MsgFunc_DeathMsg(const char* pszName, int iSize, void* pbuf) {
 }
 
 static int MsgFunc_DeathMsgWpnIcon(const char* pszName, int iSize, void* pbuf) {
-	BEGIN_READ(pbuf, iSize);
+	MessageReader reader(pbuf, iSize);
 
 	auto hud = g_GameHud->get_deathnotice();
 
-	const char* sprite_path = READ_STRING();
-	const int frame = READ_BYTE();
-	const int rendermode = READ_BYTE();
-	const int r = READ_BYTE();
-	const int g = READ_BYTE();
-	const int b = READ_BYTE();
-	const int a = READ_BYTE();
+	std::string sprite_path = reader.ReadString();
+	const int frame = reader.ReadByte();
+	const int rendermode = reader.ReadByte();
+	const int r = reader.ReadByte();
+	const int g = reader.ReadByte();
+	const int b = reader.ReadByte();
+	const int a = reader.ReadByte();
 
-    if (sprite_path == nullptr || !sprite_path[0] || !IsSafeSpriteFilePath(sprite_path)) {
+    if (sprite_path.empty() || !IsSafeSpriteFilePath(sprite_path))
+    {
         gEngfuncs.Con_DPrintf("MsgFunc_DeathMsgWpnIcon: invalid spritePath\n");
         return 1;
     }
 
 	HudDeathNotice::wpn_icon_override_t wpn_icon{};
-	wpn_icon.sprite = gEngfuncs.pfnSPR_Load(sprite_path);
+	wpn_icon.sprite = gEngfuncs.pfnSPR_Load(sprite_path.c_str());
 	wpn_icon.frame = frame;
 	wpn_icon.rendermode = rendermode;
 	wpn_icon.color[0] = r / 255.0f;
@@ -182,7 +192,7 @@ bool HudDeathNotice::HandleAmxxKillAssistCaseIfSo(int killer_id, int& assistant_
 		return true;
 	}
 
-	hud_player_info_t player_info;
+	goldsrc::hud_player_info_t player_info;
 	cl_enginefunc()->pfnGetPlayerInfo(killer_id, &player_info);
 	if(player_info.name == nullptr) return false;
 	
@@ -206,8 +216,9 @@ bool HudDeathNotice::HandleAmxxKillAssistCaseIfSo(int killer_id, int& assistant_
 	if(first_dot_pos != std::string::npos && first_dot_pos != dirty_assistant_name.length() - 1)
 		dirty_assistant_name.erase(first_dot_pos + 1);
  
-	for(int i = 1; i < MAX_PLAYERS; i++) {
-		hud_player_info_t player_info;
+	for (int i = 1; i < goldsrc::cstrike::MAX_PLAYERS; i++)
+	{
+		goldsrc::hud_player_info_t player_info;
 		cl_enginefunc()->pfnGetPlayerInfo(i, &player_info);
 
 		if(player_info.name && std::string(player_info.name).starts_with(dirty_assistant_name)) {
@@ -222,7 +233,7 @@ bool HudDeathNotice::HandleAmxxKillAssistCaseIfSo(int killer_id, int& assistant_
 HudDeathNotice::HudDeathNotice(nitroapi::NitroApiInterface* nitro_api)
 	: HudBaseHelper(nitro_api) {
 
-	DeferUnsub(cl()->CHudDeathNotice__Draw |= [this](CHudDeathNotice* const ptr, float flTime, const auto& next) {
+	DeferUnsub(cl()->CHudDeathNotice__Draw |= [this](goldsrc::cstrike::CHudDeathNotice* const ptr, float flTime, const auto& next) {
 		return cvar_deathnotice_old_->value ? next->Invoke(ptr, flTime) : 1;
 	});
 
@@ -254,8 +265,8 @@ void HudDeathNotice::SetWpnIconForNextMessage(wpn_icon_override_t&& wpn_icon) {
 
 void HudDeathNotice::Init() {
 	cvar_deathnotice_time_ = cl_enginefunc()->pfnGetCvarPointer("hud_deathnotice_time");
-	cvar_deathnotice_max_ = cl_enginefunc()->pfnRegisterVariable("hud_deathnotice_max", "5", FCVAR_ARCHIVE);
-	cvar_deathnotice_old_ = cl_enginefunc()->pfnRegisterVariable("hud_deathnotice_old", "0", FCVAR_ARCHIVE);
+	cvar_deathnotice_max_ = cl_enginefunc()->pfnRegisterVariable("hud_deathnotice_max", "5", goldsrc::FCVAR_ARCHIVE);
+	cvar_deathnotice_old_ = cl_enginefunc()->pfnRegisterVariable("hud_deathnotice_old", "0", goldsrc::FCVAR_ARCHIVE);
 
 	cl_enginefunc()->pfnHookUserMsg("DeathMsgWpn", MsgFunc_DeathMsgWpnIcon);
 }
@@ -270,7 +281,7 @@ void HudDeathNotice::VidInit() {
 	kill_rarity_sprite_width_ = SPR_Width(kill_rarity_sprite_, 0) * kill_rarity_sprite_scale_;
 	kill_rarity_sprite_height_ = SPR_Height(kill_rarity_sprite_, 0) * kill_rarity_sprite_scale_;
 	kill_rarity_sprite_alpha_ = 0.68;
-	kill_rarity_sprite_rendermode_ = kRenderTransAdd;
+	kill_rarity_sprite_rendermode_ = goldsrc::kRenderTransAdd;
 	kill_rarity_sprite_padding_x_ = 3;
 
 	weapon_sprite_padding_x_ = 3;
@@ -287,7 +298,8 @@ void HudDeathNotice::VidInit() {
 }
 
 int HudDeathNotice::DrawScaledSprite(
-	HSPRITE_t* sprite, int frame,
+	goldsrc::HSPRITE_t* sprite,
+	int frame,
 	int x, int y, float scale,
 	int rendermode, vec3_t color, float alpha
 ) {
@@ -296,15 +308,15 @@ int HudDeathNotice::DrawScaledSprite(
 	
     const auto tri = gEngfuncs.pTriAPI;
 
-	tri->SpriteTexture(const_cast<model_s*>(sprite_ptr), frame);
+	tri->SpriteTexture(const_cast<goldsrc::model_t*>(sprite_ptr), frame);
     tri->RenderMode(rendermode);
     tri->Color4f(color[0], color[1], color[2], alpha);
-    tri->CullFace(TRI_NONE);
+    tri->CullFace(goldsrc::TRI_NONE);
 
 	int w = gEngfuncs.pfnSPR_Width(*sprite, frame) * scale;
 	int h = gEngfuncs.pfnSPR_Height(*sprite, frame) * scale;
 
-	tri->Begin(TRI_QUADS);
+	tri->Begin(goldsrc::TRI_QUADS);
 	tri->TexCoord2f(0, 1);
 	tri->Vertex3f(x, y + h, 0);
 	tri->TexCoord2f(1, 1);
@@ -315,7 +327,7 @@ int HudDeathNotice::DrawScaledSprite(
 	tri->Vertex3f(x, y, 0);
 	tri->End();
 
-	tri->RenderMode(kRenderNormal);
+	tri->RenderMode(goldsrc::kRenderNormal);
 
 	return x + w;
 }

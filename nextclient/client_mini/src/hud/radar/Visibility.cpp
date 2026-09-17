@@ -7,11 +7,12 @@
 
 #include <ncl_math/vec3.h>
 #include <ncl_utils/scoped_ms_counter.h>
-#include <pm_defs.h>
-#include <pm_shared.h>
-#include <pmtrace.h>
-#include <event_api.h>
-#include <screenfade.h>
+#include <goldsrc/client_api.h>
+#include <goldsrc/cstrike/hud.h>
+#include <goldsrc/entity.h>
+#include <goldsrc/event_api.h>
+#include <goldsrc/pmove.h>
+#include <goldsrc/view.h>
 
 #include "SmokeRegistry.h"
 #include "RadarFade.h"
@@ -24,8 +25,8 @@ namespace
     constexpr float kVisInterval = 0.05f;
     constexpr float kSpotMemory = 1.2f;
     constexpr float kSpotHold = 0.2f;
-    constexpr float kEyeZ = PM_VEC_VIEW;
-    constexpr float kDuckEyeZ = PM_VEC_DUCK_VIEW;
+    constexpr float kEyeZ = goldsrc::PM_VEC_VIEW;
+    constexpr float kDuckEyeZ = goldsrc::PM_VEC_DUCK_VIEW;
     // The second trace point on a target, just above eye level.
     // (the standing hull reaches +36, and testing its top would spot a player whose head is still behind cover)
     constexpr float kEnemyHeadZ = kEyeZ + 5.0f;
@@ -58,14 +59,14 @@ namespace
     float TraceFraction(const ncl_math::Vector3& start, const ncl_math::Vector3& end, bool& solid)
     {
         // Player hulls are skipped so the viewer's own body and clustered teammates
-        // never break the line; PM_STUDIO_BOX clips props by their bounding box.
+        // never break the line; goldsrc::PM_STUDIO_BOX clips props by their bounding box.
         if (pmove && pmove->PM_PlayerTraceEx)
         {
-            pmtrace_t trace = pmove->PM_PlayerTraceEx(
+            goldsrc::pmtrace_t trace = pmove->PM_PlayerTraceEx(
                 const_cast<float*>(start.data()),
                 const_cast<float*>(end.data()),
-                PM_GLASS_IGNORE | PM_STUDIO_BOX,
-                [](physent_t* pe)
+                goldsrc::PM_GLASS_IGNORE | goldsrc::PM_STUDIO_BOX,
+                [](goldsrc::physent_t* pe)
                 {
                     return pe->player;
                 }
@@ -76,13 +77,13 @@ namespace
             return trace.fraction;
         }
 
-        pmtrace_t trace{};
+        goldsrc::pmtrace_t trace{};
         trace.fraction = 1.0f;
 
         gEngfuncs.pEventAPI->EV_PlayerTrace(
             const_cast<float*>(start.data()),
             const_cast<float*>(end.data()),
-            PM_WORLD_ONLY,
+            goldsrc::PM_WORLD_ONLY,
             -1,
             &trace);
 
@@ -116,7 +117,7 @@ namespace
 
     bool IsLocalBlind()
     {
-        screenfade_t sf = {};
+        goldsrc::screenfade_t sf = {};
         gEngfuncs.pfnGetScreenFade(&sf);
 
         // Only a near-white fade (flashbang) blinds; ignore tinted map fades.
@@ -207,7 +208,7 @@ void RadarVisibility::AddTeamViewers(const SweepContext& ctx, const RadarPolicy&
             continue;
         }
 
-        extra_player_info_t& ex = ctx.extra[i];
+        goldsrc::cstrike::extra_player_info_t& ex = ctx.extra[i];
 
         if (ex.dead || RadarTeam_From(ex.teamnumber) != ctx.my_team)
         {
@@ -220,7 +221,7 @@ void RadarVisibility::AddTeamViewers(const SweepContext& ctx, const RadarPolicy&
             continue;
         }
 
-        cl_entity_t* ent = gEngfuncs.GetEntityByIndex(i);
+        goldsrc::cl_entity_t* ent = gEngfuncs.GetEntityByIndex(i);
 
         if (!ent || !ent->player || ent->curstate.messagenum != ctx.msgnum)
         {
@@ -245,7 +246,7 @@ void RadarVisibility::SpotEnemies(const SweepContext& ctx, const RadarPolicy& po
 {
     for (int i = 1; i <= ctx.max_clients; i++)
     {
-        extra_player_info_t& ex = ctx.extra[i];
+        goldsrc::cstrike::extra_player_info_t& ex = ctx.extra[i];
 
         if (i == ctx.self_player_id || ex.dead)
         {
@@ -264,7 +265,7 @@ void RadarVisibility::SpotEnemies(const SweepContext& ctx, const RadarPolicy& po
             continue;
         }
 
-        cl_entity_t* ent = gEngfuncs.GetEntityByIndex(i);
+        goldsrc::cl_entity_t* ent = gEngfuncs.GetEntityByIndex(i);
 
         if (!ent || !ent->player || ent->curstate.messagenum != ctx.msgnum)
         {
@@ -309,7 +310,7 @@ void RadarVisibility::Update(int self_player_id, RadarTeam my_team, bool spectat
 
     last_update_ = time;
 
-    cl_entity_t* local = gEngfuncs.GetLocalPlayer();
+    goldsrc::cl_entity_t* local = gEngfuncs.GetLocalPlayer();
 
     if (!local)
     {

@@ -2,14 +2,21 @@
 
 #include "main.h"
 
-#include "weapontype.h"
+#include <goldsrc/client_api.h>
+#include <goldsrc/cstrike/hud_elements.h>
+#include <goldsrc/cstrike/weapons.h>
+#include <goldsrc/cvar.h>
+#include <goldsrc/entity.h>
+#include <mathlib/vector.h>
+#include <strtools.h>
 #include "shared_util.h"
 
 HudCrosshair::HudCrosshair(nitroapi::NitroApiInterface *nitro_api) :
     nitroapi::NitroApiHelper(nitro_api),
-    screeninfo_{sizeof(SCREENINFO)}
+    screeninfo_{sizeof(goldsrc::SCREENINFO)}
 {
-    unsubscribers_.emplace_back(cl()->CHudAmmo__DrawCrosshair |= [this](CHudAmmo* const ptr, float time, int weaponid, const auto& next) {
+    unsubscribers_.emplace_back(cl()->CHudAmmo__DrawCrosshair |=
+                                [this](goldsrc::cstrike::CHudAmmo* const ptr, float time, int weaponid, const auto& next) {
         DrawCrosshair(time, weaponid);
         return 1;
     });
@@ -25,7 +32,7 @@ HudCrosshair::~HudCrosshair()
 
 void HudCrosshair::Init()
 {
-    cl_crosshair_type_ = cl_enginefunc()->pfnRegisterVariable("cl_crosshair_type", "0", FCVAR_ARCHIVE);
+    cl_crosshair_type_ = cl_enginefunc()->pfnRegisterVariable("cl_crosshair_type", "0", goldsrc::FCVAR_ARCHIVE);
     cl_crosshair_color_ = cl_enginefunc()->pfnGetCvarPointer("cl_crosshair_color");
     cl_crosshair_size_ = cl_enginefunc()->pfnGetCvarPointer("cl_crosshair_size");
     cl_crosshair_translucent_ = cl_enginefunc()->pfnGetCvarPointer("cl_crosshair_translucent");
@@ -51,81 +58,81 @@ void HudCrosshair::DrawCrosshair(float flTime, int weaponid)
 
     switch (weaponid)
     {
-        case WEAPON_P228:
-        case WEAPON_HEGRENADE:
-        case WEAPON_SMOKEGRENADE:
-        case WEAPON_FIVESEVEN:
-        case WEAPON_USP:
-        case WEAPON_GLOCK18:
-        case WEAPON_AWP:
-        case WEAPON_FLASHBANG:
-        case WEAPON_DEAGLE:
+        case goldsrc::cstrike::WEAPON_P228:
+        case goldsrc::cstrike::WEAPON_HEGRENADE:
+        case goldsrc::cstrike::WEAPON_SMOKEGRENADE:
+        case goldsrc::cstrike::WEAPON_FIVESEVEN:
+        case goldsrc::cstrike::WEAPON_USP:
+        case goldsrc::cstrike::WEAPON_GLOCK18:
+        case goldsrc::cstrike::WEAPON_AWP:
+        case goldsrc::cstrike::WEAPON_FLASHBANG:
+        case goldsrc::cstrike::WEAPON_DEAGLE:
         {
             iDistance = 8;
             iDeltaDistance = 3;
             break;
         }
-        case WEAPON_MP5N:
+        case goldsrc::cstrike::WEAPON_MP5N:
         {
             iDistance = 6;
             iDeltaDistance = 2;
             break;
         }
-        case WEAPON_M3:
+        case goldsrc::cstrike::WEAPON_M3:
         {
             iDistance = 8;
             iDeltaDistance = 6;
             break;
         }
-        case WEAPON_G3SG1:
+        case goldsrc::cstrike::WEAPON_G3SG1:
         {
             iDistance = 6;
             iDeltaDistance = 4;
             break;
         }
-        case WEAPON_AK47:
+        case goldsrc::cstrike::WEAPON_AK47:
         {
             iDistance = 4;
             iDeltaDistance = 4;
             break;
         }
-        case WEAPON_TMP:
-        case WEAPON_KNIFE:
-        case WEAPON_P90:
+        case goldsrc::cstrike::WEAPON_TMP:
+        case goldsrc::cstrike::WEAPON_KNIFE:
+        case goldsrc::cstrike::WEAPON_P90:
         {
             iDistance = 7;
             iDeltaDistance = 3;
             break;
         }
-        case WEAPON_XM1014:
+        case goldsrc::cstrike::WEAPON_XM1014:
         {
             iDistance = 9;
             iDeltaDistance = 4;
             break;
         }
-        case WEAPON_MAC10:
+        case goldsrc::cstrike::WEAPON_MAC10:
         {
             iDistance = 9;
             iDeltaDistance = 3;
             break;
         }
-        case WEAPON_AUG:
+        case goldsrc::cstrike::WEAPON_AUG:
         {
             iDistance = 3;
             iDeltaDistance = 3;
             break;
         }
-        case WEAPON_C4:
-        case WEAPON_UMP45:
-        case WEAPON_M249:
+        case goldsrc::cstrike::WEAPON_C4:
+        case goldsrc::cstrike::WEAPON_UMP45:
+        case goldsrc::cstrike::WEAPON_M249:
         {
             iDistance = 6;
             iDeltaDistance = 4;
             break;
         }
-        case WEAPON_SCOUT:
-        case WEAPON_SG550:
-        case WEAPON_SG552:
+        case goldsrc::cstrike::WEAPON_SCOUT:
+        case goldsrc::cstrike::WEAPON_SG550:
+        case goldsrc::cstrike::WEAPON_SG552:
         {
             iDistance = 5;
             iDeltaDistance = 3;
@@ -142,9 +149,9 @@ void HudCrosshair::DrawCrosshair(float flTime, int weaponid)
     int accuracy_flags = GetWeaponAccuracyFlags(weaponid);
     if (accuracy_flags && cl_dynamiccrosshair_ && cl_dynamiccrosshair_->value != 0.0 && !(*cl()->gHUD->m_iHideHUDDisplay & 1))
     {
-        if (g_LastPlayerState.client.flags & FL_ONGROUND || !(accuracy_flags & 1))
+        if (g_LastPlayerState.client.flags & goldsrc::FL_ONGROUND || !(accuracy_flags & 1))
         {
-            if (g_LastPlayerState.client.flags & FL_DUCKING && accuracy_flags & 4)
+            if (g_LastPlayerState.client.flags & goldsrc::FL_DUCKING && accuracy_flags & 4)
             {
                 iDistance *= 0.5f;
             }
@@ -154,19 +161,19 @@ void HudCrosshair::DrawCrosshair(float flTime, int weaponid)
 
                 switch (weaponid)
                 {
-                    case WEAPON_AUG:
-                    case WEAPON_M4A1:
-                    case WEAPON_FAMAS:
-                    case WEAPON_SG550:
-                    case WEAPON_GALIL:
-                    case WEAPON_AK47:
-                    case WEAPON_M249:
-                    case WEAPON_SG552:
+                    case goldsrc::cstrike::WEAPON_AUG:
+                    case goldsrc::cstrike::WEAPON_M4A1:
+                    case goldsrc::cstrike::WEAPON_FAMAS:
+                    case goldsrc::cstrike::WEAPON_SG550:
+                    case goldsrc::cstrike::WEAPON_GALIL:
+                    case goldsrc::cstrike::WEAPON_AK47:
+                    case goldsrc::cstrike::WEAPON_M249:
+                    case goldsrc::cstrike::WEAPON_SG552:
                     {
                         flLimitSpeed = 140;
                         break;
                     }
-                    case WEAPON_P90:
+                    case goldsrc::cstrike::WEAPON_P90:
                     {
                         flLimitSpeed = 170;
                         break;
@@ -236,53 +243,53 @@ void HudCrosshair::DrawCrosshair(float flTime, int weaponid)
 
 int HudCrosshair::GetWeaponAccuracyFlags(int iWeaponID)
 {
-    weapon_data_t* weapondata = &g_LastPlayerState.weapondata[g_LastPlayerState.client.m_iId];
+    goldsrc::weapon_data_t* weapondata = &g_LastPlayerState.weapondata[g_LastPlayerState.client.m_iId];
 
     int flags;
 
     switch (iWeaponID)
     {
-        case WEAPON_USP:
+        case goldsrc::cstrike::WEAPON_USP:
         {
-            flags = (weapondata->m_iWeaponState & WPNSTATE_USP_SILENCED) < 1 ? 7 : 15;
+            flags = (weapondata->m_iWeaponState & goldsrc::cstrike::WPNSTATE_USP_SILENCED) < 1 ? 7 : 15;
             break;
         }
-        case WEAPON_GLOCK18:
+        case goldsrc::cstrike::WEAPON_GLOCK18:
         {
-            flags = (weapondata->m_iWeaponState & WPNSTATE_GLOCK18_BURST_MODE) < 1 ? 7 : 23;
+            flags = (weapondata->m_iWeaponState & goldsrc::cstrike::WPNSTATE_GLOCK18_BURST_MODE) < 1 ? 7 : 23;
             break;
         }
-        case WEAPON_M4A1:
+        case goldsrc::cstrike::WEAPON_M4A1:
         {
-            flags = (weapondata->m_iWeaponState & WPNSTATE_M4A1_SILENCED) < 1 ? 3 : 11;
+            flags = (weapondata->m_iWeaponState & goldsrc::cstrike::WPNSTATE_M4A1_SILENCED) < 1 ? 3 : 11;
             break;
         }
-        case WEAPON_FAMAS:
+        case goldsrc::cstrike::WEAPON_FAMAS:
         {
-            flags = (weapondata->m_iWeaponState & WPNSTATE_FAMAS_BURST_MODE) < 1 ? 3 : 19;
+            flags = (weapondata->m_iWeaponState & goldsrc::cstrike::WPNSTATE_FAMAS_BURST_MODE) < 1 ? 3 : 19;
             break;
         }
-        case WEAPON_MAC10:
-        case WEAPON_UMP45:
-        case WEAPON_MP5N:
-        case WEAPON_TMP:
+        case goldsrc::cstrike::WEAPON_MAC10:
+        case goldsrc::cstrike::WEAPON_UMP45:
+        case goldsrc::cstrike::WEAPON_MP5N:
+        case goldsrc::cstrike::WEAPON_TMP:
         {
             flags = 1;
             break;
         }
-        case WEAPON_AUG:
-        case WEAPON_GALIL:
-        case WEAPON_M249:
-        case WEAPON_SG552:
-        case WEAPON_AK47:
-        case WEAPON_P90:
+        case goldsrc::cstrike::WEAPON_AUG:
+        case goldsrc::cstrike::WEAPON_GALIL:
+        case goldsrc::cstrike::WEAPON_M249:
+        case goldsrc::cstrike::WEAPON_SG552:
+        case goldsrc::cstrike::WEAPON_AK47:
+        case goldsrc::cstrike::WEAPON_P90:
         {
             flags = 3;
             break;
         }
-        case WEAPON_P228:
-        case WEAPON_FIVESEVEN:
-        case WEAPON_DEAGLE:
+        case goldsrc::cstrike::WEAPON_P228:
+        case goldsrc::cstrike::WEAPON_FIVESEVEN:
+        case goldsrc::cstrike::WEAPON_DEAGLE:
         {
             flags = 7;
             break;

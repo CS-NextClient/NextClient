@@ -2,6 +2,14 @@
 
 #include <optick.h>
 #include <common/mem.h>
+#include <goldsrc/cvar.h>
+#include <goldsrc/engine/client_state.h>
+#include <goldsrc/engine/model.h>
+#include <goldsrc/engine/video.h>
+#include <goldsrc/entity.h>
+#include <goldsrc/studio_api.h>
+#include <goldsrc/types.h>
+#include <goldsrc/view.h>
 
 #include "gl_local.h"
 #include "gl_draw.h"
@@ -13,21 +21,21 @@
 
 ViewmodelFrustumCalculator g_ViewmodelFrustumCalculator;
 
-int CL_FxBlend(cl_entity_t* e)
+int CL_FxBlend(goldsrc::cl_entity_t* e)
 {
     OPTICK_EVENT();
 
     return eng()->CL_FxBlend.InvokeChained(e);
 }
 
-float GlowBlend(cl_entity_t* pEntity)
+float GlowBlend(goldsrc::cl_entity_t* pEntity)
 {
     OPTICK_EVENT();
 
     return eng()->GlowBlend.InvokeChained(pEntity);
 }
 
-void R_AllowFog(qboolean allow)
+void R_AllowFog(goldsrc::qboolean allow)
 {
     if (allow)
     {
@@ -49,7 +57,7 @@ float* R_GetAttachmentPoint(int entity, int attachment)
     return eng()->R_GetAttachmentPoint.InvokeChained(entity, attachment);
 }
 
-void R_SetupAttachmentPoint(cl_entity_t* ent)
+void R_SetupAttachmentPoint(goldsrc::cl_entity_t* ent)
 {
     if (ent->curstate.body)
     {
@@ -87,14 +95,14 @@ void R_RestoreProjectionMatrix()
     qglMatrixMode(GL_MODELVIEW);
 }
 
-void AddTEntity(cl_entity_t* ent)
+void AddTEntity(goldsrc::cl_entity_t* ent)
 {
     OPTICK_EVENT();
 
     return eng()->AddTEntity.InvokeChained(ent);
 }
 
-void AppendTEntity_Subscriber(cl_entity_t* ent)
+void AppendTEntity_Subscriber(goldsrc::cl_entity_t* ent)
 {
     // Tag only the local viewmodel's flash (the temp entity, not cl.viewent) so other players'
     // flashes keep the world FOV. skin is unused by sprite rendering and independent of viewmodel fx.
@@ -117,14 +125,14 @@ void R_DestroyObjects()
     *p_maxTransObjs = 0;
 }
 
-void R_DrawSpriteModel(cl_entity_t* e)
+void R_DrawSpriteModel(goldsrc::cl_entity_t* e)
 {
     OPTICK_EVENT();
 
     eng()->R_DrawSpriteModel.InvokeChained(e);
 }
 
-void R_DrawViewmodelSpriteModel(cl_entity_t* e)
+void R_DrawViewmodelSpriteModel(goldsrc::cl_entity_t* e)
 {
     GLdouble depth_range[2];
     qglGetDoublev(GL_DEPTH_RANGE, depth_range);
@@ -136,14 +144,14 @@ void R_DrawViewmodelSpriteModel(cl_entity_t* e)
     R_RestoreProjectionMatrix();
 }
 
-void R_DrawBrushModel(cl_entity_t* e)
+void R_DrawBrushModel(goldsrc::cl_entity_t* e)
 {
     OPTICK_EVENT();
 
     eng()->R_DrawBrushModel.InvokeChained(e);
 }
 
-void R_DrawAliasModel(cl_entity_t* e)
+void R_DrawAliasModel(goldsrc::cl_entity_t* e)
 {
     OPTICK_EVENT();
 
@@ -250,21 +258,23 @@ void R_Clear()
     eng()->R_Clear.InvokeChained();
 }
 
-void R_DrawStudioModel(cl_entity_t* ent, const std::function<cl_entity_t*(int index)>& ent_list_getter, int ent_list_count)
+void R_DrawStudioModel(goldsrc::cl_entity_t* ent,
+                       const std::function<goldsrc::cl_entity_t*(int index)>& ent_list_getter,
+                       int ent_list_count)
 {
     OPTICK_EVENT();
 
     if (ent->player)
     {
-        pStudioAPI->StudioDrawPlayer(STUDIO_RENDER | STUDIO_EVENTS, &ent->curstate);
+        pStudioAPI->StudioDrawPlayer(goldsrc::STUDIO_RENDER | goldsrc::STUDIO_EVENTS, &ent->curstate);
         return;
     }
 
-    if (ent->curstate.movetype == MOVETYPE_FOLLOW)
+    if (ent->curstate.movetype == goldsrc::MOVETYPE_FOLLOW)
     {
         for (int i = 0; i < ent_list_count; i++)
         {
-            cl_entity_t* e = ent_list_getter(i);
+            goldsrc::cl_entity_t* e = ent_list_getter(i);
 
             if (e->index == ent->curstate.aiment)
             {
@@ -274,17 +284,17 @@ void R_DrawStudioModel(cl_entity_t* ent, const std::function<cl_entity_t*(int in
                 else
                     pStudioAPI->StudioDrawModel(0);
                 *p_currententity = ent;
-                pStudioAPI->StudioDrawModel(STUDIO_RENDER | STUDIO_EVENTS);
+                pStudioAPI->StudioDrawModel(goldsrc::STUDIO_RENDER | goldsrc::STUDIO_EVENTS);
             }
         }
     }
     else
     {
-        pStudioAPI->StudioDrawModel(STUDIO_RENDER | STUDIO_EVENTS);
+        pStudioAPI->StudioDrawModel(goldsrc::STUDIO_RENDER | goldsrc::STUDIO_EVENTS);
     }
 }
 
-void R_DrawTEntitiesOnList(qboolean clientOnly)
+void R_DrawTEntitiesOnList(goldsrc::qboolean clientOnly)
 {
     OPTICK_EVENT();
 
@@ -295,7 +305,7 @@ void R_DrawTEntitiesOnList(qboolean clientOnly)
     {
         for (int i = 0; i < *p_numTransObjs; ++i)
         {
-            cl_entity_t* ent = (*p_transObjects)[i].pEnt;
+            goldsrc::cl_entity_t* ent = (*p_transObjects)[i].pEnt;
             *p_currententity = ent;
 
             qglDisable(GL_FOG);
@@ -305,15 +315,15 @@ void R_DrawTEntitiesOnList(qboolean clientOnly)
             {
                 *p_r_blend *= 1.f / 255.f;
 
-                if (ent->model->type != mod_sprite && ent->curstate.rendermode == kRenderGlow)
+                if (ent->model->type != goldsrc::mod_sprite && ent->curstate.rendermode == goldsrc::kRenderGlow)
                     Con_DPrintf(ConLogType::Info, "Non-sprite set to glow!\n");
 
                 switch (ent->model->type)
                 {
-                    case mod_sprite:
+                    case goldsrc::mod_sprite:
                         R_SetupAttachmentPoint(ent);
 
-                        if (ent->curstate.rendermode == kRenderGlow)
+                        if (ent->curstate.rendermode == goldsrc::kRenderGlow)
                             *p_r_blend = GlowBlend(ent) * (*p_r_blend);
 
                         if (*p_r_blend != 0.0)
@@ -329,20 +339,20 @@ void R_DrawTEntitiesOnList(qboolean clientOnly)
                         }
                         break;
 
-                    case mod_brush:
+                    case goldsrc::mod_brush:
                         if (*p_g_bUserFogOn)
                         {
-                            if (ent->curstate.rendermode != kRenderGlow && ent->curstate.rendermode != kRenderTransAdd)
+                            if (ent->curstate.rendermode != goldsrc::kRenderGlow && ent->curstate.rendermode != goldsrc::kRenderTransAdd)
                                 qglEnable(GL_FOG);
                         }
                         R_DrawBrushModel(ent);
                         break;
 
-                    case mod_alias:
+                    case goldsrc::mod_alias:
                         R_DrawAliasModel(ent);
                         break;
 
-                    case mod_studio:
+                    case goldsrc::mod_studio:
                         if (!ent->curstate.renderamt)
                             break;
 
@@ -378,7 +388,7 @@ void R_DrawEntitiesOnList()
 
     for (int i = 0; i < *p_cl_numvisedicts; i++)
     {
-        cl_entity_t* ent = p_cl_visedicts[i];
+        goldsrc::cl_entity_t* ent = p_cl_visedicts[i];
         *p_currententity = ent;
 
         if (ent->curstate.rendermode)
@@ -389,11 +399,11 @@ void R_DrawEntitiesOnList()
 
         switch (ent->model->type)
         {
-            case mod_brush:
+            case goldsrc::mod_brush:
                 R_DrawBrushModel(ent);
                 break;
 
-            case mod_studio:
+            case goldsrc::mod_studio:
                 R_DrawStudioModel(ent, [](int index) { return p_cl_visedicts[index]; } , *p_cl_numvisedicts);
                 break;
 
@@ -406,13 +416,13 @@ void R_DrawEntitiesOnList()
 
     for (int i = 0; i < *p_cl_numvisedicts; i++)
     {
-        cl_entity_t* ent = p_cl_visedicts[i];
+        goldsrc::cl_entity_t* ent = p_cl_visedicts[i];
         *p_currententity = ent;
 
         if (ent->curstate.rendermode)
             continue;
 
-        if (ent->model->type == mod_sprite)
+        if (ent->model->type == goldsrc::mod_sprite)
         {
             R_SetupAttachmentPoint(ent);
 
@@ -527,7 +537,7 @@ void R_RenderView()
     }
 }
 
-void R_ForceCVars(qboolean mp)
+void R_ForceCVars(goldsrc::qboolean mp)
 {
     if (!mp)
     {

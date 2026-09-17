@@ -3,6 +3,10 @@
 #include <unordered_set>
 #include <string>
 #include <optick.h>
+#include <goldsrc/client_api.h>
+#include <goldsrc/engine/model.h>
+#include <goldsrc/engine/video.h>
+#include <goldsrc/types.h>
 #include "../console/console.h"
 #include "../common/zone.h"
 #include "../common/sys_dll.h"
@@ -10,15 +14,15 @@
 #include "../common/r_studio.h"
 #include "../graphics/gl_local.h"
 
-extern HSPRITE_t ghCrosshair;
+extern goldsrc::HSPRITE_t ghCrosshair;
 
 unsigned short gSpritePalette[256];
-msprite_t* gpSprite;
+goldsrc::msprite_t* gpSprite;
 SPRITELIST* gSpriteList;
 std::unordered_set<std::string> gLoadedSpriteNames;
 int gSpriteCount;
 
-static SPRITELIST* SPR_Get(HSPRITE_t hsprite)
+static SPRITELIST* SPR_Get(goldsrc::HSPRITE_t hsprite)
 {
     OPTICK_EVENT();
 
@@ -112,7 +116,7 @@ void SPR_ResetState()
     ghCrosshair = 0;
 }
 
-HSPRITE_t SPR_Load(const char* pTextureName)
+goldsrc::HSPRITE_t SPR_Load(const char* pTextureName)
 {
     OPTICK_EVENT();
 
@@ -162,7 +166,7 @@ bool SPR_IsLoaded(const char* sprite_name)
     return gLoadedSpriteNames.contains(sprite_name);
 }
 
-void SPR_Set(HSPRITE_t hsprite, int r, int g, int b)
+void SPR_Set(goldsrc::HSPRITE_t hsprite, int r, int g, int b)
 {
     OPTICK_EVENT();
 
@@ -171,13 +175,13 @@ void SPR_Set(HSPRITE_t hsprite, int r, int g, int b)
     SPRITELIST* sprite = SPR_Get(hsprite);
     if (sprite)
     {
-        gpSprite = (msprite_t*) sprite->pSprite->cache.data;
+        gpSprite = (goldsrc::msprite_t*)sprite->pSprite->cache.data;
         if (gpSprite)
             qglColor4f(r / 255.0, g / 255.0, b / 255.0, 1.0);
     }
 }
 
-void SPR_Draw(int frame, int x, int y, const wrect_t* prc)
+void SPR_Draw(int frame, int x, int y, const goldsrc::wrect_t* prc)
 {
     OPTICK_EVENT();
 
@@ -185,7 +189,7 @@ void SPR_Draw(int frame, int x, int y, const wrect_t* prc)
 
     if (gpSprite && p_vid->width > x && p_vid->height > y)
     {
-        mspriteframe_t* sprframe = R_GetSpriteFrame(gpSprite, frame);
+        goldsrc::mspriteframe_t* sprframe = R_GetSpriteFrame(gpSprite, frame);
         if (sprframe)
             Draw_SpriteFrame(sprframe, gSpritePalette, x, y, prc);
         else
@@ -193,7 +197,7 @@ void SPR_Draw(int frame, int x, int y, const wrect_t* prc)
     }
 }
 
-void SPR_DrawAdditive(int frame, int x, int y, const wrect_t* prc)
+void SPR_DrawAdditive(int frame, int x, int y, const goldsrc::wrect_t* prc)
 {
     OPTICK_EVENT();
 
@@ -201,7 +205,7 @@ void SPR_DrawAdditive(int frame, int x, int y, const wrect_t* prc)
 
     if (gpSprite && p_vid->width > x && p_vid->height > y)
     {
-        mspriteframe_t* sprframe = R_GetSpriteFrame(gpSprite, frame);
+        goldsrc::mspriteframe_t* sprframe = R_GetSpriteFrame(gpSprite, frame);
         if (sprframe)
             Draw_SpriteFrameAdditive(sprframe, gSpritePalette, x, y, prc);
         else
@@ -209,7 +213,7 @@ void SPR_DrawAdditive(int frame, int x, int y, const wrect_t* prc)
     }
 }
 
-void SPR_DrawHoles(int frame, int x, int y, const wrect_t* prc)
+void SPR_DrawHoles(int frame, int x, int y, const goldsrc::wrect_t* prc)
 {
     OPTICK_EVENT();
 
@@ -217,7 +221,7 @@ void SPR_DrawHoles(int frame, int x, int y, const wrect_t* prc)
 
     if (gpSprite && p_vid->width > x && p_vid->height > y)
     {
-        mspriteframe_t* sprframe = R_GetSpriteFrame(gpSprite, frame);
+        goldsrc::mspriteframe_t* sprframe = R_GetSpriteFrame(gpSprite, frame);
         if (sprframe)
             Draw_SpriteFrameHoles(sprframe, gSpritePalette, x, y, prc);
         else
@@ -225,7 +229,7 @@ void SPR_DrawHoles(int frame, int x, int y, const wrect_t* prc)
     }
 }
 
-void SPR_DrawGeneric(int frame, int x, int y, const wrect_t* prc, int src, int dest, int width, int height)
+void SPR_DrawGeneric(int frame, int x, int y, const goldsrc::wrect_t* prc, int src, int dest, int width, int height)
 {
     OPTICK_EVENT();
 
@@ -233,7 +237,7 @@ void SPR_DrawGeneric(int frame, int x, int y, const wrect_t* prc, int src, int d
 
     if (gpSprite && p_vid->width > x && p_vid->height > y)
     {
-        mspriteframe_t* sprframe = R_GetSpriteFrame(gpSprite, frame);
+        goldsrc::mspriteframe_t* sprframe = R_GetSpriteFrame(gpSprite, frame);
         if (sprframe)
             Draw_SpriteFrameGeneric(sprframe, gSpritePalette, x, y, prc, src, dest, width, height);
         else
@@ -259,7 +263,7 @@ void SPR_DisableScissor()
     DisableScissorTest();
 }
 
-int SPR_Width(HSPRITE_t hsprite, int frame)
+int SPR_Width(goldsrc::HSPRITE_t hsprite, int frame)
 {
     OPTICK_EVENT();
 
@@ -268,7 +272,7 @@ int SPR_Width(HSPRITE_t hsprite, int frame)
     SPRITELIST* sprite = SPR_Get(hsprite);
     if (sprite)
     {
-        mspriteframe_t* sprframe = R_GetSpriteFrame((msprite_t*) sprite->pSprite->cache.data, frame);
+        goldsrc::mspriteframe_t* sprframe = R_GetSpriteFrame((goldsrc::msprite_t*)sprite->pSprite->cache.data, frame);
         if (sprframe)
             return sprframe->width;
     }
@@ -276,7 +280,7 @@ int SPR_Width(HSPRITE_t hsprite, int frame)
     return 0;
 }
 
-int SPR_Height(HSPRITE_t hsprite, int frame)
+int SPR_Height(goldsrc::HSPRITE_t hsprite, int frame)
 {
     OPTICK_EVENT();
 
@@ -285,7 +289,7 @@ int SPR_Height(HSPRITE_t hsprite, int frame)
     SPRITELIST* sprite = SPR_Get(hsprite);
     if (sprite)
     {
-        mspriteframe_t* sprframe = R_GetSpriteFrame((msprite_t*) sprite->pSprite->cache.data, frame);
+        goldsrc::mspriteframe_t* sprframe = R_GetSpriteFrame((goldsrc::msprite_t*)sprite->pSprite->cache.data, frame);
         if (sprframe)
             return sprframe->height;
     }
@@ -293,7 +297,7 @@ int SPR_Height(HSPRITE_t hsprite, int frame)
     return 0;
 }
 
-int SPR_Frames(HSPRITE_t hsprite)
+int SPR_Frames(goldsrc::HSPRITE_t hsprite)
 {
     OPTICK_EVENT();
 
@@ -306,7 +310,7 @@ int SPR_Frames(HSPRITE_t hsprite)
     return 0;
 }
 
-const model_t* SPR_GetModelPointer(HSPRITE_t hsprite)
+const goldsrc::model_t* SPR_GetModelPointer(goldsrc::HSPRITE_t hsprite)
 {
     OPTICK_EVENT();
 

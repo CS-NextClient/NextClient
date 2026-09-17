@@ -18,6 +18,7 @@
 #include <ncl_math/aabb.h>
 #include <Windows.h>
 #include <cmrc/cmrc.hpp>
+#include <goldsrc/client_api.h>
 
 CMRC_DECLARE(client_mini_rc);
 

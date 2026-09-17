@@ -19,6 +19,7 @@
 
 #include <cstdio>
 #include <steam/steam_api.h>
+#include <goldsrc/client_api.h>
 
 using namespace vgui2;
 

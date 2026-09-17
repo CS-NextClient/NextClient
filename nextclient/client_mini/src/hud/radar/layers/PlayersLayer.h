@@ -5,6 +5,7 @@
 
 #include <ncl_math/vec3.h>
 #include <ncl_math/color.h>
+#include <goldsrc/fwd.h>
 
 #include "hud/radar/RadarFrame.h"
 #include "hud/radar/RadarLimits.h"
@@ -12,10 +13,8 @@
 #include "players/PlayerTracks.h"
 
 class RadarVisibility;
-struct extra_player_info_t;
 class RadarText;
 class RadarPolicy;
-typedef struct cl_entity_s cl_entity_t;
 
 class PlayersLayer
 {
@@ -78,7 +77,7 @@ private:
     void DrawDeaths(const RadarFrame& frame);
     
     float ComputeHighlightConeSpread(const RadarFrame& frame);
-    bool ResolvePlayerSpot(const RadarFrame& frame, int i, bool is_self, cl_entity_t* ent, PlayerSpot& out);
+    bool ResolvePlayerSpot(const RadarFrame& frame, int i, bool is_self, goldsrc::cl_entity_t* ent, PlayerSpot& out);
     // Returns the prefix of jobs it filled.
     std::span<const PlayerJob> CollectPlayerJobs(const RadarFrame& frame, int dot, std::span<PlayerJob> jobs);
 
@@ -89,7 +88,7 @@ private:
     void UpdatePlayerTrail(
         const RadarFrame& frame,
         int player,
-        const cl_entity_t* ent,
+        const goldsrc::cl_entity_t* ent,
         ncl_math::Vector2 world,
         ncl_math::Color color,
         bool offscreen,
@@ -101,7 +100,7 @@ private:
         bool is_self,
         RadarTeam team,
         const PlayerSpot& spot,
-        const extra_player_info_t& ext,
+        const goldsrc::cstrike::extra_player_info_t& ext,
         int dot,
         PlayerJob& job
     ) const;

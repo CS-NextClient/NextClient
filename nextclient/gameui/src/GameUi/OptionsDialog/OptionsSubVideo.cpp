@@ -13,6 +13,7 @@
 #include <vgui_controls/ComboBox.h>
 #include <KeyValues.h>
 #include <vgui/ILocalize.h>
+#include <goldsrc/client_api.h>
 // memdbgon must be the last include file in a .cpp file!!!
 #include <tier0/memdbgon.h>
 

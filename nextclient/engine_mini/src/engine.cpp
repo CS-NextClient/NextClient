@@ -13,6 +13,21 @@
 #include <taskcoro/TaskCoro.h>
 #include <taskcoro/impl/TaskCoroImpl.h>
 #include <tier2/tier2.h>
+#include <goldsrc/client_api.h>
+#include <goldsrc/cvar.h>
+#include <goldsrc/engine/client_state.h>
+#include <goldsrc/engine/cmd.h>
+#include <goldsrc/engine/model.h>
+#include <goldsrc/engine/net.h>
+#include <goldsrc/engine/server_state.h>
+#include <goldsrc/engine/sound.h>
+#include <goldsrc/engine/video.h>
+#include <goldsrc/entity.h>
+#include <goldsrc/keys.h>
+#include <goldsrc/server_api.h>
+#include <goldsrc/studio_api.h>
+#include <goldsrc/types.h>
+#include <goldsrc/view.h>
 
 #include "common/common.h"
 #include "common/net_chan.h"
@@ -59,92 +74,92 @@ IGameConsole* g_GameConsole;
 IGameConsoleNext* g_GameConsoleNext;
 vgui2::ILocalize* g_pLocalize;
 
-cl_enginefunc_t gEngfuncs;
-enginefuncs_t g_engfuncs;
-modfuncs_t g_modfuncs;
-sizebuf_t* net_message;
-netadr_t* net_from;
+goldsrc::cl_enginefunc_t gEngfuncs;
+goldsrc::enginefuncs_t g_engfuncs;
+goldsrc::modfuncs_t g_modfuncs;
+goldsrc::sizebuf_t* net_message;
+goldsrc::netadr_t* net_from;
 int* pMsg_readcount;
 double* realtime;
 double* host_frametime;
-qboolean* gfExtendedError;
+goldsrc::qboolean* gfExtendedError;
 char* gszDisconnectReason;
 char* gDownloadFile;
-client_state_t* cl;
+goldsrc::client_state_t* cl;
 client_stateex_t client_stateex;
-cmd_source_t* cmd_source;
-cldll_func_t cl_funcs;
-client_static_t* cls;
-server_static_t* g_psvs;
-server_t* g_psv;
-qboolean* g_bMajorMapChange;
-CareerStateType* p_g_careerState;
-model_t** loadmodel;
+goldsrc::cmd_source_t* cmd_source;
+goldsrc::cldll_func_t cl_funcs;
+goldsrc::client_static_t* cls;
+goldsrc::server_static_t* g_psvs;
+goldsrc::server_t* g_psv;
+goldsrc::qboolean* g_bMajorMapChange;
+goldsrc::CareerStateType* p_g_careerState;
+goldsrc::model_t** loadmodel;
 int* cl_playerindex;
-cl_entity_t** p_cl_entities;
+goldsrc::cl_entity_t** p_cl_entities;
 bool* p_noclip_anglehack;
-cache_user_t** p_loadcache;
+goldsrc::cache_user_t** p_loadcache;
 unsigned char** p_loadbuf;
 int* p_loadsize;
-qboolean* p_host_initialized;
-cl_enginefunc_dst_t* p_g_engdstAddrs;
-nitroapi::viddef_t* p_vid;
+goldsrc::qboolean* p_host_initialized;
+goldsrc::cl_enginefunc_dst_t* p_g_engdstAddrs;
+goldsrc::viddef_t* p_vid;
 int* p_currenttexture;
-cl_entity_t** p_currententity;
+goldsrc::cl_entity_t** p_currententity;
 float* p_r_blend;
 vec3_t* p_r_entorigin;
-qboolean* p_g_bUserFogOn;
+goldsrc::qboolean* p_g_bUserFogOn;
 int* p_numTransObjs;
-nitroapi::transObjRef** p_transObjects;
-qboolean* p_mtexenabled;
-cl_entity_t* p_r_worldentity;
-qboolean* p_mirror;
+goldsrc::transObjRef** p_transObjects;
+goldsrc::qboolean* p_mtexenabled;
+goldsrc::cl_entity_t* p_r_worldentity;
+goldsrc::qboolean* p_mirror;
 int* p_c_brush_polys;
 int* p_c_alias_polys;
 int* p_cl_numvisedicts;
-cl_entity_t** p_cl_visedicts;
-qboolean* p_isFogEnabled;
-refdef_t* r_refdef;
+goldsrc::cl_entity_t** p_cl_visedicts;
+goldsrc::qboolean* p_isFogEnabled;
+goldsrc::refdef_t* r_refdef;
 float* p_g_SND_VoiceOverdrive;
 int* p_cszrawsentences;
-char *(*p_rgpszrawsentence)[CVOXFILESENTENCEMAX];
+char* (*p_rgpszrawsentence)[goldsrc::CVOXFILESENTENCEMAX];
 float* p_scr_con_current;
-keydest_t* p_key_dest;
-sfx_t** p_known_sfx;
+goldsrc::keydest_t* p_key_dest;
+goldsrc::sfx_t** p_known_sfx;
 int* p_num_sfx;
 int* p_gHostSpawnCount;
-netadr_t* p_net_local_adr;
-netadr_t* p_g_GameServerAddress;
+goldsrc::netadr_t* p_net_local_adr;
+goldsrc::netadr_t* p_g_GameServerAddress;
 float* p_g_LastScreenUpdateTime;
 int* p_maxTransObjs;
 
-cvar_t* fs_startup_timings;
-cvar_t* fs_lazy_precache;
-cvar_t* fs_precache_timings;
-cvar_t* fs_perf_warnings;
-cvar_t* cl_download_ingame;
-cvar_t* cl_shownet;
-cvar_t* cl_timeout;
-cvar_t* scr_downloading;
-cvar_t* host_framerate;
-cvar_t* sys_ticrate;
-cvar_t* gl_vsync;
-cvar_t* snd_show;
-cvar_t* chase_active;
-cvar_t* fps_override;
-cvar_t* fps_max;
-cvar_t* sys_timescale;
-cvar_t* developer;
-cvar_t* sv_cheats;
-cvar_t* gl_dither_cvar;
-cvar_t* gl_spriteblend;
-cvar_t* r_drawentities;
-cvar_t* r_norefresh;
-cvar_t* r_speeds;
-cvar_t* viewmodel_fov;
+goldsrc::cvar_t* fs_startup_timings;
+goldsrc::cvar_t* fs_lazy_precache;
+goldsrc::cvar_t* fs_precache_timings;
+goldsrc::cvar_t* fs_perf_warnings;
+goldsrc::cvar_t* cl_download_ingame;
+goldsrc::cvar_t* cl_shownet;
+goldsrc::cvar_t* cl_timeout;
+goldsrc::cvar_t* scr_downloading;
+goldsrc::cvar_t* host_framerate;
+goldsrc::cvar_t* sys_ticrate;
+goldsrc::cvar_t* gl_vsync;
+goldsrc::cvar_t* snd_show;
+goldsrc::cvar_t* chase_active;
+goldsrc::cvar_t* fps_override;
+goldsrc::cvar_t* fps_max;
+goldsrc::cvar_t* sys_timescale;
+goldsrc::cvar_t* developer;
+goldsrc::cvar_t* sv_cheats;
+goldsrc::cvar_t* gl_dither_cvar;
+goldsrc::cvar_t* gl_spriteblend;
+goldsrc::cvar_t* r_drawentities;
+goldsrc::cvar_t* r_norefresh;
+goldsrc::cvar_t* r_speeds;
+goldsrc::cvar_t* viewmodel_fov;
 
 bool g_bIsDedicatedServer;
-r_studio_interface_t* pStudioAPI;
+goldsrc::r_studio_interface_t* pStudioAPI;
 
 static std::unique_ptr<service::matchmaking::MatchmakingSteamComp> g_pMatchmakingServers;
 
@@ -284,7 +299,8 @@ static void OnGameUninitializing()
         g_Analytics->AddBreadcrumb("info", BREADCRUMBS_TAG " OnGameUninitializing");
     
     // Notify the server of disconnect when the game is closed via the window's X button.
-    if (cls && (cls->state == ca_connected || cls->state == ca_active || cls->state == ca_uninitialized || cls->state == ca_connecting))
+    if (cls && (cls->state == goldsrc::ca_connected || cls->state == goldsrc::ca_active || cls->state == goldsrc::ca_uninitialized ||
+                cls->state == goldsrc::ca_connecting))
         CL_Disconnect();
 
     if (g_pTaskCoroImpl)
@@ -410,7 +426,8 @@ static void OnGameInitializing(void* mainwindow, HDC* pmaindc, HGLRC* pbaseRC, c
     //
     // Hooks that completely replace engine functions
     //
-    g_Unsubs.emplace_back(eng()->Netchan_CopyFileFragments   |= [](netchan_t *chan, const auto& next)                                  { return Netchan_CopyFileFragments(chan); } );
+    g_Unsubs.emplace_back(eng()->Netchan_CopyFileFragments |=
+                          [](goldsrc::netchan_t* chan, const auto& next) { return Netchan_CopyFileFragments(chan); });
     g_Unsubs.emplace_back(eng()->SVC_TimeScale               |= [](const auto& next)                                                   { CL_Parse_Timescale(); });
     g_Unsubs.emplace_back(eng()->SVC_SendCvarValue           |= [](const auto& next)                                                   { CL_Send_CvarValue(); });
     g_Unsubs.emplace_back(eng()->CL_HTTPUpdate               |= [](const auto& next)                                                   { CL_HTTPUpdate(); } );
@@ -422,28 +439,50 @@ static void OnGameInitializing(void* mainwindow, HDC* pmaindc, HGLRC* pbaseRC, c
     g_Unsubs.emplace_back(eng()->Host_Map_f                  |= [](const auto& next)                                                   { Host_Map_f(); });
     g_Unsubs.emplace_back(eng()->Host_FilterTime             |= [](float delay, const auto& next)                                      { return Host_FilterTime(delay); });
     g_Unsubs.emplace_back(eng()->Mod_ClearAll                |= [](const auto& next)                                                   { Mod_ClearAll(); });
-    g_Unsubs.emplace_back(eng()->Mod_FindName                |= [](qboolean trackCRC, const char* name, const auto& next)              { return Mod_FindName(trackCRC, name); });
+    g_Unsubs.emplace_back(eng()->Mod_FindName |=
+                          [](goldsrc::qboolean trackCRC, const char* name, const auto& next) { return Mod_FindName(trackCRC, name); });
     g_Unsubs.emplace_back(eng()->Mod_Print                   |= [](const auto& next)                                                   { Mod_Print(); });
-    g_Unsubs.emplace_back(eng()->Mod_ValidateCRC             |= [](const char* name, CRC32_t crc, const auto& next)                    { return Mod_ValidateCRC(name, crc); });
-    g_Unsubs.emplace_back(eng()->Mod_NeedCRC                 |= [](const char* name, qboolean needCRC, const auto& next)               { Mod_NeedCRC(name, needCRC); });
-    g_Unsubs.emplace_back(eng()->Mod_LoadModel               |= [](model_t* mod, qboolean crash, qboolean trackCRC, const auto& next)  { return Mod_LoadModel(mod, crash, trackCRC); });
+    g_Unsubs.emplace_back(eng()->Mod_ValidateCRC |=
+                          [](const char* name, goldsrc::CRC32_t crc, const auto& next) { return Mod_ValidateCRC(name, crc); });
+    g_Unsubs.emplace_back(eng()->Mod_NeedCRC |=
+                          [](const char* name, goldsrc::qboolean needCRC, const auto& next) { Mod_NeedCRC(name, needCRC); });
+    g_Unsubs.emplace_back(eng()->Mod_LoadModel |=
+                          [](goldsrc::model_t* mod, goldsrc::qboolean crash, goldsrc::qboolean trackCRC, const auto& next) {
+                              return Mod_LoadModel(mod, crash, trackCRC);
+                          });
     g_Unsubs.emplace_back(eng()->SPR_Init                    |= [](const auto& next)                                                   { return SPR_Init(); });
     g_Unsubs.emplace_back(eng()->SPR_Shutdown                |= [](const auto& next)                                                   { return SPR_Shutdown(); });
     g_Unsubs.emplace_back(eng()->SPR_Shutdown_NoModelFree    |= [](const auto& next)                                                   { return SPR_Shutdown_NoModelFree(); });
     g_Unsubs.emplace_back(eng()->SPR_Load                    |= [](const char* str, const auto& next)                                  { return SPR_Load(str); });
-    g_Unsubs.emplace_back(eng()->SPR_Draw                    |= [](int frame, int x, int y, const wrect_t* prc, const auto& next)      { SPR_Draw(frame, x, y, prc); });
-    g_Unsubs.emplace_back(eng()->SPR_DrawAdditive            |= [](int frame, int x, int y, const wrect_t* prc, const auto& next)      { SPR_DrawAdditive(frame, x, y, prc); });
-    g_Unsubs.emplace_back(eng()->SPR_DrawHoles               |= [](int frame, int x, int y, const wrect_t* prc, const auto& next)      { SPR_DrawHoles(frame, x, y, prc); });
-    g_Unsubs.emplace_back(eng()->SPR_DrawGeneric             |= [](int frame, int x, int y, const wrect_t* prc, int src, int dest, int width, int height, const auto& next) { SPR_DrawGeneric(frame, x, y, prc, src, dest, width, height); });
+    g_Unsubs.emplace_back(eng()->SPR_Draw |=
+                          [](int frame, int x, int y, const goldsrc::wrect_t* prc, const auto& next) { SPR_Draw(frame, x, y, prc); });
+    g_Unsubs.emplace_back(eng()->SPR_DrawAdditive |= [](int frame, int x, int y, const goldsrc::wrect_t* prc, const auto& next) {
+        SPR_DrawAdditive(frame, x, y, prc);
+    });
+    g_Unsubs.emplace_back(eng()->SPR_DrawHoles |=
+                          [](int frame, int x, int y, const goldsrc::wrect_t* prc, const auto& next) { SPR_DrawHoles(frame, x, y, prc); });
+    g_Unsubs.emplace_back(
+        eng()->SPR_DrawGeneric |=
+        [](int frame, int x, int y, const goldsrc::wrect_t* prc, int src, int dest, int width, int height, const auto& next) {
+            SPR_DrawGeneric(frame, x, y, prc, src, dest, width, height);
+        });
     g_Unsubs.emplace_back(eng()->SPR_EnableScissor           |= [](int x, int y, int width, int height, const auto& next)              { SPR_EnableScissor(x, y, width, height); });
     g_Unsubs.emplace_back(eng()->SPR_DisableScissor          |= [](const auto& next)                                                   { SPR_DisableScissor(); });
-    g_Unsubs.emplace_back(eng()->SPR_Set                     |= [](HSPRITE_t hsprite, int r, int g, int b, const auto& next)           { SPR_Set(hsprite, r, g, b); });
-    g_Unsubs.emplace_back(eng()->SPR_Width                   |= [](HSPRITE_t hsprite, int frame, const auto& next)                     { return SPR_Width(hsprite, frame); });
-    g_Unsubs.emplace_back(eng()->SPR_Height                  |= [](HSPRITE_t hsprite, int frame, const auto& next)                     { return SPR_Height(hsprite, frame); });
-    g_Unsubs.emplace_back(eng()->SPR_Frames                  |= [](HSPRITE_t hsprite, const auto& next)                                { return SPR_Frames(hsprite); });
-    g_Unsubs.emplace_back(eng()->SPR_GetModelPointer         |= [](HSPRITE_t hsprite, const auto& next)                                { return SPR_GetModelPointer(hsprite); });
-    g_Unsubs.emplace_back(eng()->R_StudioReloadSkin          |= [](model_t* pModel, int index, skin_t* pskin, const auto& next)        { return R_StudioReloadSkin(pModel, index, pskin); });
-    g_Unsubs.emplace_back(eng()->SetCrosshair                |= [](HSPRITE_t hspr, wrect_t rc, int r, int g, int b, const auto& next)  { SetCrosshair(hspr, rc, r, g, b); });
+    g_Unsubs.emplace_back(eng()->SPR_Set |=
+                          [](goldsrc::HSPRITE_t hsprite, int r, int g, int b, const auto& next) { SPR_Set(hsprite, r, g, b); });
+    g_Unsubs.emplace_back(eng()->SPR_Width |=
+                          [](goldsrc::HSPRITE_t hsprite, int frame, const auto& next) { return SPR_Width(hsprite, frame); });
+    g_Unsubs.emplace_back(eng()->SPR_Height |=
+                          [](goldsrc::HSPRITE_t hsprite, int frame, const auto& next) { return SPR_Height(hsprite, frame); });
+    g_Unsubs.emplace_back(eng()->SPR_Frames |= [](goldsrc::HSPRITE_t hsprite, const auto& next) { return SPR_Frames(hsprite); });
+    g_Unsubs.emplace_back(eng()->SPR_GetModelPointer |=
+                          [](goldsrc::HSPRITE_t hsprite, const auto& next) { return SPR_GetModelPointer(hsprite); });
+    g_Unsubs.emplace_back(eng()->R_StudioReloadSkin |= [](goldsrc::model_t* pModel, int index, goldsrc::skin_t* pskin, const auto& next) {
+        return R_StudioReloadSkin(pModel, index, pskin);
+    });
+    g_Unsubs.emplace_back(eng()->SetCrosshair |= [](goldsrc::HSPRITE_t hspr, goldsrc::wrect_t rc, int r, int g, int b, const auto& next) {
+        SetCrosshair(hspr, rc, r, g, b);
+    });
     g_Unsubs.emplace_back(eng()->DrawCrosshair               |= [](int x, int y, const auto& next)                                     { DrawCrosshair(x, y); });
     g_Unsubs.emplace_back(eng()->R_RenderView                |= [](const auto& next)                                                   { R_RenderView(); });
     g_Unsubs.emplace_back(eng()->GL_Init                     |= [](const auto& next)                                                   { GL_Init(); next->Invoke(); });
@@ -467,7 +506,7 @@ static void OnGameInitializing(void* mainwindow, HDC* pmaindc, HGLRC* pbaseRC, c
     g_Unsubs.emplace_back(eng()->BuildGammaTable             |= [](float g, const auto& next)                                          { next->Invoke(g); BuildGammaTable(g); });
     g_Unsubs.emplace_back(eng()->DT_SetRenderState           |= [](int diffuseId, const auto& next)                                    { return DT_SetRenderState(diffuseId); });
     g_Unsubs.emplace_back(eng()->DT_LoadDetailTexture        |= [](const char *diffuseName, int diffuseId, const auto& next)           { DT_LoadDetailTexture(diffuseName, diffuseId); });
-    g_Unsubs.emplace_back(eng()->R_ForceCVars                |= [](qboolean mp, const auto& next)                                      { R_ForceCVars(mp); });
+    g_Unsubs.emplace_back(eng()->R_ForceCVars |= [](goldsrc::qboolean mp, const auto& next) { R_ForceCVars(mp); });
 
     //
     // The rest of the hooks and subscribers
@@ -494,11 +533,11 @@ static void OnGameInitializing(void* mainwindow, HDC* pmaindc, HGLRC* pbaseRC, c
         CL_HTTPCancel_f();
     });
 
-    g_Unsubs.emplace_back(eng()->NET_SendPacket += [](netsrc_t sock, int length, void *data, netadr_t to, int result) {
+    g_Unsubs.emplace_back(eng()->NET_SendPacket += [](goldsrc::netsrc_t sock, int length, void* data, goldsrc::netadr_t to, int result) {
         NET_SendPacketPost(sock, length, data, to, result);
     });
 
-    g_Unsubs.emplace_back(eng()->Cbuf_AddText += [](const char *text, sizebuf_t *buf, char* result) {
+    g_Unsubs.emplace_back(eng()->Cbuf_AddText += [](const char* text, goldsrc::sizebuf_t* buf, char* result) {
         // for cases when client downloading files through dlfile
         // give him a chance to use http download again
         if (std::strncmp(text, "disconnect", 10) == 0)
@@ -509,11 +548,11 @@ static void OnGameInitializing(void* mainwindow, HDC* pmaindc, HGLRC* pbaseRC, c
         g_bIsDedicatedServer = bIsDedicated;
     });
 
-    g_Unsubs.emplace_back(eng()->Cvar_Command |= [](const auto& next) -> qboolean {
+    g_Unsubs.emplace_back(eng()->Cvar_Command |= [](const auto& next) -> goldsrc::qboolean {
         const auto cvar_name = g_engfuncs.pfnCmd_Argv(0);
         const auto cvar = g_engfuncs.pfnCVarGetPointer(cvar_name);
 
-        if (cvar != nullptr && cvar->flags & FCVAR_CHEAT)
+        if (cvar != nullptr && cvar->flags & goldsrc::FCVAR_CHEAT)
         {
             if (!Host_IsSinglePlayerGame() && sv_cheats->value == 0 && !cls->spectator && !cls->demoplayback)
             {
@@ -525,32 +564,33 @@ static void OnGameInitializing(void* mainwindow, HDC* pmaindc, HGLRC* pbaseRC, c
         return next->Invoke();
     });
 
-    g_Unsubs.emplace_back(eng()->AppendTEntity += [](cl_entity_t* ent) {
+    g_Unsubs.emplace_back(eng()->AppendTEntity += [](goldsrc::cl_entity_t* ent) {
         AppendTEntity_Subscriber(ent);
     });
 
     g_Unsubs.emplace_back(eng()->Con_MessageMode_f += []() {
-        if (*p_key_dest == key_message)
+        if (*p_key_dest == goldsrc::key_message)
         {
             gEngfuncs.pfnServerCmd("client_chat_open");
         }
     });
 
     g_Unsubs.emplace_back(eng()->Con_MessageMode2_f += []() {
-        if (*p_key_dest == key_message)
+        if (*p_key_dest == goldsrc::key_message)
         {
             gEngfuncs.pfnServerCmd("client_chat_team_open");
         }
     });
 
     g_Unsubs.emplace_back(eng()->Key_Message += [](int key) {
-        if (*p_key_dest != key_message)
+        if (*p_key_dest != goldsrc::key_message)
         {
             gEngfuncs.pfnServerCmd("client_chat_close");
         }
     });
 
-    g_Unsubs.emplace_back(client()->HUD_GetStudioModelInterface += [](int version, struct r_studio_interface_s **ppinterface, struct engine_studio_api_s *pstudio, int result) {
+    g_Unsubs.emplace_back(client()->HUD_GetStudioModelInterface +=
+                          [](int version, goldsrc::r_studio_interface_t** ppinterface, goldsrc::engine_studio_api_t* pstudio, int result) {
         pStudioAPI = *ppinterface;
     });
 
@@ -598,7 +638,7 @@ static void OnGameInitialized()
     v.Assign(chase_active, GET_VARIABLE_NAME(chase_active), g_engfuncs.pfnCVarGetPointer("chase_active"));
     
     v.Assign(sys_timescale, GET_VARIABLE_NAME(sys_timescale), eng()->sys_timescale);
-    sys_timescale->flags |= FCVAR_CHEAT;
+    sys_timescale->flags |= goldsrc::FCVAR_CHEAT;
     Cvar_RegisterVariable(sys_timescale);
 
     if (v.HasNullPtr())
@@ -610,7 +650,7 @@ static void OnGameInitialized()
         return;
     }
 
-    viewmodel_fov = gEngfuncs.pfnRegisterVariable("viewmodel_fov", std::to_string(90.f).c_str(), FCVAR_ARCHIVE);
+    viewmodel_fov = gEngfuncs.pfnRegisterVariable("viewmodel_fov", std::to_string(90.f).c_str(), goldsrc::FCVAR_ARCHIVE);
 
     CL_CreateHttpDownloadManager(g_pGameUi, g_pLocalize, g_SettingGuard);
     JSAPI_Init();
