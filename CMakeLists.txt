@@ -38,6 +38,7 @@ find_package(xbyak CONFIG REQUIRED)
 add_subdirectory(dep/ncl-hl1-source-sdk)
 add_subdirectory(dep/nitro_utils)
 add_subdirectory(dep/funchook) # while funchook is not in vcpkg, add it as add_subdirectory (PS do NOT make it a sub-module).
+add_subdirectory(goldsrc_abi)
 
 add_library(nitro_api SHARED
         dep/easyloggingpp/src/easylogging++.cc
@@ -91,6 +92,10 @@ add_library(nitro_api SHARED
         src/modules/engine/EngineAddressProvider8684Linux.cpp
         src/modules/engine/EngineAddressProvider8684Linux.h
 )
+
+# Built with nitro_api, never linked into it: the layout tests are compile-time checks, not code the
+# shipped module carries.
+add_dependencies(nitro_api goldsrc_abi_golden goldsrc_abi_equivalence)
 
 target_include_directories(nitro_api PRIVATE
         ${OPENGL_INCLUDE_DIR}

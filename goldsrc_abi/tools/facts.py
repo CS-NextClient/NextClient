@@ -8,7 +8,7 @@ import tempfile
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from goldsrc_tools import abi_scope, build_info, clang_text, declarations, paths, self_check  # noqa: E402
+from goldsrc_tools import abi_scope, build_info, clang_text, declarations, macros, paths, self_check  # noqa: E402
 
 LAYOUT_ARGS = build_info.CLANG_ARGS + ("/Zs", "-Xclang", "-fdump-record-layouts-complete")
 # Access control is off in the self-check probe: it names private and protected members of the records it checks.
@@ -19,16 +19,25 @@ FACT_GROUPS = ("records", "typedefs", "enums", "variables", "functions")
 # AsIs traversal: IgnoreUnlessSpelledInSource hides the ConstantExpr nodes that carry evaluated values,
 # the implicit field of an anonymous member and the typedef-to-record links. Namespaces and extern "C"
 # blocks are dumped whole so their members keep their scope and linkage; forward declarations come from
-# their own command because a dumped enum does not say whether it is a definition.
+# their own command because a dumped enum does not say whether it is a definition. The enums of the
+# external files come from a command of their own as well: the unnamed enum an external typedef names
+# (typedef enum {...} netadrtype_t) has no name for hasAnyName to match, and an enum no fact needs is
+# never selected.
 QUERY_TEMPLATE = """set traversal AsIs
 set output dump
 set bind-root true
 match decl(unless(isExpansionInSystemHeader()), isExpansionInFileMatching("{declarations}"), hasDeclContext(translationUnitDecl()), anyOf(recordDecl(isDefinition(), unless(cxxRecordDecl(isTemplateInstantiation()))), typedefNameDecl(), enumDecl(isDefinition()), varDecl(unless(parmVarDecl())), functionDecl(unless(isTemplateInstantiation()))))
 match decl(unless(isExpansionInSystemHeader()), isExpansionInFileMatching("{declarations}"), hasDeclContext(translationUnitDecl()), anyOf(namespaceDecl(), linkageSpecDecl()))
 match tagDecl(unless(isExpansionInSystemHeader()), isExpansionInFileMatching("{declarations}"), hasDeclContext(translationUnitDecl()), unless(isDefinition()), unless(isImplicit()))
+match namedDecl(unless(isExpansionInSystemHeader()), isExpansionInFileMatching("{externals}"), hasDeclContext(translationUnitDecl()), hasAnyName({external_names}), anyOf(recordDecl(isDefinition(), unless(cxxRecordDecl(isTemplateInstantiation()))), typedefNameDecl(), enumDecl(isDefinition()), varDecl(unless(parmVarDecl())), functionDecl(unless(isTemplateInstantiation()))))
+match enumDecl(unless(isExpansionInSystemHeader()), isExpansionInFileMatching("{externals}"), hasDeclContext(translationUnitDecl()), isDefinition())
 """
-QUERY_COMMANDS = 3
+QUERY_COMMANDS = 5
 FORWARD_COMMAND = 2
+
+# The repositories whose files the facts come from, relative to the source root: our code (units, uses of the
+# replaced declarations), NitroApi (the stock headers it keeps) and the SDK fork.
+REPOSITORIES = (("nextclient", "."), ("nitroapi", abi_scope.NITROAPI_DIR), ("sdk", abi_scope.SDK_DIR))
 
 EXTERNAL_QUERY_TEMPLATE = """set traversal AsIs
 set output dump
@@ -168,6 +177,34 @@ def name_index(facts):
             if len({json.dumps(_signature(item), sort_keys=True) for item in same_kind}) > 1:
                 problems.append("%s %s declared differently at %s" % (kind, name, ", ".join(sorted(item["key"] for item in same_kind))))
     return index, problems
+
+
+def _record_members(record):
+    for field in record.get("fields", []):
+        yield field["key"], record
+    for method in record.get("methods", []):
+        yield method["key"], record
+    for nested in record.get("nested", []):
+        yield from _record_members(nested)
+
+
+def ambiguous_usage_keys(facts, usage):
+    """A usage key that names a member of more than one record is a modelling problem: mark_usage
+    cannot tell which record's member our code actually refers to."""
+    owners = {}
+    for record in facts.get("records", {}).values():
+        for key, owner in _record_members(record):
+            names = owners.setdefault(key, [])
+            label = owner["name"] or owner["typedef_name"] or owner["key"]
+            if label not in names:
+                names.append(label)
+
+    problems = []
+    for key in usage["declarations"]:
+        names = owners.get(key, [])
+        if len(names) > 1:
+            problems.append("usage key %s matches members of %s" % (key, ", ".join(sorted(names))))
+    return problems
 
 
 def _mark_enum(enum, used_keys):
@@ -507,15 +544,23 @@ def self_check_summary(results, exempt):
     return summary, problems
 
 
+def _nested(relative, repositories):
+    """The repositories of `repositories` inside the one at `relative`, as paths relative to it."""
+    if relative == ".":
+        return [other for _, other in repositories if other != relative]
+    return [other[len(relative) + 1:] for _, other in repositories if other.startswith(relative + "/")]
+
+
 def input_state(source_root, clang_query, clang_cl):
     """The commits the facts were extracted from and the clang versions that extracted them: (sources, tools,
     problems)."""
     sources = {}
     tools = {}
     problems = []
-    for name, relative in (("sdk", abi_scope.SDK_DIR), ("nitroapi", abi_scope.NITROAPI_DIR)):
+    for name, relative in REPOSITORIES:
         try:
-            sources[name] = dict(build_info.repository_state(_source_path(source_root, relative)), path=relative)
+            state = build_info.repository_state(_source_path(source_root, relative), _nested(relative, REPOSITORIES))
+            sources[name] = dict(state, path=relative)
         except RuntimeError:
             problems.append("cannot read the git commit and state of %s" % relative)
     for name, executable in (("clang-query", clang_query), ("clang-cl", clang_cl)):
@@ -556,7 +601,8 @@ def main(argv=None):
         database = build_info.write_compile_commands(commands, directory)
         query_file = os.path.join(directory, "facts.query")
         with open(query_file, "w", encoding="utf-8", newline="\n") as handle:
-            handle.write(QUERY_TEMPLATE.format(declarations=abi_scope.DECLARATION_REGEX))
+            handle.write(QUERY_TEMPLATE.format(declarations=abi_scope.DECLARATION_REGEX, externals=abi_scope.EXTERNAL_FACT_REGEX,
+                                               external_names=", ".join('"%s"' % name for name in abi_scope.EXTERNAL_FACT_NAMES)))
         available = [unit for unit in units if unit not in missing]
         with concurrent.futures.ThreadPoolExecutor(max_workers=args.jobs) as pool:
             futures = [(unit, pool.submit(extract_unit, unit, commands[paths.key(_source_path(source_root, unit))], database,
@@ -573,6 +619,7 @@ def main(argv=None):
 
         index, duplicates = name_index(facts)
         problems.extend(duplicates)
+        problems.extend(ambiguous_usage_keys(facts, usage))
         unresolved = mark_usage(facts, usage, index)
         externals = required_closure(facts, index)
         forward_names = [facts["forward"][key]["name"] for key in unresolved]
@@ -602,6 +649,10 @@ def main(argv=None):
         check, check_problems = self_check_summary(results, exempt)
         problems.extend(check_problems)
 
+        macro_facts, macro_problems = macros.extract(source_root, usage, commands, units, args.clang_cl, directory,
+                                                      args.jobs, args.timeout)
+        problems.extend(macro_problems)
+
     sources, tools, input_problems = input_state(source_root, args.clang_query, args.clang_cl)
     problems.extend(input_problems)
 
@@ -609,7 +660,7 @@ def main(argv=None):
     output["external"] = externals
     output["completeness"] = gate
     output["self_check"] = check
-    output["macros"] = usage["macros"]
+    output["macros"] = macro_facts
     output["units"] = {"chosen": units, "incomplete": sorted(incomplete)}
     output["sources"] = sources
     output["tools"] = tools
@@ -621,9 +672,11 @@ def main(argv=None):
         json.dump(output, handle, indent=1)
         handle.write("\n")
 
-    print("units %d (incomplete %d): records %d, typedefs %d, enums %d, variables %d, functions %d, external %d, macros %d" % (
+    macro_constants = sum(1 for entry in macro_facts.values() if entry["status"] == "constant")
+    print("units %d (incomplete %d): records %d, typedefs %d, enums %d, variables %d, functions %d, external %d, "
+          "macros %d, macro constants %d" % (
         len(units), len(incomplete), len(selected["records"]), len(selected["typedefs"]), len(selected["enums"]),
-        len(selected["variables"]), len(selected["functions"]), len(externals), len(usage["macros"])))
+        len(selected["variables"]), len(selected["functions"]), len(externals), len(macro_facts), macro_constants))
     print("usage keys: matched %d, exempt %d, unmatched %d" % (
         gate["matched"], sum(len(items) for items in gate["exempt"].values()), len(gate["unmatched"])))
     print("self-check: %d units, asserted %d, failed %d, unresolvable %d, exempt %d" % (

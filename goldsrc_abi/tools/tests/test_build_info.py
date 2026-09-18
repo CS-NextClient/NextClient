@@ -51,10 +51,21 @@ class CompileCommandsTest(unittest.TestCase):
             build_info.clang_cl_command(other, r"C:\LLVM\clang-cl.exe", ["/Zs"], source=r"C:\tmp\probe.cpp")
 
 
+class IncludeDirsTest(unittest.TestCase):
+    def test_include_dirs_from_dash_i_slash_i_and_quoted_paths_with_spaces(self):
+        entry = {"directory": "D:/b", "command": r'cl.exe -Ifoo /Ibar /I"with space" -c a.cpp'}
+        self.assertEqual(build_info.include_dirs(entry), [
+            paths.canonical("D:/b/foo"), paths.canonical("D:/b/bar"), paths.canonical("D:/b/with space"),
+        ])
+
+
 class InputStateTest(unittest.TestCase):
     def git(self, directory, *arguments):
         subprocess.run(["git", "-C", directory, "-c", "user.name=fixture", "-c", "user.email=fixture@example.invalid"] + list(arguments),
                        check=True, capture_output=True)
+
+    def head(self, directory):
+        return subprocess.run(["git", "-C", directory, "rev-parse", "HEAD"], capture_output=True, text=True).stdout.strip()
 
     def test_repository_commit_and_dirty_flag(self):
         with tempfile.TemporaryDirectory() as root:
@@ -62,11 +73,43 @@ class InputStateTest(unittest.TestCase):
             write(root, "a.txt", "one\n")
             self.git(root, "add", "a.txt")
             self.git(root, "commit", "-q", "-m", "fixture")
-            head = subprocess.run(["git", "-C", root, "rev-parse", "HEAD"], capture_output=True, text=True).stdout.strip()
+            head = self.head(root)
 
-            self.assertEqual(build_info.repository_state(root), {"commit": head, "dirty": False})
+            self.assertEqual(build_info.repository_state(root), {"commit": head, "dirty": False, "untracked": []})
             write(root, "a.txt", "two\n")
-            self.assertEqual(build_info.repository_state(root), {"commit": head, "dirty": True})
+            self.assertEqual(build_info.repository_state(root), {"commit": head, "dirty": True, "untracked": []})
+
+    def test_an_untracked_file_is_listed_without_making_the_tree_dirty(self):
+        with tempfile.TemporaryDirectory() as root:
+            self.git(root, "init", "-q")
+            write(root, "a.txt", "one\n")
+            self.git(root, "add", "a.txt")
+            self.git(root, "commit", "-q", "-m", "fixture")
+            write(root, "notes/draft.md", "draft\n")
+
+            self.assertEqual(build_info.repository_state(root),
+                             {"commit": self.head(root), "dirty": False, "untracked": ["notes"]})
+
+    def test_a_separately_recorded_nested_repository_does_not_make_its_parent_dirty(self):
+        with tempfile.TemporaryDirectory() as root:
+            inner = os.path.join(root, "inner")
+            os.makedirs(inner)
+            self.git(inner, "init", "-q")
+            write(inner, "b.txt", "one\n")
+            self.git(inner, "add", "b.txt")
+            self.git(inner, "commit", "-q", "-m", "inner")
+
+            self.git(root, "init", "-q")
+            write(root, "a.txt", "one\n")
+            self.git(root, "add", "a.txt")
+            self.git(root, "update-index", "--add", "--cacheinfo", "160000,%s,inner" % self.head(inner))
+            self.git(root, "commit", "-q", "-m", "outer")
+
+            write(inner, "b.txt", "two\n")
+            self.git(inner, "commit", "-q", "-am", "moved on")
+
+            self.assertTrue(build_info.repository_state(root)["dirty"])
+            self.assertFalse(build_info.repository_state(root, separate=["inner"])["dirty"])
 
     def test_a_directory_outside_git_is_an_error(self):
         with tempfile.TemporaryDirectory() as root:
@@ -81,6 +124,33 @@ class InputStateTest(unittest.TestCase):
             build_info.version_line("")
 
 
+def _write_reply(root, app):
+    """A CMake file API reply under root/build for `app` plus a linked static library and an order-only
+    object library; returns the build directory."""
+    build = os.path.join(root, "build")
+    reply = os.path.join(build, ".cmake", "api", "v1", "reply")
+    write_json(os.path.join(reply, "index-2026.json"),
+               {"objects": [{"kind": "codemodel", "jsonFile": "codemodel-v2-1.json"}]})
+    write_json(os.path.join(reply, "codemodel-v2-1.json"), {
+        "paths": {"source": root, "build": build},
+        "configurations": [{"name": "Release", "targets": [
+            {"id": "app::@1", "name": "app", "jsonFile": "target-app.json"},
+            {"id": "lib::@1", "name": "lib", "jsonFile": "target-lib.json"},
+            {"id": "test::@1", "name": "test", "jsonFile": "target-test.json"},
+        ]}],
+    })
+    write_json(os.path.join(reply, "target-app.json"), app)
+    write_json(os.path.join(reply, "target-lib.json"), {
+        "name": "lib", "type": "STATIC_LIBRARY", "sources": [],
+        "artifacts": [{"path": "sub dir/lib.lib"}],
+    })
+    write_json(os.path.join(reply, "target-test.json"), {
+        "name": "test", "type": "OBJECT_LIBRARY", "sources": [],
+        "artifacts": [{"path": "CMakeFiles/test.dir/test.cpp.obj"}],
+    })
+    return build
+
+
 class CodemodelTest(unittest.TestCase):
     def test_query_file_is_created_once(self):
         with tempfile.TemporaryDirectory() as build:
@@ -88,19 +158,9 @@ class CodemodelTest(unittest.TestCase):
             self.assertTrue(os.path.isfile(os.path.join(build, build_info.CODEMODEL_QUERY)))
             self.assertFalse(build_info.ensure_codemodel_query(build))
 
-    def test_targets_sources_includes_and_dependencies(self):
+    def test_targets_sources_includes_and_link_dependencies(self):
         with tempfile.TemporaryDirectory() as root:
-            reply = os.path.join(root, "build", ".cmake", "api", "v1", "reply")
-            write_json(os.path.join(reply, "index-2026.json"),
-                       {"objects": [{"kind": "codemodel", "jsonFile": "codemodel-v2-1.json"}]})
-            write_json(os.path.join(reply, "codemodel-v2-1.json"), {
-                "paths": {"source": root, "build": os.path.join(root, "build")},
-                "configurations": [{"name": "Release", "targets": [
-                    {"id": "app::@1", "name": "app", "jsonFile": "target-app.json"},
-                    {"id": "lib::@1", "name": "lib", "jsonFile": "target-lib.json"},
-                ]}],
-            })
-            write_json(os.path.join(reply, "target-app.json"), {
+            build = _write_reply(root, {
                 "name": "app", "type": "SHARED_LIBRARY",
                 "compileGroups": [
                     {"language": "CXX", "includes": [{"path": root + "/include"}, {"path": root + "/vcpkg", "isSystem": True}]},
@@ -111,17 +171,38 @@ class CodemodelTest(unittest.TestCase):
                     {"path": "src/app.h"},
                     {"path": "src/app.rc", "compileGroupIndex": 1},
                 ],
-                "dependencies": [{"id": "lib::@1"}],
+                # "lib" is linked and waited for at once, "test" is only waited for.
+                "dependencies": [{"id": "lib::@1"}, {"id": "test::@1"}],
+                "orderDependencies": [{"id": "lib::@1"}, {"id": "test::@1"}],
+                "linkLibraries": [{"id": "lib::@1"}, {"fragment": "kernel32.lib"}],
             })
-            write_json(os.path.join(reply, "target-lib.json"), {"name": "lib", "type": "STATIC_LIBRARY", "sources": []})
 
-            source_root, targets = build_info.load_codemodel(os.path.join(root, "build"), "Release")
+            source_root, targets = build_info.load_codemodel(build, "Release")
             self.assertEqual(source_root, root)
             app = targets["app"]
             self.assertEqual(app.type, "SHARED_LIBRARY")
             self.assertEqual([paths.relative(source.path, root) for source in app.sources], ["src/app.cpp"])
             self.assertEqual(app.sources[0].include_dirs, [root + "/include"])
-            self.assertEqual(app.dependencies, ["lib"])
+            self.assertEqual(app.dependencies, ["lib", "test"])
+            self.assertEqual(app.link_dependencies, ["lib"])
+
+    def test_link_dependencies_come_from_the_link_line_without_order_dependencies(self):
+        """An order-only dependency (add_dependencies) names no artifact of its own on the link line, which
+        is how a codemodel older than 2.10 - with no orderDependencies of its own - still tells the two
+        apart."""
+        with tempfile.TemporaryDirectory() as root:
+            build = _write_reply(root, {
+                "name": "app", "type": "SHARED_LIBRARY", "sources": [],
+                "dependencies": [{"id": "lib::@1"}, {"id": "test::@1"}],
+                "link": {"commandFragments": [
+                    {"fragment": "/machine:X86", "role": "flags"},
+                    {"fragment": r'"sub dir\lib.lib" kernel32.lib', "role": "libraries"},
+                    {"fragment": "CMakeFiles/test.dir/test.cpp.obj", "role": "flags"},
+                ]},
+            })
+
+            _source_root, targets = build_info.load_codemodel(build, "Release")
+            self.assertEqual(targets["app"].link_dependencies, ["lib"])
 
     def test_missing_reply_is_reported(self):
         with tempfile.TemporaryDirectory() as build:

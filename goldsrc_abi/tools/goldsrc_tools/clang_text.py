@@ -68,7 +68,8 @@ class LocationTracker:
 class Node:
     """One line of an AST dump. `links` holds 'prev' for a redeclaration and 'parent' for a declaration
     whose semantic context is not the node it is printed under; `value` and `value_kind` hold an
-    evaluated constant printed under the node (kind Int, Float, Array, ...)."""
+    evaluated constant printed under the node (kind Int, Float, Array, ...). `after_type` is the text
+    printed after the type exactly as dumped, which `trailing` splits into words."""
     depth: int
     kind: str
     begin: Optional[Location] = None
@@ -77,6 +78,7 @@ class Node:
     tag: Optional[str] = None
     type: Optional[str] = None
     desugared: Optional[str] = None
+    after_type: Optional[str] = None
     flags: List[str] = field(default_factory=list)
     trailing: List[str] = field(default_factory=list)
     links: List[str] = field(default_factory=list)
@@ -189,7 +191,8 @@ def _parse_rest(node, rest, tracker):
     if type_match:
         node.type = type_match.group("type")
         node.desugared = type_match.group("desugared")
-        node.trailing = [token for token in rest[type_match.end():].split() if not _ADDRESS.match(token)]
+        node.after_type = rest[type_match.end():]
+        node.trailing = [token for token in node.after_type.split() if not _ADDRESS.match(token)]
 
     tokens = head.split()
     node.flags = [token for token in tokens if token in _FLAGS]

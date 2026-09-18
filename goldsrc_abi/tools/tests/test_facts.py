@@ -3,11 +3,12 @@ import copy
 import io
 import json
 import os
+import subprocess
 import tempfile
 import unittest
 
 import facts
-from goldsrc_tools import clang_text, declarations, paths
+from goldsrc_tools import abi_scope, clang_text, declarations, paths
 from tests.fixtures import FIXTURE_ROOT, read_data, write_json
 
 ROOT = FIXTURE_ROOT
@@ -221,7 +222,35 @@ class UsageMarkingTest(unittest.TestCase):
         self.assertEqual(facts.name_index(different)[1], ["typedef byte_t declared differently at a.h:1:1, b.h:2:2"])
 
 
+class AmbiguousKeysTest(unittest.TestCase):
+    def test_a_usage_key_matching_members_of_several_records_is_a_problem(self):
+        found = fixture_unit()
+        usage = usage_of(IFACE + ":5:26:Handle_Start")
+        self.assertEqual(facts.ambiguous_usage_keys(found, usage), [])
+        shared = {"key": "a.h:1:1", "name": "Shared", "type": "int", "access": "public"}
+        one = {"name": "One", "typedef_name": None, "key": "a.h:2:2", "fields": [shared], "methods": [], "nested": []}
+        two = {"name": "Two", "typedef_name": None, "key": "a.h:3:3", "fields": [shared], "methods": [], "nested": []}
+        self.assertEqual(facts.ambiguous_usage_keys({"records": {"1": one, "2": two}}, usage_of("a.h:1:1")),
+                         ["usage key a.h:1:1 matches members of One, Two"])
+
+
 class ExternalTest(unittest.TestCase):
+    def test_the_unnamed_enum_an_external_typedef_names_becomes_a_fact_under_that_name(self):
+        # data/facts_query_external.txt is the real clang-query output of the facts query over a synthetic
+        # public/tier1/netadr.h, with probe_kind_t, probe_addr_s and probe_addr_t as the external names.
+        found, _, completed = facts.unit_declarations(read_data("facts_query_external.txt"), "", ROOT)
+        self.assertEqual(completed, facts.QUERY_COMMANDS)
+        kinds = named(found["enums"], "probe_kind_t")
+        self.assertEqual((kinds["name"], values(kinds)),
+                         (None, [("PROBE_KIND_NONE", 0), ("PROBE_KIND_LOCAL", 1), ("PROBE_KIND_REMOTE", 7)]))
+
+        index, problems = facts.name_index(found)
+        self.assertEqual(problems, [])
+        facts.mark_usage(found, usage_of(named(found["records"], "probe_addr_s")["key"]), index)
+        facts.required_closure(found, index)
+        selected = facts.select(found)
+        self.assertEqual([enum["typedef_name"] or enum["name"] for enum in selected["enums"].values()], ["probe_kind_t"])
+
     def test_lookup_query_names_every_external(self):
         query = facts.external_query(["vgui2::HFont", "triple_t"])
         self.assertIn('hasAnyName("vgui2::HFont", "triple_t")', query)
@@ -327,6 +356,46 @@ class OutputTest(unittest.TestCase):
         for spelling in (r"D:\work\NextClient\dep\a.h", "D:/work/NextClient/dep/a.h", r"d:\WORK\nextclient\dep\a.h"):
             self.assertEqual(facts.absolute_path_problems(json.dumps({"type": "struct (unnamed at %s:1:2)" % spelling}), root),
                              ["facts contain an absolute path of the source root"])
+
+    def test_every_source_repository_is_recorded_and_a_nested_one_only_by_its_own_entry(self):
+        def git(directory, *arguments):
+            subprocess.run(["git", "-C", directory, "-c", "user.name=fixture", "-c", "user.email=fixture@example.invalid"]
+                           + list(arguments), check=True, capture_output=True)
+
+        def head(directory):
+            return subprocess.run(["git", "-C", directory, "rev-parse", "HEAD"], capture_output=True, text=True).stdout.strip()
+
+        with tempfile.TemporaryDirectory() as root:
+            # Innermost first, so each outer repository can record the inner one as a submodule commit.
+            relatives = [relative for _, relative in reversed(facts.REPOSITORIES)]
+            for relative in relatives:
+                directory = os.path.join(root, *relative.split("/"))
+                os.makedirs(directory, exist_ok=True)
+                git(directory, "init", "-q")
+                write_json(os.path.join(directory, "own.json"), {})
+                git(directory, "add", "own.json")
+                for inner in relatives[:relatives.index(relative)]:
+                    if relative == "." or inner.startswith(relative + "/"):
+                        nested = inner if relative == "." else inner[len(relative) + 1:]
+                        if nested.count("/") == 1:
+                            git(directory, "update-index", "--add", "--cacheinfo",
+                                "160000,%s,%s" % (head(os.path.join(root, *inner.split("/"))), nested))
+                git(directory, "commit", "-q", "-m", "fixture")
+
+            nitroapi = os.path.join(root, *abi_scope.NITROAPI_DIR.split("/"))
+            write_json(os.path.join(nitroapi, "own.json"), {"moved": "on"})
+            git(nitroapi, "commit", "-q", "-am", "moved on")
+            write_json(os.path.join(root, "notes.json"), {})
+
+            sources, _tools, problems = facts.input_state(root, os.path.join(root, "no-clang-query.exe"),
+                                                          os.path.join(root, "no-clang-cl.exe"))
+
+            self.assertEqual([name for name, _ in facts.REPOSITORIES], list(sources))
+            self.assertEqual(sources["nextclient"], {"commit": head(root), "dirty": False, "untracked": ["notes.json"],
+                                                     "path": "."})
+            self.assertEqual(sources["nitroapi"]["commit"], head(nitroapi))
+            self.assertFalse(any(state["dirty"] for state in sources.values()), sources)
+            self.assertEqual(problems, ["cannot read the version of clang-query", "cannot read the version of clang-cl"])
 
     def test_chosen_units_missing_from_the_compile_database_are_reported(self):
         commands = {paths.key(r"C:\fixture\nextclient\a.cpp"): {}}

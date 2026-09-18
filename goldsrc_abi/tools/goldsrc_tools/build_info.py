@@ -2,6 +2,7 @@ import glob
 import json
 import os
 import re
+import shlex
 import subprocess
 from dataclasses import dataclass, field
 from typing import List
@@ -18,6 +19,7 @@ _COMPILED_LANGUAGES = {"C", "CXX"}
 _OUTPUT_FLAGS = (r"\s/Fo\S+", r"\s/Fd\S+", r"\s/FS(?=\s|$)", r"\s-c(?=\s|$)", r"\s/c(?=\s|$)",
                  r"\s/MP\d*(?=\s|$)", r"\s/GL(?=\s|$)")
 _LAST_ARGUMENT = re.compile(r'(?:^|\s)(?P<path>"[^"]*"|[^\s"]+)\s*$')
+_INCLUDE_FLAG = re.compile(r'(?:^|\s)[-/]I\s*("[^"]+"|\S+)')
 
 
 @dataclass
@@ -32,6 +34,7 @@ class Target:
     type: str
     sources: List[CompiledSource] = field(default_factory=list)
     dependencies: List[str] = field(default_factory=list)
+    link_dependencies: List[str] = field(default_factory=list)
 
 
 def load_compile_commands(path, config):
@@ -81,11 +84,37 @@ def clang_cl_command(entry, clang_cl, extra_args, source=None):
     return '"%s" %s %s' % (clang_cl, arguments, " ".join(extra_args))
 
 
-def repository_state(directory):
-    """{"commit": HEAD, "dirty": whether tracked or untracked files differ from it} of a git work tree."""
+def include_dirs(entry):
+    """Absolute include directories of a compile_commands.json entry, from its -I and /I arguments."""
+    directory = entry["directory"]
+    return [paths.canonical(os.path.join(directory, path.strip('"'))) for path in _INCLUDE_FLAG.findall(entry_command(entry))]
+
+
+def repository_state(directory, separate=()):
+    """{"commit": HEAD, "dirty": whether a tracked file differs from it, "untracked": the paths git does not
+    track, sorted} of a git work tree. `separate` are paths, relative to the work tree, of nested
+    repositories whose state is recorded on its own: a change inside one does not make this tree dirty."""
     commit = _git(directory, "rev-parse", "HEAD").strip()
-    status = _git(directory, "status", "--porcelain")
-    return {"commit": commit, "dirty": bool(status.strip())}
+    entries = _git(directory, "status", "--porcelain=v1", "-z").split("\0")
+
+    dirty = False
+    untracked = []
+    index = 0
+    while index < len(entries):
+        entry = entries[index]
+        index += 1
+        if not entry:
+            continue
+
+        code, path = entry[:2], entry[3:]
+        if code[0] in "RC":
+            # A rename or a copy is followed by the path it was made from.
+            index += 1
+        if code == "??":
+            untracked.append(path.rstrip("/"))
+        elif path.rstrip("/") not in separate:
+            dirty = True
+    return {"commit": commit, "dirty": dirty, "untracked": sorted(untracked)}
 
 
 def _git(directory, *arguments):
@@ -108,7 +137,8 @@ def version_line(text):
 
 def tool_version(executable):
     try:
-        result = subprocess.run([executable, "--version"], capture_output=True, text=True, encoding="utf-8", errors="replace")
+        result = subprocess.run([executable, "--version"], stdin=subprocess.DEVNULL, capture_output=True, text=True,
+                                encoding="utf-8", errors="replace")
     except OSError as error:
         raise RuntimeError("%s --version failed: %s" % (executable, error))
     return version_line(result.stdout)
@@ -138,10 +168,13 @@ def load_codemodel(build_dir, config):
     source_root = codemodel["paths"]["source"]
     configuration = next(item for item in codemodel["configurations"] if item["name"] == config)
     names = {item["id"]: item["name"] for item in configuration["targets"]}
+    data_of = {item["id"]: _load_json(os.path.join(reply_dir, item["jsonFile"])) for item in configuration["targets"]}
+    artifacts = {target_id: [paths.key(os.path.join(build_dir, item["path"]))
+                             for item in data.get("artifacts", [])]
+                 for target_id, data in data_of.items()}
 
     targets = {}
-    for reference in configuration["targets"]:
-        data = _load_json(os.path.join(reply_dir, reference["jsonFile"]))
+    for target_id, data in data_of.items():
         groups = data.get("compileGroups", [])
         target = Target(name=data["name"], type=data["type"])
         for source in data.get("sources", []):
@@ -150,9 +183,51 @@ def load_codemodel(build_dir, config):
                 continue
             include_dirs = [item["path"] for item in groups[group_index].get("includes", []) if not item.get("isSystem")]
             target.sources.append(CompiledSource(paths.canonical(os.path.join(source_root, source["path"])), include_dirs))
-        target.dependencies = [names[item["id"]] for item in data.get("dependencies", []) if item["id"] in names]
+        target.dependencies = sorted(names[item["id"]] for item in data.get("dependencies", [])
+                                     if item["id"] in names)
+        target.link_dependencies = sorted(names[linked] for linked in _linked_ids(data, artifacts, build_dir)
+                                          if linked in names)
         targets[target.name] = target
     return source_root, targets
+
+
+def _linked_ids(data, artifacts, build_dir):
+    """Ids of the targets whose objects reach this target's link, out of every dependency the codemodel
+    lists: an order-only dependency (add_dependencies) puts nothing of its own into the consumer and must
+    not be read as one that does.
+
+    `dependencies` is the flattened link closure and the order-only edges together, and `orderDependencies`
+    names the latter, so the difference is the answer; the direct entries of `linkLibraries` are added back,
+    since a target may be linked and waited for at once.
+
+    A target that links nothing carries neither key - every static library here is such a target, with an
+    `archive` in place of a `link` - and then the link line is the evidence: a binary's carries its whole
+    flattened closure, each library under its own artifact path, while an order-only dependency never
+    appears there. A static library has no link line at all, so this branch leaves its own dependencies to
+    the binary that links it, and provenance.py reports every dependency a closure left out so that a
+    change in how CMake flattens shows up instead of quietly dropping files."""
+    if "orderDependencies" in data:
+        order_only = {item["id"] for item in data["orderDependencies"]}
+        direct = {item["id"] for item in data.get("linkLibraries", []) if "id" in item}
+        return {item["id"] for item in data.get("dependencies", [])} - order_only | direct
+
+    linked = set()
+    for fragment in (data.get("link") or {}).get("commandFragments", []):
+        if fragment.get("role") != "libraries":
+            continue
+        for token in _link_tokens(fragment["fragment"]):
+            linked.add(paths.key(os.path.join(build_dir, token)))
+    return {target_id for target_id, keys in artifacts.items() if any(key in linked for key in keys)}
+
+
+def _link_tokens(fragment):
+    """Paths of one link command fragment, which may name several libraries at once and quote those whose
+    path holds a space."""
+    try:
+        tokens = shlex.split(fragment, posix=False)
+    except ValueError:
+        tokens = fragment.split()
+    return [token.strip('"') for token in tokens if token.strip('"')]
 
 
 def _load_json(path):

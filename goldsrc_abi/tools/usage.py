@@ -98,6 +98,10 @@ def platform_macros(clang_cl):
 
 
 def engine_macros(source_root, excluded):
+    """Macros of the declaration roots, keyed 'file:name': the same name is legitimately defined in more
+    than one layer file (MAX_MODEL_NAME, DMG_*, SVC_*), and each definition is a separate fact the model
+    must place and cross-check on its own. A record carries where the macro is defined and its parameter
+    list; the text of its body is read only to tell an include guard apart and never leaves the tool."""
     macros = {}
     files = []
     for relative_root in abi_scope.declaration_roots():
@@ -110,24 +114,35 @@ def engine_macros(source_root, excluded):
         for name, (line, params, body) in sources.parse_defines(sources.read_text(path)).items():
             if name in excluded or sources.is_include_guard(name, body):
                 continue
-            macros.setdefault(name, {"file": relative, "line": line, "params": params, "body": body,
-                                     "uses": [], "defined_in_ours": []})
+            key = "%s:%s" % (relative, name)
+            macros.setdefault(key, {"file": relative, "name": name, "line": line, "params": params,
+                                    "uses": [], "defined_in_ours": []})
     return macros
 
 
 def scan_macro_uses(source_root, macros):
+    """A textual scan cannot tell which of several same-named definitions the compiler actually saw,
+    so a use (or an our-code redefinition) of a name is recorded against every one of its 'file:name'
+    records. A record's own defining file is exempt from counting as a use of that same record, but
+    still counts towards any other file's record of the same name."""
+    by_name = {}
+    for key, entry in macros.items():
+        by_name.setdefault(entry["name"], []).append(key)
+
     for directory in abi_scope.OUR_SOURCE_DIRS:
         for path in sources.walk_sources(os.path.join(source_root, *directory.split("/"))):
             relative = paths.relative(path, source_root)
             text = sources.read_text(path)
             declaration_file = abi_scope.is_declaration_file(relative)
             for name in sources.parse_defines(text):
-                if name in macros and not declaration_file:
-                    macros[name]["defined_in_ours"].append(relative)
+                if not declaration_file:
+                    for key in by_name.get(name, []):
+                        macros[key]["defined_in_ours"].append(relative)
             for line, identifier in sources.identifier_lines(text):
-                if identifier in macros and not (declaration_file and macros[identifier]["file"] == relative):
-                    macros[identifier]["uses"].append({"file": relative, "line": line})
-    return {name: entry for name, entry in sorted(macros.items()) if entry["uses"]}
+                for key in by_name.get(identifier, []):
+                    if not (declaration_file and macros[key]["file"] == relative):
+                        macros[key]["uses"].append({"file": relative, "line": line})
+    return {key: entry for key, entry in sorted(macros.items()) if entry["uses"]}
 
 
 def main(argv=None):

@@ -39,6 +39,18 @@ OUR_SOURCES_REGEX = (r"[/\\](nextclient[/\\](client_mini|engine_mini|gameui|laun
 
 _ENGINE_LAYER_FILE = re.compile(r"^%s/(%s)/" % (re.escape(SDK_DIR), "|".join(ENGINE_LAYER_DIRS)))
 
+# Declarations the engine ABI needs by value that live outside the replaced directories. They are facts
+# of the same engine, so goldsrc declares them instead of substituting them. netadrtype_t is netadr_s's
+# own field type, a typedef of an unnamed enum, which the facts query collects with the other enums of
+# these files.
+EXTERNAL_FACT_REGEX = r"public[/\\]tier0[/\\]basetypes\.h|public[/\\]tier1[/\\]netadr\.h"
+EXTERNAL_FACT_NAMES = ("vec3_t", "vrect_t", "netadr_s", "netadr_t", "netadrtype_t")
+
+# Macro-only source outside the replaced directories: the design places the HLTV director constants in
+# goldsrc (goldsrc/hltv.h), and HLTV/common/DirectorCmd.h is meant to take them from there at a later
+# stage, so they must become facts now even though this file's declarations are not extracted.
+EXTERNAL_MACRO_FILES = ("dep/NclNitroApi/dep/ncl-hl1-source-sdk/HLTV/common/hltv.h",)
+
 
 def is_our_source(relative_path):
     return any(relative_path.startswith(directory + "/") for directory in OUR_SOURCE_DIRS)

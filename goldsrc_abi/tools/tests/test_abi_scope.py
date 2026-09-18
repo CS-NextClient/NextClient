@@ -17,6 +17,12 @@ class ScopeTest(unittest.TestCase):
         self.assertTrue(abi_scope.is_declaration_file("dep/NclNitroApi/include/nitroapi/modules/engine/structs.h"))
         self.assertFalse(abi_scope.is_declaration_file("dep/NclNitroApi/include/nitroapi/modules/engine/EngineData.h"))
 
+    def test_external_fact_regex_matches_the_basetypes_and_netadr_tails(self):
+        regex = re.compile(abi_scope.EXTERNAL_FACT_REGEX)
+        self.assertTrue(regex.search("dep/NclNitroApi/dep/ncl-hl1-source-sdk/public/tier0/basetypes.h"))
+        self.assertTrue(regex.search(r"D:\x\dep\NclNitroApi\dep\ncl-hl1-source-sdk\public\tier1\netadr.h"))
+        self.assertFalse(regex.search("dep/NclNitroApi/dep/ncl-hl1-source-sdk/common/const.h"))
+
     def test_moved_hltv_interfaces(self):
         sdk = "dep/NclNitroApi/dep/ncl-hl1-source-sdk"
         self.assertTrue(abi_scope.is_moved_hltv_interface(sdk + "/common/ISystemModule.h"))

@@ -157,16 +157,47 @@ class MacroScanTest(unittest.TestCase):
             write(root, "nextclient/engine_mini/src/own.h", "#define WIDGET_READY 32\n")
 
             macros = usage.engine_macros(root, excluded={"MAX_PATH"})
-            self.assertEqual(sorted(macros), ["UNUSED_FLAG", "WIDGET_READY"])
+            self.assertEqual(sorted(macros), [sdk + "/common/widgets.h:UNUSED_FLAG", sdk + "/common/widgets.h:WIDGET_READY"])
 
             used = usage.scan_macro_uses(root, macros)
-            self.assertEqual(list(used), ["WIDGET_READY"])
-            self.assertEqual(used["WIDGET_READY"]["body"], "(1<<5)")
-            self.assertEqual(used["WIDGET_READY"]["uses"], [
+            key = sdk + "/common/widgets.h:WIDGET_READY"
+            self.assertEqual(list(used), [key])
+            self.assertEqual(used[key]["name"], "WIDGET_READY")
+            self.assertEqual(sorted(used[key]), ["defined_in_ours", "file", "line", "name", "params", "uses"])
+            self.assertEqual(used[key]["uses"], [
                 {"file": "nextclient/client_mini/src/use.cpp", "line": 1},
                 {"file": "nextclient/engine_mini/src/own.h", "line": 1},
             ])
-            self.assertEqual(used["WIDGET_READY"]["defined_in_ours"], ["nextclient/engine_mini/src/own.h"])
+            self.assertEqual(used[key]["defined_in_ours"], ["nextclient/engine_mini/src/own.h"])
+
+    def test_a_name_defined_in_several_layer_files_gets_one_record_per_file_and_shared_uses(self):
+        with tempfile.TemporaryDirectory() as root:
+            sdk = "dep/NclNitroApi/dep/ncl-hl1-source-sdk"
+            write(root, sdk + "/common/a.h", "#define SHARED_LIMIT 1\n")
+            write(root, sdk + "/engine/b.h", "#define SHARED_LIMIT 2\n")
+            write(root, "nextclient/client_mini/src/use.cpp", "int x = SHARED_LIMIT;\n")
+
+            macros = usage.engine_macros(root, excluded=set())
+            self.assertEqual(sorted(macros), [sdk + "/common/a.h:SHARED_LIMIT", sdk + "/engine/b.h:SHARED_LIMIT"])
+
+            used = usage.scan_macro_uses(root, macros)
+            self.assertEqual(sorted(used), [sdk + "/common/a.h:SHARED_LIMIT", sdk + "/engine/b.h:SHARED_LIMIT"])
+            for key in used:
+                self.assertEqual(used[key]["name"], "SHARED_LIMIT")
+                self.assertEqual(used[key]["uses"], [{"file": "nextclient/client_mini/src/use.cpp", "line": 1}])
+
+    def test_self_reference_inside_the_defining_stock_file_is_excluded_for_its_own_record(self):
+        with tempfile.TemporaryDirectory() as root:
+            sdk = "dep/NclNitroApi/dep/ncl-hl1-source-sdk"
+            stock = "dep/NclNitroApi/include/nitroapi/modules/engine/structs.h"
+            write(root, sdk + "/common/a.h", "#define SHARED_LIMIT 1\n")
+            write(root, stock, "#define SHARED_LIMIT 2\n")
+
+            macros = usage.engine_macros(root, excluded=set())
+            used = usage.scan_macro_uses(root, macros)
+
+            self.assertEqual(list(used), [sdk + "/common/a.h:SHARED_LIMIT"])
+            self.assertEqual(used[sdk + "/common/a.h:SHARED_LIMIT"]["uses"], [{"file": stock, "line": 1}])
 
 
 if __name__ == "__main__":
