@@ -361,37 +361,37 @@
     {
       "name": "IBaseSystem",
       "exclude": true,
-      "reason": "an HLTV interface the fork moves to its own HLTV directory in stage 2"
+      "reason": "an HLTV interface the fork carries over unchanged in public/HLTV"
     },
     {
       "name": "IDemoPlayer",
       "exclude": true,
-      "reason": "an HLTV interface the fork moves to its own HLTV directory in stage 2"
+      "reason": "an HLTV interface the fork carries over unchanged in public/HLTV"
     },
     {
       "name": "IEngineWrapper",
       "exclude": true,
-      "reason": "an HLTV interface the fork moves to its own HLTV directory in stage 2"
+      "reason": "an HLTV interface the fork carries over unchanged in public/HLTV"
     },
     {
       "name": "IObjectContainer",
       "exclude": true,
-      "reason": "an HLTV interface the fork moves to its own HLTV directory in stage 2"
+      "reason": "an HLTV interface the fork carries over unchanged in public/HLTV"
     },
     {
       "name": "ISystemModule",
       "exclude": true,
-      "reason": "an HLTV interface the fork moves to its own HLTV directory in stage 2"
+      "reason": "an HLTV interface the fork carries over unchanged in public/HLTV"
     },
     {
       "name": "IVGuiModule",
       "exclude": true,
-      "reason": "an HLTV interface the fork moves to its own HLTV directory in stage 2"
+      "reason": "an HLTV interface the fork carries over unchanged in public/HLTV"
     },
     {
-      "key": "dep/NclNitroApi/dep/ncl-hl1-source-sdk/common/IDemoPlayer.h:93:1",
+      "key": "dep/NclNitroApi/dep/ncl-hl1-source-sdk/public/HLTV/IDemoPlayer.h:93:1",
       "exclude": true,
-      "reason": "the director signal enum of an HLTV interface the fork moves in stage 2"
+      "reason": "the director signal enum of an HLTV interface the fork carries over unchanged in public/HLTV"
     }
   ],
   "macros": {
@@ -843,8 +843,8 @@
       },
       {
         "name": "DEMOPLAYER_INTERFACE_VERSION",
-        "file": "dep/NclNitroApi/dep/ncl-hl1-source-sdk/common/IDemoPlayer.h",
-        "reason": "moves with the HLTV interface in stage 2"
+        "file": "dep/NclNitroApi/dep/ncl-hl1-source-sdk/public/HLTV/IDemoPlayer.h",
+        "reason": "belongs to an HLTV interface the fork carries over unchanged"
       },
       {
         "name": "WIN32_LEAN_AND_MEAN",
@@ -1037,14 +1037,14 @@
       "dep/ncl-hl1-source-sdk/engine/cdll_int.h",
       "dep/ncl-hl1-source-sdk/engine/cmd.h",
       "include/nitroapi/modules/client/cl_dll/hud.h",
-      "dep/ncl-hl1-source-sdk/common/IDemoPlayer.h",
+      "dep/ncl-hl1-source-sdk/public/HLTV/IDemoPlayer.h",
       "dep/ncl-hl1-source-sdk/common/quakedef.h",
       "dep/ncl-hl1-source-sdk/engine/common.h",
       "dep/ncl-hl1-source-sdk/common/cvardef.h",
       "dep/ncl-hl1-source-sdk/common/kbutton.h",
       "dep/ncl-hl1-source-sdk/engine/custom.h",
       "dep/ncl-hl1-source-sdk/pm_shared/pm_movevars.h",
-      "dep/ncl-hl1-source-sdk/common/IEngineWrapper.h",
+      "dep/ncl-hl1-source-sdk/public/HLTV/IEngineWrapper.h",
       "dep/ncl-hl1-source-sdk/pm_shared/pm_shared.h",
       "dep/ncl-hl1-source-sdk/common/triangleapi.h",
       "dep/ncl-hl1-source-sdk/common/ivoicetweak.h",
@@ -1056,12 +1056,12 @@
     "prelude": [
       {
         "include": "dep/ncl-hl1-source-sdk/HLTV/common/BitBuffer.h",
-        "before": "dep/ncl-hl1-source-sdk/common/IDemoPlayer.h",
+        "before": "dep/ncl-hl1-source-sdk/public/HLTV/IDemoPlayer.h",
         "reason": "IDemoPlayer.h names BitBuffer in a signature without declaring it"
       },
       {
-        "include": "dep/ncl-hl1-source-sdk/common/ISystemModule.h",
-        "before": "dep/ncl-hl1-source-sdk/common/IEngineWrapper.h",
+        "include": "dep/ncl-hl1-source-sdk/public/HLTV/ISystemModule.h",
+        "before": "dep/ncl-hl1-source-sdk/public/HLTV/IEngineWrapper.h",
         "reason": "IEngineWrapper.h derives from ISystemModule without declaring it"
       }
     ]

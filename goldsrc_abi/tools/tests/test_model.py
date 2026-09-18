@@ -886,9 +886,9 @@ class MapFormTest(unittest.TestCase):
             substitutes={"Vector": {"type": "vec3_t", "reason": "the game math type has no facts"}},
             opaque={"IWorld": {"tag": "class", "reason": "held through a pointer only"}},
             equivalence={"skip_records": [{"name": "host_s", "reason": "a prefix layout"}],
-                         "includes": ["dep/ncl-hl1-source-sdk/common/IDemoPlayer.h"],
+                         "includes": ["dep/ncl-hl1-source-sdk/public/HLTV/IDemoPlayer.h"],
                          "prelude": [{"include": "dep/ncl-hl1-source-sdk/HLTV/common/BitBuffer.h",
-                                      "before": "dep/ncl-hl1-source-sdk/common/IDemoPlayer.h",
+                                      "before": "dep/ncl-hl1-source-sdk/public/HLTV/IDemoPlayer.h",
                                       "reason": "IDemoPlayer.h names BitBuffer without declaring it"}]},
             fwd={"path": "goldsrc/fwd.h", "namespace": "goldsrc"}))
 

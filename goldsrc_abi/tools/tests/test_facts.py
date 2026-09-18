@@ -344,7 +344,7 @@ class MergeTest(unittest.TestCase):
 
 class OutputTest(unittest.TestCase):
     def test_moved_hltv_interfaces_are_tagged(self):
-        moved = {"key": "dep/NclNitroApi/dep/ncl-hl1-source-sdk/common/ISystemModule.h:36:7", "file": "dep/NclNitroApi/dep/ncl-hl1-source-sdk/common/ISystemModule.h"}
+        moved = {"key": "dep/NclNitroApi/dep/ncl-hl1-source-sdk/public/HLTV/ISystemModule.h:36:7", "file": "dep/NclNitroApi/dep/ncl-hl1-source-sdk/public/HLTV/ISystemModule.h"}
         kept = {"key": VALUES + ":32:8", "file": VALUES}
         selected = {"records": {moved["key"]: moved, kept["key"]: kept}, "typedefs": {}, "enums": {}, "variables": {}, "functions": {}}
         self.assertEqual(facts.tag_moved_interfaces(selected), 1)

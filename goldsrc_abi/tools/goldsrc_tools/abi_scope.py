@@ -17,10 +17,12 @@ NITROAPI_DIR = "dep/NclNitroApi"
 SDK_DIR = "dep/NclNitroApi/dep/ncl-hl1-source-sdk"
 ENGINE_LAYER_DIRS = ("common", "engine", "pm_shared", "dlls", "game_shared")
 
-# HLTV module interfaces in common/ that the fork moves into its HLTV tree instead of having them
-# rewritten: their declarations are not clean-room input.
-MOVED_HLTV_INTERFACE_FILES = tuple("%s/common/%s.h" % (SDK_DIR, name) for name in (
-    "IBaseSystem", "IDemoPlayer", "IEngineWrapper", "IObjectContainer", "ISystemModule", "IVGuiModule"))
+# HLTV module interfaces of the fork that are carried over unchanged in public/HLTV instead of being
+# rewritten: their declarations are not clean-room input. They are part of the declaration scope, so
+# the facts include the engine types their signatures reach.
+MOVED_HLTV_INTERFACE_NAMES = ("IBaseSystem", "IDemoPlayer", "IEngineWrapper", "IObjectContainer", "ISystemModule",
+                              "IVGuiModule")
+MOVED_HLTV_INTERFACE_FILES = tuple("%s/public/HLTV/%s.h" % (SDK_DIR, name) for name in MOVED_HLTV_INTERFACE_NAMES)
 
 # Stock declarations kept in NclNitroApi that move into goldsrc together with the engine layer.
 NITROAPI_STOCK_DIR = "dep/NclNitroApi/include/nitroapi/modules/client/cl_dll"
@@ -33,7 +35,9 @@ NITROAPI_STOCK_FILES = (
 # absolute prefixes: long or case-insensitive patterns made matching over a translation unit tens
 # of times slower.
 DECLARATION_REGEX = (r"ncl-hl1-source-sdk[/\\](common|engine|pm_shared|dlls|game_shared)[/\\]"
-                     r"|nitroapi[/\\]modules[/\\](client[/\\]cl_dll[/\\]|engine[/\\](structs|voice)\.h)")
+                     r"|ncl-hl1-source-sdk[/\\]public[/\\]HLTV[/\\](%s)\.h"
+                     r"|nitroapi[/\\]modules[/\\](client[/\\]cl_dll[/\\]|engine[/\\](structs|voice)\.h)"
+                     % "|".join(MOVED_HLTV_INTERFACE_NAMES))
 OUR_SOURCES_REGEX = (r"[/\\](nextclient[/\\](client_mini|engine_mini|gameui|launcher[/\\](src|include)"
                      r"|filesystem_proxy|steam_api_proxy|packages)|dep[/\\]NclNitroApi[/\\](src|include))[/\\]")
 
@@ -66,10 +70,12 @@ def is_moved_hltv_interface(relative_path):
 
 def is_declaration_file(relative_path):
     return (relative_path in NITROAPI_STOCK_FILES
+            or relative_path in MOVED_HLTV_INTERFACE_FILES
             or relative_path.startswith(NITROAPI_STOCK_DIR + "/")
             or is_engine_layer(relative_path))
 
 
 def declaration_roots():
-    """Directories and files, relative to the source root, that hold the declarations being replaced."""
-    return ["%s/%s" % (SDK_DIR, name) for name in ENGINE_LAYER_DIRS] + [NITROAPI_STOCK_DIR] + list(NITROAPI_STOCK_FILES)
+    """Directories and files, relative to the source root, whose declarations the tools extract."""
+    return (["%s/%s" % (SDK_DIR, name) for name in ENGINE_LAYER_DIRS] + [NITROAPI_STOCK_DIR]
+            + list(NITROAPI_STOCK_FILES) + list(MOVED_HLTV_INTERFACE_FILES))
