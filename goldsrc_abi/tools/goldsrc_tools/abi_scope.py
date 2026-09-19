@@ -31,15 +31,26 @@ NITROAPI_STOCK_FILES = (
     "dep/NclNitroApi/include/nitroapi/modules/engine/voice.h",
 )
 
+# Stock declarations kept in our own modules; goldsrc declares them from the facts of these files.
+# wad_format.h was deleted by the goldsrc migration; the entry stays so usage.py's missing-root check
+# fails instead of silently dropping its facts.
+OUR_STOCK_FILES = ("nextclient/engine_mini/src/graphics/wad_format.h",)
+
 # llvm::Regex patterns for clang-query. They match path tails, stay case-sensitive and avoid
 # absolute prefixes: long or case-insensitive patterns made matching over a translation unit tens
 # of times slower.
 DECLARATION_REGEX = (r"ncl-hl1-source-sdk[/\\](common|engine|pm_shared|dlls|game_shared)[/\\]"
                      r"|ncl-hl1-source-sdk[/\\]public[/\\]HLTV[/\\](%s)\.h"
                      r"|nitroapi[/\\]modules[/\\](client[/\\]cl_dll[/\\]|engine[/\\](structs|voice)\.h)"
+                     r"|engine_mini[/\\]src[/\\]graphics[/\\]wad_format\.h"
                      % "|".join(MOVED_HLTV_INTERFACE_NAMES))
 OUR_SOURCES_REGEX = (r"[/\\](nextclient[/\\](client_mini|engine_mini|gameui|launcher[/\\](src|include)"
                      r"|filesystem_proxy|steam_api_proxy|packages)|dep[/\\]NclNitroApi[/\\](src|include))[/\\]")
+
+# Files whose typedefs and forward tag declarations can redeclare declarations of the scope: ours, and the
+# two fork headers that forward-declare cl_enginefunc_t since stage 2. clang binds a later reference to the
+# last visible redeclaration.
+REDECLARATION_REGEX = OUR_SOURCES_REGEX + r"|ncl-hl1-source-sdk[/\\]public[/\\](IGameUI|IBaseUI)\.h"
 
 _ENGINE_LAYER_FILE = re.compile(r"^%s/(%s)/" % (re.escape(SDK_DIR), "|".join(ENGINE_LAYER_DIRS)))
 
@@ -72,10 +83,11 @@ def is_declaration_file(relative_path):
     return (relative_path in NITROAPI_STOCK_FILES
             or relative_path in MOVED_HLTV_INTERFACE_FILES
             or relative_path.startswith(NITROAPI_STOCK_DIR + "/")
-            or is_engine_layer(relative_path))
+            or is_engine_layer(relative_path)
+            or relative_path in OUR_STOCK_FILES)
 
 
 def declaration_roots():
     """Directories and files, relative to the source root, whose declarations the tools extract."""
     return (["%s/%s" % (SDK_DIR, name) for name in ENGINE_LAYER_DIRS] + [NITROAPI_STOCK_DIR]
-            + list(NITROAPI_STOCK_FILES) + list(MOVED_HLTV_INTERFACE_FILES))
+            + list(NITROAPI_STOCK_FILES) + list(MOVED_HLTV_INTERFACE_FILES) + list(OUR_STOCK_FILES))

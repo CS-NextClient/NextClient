@@ -84,15 +84,12 @@ namespace goldsrc
         float avgkbytespersec;
     };
 
-    struct fragbuf_t
+    struct alignas(4) fragbuf_t
     {
-        fragbuf_t() = delete;
-        fragbuf_t(const fragbuf_t&) = delete;
-        fragbuf_t& operator=(const fragbuf_t&) = delete;
-
         fragbuf_t* next;
         int bufferid;
         sizebuf_t frag_message;
+        unsigned char unmodelled_[1708 - (8 + sizeof(frag_message))];
     };
 
     struct incomingtransfer_t

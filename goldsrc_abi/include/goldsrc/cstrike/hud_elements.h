@@ -7,13 +7,9 @@
 
 namespace goldsrc::cstrike
 {
-    class CHudAmmo : public CHudBase
+    class alignas(4) CHudAmmo : public CHudBase
     {
     public:
-        CHudAmmo() = delete;
-        CHudAmmo(const CHudAmmo&) = delete;
-        CHudAmmo& operator=(const CHudAmmo&) = delete;
-
         struct RGBA
         {
             unsigned char r;
@@ -21,28 +17,24 @@ namespace goldsrc::cstrike
             unsigned char b;
             unsigned char a;
         };
+
+        unsigned char unmodelled_[112 - 20];
     };
 
-    class CHudAmmoSecondary : public CHudBase
+    class alignas(4) CHudAmmoSecondary : public CHudBase
     {
     public:
-        CHudAmmoSecondary() = delete;
-        CHudAmmoSecondary(const CHudAmmoSecondary&) = delete;
-        CHudAmmoSecondary& operator=(const CHudAmmoSecondary&) = delete;
-
         enum
         {
             MAX_SEC_AMMO_VALUES = 4
         };
+
+        unsigned char unmodelled_[44 - 20];
     };
 
-    class CHudMessage : public CHudBase
+    class alignas(4) CHudMessage : public CHudBase
     {
     public:
-        CHudMessage() = delete;
-        CHudMessage(const CHudMessage&) = delete;
-        CHudMessage& operator=(const CHudMessage&) = delete;
-
         struct client_message_t
         {
             client_textmessage_t* pMessage;
@@ -56,25 +48,20 @@ namespace goldsrc::cstrike
             MESSAGE_ARG_LEN = 64,
             MAX_MESSAGE_ARGS = 4
         };
+
+        unsigned char unmodelled_[8552 - 20];
     };
 
-    class CHudNightVision : public CHudBase
+    class alignas(4) CHudNightVision : public CHudBase
     {
     public:
-        CHudNightVision() = delete;
-        CHudNightVision(const CHudNightVision&) = delete;
-        CHudNightVision& operator=(const CHudNightVision&) = delete;
-
         int m_fOn;
+        unsigned char unmodelled_[32 - (20 + sizeof(m_fOn))];
     };
 
     class CHudRoundTimer : public CHudBase
     {
     public:
-        CHudRoundTimer() = delete;
-        CHudRoundTimer(const CHudRoundTimer&) = delete;
-        CHudRoundTimer& operator=(const CHudRoundTimer&) = delete;
-
         float m_flTimeEnd;
         int m_HUD_stopwatch;
         float m_fFade;
@@ -84,28 +71,22 @@ namespace goldsrc::cstrike
         int m_closestRight;
     };
 
-    class CHudStatusBar : public CHudBase
+    class alignas(4) CHudStatusBar : public CHudBase
     {
     public:
-        CHudStatusBar() = delete;
-        CHudStatusBar(const CHudStatusBar&) = delete;
-        CHudStatusBar& operator=(const CHudStatusBar&) = delete;
-
         enum
         {
             MAX_STATUSTEXT_LENGTH = 128,
             MAX_STATUSBAR_VALUES = 8,
             MAX_STATUSBAR_LINES = 1
         };
+
+        unsigned char unmodelled_[316 - 20];
     };
 
-    class CHudStatusIcons : public CHudBase
+    class alignas(4) CHudStatusIcons : public CHudBase
     {
     public:
-        CHudStatusIcons() = delete;
-        CHudStatusIcons(const CHudStatusIcons&) = delete;
-        CHudStatusIcons& operator=(const CHudStatusIcons&) = delete;
-
         struct icon_sprite_t
         {
             char szSpriteName[24];
@@ -122,6 +103,8 @@ namespace goldsrc::cstrike
             MAX_ICONSPRITENAME_LENGTH = 24,
             MAX_ICONSPRITES = 4
         };
+
+        unsigned char unmodelled_[240 - 20];
     };
 
     struct DAMAGE_IMAGE
@@ -135,10 +118,6 @@ namespace goldsrc::cstrike
     class CHudHealth : public CHudBase
     {
     public:
-        CHudHealth() = delete;
-        CHudHealth(const CHudHealth&) = delete;
-        CHudHealth& operator=(const CHudHealth&) = delete;
-
         int m_iHealth;
         int m_HUD_dmg_bio;
         int m_HUD_cross;

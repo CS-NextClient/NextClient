@@ -521,7 +521,7 @@ namespace goldsrc
         event_api_s* pEventAPI;
         demo_api_t* pDemoAPI;
         net_api_t* pNetAPI;
-        IVoiceTweak_s* pVoiceTweak;
+        IVoiceTweak* pVoiceTweak;
         pfnEngDst_IsSpectateOnly_t IsSpectateOnly;
         pfnEngDst_LoadMapSprite_t LoadMapSprite;
         pfnEngDst_COM_AddAppDirectoryToSearchPath_t COM_AddAppDirectoryToSearchPath;
@@ -647,7 +647,7 @@ namespace goldsrc
         event_api_s* pEventAPI;
         demo_api_t* pDemoAPI;
         net_api_t* pNetAPI;
-        IVoiceTweak_s* pVoiceTweak;
+        IVoiceTweak* pVoiceTweak;
         pfnEngSrc_IsSpectateOnly_t IsSpectateOnly;
         pfnEngSrc_LoadMapSprite_t LoadMapSprite;
         pfnEngSrc_COM_AddAppDirectoryToSearchPath_t COM_AddAppDirectoryToSearchPath;

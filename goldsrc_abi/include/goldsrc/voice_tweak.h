@@ -9,7 +9,7 @@ namespace goldsrc
         MicBoost = 2
     };
 
-    struct IVoiceTweak_s
+    struct IVoiceTweak
     {
         int (*StartVoiceTweakMode)();
         void (*EndVoiceTweakMode)();

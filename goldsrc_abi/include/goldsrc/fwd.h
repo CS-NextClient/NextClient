@@ -5,7 +5,7 @@ struct tagPOINT;
 namespace goldsrc
 {
     struct EngineMsg;
-    struct IVoiceTweak_s;
+    struct IVoiceTweak;
     struct SCREENINFO;
     struct TEMPENTITY;
     struct TraceResult;
@@ -16,6 +16,7 @@ namespace goldsrc
     struct cache_user_t;
     struct cacheentry_t;
     struct cachewad_t;
+    struct channel_t;
     struct cl_enginefunc_dst_t;
     struct cl_enginefunc_t;
     struct cl_entity_t;
@@ -40,6 +41,7 @@ namespace goldsrc
     struct delta_t;
     struct demo_api_t;
     struct dlight_t;
+    struct dma_t;
     struct dmodel_t;
     struct downloadtime_t;
     struct dsprite_t;
@@ -109,6 +111,7 @@ namespace goldsrc
     struct pmplane_t;
     struct pmtrace_t;
     struct position_history_t;
+    struct qpic_t;
     struct r_studio_interface_t;
     struct ref_params_t;
     struct refdef_t;
@@ -120,6 +123,7 @@ namespace goldsrc
     struct server_static_t;
     struct server_t;
     struct sfx_t;
+    struct sfxcache_t;
     struct sizebuf_t;
     struct skin_t;
     struct soundfade_t;
@@ -131,6 +135,8 @@ namespace goldsrc
     struct usercmd_t;
     struct viddef_t;
     struct vrect_t;
+    struct wadinfo_t;
+    struct wavstream_t;
     struct weapon_data_t;
     struct wrect_t;
 } // namespace goldsrc

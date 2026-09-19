@@ -51,10 +51,6 @@ namespace goldsrc
 
     struct resourceinfo_t
     {
-        resourceinfo_t() = delete;
-        resourceinfo_t(const resourceinfo_t&) = delete;
-        resourceinfo_t& operator=(const resourceinfo_t&) = delete;
-
         _resourceinfo_t info[8];
     };
 

@@ -79,16 +79,18 @@ class InputStateTest(unittest.TestCase):
             write(root, "a.txt", "two\n")
             self.assertEqual(build_info.repository_state(root), {"commit": head, "dirty": True, "untracked": []})
 
-    def test_an_untracked_file_is_listed_without_making_the_tree_dirty(self):
+    def test_untracked_files_are_listed_one_by_one_without_making_the_tree_dirty(self):
         with tempfile.TemporaryDirectory() as root:
             self.git(root, "init", "-q")
             write(root, "a.txt", "one\n")
             self.git(root, "add", "a.txt")
             self.git(root, "commit", "-q", "-m", "fixture")
             write(root, "notes/draft.md", "draft\n")
+            write(root, "notes/deep/more.md", "more\n")
 
             self.assertEqual(build_info.repository_state(root),
-                             {"commit": self.head(root), "dirty": False, "untracked": ["notes"]})
+                             {"commit": self.head(root), "dirty": False,
+                              "untracked": ["notes/deep/more.md", "notes/draft.md"]})
 
     def test_a_separately_recorded_nested_repository_does_not_make_its_parent_dirty(self):
         with tempfile.TemporaryDirectory() as root:

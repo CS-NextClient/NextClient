@@ -5,6 +5,9 @@ from goldsrc_tools import header_map as library_map
 
 INDENT = "    "
 
+# The bytes of the stock layout a prefix record leaves unmodelled, up to its stock size.
+TAIL_NAME = "unmodelled_"
+
 # Beyond this magnitude a value no longer fits a `long long` comparison and is cast to `unsigned long
 # long` instead.
 _LLONG_MAX = 2 ** 63 - 1
@@ -119,7 +122,10 @@ def _opaque_forward_declarations(plan):
     field of some other, kept declaration, left "unknown type name" with nothing else to declare it).
     A second forward declaration of an already-declared name is harmless in C++, so this needs no
     knowledge of which old headers already do it themselves."""
-    return ["%s %s;" % (entry["tag"], entry["old_name"]) for entry in plan["types"] if entry["kind"] == "opaque"]
+    lines = ["%s %s;" % (entry["tag"], entry["old_name"]) for entry in plan["types"] if entry["kind"] == "opaque"]
+    lines.extend("%s %s;" % (entry["record"]["tag"], entry["old_name"]) for entry in plan["types"]
+                 if entry["kind"] == "record" and entry.get("outside"))
+    return lines
 
 
 def equivalence_files(model):
@@ -131,18 +137,34 @@ def equivalence_files(model):
     declaration is enough for the former (nothing our code needs ever compares one by value), and the
     latter is never a distinct type to begin with, so its identity never needs checking."""
     all_records = _ordered_records(model)
-    files = {_file_of_key(record["old"]["key"]) for _name, record in all_records}
+    files = {_file_of_key(record["old"]["key"]) for _name, record in all_records
+             if not _outside_tree(record["old"]["key"])}
     for _scope, enum in _enums_of(model, all_records):
-        if enum["old"].get("key"):
+        if enum["old"].get("key") and not _outside_tree(enum["old"]["key"]):
             files.add(_file_of_key(enum["old"]["key"]))
     for _namespace, declaration in _constants_of(model):
-        files.update(declaration["old"]["files"])
+        files.update(file for file in declaration["old"]["files"] if not _outside_file(file))
     return files
 
 
 def _file_of_key(key):
     """The file part of a "relative/file:line:col" fact key."""
     return key.rsplit(":", 2)[0]
+
+
+from goldsrc_tools import abi_scope
+
+# Old declarations in our own NextClient sources lie outside the tree the equivalence test includes.
+_OUTSIDE_REASON = ("declared in our NextClient sources, which this test does not include; the golden test checks "
+                   "its layout against the facts")
+
+
+def _outside_file(file):
+    return file in abi_scope.OUR_STOCK_FILES
+
+
+def _outside_tree(key):
+    return _outside_file(_file_of_key(key))
 
 
 def _qualified(namespace, name):
@@ -232,7 +254,7 @@ def _enums_of(model, records):
 
 def _golden_record(name, record):
     lines = []
-    if record["completeness"] == "complete":
+    if record["completeness"] in ("complete", "prefix"):
         lines.append("static_assert(sizeof(%s) == %d);" % (name, record["layout"]["size"]))
         lines.append("static_assert(alignof(%s) == %d);" % (name, record["layout"]["align"]))
     for field in record["fields"]:
@@ -353,7 +375,8 @@ def _equivalence_plan(model):
     s_index = t_index = o_index = 0
     for entry in records:
         record = entry["record"]
-        entry["skip_reason"] = skip_records.reason(entry["old_name"])
+        entry["outside"] = _outside_tree(record["old"]["key"])
+        entry["skip_reason"] = _OUTSIDE_REASON if entry["outside"] else skip_records.reason(entry["old_name"])
         fields = []
         if record["completeness"] != "incomplete":
             for field in record["fields"]:
@@ -363,7 +386,7 @@ def _equivalence_plan(model):
                                or _access_reason(field.get("access")))
                 fields.append(dict(field, skip_reason=skip_reason))
         entry["fields"] = fields
-        if entry["skip_reason"] is None and record["completeness"] == "complete":
+        if entry["skip_reason"] is None and record["completeness"] in ("complete", "prefix"):
             entry["s"] = s_index
             s_index += 1
         for field in fields:
@@ -377,9 +400,13 @@ def _equivalence_plan(model):
 
     constants = []
     for namespace, declaration in _constants_of(model):
+        if all(_outside_file(file) for file in declaration["old"]["files"]):
+            continue
         old_name = declaration["old"]["name"]
+        variable = declaration["old"]["kind"] == "variable"
         constants.append({"declaration": declaration, "qualified": "%s::%s" % (namespace, declaration["name"]),
-                          "old_name": old_name, "expression": old_name, "owner": None})
+                          "old_name": old_name, "expression": "::" + old_name if variable else old_name,
+                          "owner": None, "variable": variable})
     for scope, enum in _enums_of(model, all_records):
         # An enumerator of an enum declared inside a record is reached through a probe deriving from that
         # record, so the assertion spells it unqualified and the base's own access rights carry it.
@@ -440,7 +467,7 @@ def _equivalence_captures(plan):
         if entry["skip_reason"] is not None:
             continue
         name = entry["new_name"]
-        if entry["record"]["completeness"] == "complete":
+        if entry["record"]["completeness"] in ("complete", "prefix"):
             lines.append("constexpr std::size_t s%d = sizeof(%s);" % (entry["s"], name))
         for field in entry["fields"]:
             if field["skip_reason"] is not None:
@@ -491,9 +518,11 @@ def _owned_constants(plan):
 def _record_asserts(entry):
     old_name = entry["old_name"]
     if entry["skip_reason"] is not None:
-        return ["// %s: comparisons skipped - %s" % (old_name, entry["skip_reason"])]
+        # The trailing blank line keeps clang-format's ReflowComments from merging this comment with
+        # an adjacent skipped record's into one run-on paragraph.
+        return ["// %s: comparisons skipped - %s" % (old_name, entry["skip_reason"]), ""]
     lines = []
-    if entry["record"]["completeness"] == "complete":
+    if entry["record"]["completeness"] in ("complete", "prefix"):
         lines.append('static_assert(s%d == sizeof(::%s), "sizeof %s");' % (entry["s"], old_name, old_name))
     for field in entry["fields"]:
         if field["skip_reason"] is not None:
@@ -532,9 +561,15 @@ def _constant_asserts(entry):
     if isinstance(declaration["type"], cxx_types.Array):
         return ['static_assert(std::string_view(c%d) == std::string_view(%s), "value %s");'
                % (entry["c"], expression, old_name)]
+
+    old_type = "decltype(%s)" % expression
+    if entry.get("variable"):
+        # The declared type of a variable keeps its const, which the prvalue of a macro never has.
+        old_type = "std::remove_const_t<%s>" % old_type
+
     return ['static_assert(c%d == %s, "value %s");' % (entry["c"], expression, old_name),
-           'static_assert(std::is_same_v<std::remove_const_t<decltype(c%d)>, decltype(%s)>, "type %s");'
-           % (entry["c"], expression, old_name)]
+           'static_assert(std::is_same_v<std::remove_const_t<decltype(c%d)>, %s>, "type %s");'
+           % (entry["c"], old_type, old_name)]
 
 
 def _closing_brace(namespace):
@@ -739,6 +774,8 @@ def _record_body(declaration, indent):
     """Lines from the tag keyword through the closing brace, without a trailing ';' on the last one."""
     pad = INDENT * indent
     head = declaration["tag"]
+    if declaration.get("tail"):
+        head += " alignas(%d)" % declaration["layout"]["align"]
     if declaration["name"]:
         head += " " + declaration["name"]
     bases = _base_list(declaration["bases"])
@@ -768,9 +805,6 @@ def _base_list(bases):
 
 def _record_members(declaration, indent):
     groups = []
-    if declaration["completeness"] == "prefix":
-        groups.append(_deleted_members(declaration["name"], indent))
-
     nested = [_record_block(item, indent) for item in declaration["nested"]]
     nested.extend(_enum_block(item, indent) for item in declaration["enums"])
     if nested:
@@ -783,10 +817,27 @@ def _record_members(declaration, indent):
     fields = []
     for field in declaration["fields"]:
         fields.extend(_field_lines(field, indent))
+    if declaration.get("tail"):
+        fields.append(INDENT * indent + _tail_line(declaration))
     if fields:
         groups.append(fields)
 
     return _blank_between(groups)
+
+
+def _tail_line(declaration):
+    """The bytes after the prefix, which make sizeof, arrays and pointer arithmetic of the record exact.
+    Every member of a union starts at its beginning, so a union's tail spans the whole size; without a kept
+    field the tail spans everything from the offset of the first stock field."""
+    size = declaration["layout"]["size"]
+    tail = declaration["tail"]
+    if declaration["tag"] == "union" or (tail["after"] is None and not tail["offset"]):
+        return "unsigned char %s[%d];" % (TAIL_NAME, size)
+
+    if tail["after"] is None:
+        return "unsigned char %s[%d - %d];" % (TAIL_NAME, size, tail["offset"])
+
+    return "unsigned char %s[%d - (%d + sizeof(%s))];" % (TAIL_NAME, size, tail["offset"], tail["after"])
 
 
 def _blank_between(groups):
@@ -796,13 +847,6 @@ def _blank_between(groups):
             lines.append("")
         lines.extend(group)
     return lines
-
-
-def _deleted_members(name, indent):
-    pad = INDENT * indent
-    return [pad + "%s() = delete;" % name,
-            pad + "%s(const %s&) = delete;" % (name, name),
-            pad + "%s& operator=(const %s&) = delete;" % (name, name)]
 
 
 def _method_line(method, indent):

@@ -92,6 +92,10 @@
       "namespace": "goldsrc",
       "internal": false
     },
+    "goldsrc/format/wad.h": {
+      "namespace": "goldsrc",
+      "internal": false
+    },
     "goldsrc/engine/client_state.h": {
       "namespace": "goldsrc",
       "internal": true
@@ -195,6 +199,7 @@
     "dep/NclNitroApi/dep/ncl-hl1-source-sdk/engine/spritegn.h": "goldsrc/format/sprite.h",
     "dep/NclNitroApi/dep/ncl-hl1-source-sdk/engine/modelgen.h": "goldsrc/format/sprite.h",
     "dep/NclNitroApi/dep/ncl-hl1-source-sdk/engine/bspfile.h": "goldsrc/format/bsp.h",
+    "nextclient/engine_mini/src/graphics/wad_format.h": "goldsrc/format/wad.h",
     "dep/NclNitroApi/dep/ncl-hl1-source-sdk/engine/client.h": "goldsrc/engine/client_state.h",
     "dep/NclNitroApi/dep/ncl-hl1-source-sdk/engine/consistency.h": "goldsrc/engine/client_state.h",
     "dep/NclNitroApi/dep/ncl-hl1-source-sdk/engine/delta_packet.h": "goldsrc/engine/client_state.h",
@@ -354,9 +359,9 @@
       "reason": "a NitroApi helper class with its own implementation"
     },
     {
-      "name": "BufferWriter",
-      "exclude": true,
-      "reason": "replaced by MessageWriter of the data_types package in stage 3"
+      "name": "lumpinfo_s",
+      "header": "goldsrc/format/wad.h",
+      "rename": "lumpinfo_t"
     },
     {
       "name": "IBaseSystem",
@@ -392,6 +397,14 @@
       "key": "dep/NclNitroApi/dep/ncl-hl1-source-sdk/public/HLTV/IDemoPlayer.h:93:1",
       "exclude": true,
       "reason": "the director signal enum of an HLTV interface the fork carries over unchanged in public/HLTV"
+    },
+    {
+      "name": "CVOXFILESENTENCEMAX",
+      "header": "goldsrc/engine/sound.h"
+    },
+    {
+      "name": "MAX_SPRITE_NAME_LENGTH",
+      "header": "goldsrc/cstrike/hud.h"
     }
   ],
   "macros": {
@@ -979,10 +992,6 @@
     "net_api_s": {
       "type": "net_api_t",
       "reason": "an engine type reached through a pointer only"
-    },
-    "lumpinfo_s": {
-      "type": "lumpinfo_t",
-      "reason": "an engine type reached through a pointer only"
     }
   },
   "opaque": {
@@ -1006,14 +1015,34 @@
       "tag": "struct",
       "reason": "an engine type reached through a pointer only"
     },
-    "lumpinfo_t": {
-      "tag": "struct",
-      "reason": "an engine type reached through a pointer only"
-    },
     "tagPOINT": {
       "tag": "struct",
       "namespace": "::",
       "reason": "a Windows type: declared at global scope, it is the very type windows.h declares, while one inside the library namespace would be another type"
+    },
+    "dma_t": {
+      "tag": "struct",
+      "old": "dma_t",
+      "consumer": "dep/NclNitroApi/include/nitroapi/modules/engine/EngineData.h",
+      "reason": "an engine sound type NitroApi reaches through a pointer only; no replaced header declares it"
+    },
+    "sfxcache_t": {
+      "tag": "struct",
+      "old": "sfxcache_t",
+      "consumer": "dep/NclNitroApi/include/nitroapi/modules/engine/EngineData.h",
+      "reason": "an engine sound type NitroApi reaches through a pointer only; no replaced header declares it"
+    },
+    "channel_t": {
+      "tag": "struct",
+      "old": "channel_t",
+      "consumer": "dep/NclNitroApi/include/nitroapi/modules/engine/EngineData.h",
+      "reason": "an engine sound type NitroApi reaches through a pointer only; no replaced header declares it"
+    },
+    "wavstream_t": {
+      "tag": "struct",
+      "old": "wavstream_t",
+      "consumer": "dep/NclNitroApi/include/nitroapi/modules/engine/EngineData.h",
+      "reason": "an engine sound type NitroApi reaches through a pointer only; no replaced header declares it"
     }
   },
   "equivalence": {

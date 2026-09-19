@@ -14,14 +14,12 @@ namespace goldsrc
     inline constexpr int CHAN_NETWORKVOICE_BASE = 7;
     inline constexpr int CHAN_NETWORKVOICE_END = 500;
     inline constexpr int CHAN_BOT = 501;
+    inline constexpr int CVOXFILESENTENCEMAX = 1536;
 
-    struct sfx_t
+    struct alignas(4) sfx_t
     {
-        sfx_t() = delete;
-        sfx_t(const sfx_t&) = delete;
-        sfx_t& operator=(const sfx_t&) = delete;
-
         char name[64];
         cache_user_t cache;
+        unsigned char unmodelled_[72 - (64 + sizeof(cache))];
     };
 } // namespace goldsrc

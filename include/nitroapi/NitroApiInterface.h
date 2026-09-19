@@ -5,17 +5,12 @@
 #endif
 
 #include <FileSystem.h>
-#include <extdll.h>
-#include <pm_defs.h>
-#include <client.h>
-#include <vmodes.h>
 #include <iregistry.h>
 #include <icommandline.h>
 
 #include "chain/HandlersChainInterface.h"
 #include "NitroFunction.h"
 #include "modules/engine/EngineData.h"
-#include "modules/engine/enginemsg.h"
 #include "modules/client/ClientData.h"
 #include "modules/windows/WindowsData.h"
 #include "modules/sdl2/SDL2Data.h"

@@ -95,7 +95,7 @@ def repository_state(directory, separate=()):
     track, sorted} of a git work tree. `separate` are paths, relative to the work tree, of nested
     repositories whose state is recorded on its own: a change inside one does not make this tree dirty."""
     commit = _git(directory, "rev-parse", "HEAD").strip()
-    entries = _git(directory, "status", "--porcelain=v1", "-z").split("\0")
+    entries = _git(directory, "status", "--porcelain=v1", "-z", "--untracked-files=all").split("\0")
 
     dirty = False
     untracked = []

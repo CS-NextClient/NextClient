@@ -32,20 +32,12 @@ namespace goldsrc
 
     struct cacheentry_t
     {
-        cacheentry_t() = delete;
-        cacheentry_t(const cacheentry_t&) = delete;
-        cacheentry_t& operator=(const cacheentry_t&) = delete;
-
         char name[64];
         cache_user_t cache;
     };
 
     struct glpoly_t
     {
-        glpoly_t() = delete;
-        glpoly_t(const glpoly_t&) = delete;
-        glpoly_t& operator=(const glpoly_t&) = delete;
-
         glpoly_t* next;
         glpoly_t* chain;
         int numverts;
@@ -63,41 +55,27 @@ namespace goldsrc
         vec3_t clip_maxs;
     };
 
-    struct medge_t
+    struct alignas(4) medge_t
     {
-        medge_t() = delete;
-        medge_t(const medge_t&) = delete;
-        medge_t& operator=(const medge_t&) = delete;
-
         unsigned short v[2];
+        unsigned char unmodelled_[8 - (0 + sizeof(v))];
     };
 
     struct mod_known_info_t
     {
-        mod_known_info_t() = delete;
-        mod_known_info_t(const mod_known_info_t&) = delete;
-        mod_known_info_t& operator=(const mod_known_info_t&) = delete;
-
         qboolean shouldCRC;
         qboolean firstCRCDone;
         CRC32_t initialCRC;
     };
 
-    struct mplane_t
+    struct alignas(4) mplane_t
     {
-        mplane_t() = delete;
-        mplane_t(const mplane_t&) = delete;
-        mplane_t& operator=(const mplane_t&) = delete;
-
         vec3_t normal;
+        unsigned char unmodelled_[20 - (0 + sizeof(normal))];
     };
 
     struct mspriteframe_t
     {
-        mspriteframe_t() = delete;
-        mspriteframe_t(const mspriteframe_t&) = delete;
-        mspriteframe_t& operator=(const mspriteframe_t&) = delete;
-
         int width;
         int height;
         float up;
@@ -115,21 +93,13 @@ namespace goldsrc
 
     struct mspritegroup_t
     {
-        mspritegroup_t() = delete;
-        mspritegroup_t(const mspritegroup_t&) = delete;
-        mspritegroup_t& operator=(const mspritegroup_t&) = delete;
-
         int numframes;
         float* intervals;
         mspriteframe_t* frames[1];
     };
 
-    struct msurface_t
+    struct alignas(4) msurface_t
     {
-        msurface_t() = delete;
-        msurface_t(const msurface_t&) = delete;
-        msurface_t& operator=(const msurface_t&) = delete;
-
         int visframe;
         mplane_t* plane;
         int flags;
@@ -145,34 +115,24 @@ namespace goldsrc
         int dlightframe;
         int dlightbits;
         int lightmaptexturenum;
+        unsigned char unmodelled_[92 - (56 + sizeof(lightmaptexturenum))];
     };
 
-    struct mtexinfo_t
+    struct alignas(4) mtexinfo_t
     {
-        mtexinfo_t() = delete;
-        mtexinfo_t(const mtexinfo_t&) = delete;
-        mtexinfo_t& operator=(const mtexinfo_t&) = delete;
-
         float vecs[2][4];
         float mipadjust;
         texture_t* texture;
+        unsigned char unmodelled_[44 - (36 + sizeof(texture))];
     };
 
     struct mvertex_t
     {
-        mvertex_t() = delete;
-        mvertex_t(const mvertex_t&) = delete;
-        mvertex_t& operator=(const mvertex_t&) = delete;
-
         vec3_t position;
     };
 
-    struct skin_t
+    struct alignas(4) skin_t
     {
-        skin_t() = delete;
-        skin_t(const skin_t&) = delete;
-        skin_t& operator=(const skin_t&) = delete;
-
         int keynum;
         int topcolor;
         int bottomcolor;
@@ -182,26 +142,20 @@ namespace goldsrc
         int source;
         int width;
         int height;
+        unsigned char unmodelled_[296 - (288 + sizeof(height))];
     };
 
-    struct texture_t
+    struct alignas(4) texture_t
     {
-        texture_t() = delete;
-        texture_t(const texture_t&) = delete;
-        texture_t& operator=(const texture_t&) = delete;
-
         char name[16];
         unsigned int width;
         unsigned int height;
         int gl_texturenum;
+        unsigned char unmodelled_[72 - (24 + sizeof(gl_texturenum))];
     };
 
     struct cachewad_t
     {
-        cachewad_t() = delete;
-        cachewad_t(const cachewad_t&) = delete;
-        cachewad_t& operator=(const cachewad_t&) = delete;
-
         char* name;
         cacheentry_t* cache;
         int cacheCount;
@@ -218,10 +172,6 @@ namespace goldsrc
 
     struct model_t
     {
-        model_t() = delete;
-        model_t(const model_t&) = delete;
-        model_t& operator=(const model_t&) = delete;
-
         char name[64];
         int needload;
         modtype_t type;
@@ -266,10 +216,6 @@ namespace goldsrc
 
     struct msprite_t
     {
-        msprite_t() = delete;
-        msprite_t(const msprite_t&) = delete;
-        msprite_t& operator=(const msprite_t&) = delete;
-
         short type;
         short texFormat;
         int maxwidth;

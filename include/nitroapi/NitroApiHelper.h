@@ -4,6 +4,10 @@
 #include <vector>
 #include <memory>
 #include <utility>
+#include <goldsrc/client_api.h>
+#include <goldsrc/engine/client_state.h>
+#include <goldsrc/engine/net.h>
+#include <goldsrc/server_api.h>
 
 namespace nitroapi
 {
@@ -33,15 +37,36 @@ namespace nitroapi
 
         // ----- Engine variables -----
 
-        [[nodiscard]] client_static_t* cls() { return eng()->client_static; };
-        [[nodiscard]] client_state_t * client_state() { return eng()->client_state; };
-        [[nodiscard]] cl_enginefunc_t* cl_enginefunc() { return eng()->cl_enginefunc; };
-        [[nodiscard]] enginefuncs_t* enginefuncs() { return eng()->enginefuncs; };
-        [[nodiscard]] cldll_func_t* cldll_func() { return eng()->cldll_func; };
-        [[nodiscard]] modfuncs_t* modfuncs() { return eng()->modfuncs; };
+        [[nodiscard]] goldsrc::client_static_t* cls()
+        {
+            return eng()->client_static;
+        };
+        [[nodiscard]] goldsrc::client_state_t* client_state()
+        {
+            return eng()->client_state;
+        };
+        [[nodiscard]] goldsrc::cl_enginefunc_t* cl_enginefunc()
+        {
+            return eng()->cl_enginefunc;
+        };
+        [[nodiscard]] goldsrc::enginefuncs_t* enginefuncs()
+        {
+            return eng()->enginefuncs;
+        };
+        [[nodiscard]] goldsrc::cldll_func_t* cldll_func()
+        {
+            return eng()->cldll_func;
+        };
+        [[nodiscard]] goldsrc::modfuncs_t* modfuncs()
+        {
+            return eng()->modfuncs;
+        };
 
         [[nodiscard]] int* msg_readcount() { return eng()->msg_readcount; };
-        [[nodiscard]] sizebuf_t* net_message() { return eng()->net_message; };
+        [[nodiscard]] goldsrc::sizebuf_t* net_message()
+        {
+            return eng()->net_message;
+        };
 
         // ----- Client variables -----
 

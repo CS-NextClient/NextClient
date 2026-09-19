@@ -31,6 +31,7 @@ namespace goldsrc::cstrike
     inline constexpr int RGB_GREENISH = 40960;
     inline constexpr int RGB_REDISH = 16715792;
     inline constexpr int RGB_YELLOWISH = 16752640;
+    inline constexpr int MAX_SPRITE_NAME_LENGTH = 24;
 
     enum
     {
@@ -42,13 +43,9 @@ namespace goldsrc::cstrike
     };
 
 #pragma pack(push, 8)
-    class CHud
+    class alignas(8) CHud
     {
     public:
-        CHud() = delete;
-        CHud(const CHud&) = delete;
-        CHud& operator=(const CHud&) = delete;
-
         HUDLIST* m_pHudList;
         HSPRITE_t m_hsprLogo;
         int m_iLogo;
@@ -76,6 +73,7 @@ namespace goldsrc::cstrike
         cvar_t* default_fov;
         HSPRITE_t* m_rghSprites;
         wrect_t* m_rgrcRects;
+        unsigned char unmodelled_[18304 - (380 + sizeof(m_rgrcRects))];
     };
 #pragma pack(pop)
 
@@ -100,12 +98,8 @@ namespace goldsrc::cstrike
         int m_iFlags;
     };
 
-    struct extra_player_info_t
+    struct alignas(4) extra_player_info_t
     {
-        extra_player_info_t() = delete;
-        extra_player_info_t(const extra_player_info_t&) = delete;
-        extra_player_info_t& operator=(const extra_player_info_t&) = delete;
-
         short frags;
         short deaths;
         short team_id;
@@ -123,5 +117,6 @@ namespace goldsrc::cstrike
         int health;
         char location[32];
         int sb_health;
+        unsigned char unmodelled_[116 - (104 + sizeof(sb_health))];
     };
 } // namespace goldsrc::cstrike

@@ -107,6 +107,7 @@ target_include_directories(nitro_api PRIVATE
 
 target_link_libraries(nitro_api PRIVATE
         hl1_source_sdk::hl1_source_sdk
+        goldsrc::abi
         OpenGL::GL
         magic_enum::magic_enum
         xbyak::xbyak
@@ -199,6 +200,7 @@ target_include_directories(nitro_api_export PUBLIC
 target_link_libraries(nitro_api_export INTERFACE
         nitro_utils::nitro_utils
         hl1_source_sdk::hl1_source_sdk
+        goldsrc::abi
 )
 
 target_compile_definitions(nitro_api_export INTERFACE

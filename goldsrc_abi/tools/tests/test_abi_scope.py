@@ -48,6 +48,15 @@ class ScopeTest(unittest.TestCase):
         self.assertFalse(abi_scope.is_declaration_file(sdk + "/public/HLTV/IWorld.h"))
         self.assertFalse(declarations.search(r"D:\x\dep\NclNitroApi\dep\ncl-hl1-source-sdk\public\HLTV\IWorld.h"))
 
+    def test_our_stock_wad_header_is_in_the_declaration_scope(self):
+        path = "nextclient/engine_mini/src/graphics/wad_format.h"
+        self.assertTrue(abi_scope.is_declaration_file(path))
+        self.assertTrue(abi_scope.is_our_source(path))
+        self.assertIn(path, abi_scope.declaration_roots())
+        self.assertTrue(re.compile(abi_scope.DECLARATION_REGEX).search(
+            r"D:\x\NextClient\nextclient\engine_mini\src\graphics\wad_format.h"))
+        self.assertFalse(abi_scope.is_declaration_file("nextclient/engine_mini/src/graphics/gl_local.h"))
+
     def test_our_sources(self):
         self.assertTrue(abi_scope.is_our_source("nextclient/client_mini/src/view.cpp"))
         self.assertTrue(abi_scope.is_our_source("dep/NclNitroApi/src/NitroApi.cpp"))
@@ -64,6 +73,17 @@ class ScopeTest(unittest.TestCase):
         self.assertTrue(ours.search(r"D:\x\NextClient\nextclient\engine_mini\src\host.cpp"))
         self.assertTrue(ours.search("D:/x/dep/NclNitroApi/include/nitroapi/NitroApiInterface.h"))
         self.assertFalse(ours.search(r"D:\x\dep\NclNitroApi\dep\ncl-hl1-source-sdk\public\FileSystem.h"))
+
+    def test_redeclarations_are_looked_for_in_our_sources_and_the_two_game_ui_headers(self):
+        redeclarations = re.compile(abi_scope.REDECLARATION_REGEX)
+        self.assertTrue(redeclarations.search(r"D:\x\NextClient\nextclient\client_mini\src\hud\radar\RadarFrame.h"))
+        self.assertTrue(redeclarations.search(r"D:\x\dep\NclNitroApi\dep\ncl-hl1-source-sdk\public\IGameUI.h"))
+        self.assertTrue(redeclarations.search("D:/x/dep/NclNitroApi/dep/ncl-hl1-source-sdk/public/IBaseUI.h"))
+        self.assertFalse(redeclarations.search(r"D:\x\dep\NclNitroApi\dep\ncl-hl1-source-sdk\public\FileSystem.h"))
+        self.assertFalse(redeclarations.search(r"D:\x\dep\NclNitroApi\dep\ncl-hl1-source-sdk\common\const.h"))
+
+    def test_the_interfaces_these_tests_name_are_exactly_the_moved_ones(self):
+        self.assertEqual(MOVED_HLTV_INTERFACES, abi_scope.MOVED_HLTV_INTERFACE_NAMES)
 
 
 if __name__ == "__main__":

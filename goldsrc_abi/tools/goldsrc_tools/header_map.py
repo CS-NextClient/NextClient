@@ -28,7 +28,7 @@ _FAMILY_KEYS = ("prefix", "file", "header", "base")
 _EXCLUDE_KEYS = ("name", "key", "file", "reason")
 _MACRO_SECTIONS = ("families", "names", "exclude")
 _SUBSTITUTE_KEYS = ("type", "reason")
-_OPAQUE_KEYS = ("tag", "namespace", "old", "reason")
+_OPAQUE_KEYS = ("tag", "namespace", "old", "consumer", "reason")
 _EQUIVALENCE_RULE_KEYS = {"skip_records": ("name", "reason"), "skip_fields": ("record", "field", "reason"),
                           "prelude": ("include", "before", "reason")}
 # The one key of the equivalence section that holds old header paths instead of rules: the computed
@@ -330,6 +330,8 @@ def _validate_opaque(library_map, problems):
         _unknown_keys(entry, _OPAQUE_KEYS, where, problems)
         if not entry.get("reason"):
             problems.append("%s stays opaque without a reason" % where)
+        if "consumer" in entry and (not isinstance(entry["consumer"], str) or not entry["consumer"]):
+            problems.append("%s names no consumer path" % where)
         if entry.get("tag") and entry["tag"] not in TAGS:
             problems.append("%s names the unknown tag %s" % (where, entry["tag"]))
         if entry.get("namespace") and not is_global(entry["namespace"]) and not _NAMESPACE.match(entry["namespace"]):

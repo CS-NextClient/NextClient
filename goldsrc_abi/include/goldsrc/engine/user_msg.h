@@ -11,10 +11,6 @@ namespace goldsrc
 
     struct EngineMsg
     {
-        EngineMsg() = delete;
-        EngineMsg(const EngineMsg&) = delete;
-        EngineMsg& operator=(const EngineMsg&) = delete;
-
         int number;
         char* name;
         pfnEngineMessage pfn;

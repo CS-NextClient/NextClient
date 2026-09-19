@@ -116,21 +116,41 @@ namespace goldsrc
 
 
 class PrefixRecordTest(unittest.TestCase):
-    def test_prefix_record_deletes_construction_and_copying(self):
-        declaration = record("client_state_t", completeness="prefix", fields=[
-            field("max_edicts", NAMED_INT),
-            field("frames", cxx_types.Array(cxx_types.Named(text="frame_t"), size="64")),
+    def test_prefix_record_is_aligned_and_ends_with_a_tail_to_the_stock_size(self):
+        declaration = record("client_state_t", completeness="prefix", size=1100, align=4, fields=[
+            field("max_edicts", NAMED_INT, offset=0),
+            field("frames", cxx_types.Array(cxx_types.Named(text="frame_t"), size="64"), offset=4),
         ])
+        declaration["tail"] = {"after": "frames", "offset": 4}
         text = emit.headers(model_of(header_entry(PUBLIC, [declaration])))[PUBLIC]
 
-        self.assertIn('''    struct client_state_t
+        self.assertIn('''    struct alignas(4) client_state_t
     {
-        client_state_t() = delete;
-        client_state_t(const client_state_t&) = delete;
-        client_state_t& operator=(const client_state_t&) = delete;
-
         int max_edicts;
         frame_t frames[64];
+        unsigned char unmodelled_[1100 - (4 + sizeof(frames))];
+    };
+''', text)
+        self.assertNotIn("delete", text)
+
+    def test_a_prefix_union_tail_spans_the_whole_union(self):
+        declaration = record("probe_t", tag="union", completeness="prefix", size=16, align=4,
+                             fields=[field("a", NAMED_INT, offset=0)])
+        declaration["tail"] = {"after": "a", "offset": 0}
+        text = emit.headers(model_of(header_entry(PUBLIC, [declaration])))[PUBLIC]
+
+        self.assertIn("unsigned char unmodelled_[16];", text)
+
+    def test_a_prefix_keeping_no_field_ends_with_a_tail_after_its_bases(self):
+        base = {"type": cxx_types.Named(text="CHudBase"), "access": "public", "virtual": False}
+        declaration = record("CHudAmmo", tag="class", completeness="prefix", size=112, align=4, bases=[base])
+        declaration["tail"] = {"after": None, "offset": 20}
+        text = emit.headers(model_of(header_entry(PUBLIC, [declaration])))[PUBLIC]
+
+        self.assertIn('''    class alignas(4) CHudAmmo : public CHudBase
+    {
+    public:
+        unsigned char unmodelled_[112 - 20];
     };
 ''', text)
 
@@ -488,19 +508,20 @@ class GoldenRecordTest(unittest.TestCase):
         self.assertIn("static_assert(offsetof(goldsrc::cvar_t, flags) == 4);", text)
         self.assertIn("static_assert(offsetof(goldsrc::cvar_t, next) == 16);", text)
 
-    def test_prefix_record_has_no_sizeof_or_alignof_and_skips_bitfields_and_unnamed_fields(self):
-        declaration = record("client_state_t", old_name="client_state_s", completeness="prefix", fields=[
-            field("max_edicts", NAMED_INT, offset=0),
-            field(None, NAMED_INT, offset=4),
-            field("flags", NAMED_INT, bits=4, offset=8),
-            field("time", NAMED_FLOAT, offset=12),
-        ])
+    def test_prefix_record_gets_sizeof_alignof_and_skips_bitfields_and_unnamed_fields(self):
+        declaration = record("client_state_t", old_name="client_state_s", completeness="prefix", size=16, align=4,
+                             fields=[
+                                 field("max_edicts", NAMED_INT, offset=0),
+                                 field(None, NAMED_INT, offset=4),
+                                 field("flags", NAMED_INT, bits=4, offset=8),
+                                 field("time", NAMED_FLOAT, offset=12),
+                             ])
         model = model_of(records=[declaration], names={"client_state_s": "goldsrc::client_state_t"})
 
         text = emit.golden(model)
 
-        self.assertNotIn("sizeof(goldsrc::client_state_t)", text)
-        self.assertNotIn("alignof(goldsrc::client_state_t)", text)
+        self.assertIn("static_assert(sizeof(goldsrc::client_state_t) == 16);", text)
+        self.assertIn("static_assert(alignof(goldsrc::client_state_t) == 4);", text)
         self.assertIn("static_assert(offsetof(goldsrc::client_state_t, max_edicts) == 0);", text)
         self.assertIn("static_assert(offsetof(goldsrc::client_state_t, time) == 12);", text)
         self.assertEqual(text.count("offsetof(goldsrc::client_state_t"), 2)
@@ -706,7 +727,7 @@ class EquivalenceRecordAssertsTest(unittest.TestCase):
         self.assertRegex(text, r'static_assert\(o\d+ == offsetof\(::cvar_s, next\), "offsetof cvar_s\.next"\);')
         self.assertRegex(text, r'static_assert\(std::is_same_v<t\d+, map_t<decltype\(::cvar_s::next\)>>, "type cvar_s\.next"\);')
 
-    def test_prefix_record_has_no_sizeof_assert(self):
+    def test_prefix_record_is_compared_by_sizeof_too(self):
         declaration = record("client_state_t", old_name="client_state_s", completeness="prefix", fields=[
             field("max_edicts", NAMED_INT, offset=0),
         ])
@@ -714,8 +735,21 @@ class EquivalenceRecordAssertsTest(unittest.TestCase):
 
         text, _problems = emit.equivalence(model, [])
 
-        self.assertNotIn("sizeof(::client_state_s)", text)
+        self.assertRegex(text, r'static_assert\(s\d+ == sizeof\(::client_state_s\), "sizeof client_state_s"\);')
         self.assertRegex(text, r"offsetof\(::client_state_s, max_edicts\)")
+
+
+class EquivalenceVariableConstantTest(unittest.TestCase):
+    def test_a_constant_variable_is_compared_without_the_const_of_its_declaration(self):
+        declaration = constant("CVOXFILESENTENCEMAX", NAMED_INT, 1536)
+        declaration["old"]["kind"] = "variable"
+        model = model_of(header_entry(PUBLIC, [declaration]), records={})
+
+        text, _problems = emit.equivalence(model, [])
+
+        self.assertIn('static_assert(c0 == ::CVOXFILESENTENCEMAX, "value CVOXFILESENTENCEMAX");', text)
+        self.assertIn('static_assert(std::is_same_v<std::remove_const_t<decltype(c0)>, '
+                      'std::remove_const_t<decltype(::CVOXFILESENTENCEMAX)>>, "type CVOXFILESENTENCEMAX");', text)
 
 
 class EquivalenceEnumConstantTest(unittest.TestCase):
@@ -819,6 +853,24 @@ class EquivalenceSkipTest(unittest.TestCase):
         self.assertNotIn("sizeof(::host_s)", text)
         self.assertNotIn("offsetof(::host_s", text)
         self.assertRegex(text, r'static_assert\(s\d+ == sizeof\(::cvar_s\), "sizeof cvar_s"\);')
+
+    def test_two_skipped_records_get_separate_comment_blocks_not_a_run_on_paragraph(self):
+        first = record("qpic_t", old_name="qpic_t")
+        second = record("wadinfo_t", old_name="wadinfo_t")
+        model = model_of(records=[first, second],
+                         names={"qpic_t": "goldsrc::format::qpic_t", "wadinfo_t": "goldsrc::format::wadinfo_t"},
+                         equivalence={"skip_records": [
+                             {"name": "qpic_t", "reason": "declared in our NextClient sources"},
+                             {"name": "wadinfo_t", "reason": "declared in our NextClient sources"},
+                         ]})
+
+        text, problems = emit.equivalence(model, [])
+
+        self.assertEqual(problems, [])
+        # A blank line between the two comments, not a single run of "//" lines clang-format's
+        # ReflowComments would merge into one paragraph.
+        self.assertRegex(text, r"// qpic_t: comparisons skipped - declared in our NextClient sources\n\n\s*"
+                               r"// wadinfo_t: comparisons skipped - declared in our NextClient sources")
 
     def test_a_skipped_field_keeps_the_records_other_asserts_and_comments_the_field(self):
         declaration = record("cvar_t", old_name="cvar_s", size=20, align=4, fields=[
@@ -969,6 +1021,24 @@ class EquivalenceOpaqueTypedFieldTest(unittest.TestCase):
         include_index = text.index('#include "dep/ncl-hl1-source-sdk/common/some.h"')
         self.assertLess(declaration_index, include_index)
         self.assertLess(text.index("} // namespace goldsrc_equivalence"), declaration_index)
+
+
+class EquivalenceOutsideTreeTest(unittest.TestCase):
+    def test_a_record_declared_in_our_sources_is_compared_by_name_only(self):
+        declaration = record("lumpinfo_t", old_name="lumpinfo_s", size=32, align=4,
+                             key="nextclient/engine_mini/src/graphics/wad_format.h:12:8",
+                             fields=[field("filepos", NAMED_INT, offset=0)])
+        model = model_of(records=[declaration], names={"lumpinfo_s": "goldsrc::lumpinfo_t"})
+
+        text, problems = emit.equivalence(model, [])
+
+        self.assertEqual(problems, [])
+        self.assertIn("struct lumpinfo_s;", text)
+        self.assertIn("map<::lumpinfo_s>", text)
+        self.assertNotIn("sizeof(::lumpinfo_s)", text)
+        self.assertNotIn("offsetof(::lumpinfo_s", text)
+        self.assertIn("// lumpinfo_s: comparisons skipped - declared in our NextClient sources", text)
+        self.assertNotIn("nextclient/engine_mini/src/graphics/wad_format.h", emit.equivalence_files(model))
 
 
 class EquivalenceFilesTest(unittest.TestCase):

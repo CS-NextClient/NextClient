@@ -7,6 +7,7 @@ _serial = itertools.count(1)
 
 PUBLIC = "goldsrc/public.h"
 INTERNAL = "goldsrc/internal.h"
+CSTRIKE = "goldsrc/cstrike/hud.h"
 
 
 def _key(file):
@@ -68,6 +69,16 @@ def enum(file, name, constants, *, typedef_name=None, scoped=False, underlying=N
 def macro(file, name, *, value=0, type_="int", status="constant", used=False):
     return {"file": file, "line": next(_serial), "name": name, "used": used, "uses": [], "defined_in_ours": [],
             "status": status, "type": type_, "value": value}
+
+
+def variable(file, name, type_, *, value=None, qualifiers=("extern",), used=True):
+    return {"key": _key(file), "file": file, "name": name, "type": type_, "desugared": None,
+            "qualifiers": list(qualifiers), "value": value, "scope": "", "linkage": ["C++"], "used": used}
+
+
+def function(file, name, type_, *, used=True):
+    return {"key": _key(file), "file": file, "name": name, "scope": "", "type": type_, "qualifiers": [],
+            "linkage": ["C++"], "used": used}
 
 
 def facts(records=(), typedefs=(), enums=(), macros=(), functions=(), variables=(), external=None):
@@ -929,6 +940,10 @@ class MapFormTest(unittest.TestCase):
         self.assertIn("Panel", problems[0])
         self.assertIn("vgui2::", problems[0])
 
+    def test_an_opaque_consumer_is_a_path(self):
+        problems = header_map.validate(library(opaque={"dma_t": {"tag": "struct", "consumer": "", "reason": "r"}}))
+        self.assertIn("opaque entry dma_t names no consumer path", problems)
+
     def test_family_without_a_header_is_a_problem(self):
         problems = header_map.validate(library(macros={"families": [{"file": "engine/cvardef.h", "prefix": "FCVAR_"}]}))
 
@@ -942,6 +957,167 @@ class MapFormTest(unittest.TestCase):
             {"file": "engine/probe.h", "prefix": "PROBE_MODE_", "header": PUBLIC, "base": "octal"}]}))
 
         self.assertEqual(problems, ["macro family PROBE_MODE_ in engine/probe.h names the unknown base octal"])
+
+
+class PrefixTailTest(unittest.TestCase):
+    def declared_host(self, fields, used_fields):
+        source = "engine/host.h"
+        host = record(source, "host_s", fields=fields, used_fields=used_fields)
+        built, problems = model.build(facts(records=[host]),
+                                      library(headers={INTERNAL: {"namespace": "goldsrc", "internal": True}},
+                                              files={source: INTERNAL}))
+        self.assertEqual(problems, [])
+        return find(header(built, INTERNAL)["declarations"], "host_s")
+
+    def test_a_prefix_carries_a_tail_after_its_last_kept_field(self):
+        declared = self.declared_host([field("f%d" % number, "int") for number in range(1, 6)], ["f1", "f3"])
+
+        self.assertEqual([item["name"] for item in declared["fields"]], ["f1", "f2", "f3"])
+        self.assertEqual(declared["tail"], {"after": "f3", "offset": 8})
+
+    def test_a_bit_field_or_an_unnamed_last_field_extends_the_prefix_to_a_measurable_one(self):
+        declared = self.declared_host([field("f1", "int"), field("bits", "int", bits=3), field("", "int"),
+                                       field("f4", "int"), field("f5", "int")], ["bits"])
+
+        self.assertEqual([item["name"] for item in declared["fields"]], ["f1", "bits", "", "f4"])
+        self.assertEqual(declared["tail"], {"after": "f4", "offset": 12})
+
+    def test_a_prefix_keeping_every_field_has_no_tail(self):
+        declared = self.declared_host([field("f1", "int"), field("f2", "int")], ["f2"])
+
+        self.assertNotIn("tail", declared)
+
+    def test_a_prefix_keeping_no_field_starts_its_tail_at_the_first_stock_field(self):
+        source = "cl_dll/hud.h"
+        inner = record(source, "RGBA", fields=[field("r", "int")], used_fields=["r"])
+        owner = record(source, "CHudAmmo", tag="class", nested=[inner], used=True, size=12,
+                       fields=[field("m_fFade", "float", offset=4), field("m_pWeapon", "int", offset=8)])
+        built, problems = model.build(
+            facts(records=[owner]),
+            library(headers={INTERNAL: {"namespace": "goldsrc", "internal": True}},
+                    rules=[{"name": "CHudAmmo", "header": INTERNAL, "completeness": "prefix"}]))
+
+        self.assertEqual(problems, [])
+        declared = find(header(built, INTERNAL)["declarations"], "CHudAmmo")
+        self.assertEqual((declared["fields"], declared["tail"]), ([], {"after": None, "offset": 4}))
+
+
+class ConstantVariableTest(unittest.TestCase):
+    def test_a_constant_variable_placed_by_a_rule_becomes_a_constant(self):
+        source = "engine/sound.h"
+        sentences = variable(source, "CVOXFILESENTENCEMAX", "const int", value=1536, qualifiers=("cinit",))
+        built, problems = model.build(facts(variables=[sentences]),
+                                      library(rules=[{"name": "CVOXFILESENTENCEMAX", "header": PUBLIC}]))
+
+        self.assertEqual(problems, [])
+        constant = find(header(built, PUBLIC)["declarations"], "CVOXFILESENTENCEMAX")
+        self.assertEqual((constant["kind"], constant["value"], constant["old"]["kind"]), ("constant", 1536, "variable"))
+        self.assertEqual(built["ignored"]["variables"], [])
+        self.assertEqual(built["renames"]["declarations"][sentences["key"]],
+                         {"action": "qualify", "kind": "constant", "spelling": "goldsrc::CVOXFILESENTENCEMAX",
+                          "header": PUBLIC})
+
+    def test_a_variable_no_rule_places_stays_ignored_and_kept(self):
+        cl = variable("engine/client.h", "cl", "client_state_t *")
+        built, _problems = model.build(facts(variables=[cl]), library())
+
+        self.assertEqual(built["ignored"]["variables"], ["cl"])
+        self.assertEqual(built["renames"]["declarations"][cl["key"]],
+                         {"action": "keep", "reason": model.KEEP_FUNCTIONS_AND_VARIABLES})
+
+    def test_placing_a_variable_without_a_constant_value_is_a_problem(self):
+        cl = variable("engine/client.h", "cl", "client_state_t *")
+        _built, problems = model.build(facts(variables=[cl]), library(rules=[{"name": "cl", "header": PUBLIC}]))
+
+        problem(self, problems, "variable cl", "no constant integer value")
+
+
+class ConsumerOpaqueTest(unittest.TestCase):
+    def test_a_name_our_code_asks_for_is_forward_declared_without_facts(self):
+        built, problems = model.build(facts(), library(opaque={"dma_t": {
+            "tag": "struct", "old": "dma_t", "consumer": "dep/NclNitroApi/include/nitroapi/modules/engine/EngineData.h",
+            "reason": "an engine sound type NitroApi reaches through a pointer only"}}))
+
+        self.assertNotIn("stale opaque entry dma_t", problems)
+        self.assertIn({"namespace": "goldsrc", "tag": "struct", "name": "dma_t", "old": "dma_t"}, built["forward"])
+
+    def test_a_name_nothing_asks_for_is_still_stale(self):
+        _built, problems = model.build(facts(), library(opaque={"dma_t": {"tag": "struct", "old": "dma_t",
+                                                                          "reason": "unused"}}))
+
+        self.assertIn("stale opaque entry dma_t", problems)
+
+
+class RenameTableTest(unittest.TestCase):
+    def test_records_aliases_members_enumerators_macros_and_what_stays(self):
+        source = "engine/cvardef.h"
+        cvar = record(source, "cvar_s", fields=[field("name", "char *"), field("value", "float")], used_fields=["name"])
+        cvar_t = typedef(source, "cvar_t", "struct cvar_s", used=True)
+        byte = typedef(source, "byte", "unsigned char", used=True)
+        mode = enum(source, "mode_e", [("MODE_A", 0), ("MODE_B", 1)], used_constants=["MODE_B"])
+        flag = macro(source, "FCVAR_ARCHIVE", value=1, used=True)
+        cvar_set = function(source, "Cvar_Set", "void (const char *)")
+        built, problems = model.build(
+            facts(records=[cvar], typedefs=[cvar_t, byte], enums=[mode], macros=[flag], functions=[cvar_set]),
+            library(files={source: PUBLIC}, macros={"families": [{"file": source, "prefix": "FCVAR_", "header": PUBLIC}]}))
+
+        self.assertEqual(problems, [])
+        renames = built["renames"]
+        qualify = {"action": "qualify", "kind": "record", "spelling": "goldsrc::cvar_t", "header": PUBLIC}
+        self.assertEqual(renames["declarations"][cvar["key"]], qualify)
+        self.assertEqual(renames["declarations"][cvar_t["key"]], qualify)
+        self.assertEqual(renames["by_name"]["cvar_s"], qualify)
+        self.assertEqual(renames["declarations"][cvar["fields"][1]["key"]], {"action": "member", "header": PUBLIC})
+        self.assertEqual(renames["declarations"][byte["key"]],
+                         {"action": "replace", "kind": "alias", "spelling": "uint8_t", "header": "cstdint"})
+        self.assertEqual(renames["declarations"][mode["constants"][1]["key"]],
+                         {"action": "qualify", "kind": "constant", "spelling": "goldsrc::MODE_B", "header": PUBLIC})
+        self.assertEqual(renames["macros"][source + ":FCVAR_ARCHIVE"],
+                         {"action": "qualify", "kind": "constant", "spelling": "goldsrc::FCVAR_ARCHIVE", "header": PUBLIC})
+        self.assertEqual(renames["declarations"][cvar_set["key"]],
+                         {"action": "keep", "reason": model.KEEP_FUNCTIONS_AND_VARIABLES})
+
+    def test_a_cstrike_record_takes_its_namespace_and_an_excluded_one_keeps_its_reason(self):
+        source = "cl_dll/hud.h"
+        ammo = record(source, "CHudAmmo", tag="class", fields=[field("m_fFade", "float")], used_fields=["m_fFade"])
+        gamehud = record(source, "gamehud_t", fields=[field("initialized", "bool")], used=True)
+        built, problems = model.build(
+            facts(records=[ammo, gamehud]),
+            library(headers={CSTRIKE: {"namespace": "goldsrc::cstrike"}}, files={source: CSTRIKE},
+                    rules=[{"name": "gamehud_t", "exclude": True, "reason": "a NitroApi type"}]))
+
+        self.assertEqual(problems, [])
+        self.assertEqual(built["renames"]["declarations"][ammo["key"]],
+                         {"action": "qualify", "kind": "record", "spelling": "goldsrc::cstrike::CHudAmmo", "header": CSTRIKE})
+        self.assertEqual(built["renames"]["declarations"][gamehud["key"]], {"action": "keep", "reason": "a NitroApi type"})
+        self.assertEqual(built["renames"]["declarations"][gamehud["fields"][0]["key"]],
+                         {"action": "keep", "reason": "a NitroApi type"})
+
+    def test_a_record_only_pointed_at_comes_from_fwd_h(self):
+        source = "engine/host.h"
+        client = record(source, "client_s", fields=[field("a", "int")])
+        host = record(source, "host_s", fields=[field("owner", "struct client_s *")], used_fields=["owner"])
+        built, problems = model.build(facts(records=[client, host]),
+                                      library(headers={INTERNAL: {"namespace": "goldsrc", "internal": True}},
+                                              files={source: INTERNAL}))
+
+        self.assertEqual(problems, [])
+        self.assertEqual(built["renames"]["declarations"][client["key"]],
+                         {"action": "qualify", "kind": "record", "spelling": "goldsrc::client_s", "header": "goldsrc/fwd.h"})
+
+    def test_members_of_an_unnamed_record_take_the_header_of_its_owner(self):
+        source = "engine/studio.h"
+        inner = record(source, None, used_fields=["valid"],
+                       fields=[field("valid", "uint8_t"), field("total", "uint8_t")])
+        value = record(source, None, tag="union", typedef_name="mstudioanimvalue_t",
+                       fields=[field("num", "struct (unnamed at %s)" % inner["key"]), field("value", "short")],
+                       nested=[inner], used_fields=["num"])
+        built, problems = model.build(facts(records=[value]), library(files={source: PUBLIC}))
+
+        self.assertEqual(problems, [])
+        renames = built["renames"]["declarations"]
+        self.assertEqual(renames[inner["fields"][1]["key"]], {"action": "member", "header": PUBLIC})
+        self.assertNotIn(inner["key"], renames)
 
 
 if __name__ == "__main__":

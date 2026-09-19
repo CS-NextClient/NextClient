@@ -92,10 +92,6 @@ namespace goldsrc
 
     struct client_static_t
     {
-        client_static_t() = delete;
-        client_static_t(const client_static_t&) = delete;
-        client_static_t& operator=(const client_static_t&) = delete;
-
         cactive_t state;
         netchan_t netchan;
         sizebuf_t datagram;
@@ -173,10 +169,6 @@ namespace goldsrc
 
     struct client_state_t
     {
-        client_state_t() = delete;
-        client_state_t(const client_state_t&) = delete;
-        client_state_t& operator=(const client_state_t&) = delete;
-
         int max_edicts;
         resource_t resourcesonhand;
         resource_t resourcesneeded;

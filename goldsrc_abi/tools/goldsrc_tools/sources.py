@@ -16,7 +16,7 @@ _BANNERS = (
 _GPL = re.compile(r"GNU General Public License", re.IGNORECASE)
 _HALF_LIFE = re.compile(r"Half-Life", re.IGNORECASE)
 
-_INCLUDE = re.compile(r'^[ \t]*#[ \t]*include[ \t]*([<"])([^>"\n]+)[>"]', re.MULTILINE)
+INCLUDE = re.compile(r'^[ \t]*#[ \t]*include[ \t]*([<"])([^>"\n]+)[>"]', re.MULTILINE)
 _DEFINE = re.compile(
     r"^[ \t]*#[ \t]*define[ \t]+(?P<name>[A-Za-z_]\w*)(?P<params>\([^)\n]*\))?(?P<body>(?:\\\n|[^\n])*)",
     re.MULTILINE)
@@ -92,7 +92,7 @@ def strip_comments(text, keep_literals=True):
 
 
 def parse_includes(text):
-    return [(match.group(1), match.group(2).strip()) for match in _INCLUDE.finditer(strip_comments(text))]
+    return [(match.group(1), match.group(2).strip()) for match in INCLUDE.finditer(strip_comments(text))]
 
 
 def parse_defines(text):
@@ -160,6 +160,16 @@ class IncludeResolver:
             stack.extend(self._direct(current, current_key, directories))
         return list(seen.values())
 
+    def resolve(self, delimiter, name, includer, include_dirs):
+        """The file an include of `includer` names: a quoted one first next to its includer, then along the
+        include directories; None for a file found nowhere, such as a system header."""
+        directories = ((os.path.dirname(includer),) if delimiter == '"' else ()) + tuple(include_dirs)
+        for directory in directories:
+            candidate = os.path.join(directory, name)
+            if self._is_file(candidate):
+                return paths.canonical(candidate)
+        return None
+
     def _direct(self, path, path_key, directories):
         cache_key = (path_key, directories)
         cached = self._resolved.get(cache_key)
@@ -171,12 +181,9 @@ class IncludeResolver:
 
         resolved = []
         for delimiter, name in self._includes[path_key]:
-            candidates = (os.path.dirname(path),) + directories if delimiter == '"' else directories
-            for directory in candidates:
-                candidate = os.path.join(directory, name)
-                if self._is_file(candidate):
-                    resolved.append(paths.canonical(candidate))
-                    break
+            found = self.resolve(delimiter, name, path, directories)
+            if found is not None:
+                resolved.append(found)
         self._resolved[cache_key] = resolved
         return resolved
 

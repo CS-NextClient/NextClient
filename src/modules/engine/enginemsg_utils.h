@@ -1,8 +1,8 @@
 #pragma once
 
-#include <nitroapi/modules/engine/structs.h>
+#include <goldsrc/engine/user_msg.h>
 
 namespace nitroapi
 {
-    PEngineMsg FindEngineMsgByName(PEngineMsg enigne_msg_start, const char* msg_name);
+    goldsrc::PEngineMsg FindEngineMsgByName(goldsrc::PEngineMsg enigne_msg_start, const char* msg_name);
 }

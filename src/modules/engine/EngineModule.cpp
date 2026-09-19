@@ -1,6 +1,7 @@
 #include "EngineModule.h"
 #include "enginemsg_utils.h"
 #include <utility>
+#include <goldsrc/engine/user_msg.h>
 
 namespace nitroapi
 {

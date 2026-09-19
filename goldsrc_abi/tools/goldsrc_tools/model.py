@@ -16,6 +16,9 @@ STANDARD_HEADERS = {"int8_t": "cstdint", "int16_t": "cstdint", "int32_t": "cstdi
 
 CONVENTIONS = ("cdecl", "stdcall", "fastcall", "thiscall", "vectorcall")
 
+# The reason a function or an unplaced variable of the replaced layer keeps its spelling.
+KEEP_FUNCTIONS_AND_VARIABLES = "the library declares no functions and no variables; the code that defines one declares it"
+
 _STRING_TYPES = ("const char *", "char *")
 
 # Rule 10 of the library: the order a header falls back to where dependencies leave a choice.
@@ -66,6 +69,11 @@ def _identity(declaration):
     """What a declaration is known by inside its header: the fact it comes from, or its own name for a
     constant, which several macro facts can merge into."""
     return declaration["old"].get("key") or "%s %s" % (declaration["kind"], declaration["name"])
+
+
+def _measurable(field):
+    """sizeof can measure the field by its name: a named field that is not a bit-field."""
+    return bool(field["name"]) and field["bits"] is None
 
 
 def _topological(keys, edges, name_of):
@@ -140,6 +148,9 @@ class _Builder:
         self.alias_names = {}
         self.header_of = {}
         self.excluded = set()
+        self.exclusion_reasons = {}
+        self.alias_of = {}
+        self.placed_variables = set()
         self.forced = {}
         self.new_name = {}
         self.new_qualified = {}
@@ -225,6 +236,7 @@ class _Builder:
 
         target = self._lookup(match.group(2), scope)
         if target is not None:
+            self.alias_of[key] = target["key"]
             self.alias_names.setdefault(target["key"], []).append(typedef["name"])
             self._add_name(name, target["kind"], target["key"])
             return
@@ -266,6 +278,7 @@ class _Builder:
         for key, entry in self.opaque_aliases.items():
             self._place_fact(key, entry["typedef"]["file"])
         self._place_macros()
+        self._place_variables()
 
     def _place_fact(self, key, file):
         names = self.old_names.get(key) or [None]
@@ -281,6 +294,7 @@ class _Builder:
                                      % (rule["kind"], rule["label"], self._label(key), self._label(self.owner[key])))
             elif rule["exclude"]:
                 self.excluded.add(key)
+                self.exclusion_reasons[key] = rule["reason"]
                 return
 
         replacement = self._replacement(key)
@@ -289,6 +303,7 @@ class _Builder:
                 self.problems.append("%s %s places %s, which %s replaces"
                                      % (rule["kind"], rule["label"], self._label(key), replacement))
             self.excluded.add(key)
+            self.exclusion_reasons[key] = replacement
             return
         if member:
             return
@@ -335,6 +350,24 @@ class _Builder:
                                        "family": family["prefix"] if family is not None else None,
                                        "base": family["base"] if family is not None else library_map.DECIMAL})
 
+    def _place_variables(self):
+        """A constant variable of the replaced layer is placed like a macro constant when a declaration rule
+        names its header; every other variable stays with the code that defines it."""
+        for key, variable in sorted(self.facts.get("variables", {}).items()):
+            rule = self.rules.find(key, variable["name"], variable["file"])
+            if rule is None or not rule["header"]:
+                continue
+            if "cinit" not in (variable.get("qualifiers") or ()) or not isinstance(variable.get("value"), int):
+                self.problems.append("variable %s in %s is placed as a constant but has no constant integer value"
+                                     % (variable["name"], variable["file"]))
+                continue
+            self.placed_variables.add(key)
+            self.placed_macros.append({"macro": {"name": variable["name"], "file": variable["file"],
+                                                 "type": variable["type"], "value": variable["value"],
+                                                 "status": "constant"},
+                                       "header": rule["header"], "name": rule["rename"] or variable["name"],
+                                       "family": None, "base": library_map.DECIMAL, "variable": key})
+
     def _choose_names(self):
         for key, record in self.records.items():
             self._choose_name(key, record["name"] or record["typedef_name"])
@@ -380,6 +413,7 @@ class _Builder:
         return self.new_qualified[key]
 
     def _closure(self):
+        self.used_opaque.update(name for name, entry in self.opaque.items() if entry.get("consumer"))
         for record in self.records.values():
             if record.get("used"):
                 self._require(record, "prefix")
@@ -419,8 +453,13 @@ class _Builder:
     def _field_count(self, record):
         if self.level.get(record["key"]) == "complete":
             return len(record["fields"])
+
         used = [index for index, field in enumerate(record["fields"]) if field["name"] in record["used_fields"]]
-        return max(used) + 1 if used else 0
+        count = max(used) + 1 if used else 0
+        # The tail that completes a prefix is sized from the prefix's last field, which sizeof has to measure.
+        while 0 < count < len(record["fields"]) and not _measurable(record["fields"][count - 1]):
+            count += 1
+        return count
 
     def _need_enum(self, enum):
         key = enum["key"]
@@ -860,6 +899,14 @@ class _Builder:
         for field in record["fields"][:self._field_count(record)]:
             declaration["fields"].append(self._field(field, key, header, top, inline))
 
+        kept = len(declaration["fields"])
+        if level == "prefix" and kept < len(record["fields"]):
+            # Without a kept field the tail starts where the first stock field would, after the bases and the
+            # table pointer the declaration reproduces itself.
+            last = record["fields"][kept - 1] if kept else None
+            declaration["tail"] = ({"after": last["name"], "offset": last["offset"]} if last is not None
+                                   else {"after": None, "offset": record["fields"][0]["offset"]})
+
         declaration["nested"] = [self._record(nested["key"]) for nested in record["nested"]
                                  if nested["key"] not in inline and (nested["name"] or nested["typedef_name"])]
         declaration["enums"] = [self._enum(enum["key"]) for enum in record["enums"]]
@@ -928,8 +975,8 @@ class _Builder:
             base = next((entry["base"] for entry in entries if entry["family"]), library_map.DECIMAL)
             declaration = {"kind": "constant", "name": name, "type": self._constant_type(macros[0], header),
                            "value": value, "family": family, "base": base,
-                           "old": {"kind": "macro", "name": macros[0]["name"],
-                                   "files": sorted({macro["file"] for macro in macros})}}
+                           "old": {"kind": "variable" if entries[0].get("variable") else "macro",
+                                   "name": macros[0]["name"], "files": sorted({macro["file"] for macro in macros})}}
             self._group(header)["constants"].append({"family": family, "declaration": declaration})
 
     def _constant_type(self, macro, header):
@@ -956,7 +1003,8 @@ class _Builder:
         self._check_include_cycles()
         self._check_collisions(headers)
         return {"fwd": self.fwd, "headers": headers, "forward": self._forward(), "records": dict(self.rendered),
-                "names": self._names(), "equivalence": library_map.equivalence(self.map), "ignored": self._ignored()}
+                "names": self._names(), "equivalence": library_map.equivalence(self.map), "ignored": self._ignored(),
+                "renames": self._renames()}
 
     def _ordered(self, path):
         """Declarations of one header: a by-value dependency comes first whichever group it belongs to, and
@@ -1089,8 +1137,117 @@ class _Builder:
             names[name] = self.substitutes[name].get("type") or name
         return names
 
+    def _renames(self):
+        """The new spelling and declaring header of each fact the library covers, by fact key; of each placed
+        macro, by "file:name"; of each record also by its old names, which forward declarations inside the
+        scope carry. An unnamed record has no spelling of its own, only its members are listed. A fact missing
+        from the table is one the library does not know."""
+        declarations = {}
+        by_name = {}
+        for key in sorted(self.level):
+            if key in self.excluded:
+                continue
+
+            header = self._declaring_header(key)
+            spelling = self._spelled(key)
+            if spelling is not None:
+                entry = {"action": "qualify", "kind": "record", "spelling": spelling, "header": header}
+                declarations[key] = entry
+                for old in self.old_names.get(key, ()):
+                    by_name.setdefault(old, entry)
+
+            record = self.records[key]
+            for member in record["fields"] + record["methods"]:
+                declarations[member["key"]] = {"action": "member", "header": header}
+        for key in sorted(self.rendered_enums):
+            header = self._declaring_header(key)
+            spelling = self._spelled(key)
+            if spelling is not None:
+                declarations[key] = {"action": "qualify", "kind": "enum", "spelling": spelling, "header": header}
+            scope = self._constant_scope(key)
+            for constant in self.enums[key]["constants"]:
+                declarations[constant["key"]] = {"action": "qualify", "kind": "constant",
+                                                 "spelling": "%s::%s" % (scope, constant["name"]), "header": header}
+        for key in sorted(self.declared_aliases):
+            declarations[key] = {"action": "qualify", "kind": "alias", "spelling": self._spelled(key),
+                                 "header": self._declaring_header(key)}
+        for key in sorted(self.reached_opaque_aliases):
+            if self.header_of.get(key) is not None:
+                declarations[key] = {"action": "qualify", "kind": "record", "spelling": self._spelled(key),
+                                     "header": self.fwd["path"]}
+        for alias, target in sorted(self.alias_of.items()):
+            if target in declarations:
+                declarations.setdefault(alias, declarations[target])
+        for key, reason in sorted(self.exclusion_reasons.items()):
+            declarations.setdefault(key, self._excluded_rename(key, reason))
+            # What belongs to an excluded record or enum stays with it.
+            kept = {"action": "keep", "reason": reason}
+            record = self.records.get(key)
+            if record is not None:
+                for member in record["fields"] + record["methods"]:
+                    declarations.setdefault(member["key"], kept)
+            enum = self.enums.get(key)
+            if enum is not None:
+                for constant in enum["constants"]:
+                    declarations.setdefault(constant["key"], kept)
+
+        macros = {}
+        for placed in self.placed_macros:
+            entry = {"action": "qualify", "kind": "constant", "header": placed["header"],
+                     "spelling": "%s::%s" % (library_map.namespace(self.map, placed["header"]), placed["name"])}
+            if placed.get("variable"):
+                declarations[placed["variable"]] = entry
+            else:
+                macros["%s:%s" % (placed["macro"]["file"], placed["macro"]["name"])] = entry
+        for group in ("functions", "variables"):
+            for key in self.facts.get(group, {}):
+                declarations.setdefault(key, {"action": "keep", "reason": KEEP_FUNCTIONS_AND_VARIABLES})
+        return {"declarations": declarations, "macros": macros, "by_name": by_name}
+
+    def _spelled(self, key):
+        """The qualified spelling of a declared record, enum or alias, or None for an unnamed one."""
+        header = self.header_of.get(self.owner.get(key, key))
+        qualified = self._qualify(key)
+        if header is None or qualified is None:
+            return None
+        return "%s::%s" % (library_map.namespace(self.map, header), qualified)
+
+    def _declaring_header(self, key):
+        """fwd.h for a record only ever pointed at, the header of the top-level owner otherwise."""
+        if key in self.records and self.level.get(key) not in ("prefix", "complete"):
+            return self.fwd["path"]
+        return self.header_of.get(self.owner.get(key, key))
+
+    def _constant_scope(self, key):
+        """Where the enumerators of an enum live: in the enum when it is scoped, otherwise in its enclosing
+        record or namespace."""
+        enum = self.enums[key]
+        if enum.get("scoped"):
+            return self._spelled(key)
+        owner = self.owner.get(key)
+        if owner is not None:
+            return self._spelled(owner)
+        return library_map.namespace(self.map, self.header_of[key])
+
+    def _excluded_rename(self, key, reason):
+        for name in self.old_names.get(key, ()):
+            if name in INTEGER_ALIASES:
+                return {"action": "replace", "kind": "alias", "spelling": INTEGER_ALIASES[name],
+                        "header": STANDARD_HEADERS.get(INTEGER_ALIASES[name])}
+            substitute = self.substitutes.get(name)
+            if substitute is None:
+                continue
+            target = substitute.get("type") or name
+            if target in self.opaque:
+                namespace = self.opaque[target].get("namespace") or self.fwd["namespace"]
+                spelling = target if library_map.is_global(namespace) else "%s::%s" % (namespace, target)
+                return {"action": "qualify", "kind": "record", "spelling": spelling, "header": self.fwd["path"]}
+            return {"action": "keep", "reason": substitute.get("reason") or reason}
+        return {"action": "keep", "reason": reason}
+
     def _ignored(self):
-        return {group: sorted(item["name"] for item in self.facts.get(group, {}).values() if item.get("used"))
+        return {group: sorted(item["name"] for key, item in self.facts.get(group, {}).items()
+                              if item.get("used") and key not in self.placed_variables)
                 for group in ("functions", "variables")}
 
     def _map_problems(self):

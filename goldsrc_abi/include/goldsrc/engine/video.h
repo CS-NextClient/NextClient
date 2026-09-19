@@ -14,21 +14,14 @@ namespace goldsrc
         VT_Direct3D = 3
     };
 
-    struct transObjRef
+    struct alignas(4) transObjRef
     {
-        transObjRef() = delete;
-        transObjRef(const transObjRef&) = delete;
-        transObjRef& operator=(const transObjRef&) = delete;
-
         cl_entity_t* pEnt;
+        unsigned char unmodelled_[8 - (0 + sizeof(pEnt))];
     };
 
-    struct viddef_t
+    struct alignas(4) viddef_t
     {
-        viddef_t() = delete;
-        viddef_t(const viddef_t&) = delete;
-        viddef_t& operator=(const viddef_t&) = delete;
-
         uint8_t* buffer;
         uint8_t* colormap;
         unsigned short* colormap16;
@@ -41,5 +34,6 @@ namespace goldsrc
         float aspect;
         int numpages;
         int recalc_refdef;
+        unsigned char unmodelled_[80 - (44 + sizeof(recalc_refdef))];
     };
 } // namespace goldsrc

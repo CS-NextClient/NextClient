@@ -1,5 +1,9 @@
 #include "ClientModule.h"
 #include <utility>
+#include <goldsrc/client_api.h>
+#include <goldsrc/cstrike/hud_elements.h>
+#include <goldsrc/fwd.h>
+#include <goldsrc/types.h>
 
 namespace nitroapi
 {
@@ -97,8 +101,8 @@ namespace nitroapi
 
         uint32 hud = addr_provider_->FindAddress(hModule, "gHUD");
 
-        client_data_->gHUD->m_pHudList = reinterpret_cast<HUDLIST**>(hud + 0x0);
-        client_data_->gHUD->m_pSpriteList = reinterpret_cast<client_sprite_t**>(hud + 0xC);
+        client_data_->gHUD->m_pHudList = reinterpret_cast<goldsrc::cstrike::HUDLIST**>(hud + 0x0);
+        client_data_->gHUD->m_pSpriteList = reinterpret_cast<goldsrc::client_sprite_t**>(hud + 0xC);
         client_data_->gHUD->m_iSpriteCount = (int*)(hud + 0x10);
         client_data_->gHUD->m_iSpriteCountAllRes = (int*)(hud + 0x14);
         client_data_->gHUD->m_flMouseSensitivity = (float*)(hud + 0x18);
@@ -115,8 +119,8 @@ namespace nitroapi
         client_data_->gHUD->m_pPlayerFOV = reinterpret_cast<int(*)[64]>(hud + 0x6C);
         client_data_->gHUD->m_iFontHeight = (int*)(hud + 0x16C);
         client_data_->gHUD->m_iFontEngineHeight = (int*)(hud + 0x170);
-        client_data_->gHUD->m_rghSprites = reinterpret_cast<HSPRITE_t**>(hud + 0x178);
-        client_data_->gHUD->m_rgrcRects = reinterpret_cast<wrect_t**>(hud + 0x17C);
+        client_data_->gHUD->m_rghSprites = reinterpret_cast<goldsrc::HSPRITE_t**>(hud + 0x178);
+        client_data_->gHUD->m_rgrcRects = reinterpret_cast<goldsrc::wrect_t**>(hud + 0x17C);
 
         client_data_->gHUD->m_rgszSpriteNames = reinterpret_cast<char**>(hud + 0x180);
         client_data_->gHUD->m_iWeaponBits = (int*)(hud + 0x4748);
@@ -136,9 +140,9 @@ namespace nitroapi
 //        client_data_->gHUD->m_bShowTimer = (bool*)(hud + 0x6B69); // UNVERIFIED
 //        client_data_->gHUD->m_autoBuyStringSent = (bool*)(hud + 0x6B6A); // UNVERIFIED
 //        client_data_->gHUD->m_rebuyStringSent = (bool*)(hud + 0x6B6C); // UNVERIFIED
-        client_data_->gHUD->m_Ammo = (CHudAmmo*)(hud + 0x184);
-        client_data_->gHUD->m_Health = (CHudHealth*)(hud + 0x1F4);
-        client_data_->gHUD->m_Spectator = (CHudSpectator*)(hud + 0x358);
+        client_data_->gHUD->m_Ammo = (goldsrc::cstrike::CHudAmmo*)(hud + 0x184);
+        client_data_->gHUD->m_Health = (goldsrc::cstrike::CHudHealth*)(hud + 0x1F4);
+        client_data_->gHUD->m_Spectator = (goldsrc::cstrike::CHudSpectator*)(hud + 0x358);
 //        client_data_->gHUD->m_Geiger = (CHudGeiger*)(hud + 0x1AC0);
 //        client_data_->gHUD->m_Battery = (CHudBattery*)(hud + 0x1AD8);
 //        client_data_->gHUD->m_Train = (CHudTrain*)(hud + 0x1B08);
@@ -154,7 +158,7 @@ namespace nitroapi
 //        client_data_->gHUD->m_accountBalance = (CHudAccountBalance*)(hud + 0x3EB0);
 //        client_data_->gHUD->m_roundTimer = (CHudRoundTimer*)(hud + 0x3FA0);
 //        client_data_->gHUD->m_progressBar = (CHudProgressBar*)(hud + 0x3FDC);
-        client_data_->gHUD->m_NightVision = (CHudNightVision*)(hud + 0x4048);
+        client_data_->gHUD->m_NightVision = (goldsrc::cstrike::CHudNightVision*)(hud + 0x4048);
 //        client_data_->gHUD->m_careerTaskTimer = (CHudCareerTaskTimer*)(hud + 0x400C);
 //        client_data_->gHUD->m_scenarioStatus = (CHudScenarioStatus*)(hud + 0x4068);
 //        client_data_->gHUD->m_sniperScope = (CHudSniperScope*)(hud + 0x40DC);

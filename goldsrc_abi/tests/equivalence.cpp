@@ -26,6 +26,7 @@
 #include <goldsrc/format/bsp.h>
 #include <goldsrc/format/sprite.h>
 #include <goldsrc/format/studio.h>
+#include <goldsrc/format/wad.h>
 #include <goldsrc/hltv.h>
 #include <goldsrc/keys.h>
 #include <goldsrc/limits.h>
@@ -174,103 +175,109 @@ namespace goldsrc_equivalence
     using r92 = goldsrc::mstudioseqdesc_t;
     using r93 = goldsrc::mstudiotexture_t;
     using r94 = goldsrc::studiohdr_t;
-    using r95 = goldsrc::movevars_s;
-    using r96 = goldsrc::physent_t;
-    using r97 = goldsrc::pmplane_t;
-    using r98 = goldsrc::pmtrace_t;
-    using r99 = goldsrc::playermove_t;
-    using r100 = goldsrc::enginefuncs_t;
-    using r101 = goldsrc::engine_studio_api_t;
-    using r102 = goldsrc::r_studio_interface_t;
-    using r103 = goldsrc::triangleapi_t;
-    using r104 = goldsrc::cache_user_t;
-    using r105 = goldsrc::color24;
-    using r106 = goldsrc::colorVec;
-    using r107 = goldsrc::vrect_t;
-    using r108 = goldsrc::wrect_t;
-    using r109 = goldsrc::kbutton_t;
-    using r110 = goldsrc::usercmd_t;
-    using r111 = goldsrc::ref_params_t;
-    using r112 = goldsrc::refdef_t;
-    using r113 = goldsrc::screenfade_t;
-    using r114 = goldsrc::IVoiceTweak_s;
-    using r115 = goldsrc::cstrike::CHudAccountBalance;
-    using r116 = goldsrc::cstrike::CHudBattery;
-    using r117 = goldsrc::cstrike::CHudCareerTaskTimer;
-    using r118 = goldsrc::cstrike::CHudDeathNotice;
-    using r119 = goldsrc::cstrike::CHudFlashlight;
-    using r120 = goldsrc::cstrike::CHudGeiger;
-    using r121 = goldsrc::cstrike::CHudMenu;
-    using r122 = goldsrc::cstrike::CHudProgressBar;
-    using r123 = goldsrc::cstrike::CHudSayText;
-    using r124 = goldsrc::cstrike::CHudScenarioStatus;
-    using r125 = goldsrc::cstrike::CHudSniperScope;
-    using r126 = goldsrc::cstrike::CHudSpectator;
-    using r127 = goldsrc::cstrike::CHudTextMessage;
-    using r128 = goldsrc::cstrike::CHudTrain;
-    using r129 = goldsrc::cstrike::CHudVGUI2Print;
-    using r130 = goldsrc::cstrike::CInterpolation;
-    using r131 = goldsrc::cstrike::HUDLIST;
-    using r132 = goldsrc::TraceResult;
-    using r133 = goldsrc::cstrike::WEAPON;
-    using r134 = goldsrc::cstrike::cameraWayPoint_t;
-    using r135 = goldsrc::cldll_func_dst_t;
-    using r136 = goldsrc::client_s;
-    using r137 = goldsrc::client_sprite_t;
-    using r138 = goldsrc::client_textmessage_t;
-    using r139 = goldsrc::cmdalias_t;
-    using r140 = goldsrc::dclipnode_t;
-    using r141 = goldsrc::dlight_t;
-    using r142 = goldsrc::edict_t;
-    using r143 = goldsrc::efrag_t;
-    using r144 = goldsrc::efx_api_s;
-    using r145 = goldsrc::engdata_t;
-    using r146 = goldsrc::entvars_s;
-    using r147 = goldsrc::fragbufwaiting_t;
-    using r148 = goldsrc::cstrike::hostage_info_t;
-    using r149 = goldsrc::cstrike::message_parms_t;
-    using r150 = goldsrc::mleaf_s;
-    using r151 = goldsrc::mnode_t;
-    using r152 = goldsrc::modchelpers_t;
-    using r153 = goldsrc::modshelpers_t;
-    using r154 = goldsrc::UserMsg;
-    using r155 = goldsrc::VoiceRecordInterface;
-    using r156 = goldsrc::cstrike::overviewEntity_t;
-    using r157 = goldsrc::cstrike::overviewInfo_t;
-    using r158 = goldsrc::sentenceEntry_s;
-    using r159 = goldsrc::sequenceEntry_s;
-    using r160 = goldsrc::TEMPENTITY;
-    using r161 = goldsrc::trace_t;
-    using r162 = goldsrc::cstrike::WeaponIdType;
-    using r163 = goldsrc::cstrike::WeaponState;
-    using r164 = goldsrc::cstrike::elite_e;
-    using r165 = goldsrc::cstrike::glock18_e;
-    using r166 = goldsrc::cstrike::m4a1_e;
-    using r167 = goldsrc::cstrike::usp_e;
-    using r168 = goldsrc::CareerStateType;
-    using r169 = goldsrc::cactive_t;
-    using r170 = goldsrc::cmd_source_t;
-    using r171 = goldsrc::modtype_t;
-    using r172 = goldsrc::clc_commands_e;
-    using r173 = goldsrc::netadrtype_t;
-    using r174 = goldsrc::netsrc_t;
-    using r175 = goldsrc::resourcetype_t;
-    using r176 = goldsrc::VidTypes;
-    using r177 = goldsrc::spriteframetype_t;
-    using r178 = goldsrc::synctype_t;
-    using r179 = goldsrc::keydest_t;
-    using r180 = goldsrc::ALERT_TYPE;
-    using r181 = goldsrc::FORCE_TYPE;
-    using r182 = goldsrc::PRINT_TYPE;
-    using r183 = goldsrc::TRICULLSTYLE;
-    using r184 = goldsrc::VoiceTweakControl;
-    using r185 = ::tagPOINT;
-    using r186 = goldsrc::alight_t;
-    using r187 = goldsrc::con_nprint_t;
-    using r188 = goldsrc::delta_t;
-    using r189 = goldsrc::demo_api_t;
-    using r190 = goldsrc::lumpinfo_t;
-    using r191 = goldsrc::net_api_t;
+    using r95 = goldsrc::lumpinfo_t;
+    using r96 = goldsrc::qpic_t;
+    using r97 = goldsrc::wadinfo_t;
+    using r98 = goldsrc::movevars_s;
+    using r99 = goldsrc::physent_t;
+    using r100 = goldsrc::pmplane_t;
+    using r101 = goldsrc::pmtrace_t;
+    using r102 = goldsrc::playermove_t;
+    using r103 = goldsrc::enginefuncs_t;
+    using r104 = goldsrc::engine_studio_api_t;
+    using r105 = goldsrc::r_studio_interface_t;
+    using r106 = goldsrc::triangleapi_t;
+    using r107 = goldsrc::cache_user_t;
+    using r108 = goldsrc::color24;
+    using r109 = goldsrc::colorVec;
+    using r110 = goldsrc::vrect_t;
+    using r111 = goldsrc::wrect_t;
+    using r112 = goldsrc::kbutton_t;
+    using r113 = goldsrc::usercmd_t;
+    using r114 = goldsrc::ref_params_t;
+    using r115 = goldsrc::refdef_t;
+    using r116 = goldsrc::screenfade_t;
+    using r117 = goldsrc::IVoiceTweak;
+    using r118 = goldsrc::cstrike::CHudAccountBalance;
+    using r119 = goldsrc::cstrike::CHudBattery;
+    using r120 = goldsrc::cstrike::CHudCareerTaskTimer;
+    using r121 = goldsrc::cstrike::CHudDeathNotice;
+    using r122 = goldsrc::cstrike::CHudFlashlight;
+    using r123 = goldsrc::cstrike::CHudGeiger;
+    using r124 = goldsrc::cstrike::CHudMenu;
+    using r125 = goldsrc::cstrike::CHudProgressBar;
+    using r126 = goldsrc::cstrike::CHudSayText;
+    using r127 = goldsrc::cstrike::CHudScenarioStatus;
+    using r128 = goldsrc::cstrike::CHudSniperScope;
+    using r129 = goldsrc::cstrike::CHudSpectator;
+    using r130 = goldsrc::cstrike::CHudTextMessage;
+    using r131 = goldsrc::cstrike::CHudTrain;
+    using r132 = goldsrc::cstrike::CHudVGUI2Print;
+    using r133 = goldsrc::cstrike::CInterpolation;
+    using r134 = goldsrc::cstrike::HUDLIST;
+    using r135 = goldsrc::TraceResult;
+    using r136 = goldsrc::cstrike::WEAPON;
+    using r137 = goldsrc::cstrike::cameraWayPoint_t;
+    using r138 = goldsrc::cldll_func_dst_t;
+    using r139 = goldsrc::client_s;
+    using r140 = goldsrc::client_sprite_t;
+    using r141 = goldsrc::client_textmessage_t;
+    using r142 = goldsrc::cmdalias_t;
+    using r143 = goldsrc::dclipnode_t;
+    using r144 = goldsrc::dlight_t;
+    using r145 = goldsrc::edict_t;
+    using r146 = goldsrc::efrag_t;
+    using r147 = goldsrc::efx_api_s;
+    using r148 = goldsrc::engdata_t;
+    using r149 = goldsrc::entvars_s;
+    using r150 = goldsrc::fragbufwaiting_t;
+    using r151 = goldsrc::cstrike::hostage_info_t;
+    using r152 = goldsrc::cstrike::message_parms_t;
+    using r153 = goldsrc::mleaf_s;
+    using r154 = goldsrc::mnode_t;
+    using r155 = goldsrc::modchelpers_t;
+    using r156 = goldsrc::modshelpers_t;
+    using r157 = goldsrc::UserMsg;
+    using r158 = goldsrc::VoiceRecordInterface;
+    using r159 = goldsrc::cstrike::overviewEntity_t;
+    using r160 = goldsrc::cstrike::overviewInfo_t;
+    using r161 = goldsrc::sentenceEntry_s;
+    using r162 = goldsrc::sequenceEntry_s;
+    using r163 = goldsrc::TEMPENTITY;
+    using r164 = goldsrc::trace_t;
+    using r165 = goldsrc::cstrike::WeaponIdType;
+    using r166 = goldsrc::cstrike::WeaponState;
+    using r167 = goldsrc::cstrike::elite_e;
+    using r168 = goldsrc::cstrike::glock18_e;
+    using r169 = goldsrc::cstrike::m4a1_e;
+    using r170 = goldsrc::cstrike::usp_e;
+    using r171 = goldsrc::CareerStateType;
+    using r172 = goldsrc::cactive_t;
+    using r173 = goldsrc::cmd_source_t;
+    using r174 = goldsrc::modtype_t;
+    using r175 = goldsrc::clc_commands_e;
+    using r176 = goldsrc::netadrtype_t;
+    using r177 = goldsrc::netsrc_t;
+    using r178 = goldsrc::resourcetype_t;
+    using r179 = goldsrc::VidTypes;
+    using r180 = goldsrc::spriteframetype_t;
+    using r181 = goldsrc::synctype_t;
+    using r182 = goldsrc::keydest_t;
+    using r183 = goldsrc::ALERT_TYPE;
+    using r184 = goldsrc::FORCE_TYPE;
+    using r185 = goldsrc::PRINT_TYPE;
+    using r186 = goldsrc::TRICULLSTYLE;
+    using r187 = goldsrc::VoiceTweakControl;
+    using r188 = ::tagPOINT;
+    using r189 = goldsrc::alight_t;
+    using r190 = goldsrc::channel_t;
+    using r191 = goldsrc::con_nprint_t;
+    using r192 = goldsrc::delta_t;
+    using r193 = goldsrc::demo_api_t;
+    using r194 = goldsrc::dma_t;
+    using r195 = goldsrc::net_api_t;
+    using r196 = goldsrc::sfxcache_t;
+    using r197 = goldsrc::wavstream_t;
     constexpr std::size_t s0 = sizeof(goldsrc::SCREENINFO);
     constexpr std::size_t o0 = offsetof(goldsrc::SCREENINFO, iSize);
     using t0 = decltype(goldsrc::SCREENINFO::iSize);
@@ -972,6 +979,7 @@ namespace goldsrc_equivalence
     using t345 = decltype(goldsrc::cl_enginefunc_t::pfnGetAliasList);
     constexpr std::size_t o346 = offsetof(goldsrc::cl_enginefunc_t, pfnVguiWrap2_GetMouseDelta);
     using t346 = decltype(goldsrc::cl_enginefunc_t::pfnVguiWrap2_GetMouseDelta);
+    constexpr std::size_t s7 = sizeof(goldsrc::cstrike::CHud);
     constexpr std::size_t o347 = offsetof(goldsrc::cstrike::CHud, m_pHudList);
     using t347 = decltype(goldsrc::cstrike::CHud::m_pHudList);
     constexpr std::size_t o348 = offsetof(goldsrc::cstrike::CHud, m_hsprLogo);
@@ -1024,18 +1032,19 @@ namespace goldsrc_equivalence
     using t370 = decltype(goldsrc::cstrike::CHud::m_rghSprites);
     constexpr std::size_t o373 = offsetof(goldsrc::cstrike::CHud, m_rgrcRects);
     using t371 = decltype(goldsrc::cstrike::CHud::m_rgrcRects);
-    constexpr std::size_t s7 = sizeof(goldsrc::cstrike::CHudBase);
+    constexpr std::size_t s8 = sizeof(goldsrc::cstrike::CHudBase);
     constexpr std::size_t o374 = offsetof(goldsrc::cstrike::CHudBase, m_pos);
     using t372 = decltype(goldsrc::cstrike::CHudBase::m_pos);
     constexpr std::size_t o375 = offsetof(goldsrc::cstrike::CHudBase, m_type);
     using t373 = decltype(goldsrc::cstrike::CHudBase::m_type);
     constexpr std::size_t o376 = offsetof(goldsrc::cstrike::CHudBase, m_iFlags);
     using t374 = decltype(goldsrc::cstrike::CHudBase::m_iFlags);
-    constexpr std::size_t s8 = sizeof(goldsrc::cstrike::CHudBase::POSITION);
+    constexpr std::size_t s9 = sizeof(goldsrc::cstrike::CHudBase::POSITION);
     constexpr std::size_t o377 = offsetof(goldsrc::cstrike::CHudBase::POSITION, x);
     using t375 = decltype(goldsrc::cstrike::CHudBase::POSITION::x);
     constexpr std::size_t o378 = offsetof(goldsrc::cstrike::CHudBase::POSITION, y);
     using t376 = decltype(goldsrc::cstrike::CHudBase::POSITION::y);
+    constexpr std::size_t s10 = sizeof(goldsrc::cstrike::extra_player_info_t);
     constexpr std::size_t o379 = offsetof(goldsrc::cstrike::extra_player_info_t, frags);
     using t377 = decltype(goldsrc::cstrike::extra_player_info_t::frags);
     constexpr std::size_t o380 = offsetof(goldsrc::cstrike::extra_player_info_t, deaths);
@@ -1070,7 +1079,8 @@ namespace goldsrc_equivalence
     using t392 = decltype(goldsrc::cstrike::extra_player_info_t::location);
     constexpr std::size_t o395 = offsetof(goldsrc::cstrike::extra_player_info_t, sb_health);
     using t393 = decltype(goldsrc::cstrike::extra_player_info_t::sb_health);
-    constexpr std::size_t s9 = sizeof(goldsrc::cstrike::CHudAmmo::RGBA);
+    constexpr std::size_t s11 = sizeof(goldsrc::cstrike::CHudAmmo);
+    constexpr std::size_t s12 = sizeof(goldsrc::cstrike::CHudAmmo::RGBA);
     constexpr std::size_t o396 = offsetof(goldsrc::cstrike::CHudAmmo::RGBA, r);
     using t394 = decltype(goldsrc::cstrike::CHudAmmo::RGBA::r);
     constexpr std::size_t o397 = offsetof(goldsrc::cstrike::CHudAmmo::RGBA, g);
@@ -1079,7 +1089,9 @@ namespace goldsrc_equivalence
     using t396 = decltype(goldsrc::cstrike::CHudAmmo::RGBA::b);
     constexpr std::size_t o399 = offsetof(goldsrc::cstrike::CHudAmmo::RGBA, a);
     using t397 = decltype(goldsrc::cstrike::CHudAmmo::RGBA::a);
-    constexpr std::size_t s10 = sizeof(goldsrc::cstrike::CHudMessage::client_message_t);
+    constexpr std::size_t s13 = sizeof(goldsrc::cstrike::CHudAmmoSecondary);
+    constexpr std::size_t s14 = sizeof(goldsrc::cstrike::CHudMessage);
+    constexpr std::size_t s15 = sizeof(goldsrc::cstrike::CHudMessage::client_message_t);
     constexpr std::size_t o400 = offsetof(goldsrc::cstrike::CHudMessage::client_message_t, pMessage);
     using t398 = decltype(goldsrc::cstrike::CHudMessage::client_message_t::pMessage);
     constexpr std::size_t o401 = offsetof(goldsrc::cstrike::CHudMessage::client_message_t, font);
@@ -1087,8 +1099,10 @@ namespace goldsrc_equivalence
     using t399 = decltype(goldsrc::cstrike::CHudMessage::client_message_t::args);
     constexpr std::size_t o403 = offsetof(goldsrc::cstrike::CHudMessage::client_message_t, numArgs);
     using t400 = decltype(goldsrc::cstrike::CHudMessage::client_message_t::numArgs);
+    constexpr std::size_t s16 = sizeof(goldsrc::cstrike::CHudNightVision);
     constexpr std::size_t o404 = offsetof(goldsrc::cstrike::CHudNightVision, m_fOn);
     using t401 = decltype(goldsrc::cstrike::CHudNightVision::m_fOn);
+    constexpr std::size_t s17 = sizeof(goldsrc::cstrike::CHudRoundTimer);
     constexpr std::size_t o405 = offsetof(goldsrc::cstrike::CHudRoundTimer, m_flTimeEnd);
     using t402 = decltype(goldsrc::cstrike::CHudRoundTimer::m_flTimeEnd);
     constexpr std::size_t o406 = offsetof(goldsrc::cstrike::CHudRoundTimer, m_HUD_stopwatch);
@@ -1103,7 +1117,9 @@ namespace goldsrc_equivalence
     using t407 = decltype(goldsrc::cstrike::CHudRoundTimer::m_bPanicColor);
     constexpr std::size_t o411 = offsetof(goldsrc::cstrike::CHudRoundTimer, m_closestRight);
     using t408 = decltype(goldsrc::cstrike::CHudRoundTimer::m_closestRight);
-    constexpr std::size_t s11 = sizeof(goldsrc::cstrike::CHudStatusIcons::icon_sprite_t);
+    constexpr std::size_t s18 = sizeof(goldsrc::cstrike::CHudStatusBar);
+    constexpr std::size_t s19 = sizeof(goldsrc::cstrike::CHudStatusIcons);
+    constexpr std::size_t s20 = sizeof(goldsrc::cstrike::CHudStatusIcons::icon_sprite_t);
     constexpr std::size_t o412 = offsetof(goldsrc::cstrike::CHudStatusIcons::icon_sprite_t, szSpriteName);
     using t409 = decltype(goldsrc::cstrike::CHudStatusIcons::icon_sprite_t::szSpriteName);
     constexpr std::size_t o413 = offsetof(goldsrc::cstrike::CHudStatusIcons::icon_sprite_t, spr);
@@ -1118,7 +1134,7 @@ namespace goldsrc_equivalence
     using t414 = decltype(goldsrc::cstrike::CHudStatusIcons::icon_sprite_t::b);
     constexpr std::size_t o418 = offsetof(goldsrc::cstrike::CHudStatusIcons::icon_sprite_t, bFlash);
     using t415 = decltype(goldsrc::cstrike::CHudStatusIcons::icon_sprite_t::bFlash);
-    constexpr std::size_t s12 = sizeof(goldsrc::cstrike::DAMAGE_IMAGE);
+    constexpr std::size_t s21 = sizeof(goldsrc::cstrike::DAMAGE_IMAGE);
     constexpr std::size_t o419 = offsetof(goldsrc::cstrike::DAMAGE_IMAGE, fExpire);
     using t416 = decltype(goldsrc::cstrike::DAMAGE_IMAGE::fExpire);
     constexpr std::size_t o420 = offsetof(goldsrc::cstrike::DAMAGE_IMAGE, fBaseline);
@@ -1127,6 +1143,7 @@ namespace goldsrc_equivalence
     using t418 = decltype(goldsrc::cstrike::DAMAGE_IMAGE::x);
     constexpr std::size_t o422 = offsetof(goldsrc::cstrike::DAMAGE_IMAGE, y);
     using t419 = decltype(goldsrc::cstrike::DAMAGE_IMAGE::y);
+    constexpr std::size_t s22 = sizeof(goldsrc::cstrike::CHudHealth);
     constexpr std::size_t o423 = offsetof(goldsrc::cstrike::CHudHealth, m_iHealth);
     using t420 = decltype(goldsrc::cstrike::CHudHealth::m_iHealth);
     constexpr std::size_t o424 = offsetof(goldsrc::cstrike::CHudHealth, m_HUD_dmg_bio);
@@ -1167,7 +1184,7 @@ namespace goldsrc_equivalence
     using t438 = decltype(goldsrc::cstrike::CHudHealth::m_dmg);
     constexpr std::size_t o442 = offsetof(goldsrc::cstrike::CHudHealth, m_bitsDamage);
     using t439 = decltype(goldsrc::cstrike::CHudHealth::m_bitsDamage);
-    constexpr std::size_t s13 = sizeof(goldsrc::cvar_t);
+    constexpr std::size_t s23 = sizeof(goldsrc::cvar_t);
     constexpr std::size_t o443 = offsetof(goldsrc::cvar_t, name);
     using t440 = decltype(goldsrc::cvar_t::name);
     constexpr std::size_t o444 = offsetof(goldsrc::cvar_t, string);
@@ -1178,7 +1195,7 @@ namespace goldsrc_equivalence
     using t443 = decltype(goldsrc::cvar_t::value);
     constexpr std::size_t o447 = offsetof(goldsrc::cvar_t, next);
     using t444 = decltype(goldsrc::cvar_t::next);
-    constexpr std::size_t s14 = sizeof(goldsrc::cmd_t);
+    constexpr std::size_t s24 = sizeof(goldsrc::cmd_t);
     constexpr std::size_t o448 = offsetof(goldsrc::cmd_t, cmd);
     using t445 = decltype(goldsrc::cmd_t::cmd);
     constexpr std::size_t o449 = offsetof(goldsrc::cmd_t, senttime);
@@ -1193,7 +1210,7 @@ namespace goldsrc_equivalence
     using t450 = decltype(goldsrc::cmd_t::heldback);
     constexpr std::size_t o454 = offsetof(goldsrc::cmd_t, sendsize);
     using t451 = decltype(goldsrc::cmd_t::sendsize);
-    constexpr std::size_t s15 = sizeof(goldsrc::consistency_t);
+    constexpr std::size_t s25 = sizeof(goldsrc::consistency_t);
     constexpr std::size_t o455 = offsetof(goldsrc::consistency_t, filename);
     using t452 = decltype(goldsrc::consistency_t::filename);
     constexpr std::size_t o456 = offsetof(goldsrc::consistency_t, issound);
@@ -1208,14 +1225,14 @@ namespace goldsrc_equivalence
     using t457 = decltype(goldsrc::consistency_t::mins);
     constexpr std::size_t o461 = offsetof(goldsrc::consistency_t, maxs);
     using t458 = decltype(goldsrc::consistency_t::maxs);
-    constexpr std::size_t s16 = sizeof(goldsrc::packet_entities_t);
+    constexpr std::size_t s26 = sizeof(goldsrc::packet_entities_t);
     constexpr std::size_t o462 = offsetof(goldsrc::packet_entities_t, num_entities);
     using t459 = decltype(goldsrc::packet_entities_t::num_entities);
     constexpr std::size_t o463 = offsetof(goldsrc::packet_entities_t, flags);
     using t460 = decltype(goldsrc::packet_entities_t::flags);
     constexpr std::size_t o464 = offsetof(goldsrc::packet_entities_t, entities);
     using t461 = decltype(goldsrc::packet_entities_t::entities);
-    constexpr std::size_t s17 = sizeof(goldsrc::player_info_t);
+    constexpr std::size_t s27 = sizeof(goldsrc::player_info_t);
     constexpr std::size_t o465 = offsetof(goldsrc::player_info_t, userid);
     using t462 = decltype(goldsrc::player_info_t::userid);
     constexpr std::size_t o466 = offsetof(goldsrc::player_info_t, userinfo);
@@ -1250,7 +1267,7 @@ namespace goldsrc_equivalence
     using t477 = decltype(goldsrc::player_info_t::hashedcdkey);
     constexpr std::size_t o481 = offsetof(goldsrc::player_info_t, m_nSteamID);
     using t478 = decltype(goldsrc::player_info_t::m_nSteamID);
-    constexpr std::size_t s18 = sizeof(goldsrc::soundfade_t);
+    constexpr std::size_t s28 = sizeof(goldsrc::soundfade_t);
     constexpr std::size_t o482 = offsetof(goldsrc::soundfade_t, nStartPercent);
     using t479 = decltype(goldsrc::soundfade_t::nStartPercent);
     constexpr std::size_t o483 = offsetof(goldsrc::soundfade_t, nClientSoundFadePercent);
@@ -1263,6 +1280,7 @@ namespace goldsrc_equivalence
     using t483 = decltype(goldsrc::soundfade_t::soundFadeHoldTime);
     constexpr std::size_t o487 = offsetof(goldsrc::soundfade_t, soundFadeInTime);
     using t484 = decltype(goldsrc::soundfade_t::soundFadeInTime);
+    constexpr std::size_t s29 = sizeof(goldsrc::client_static_t);
     constexpr std::size_t o488 = offsetof(goldsrc::client_static_t, state);
     using t485 = decltype(goldsrc::client_static_t::state);
     constexpr std::size_t o489 = offsetof(goldsrc::client_static_t, netchan);
@@ -1363,7 +1381,7 @@ namespace goldsrc_equivalence
     using t532 = decltype(goldsrc::client_static_t::GameServerSteamID);
     constexpr std::size_t o538 = offsetof(goldsrc::client_static_t, build_num);
     using t533 = decltype(goldsrc::client_static_t::build_num);
-    constexpr std::size_t s19 = sizeof(goldsrc::frame_t);
+    constexpr std::size_t s30 = sizeof(goldsrc::frame_t);
     constexpr std::size_t o539 = offsetof(goldsrc::frame_t, receivedtime);
     using t534 = decltype(goldsrc::frame_t::receivedtime);
     constexpr std::size_t o540 = offsetof(goldsrc::frame_t, latency);
@@ -1400,6 +1418,7 @@ namespace goldsrc_equivalence
     using t550 = decltype(goldsrc::frame_t::voicebytes);
     constexpr std::size_t o556 = offsetof(goldsrc::frame_t, msgbytes);
     using t551 = decltype(goldsrc::frame_t::msgbytes);
+    constexpr std::size_t s31 = sizeof(goldsrc::client_state_t);
     constexpr std::size_t o557 = offsetof(goldsrc::client_state_t, max_edicts);
     using t552 = decltype(goldsrc::client_state_t::max_edicts);
     constexpr std::size_t o558 = offsetof(goldsrc::client_state_t, resourcesonhand);
@@ -1544,7 +1563,7 @@ namespace goldsrc_equivalence
     using t622 = decltype(goldsrc::client_state_t::events);
     constexpr std::size_t o628 = offsetof(goldsrc::client_state_t, downloadUrl);
     using t623 = decltype(goldsrc::client_state_t::downloadUrl);
-    constexpr std::size_t s20 = sizeof(goldsrc::event_info_s);
+    constexpr std::size_t s32 = sizeof(goldsrc::event_info_s);
     constexpr std::size_t o629 = offsetof(goldsrc::event_info_s, index);
     using t624 = decltype(goldsrc::event_info_s::index);
     constexpr std::size_t o630 = offsetof(goldsrc::event_info_s, packet_index);
@@ -1557,7 +1576,7 @@ namespace goldsrc_equivalence
     using t628 = decltype(goldsrc::event_info_s::args);
     constexpr std::size_t o634 = offsetof(goldsrc::event_info_s, flags);
     using t629 = decltype(goldsrc::event_info_s::flags);
-    constexpr std::size_t s21 = sizeof(goldsrc::event_t);
+    constexpr std::size_t s33 = sizeof(goldsrc::event_t);
     constexpr std::size_t o635 = offsetof(goldsrc::event_t, index);
     using t630 = decltype(goldsrc::event_t::index);
     constexpr std::size_t o636 = offsetof(goldsrc::event_t, filename);
@@ -1566,13 +1585,15 @@ namespace goldsrc_equivalence
     using t632 = decltype(goldsrc::event_t::filesize);
     constexpr std::size_t o638 = offsetof(goldsrc::event_t, pszScript);
     using t633 = decltype(goldsrc::event_t::pszScript);
-    constexpr std::size_t s22 = sizeof(goldsrc::event_state_t);
+    constexpr std::size_t s34 = sizeof(goldsrc::event_state_t);
     constexpr std::size_t o639 = offsetof(goldsrc::event_state_t, ei);
     using t634 = decltype(goldsrc::event_state_t::ei);
+    constexpr std::size_t s35 = sizeof(goldsrc::cacheentry_t);
     constexpr std::size_t o640 = offsetof(goldsrc::cacheentry_t, name);
     using t635 = decltype(goldsrc::cacheentry_t::name);
     constexpr std::size_t o641 = offsetof(goldsrc::cacheentry_t, cache);
     using t636 = decltype(goldsrc::cacheentry_t::cache);
+    constexpr std::size_t s36 = sizeof(goldsrc::glpoly_t);
     constexpr std::size_t o642 = offsetof(goldsrc::glpoly_t, next);
     using t637 = decltype(goldsrc::glpoly_t::next);
     constexpr std::size_t o643 = offsetof(goldsrc::glpoly_t, chain);
@@ -1583,7 +1604,7 @@ namespace goldsrc_equivalence
     using t640 = decltype(goldsrc::glpoly_t::flags);
     constexpr std::size_t o646 = offsetof(goldsrc::glpoly_t, verts);
     using t641 = decltype(goldsrc::glpoly_t::verts);
-    constexpr std::size_t s23 = sizeof(goldsrc::hull_t);
+    constexpr std::size_t s37 = sizeof(goldsrc::hull_t);
     constexpr std::size_t o647 = offsetof(goldsrc::hull_t, clipnodes);
     using t642 = decltype(goldsrc::hull_t::clipnodes);
     constexpr std::size_t o648 = offsetof(goldsrc::hull_t, planes);
@@ -1596,16 +1617,20 @@ namespace goldsrc_equivalence
     using t646 = decltype(goldsrc::hull_t::clip_mins);
     constexpr std::size_t o652 = offsetof(goldsrc::hull_t, clip_maxs);
     using t647 = decltype(goldsrc::hull_t::clip_maxs);
+    constexpr std::size_t s38 = sizeof(goldsrc::medge_t);
     constexpr std::size_t o653 = offsetof(goldsrc::medge_t, v);
     using t648 = decltype(goldsrc::medge_t::v);
+    constexpr std::size_t s39 = sizeof(goldsrc::mod_known_info_t);
     constexpr std::size_t o654 = offsetof(goldsrc::mod_known_info_t, shouldCRC);
     using t649 = decltype(goldsrc::mod_known_info_t::shouldCRC);
     constexpr std::size_t o655 = offsetof(goldsrc::mod_known_info_t, firstCRCDone);
     using t650 = decltype(goldsrc::mod_known_info_t::firstCRCDone);
     constexpr std::size_t o656 = offsetof(goldsrc::mod_known_info_t, initialCRC);
     using t651 = decltype(goldsrc::mod_known_info_t::initialCRC);
+    constexpr std::size_t s40 = sizeof(goldsrc::mplane_t);
     constexpr std::size_t o657 = offsetof(goldsrc::mplane_t, normal);
     using t652 = decltype(goldsrc::mplane_t::normal);
+    constexpr std::size_t s41 = sizeof(goldsrc::mspriteframe_t);
     constexpr std::size_t o658 = offsetof(goldsrc::mspriteframe_t, width);
     using t653 = decltype(goldsrc::mspriteframe_t::width);
     constexpr std::size_t o659 = offsetof(goldsrc::mspriteframe_t, height);
@@ -1620,17 +1645,19 @@ namespace goldsrc_equivalence
     using t658 = decltype(goldsrc::mspriteframe_t::right);
     constexpr std::size_t o664 = offsetof(goldsrc::mspriteframe_t, gl_texturenum);
     using t659 = decltype(goldsrc::mspriteframe_t::gl_texturenum);
-    constexpr std::size_t s24 = sizeof(goldsrc::mspriteframedesc_t);
+    constexpr std::size_t s42 = sizeof(goldsrc::mspriteframedesc_t);
     constexpr std::size_t o665 = offsetof(goldsrc::mspriteframedesc_t, type);
     using t660 = decltype(goldsrc::mspriteframedesc_t::type);
     constexpr std::size_t o666 = offsetof(goldsrc::mspriteframedesc_t, frameptr);
     using t661 = decltype(goldsrc::mspriteframedesc_t::frameptr);
+    constexpr std::size_t s43 = sizeof(goldsrc::mspritegroup_t);
     constexpr std::size_t o667 = offsetof(goldsrc::mspritegroup_t, numframes);
     using t662 = decltype(goldsrc::mspritegroup_t::numframes);
     constexpr std::size_t o668 = offsetof(goldsrc::mspritegroup_t, intervals);
     using t663 = decltype(goldsrc::mspritegroup_t::intervals);
     constexpr std::size_t o669 = offsetof(goldsrc::mspritegroup_t, frames);
     using t664 = decltype(goldsrc::mspritegroup_t::frames);
+    constexpr std::size_t s44 = sizeof(goldsrc::msurface_t);
     constexpr std::size_t o670 = offsetof(goldsrc::msurface_t, visframe);
     using t665 = decltype(goldsrc::msurface_t::visframe);
     constexpr std::size_t o671 = offsetof(goldsrc::msurface_t, plane);
@@ -1661,14 +1688,17 @@ namespace goldsrc_equivalence
     using t678 = decltype(goldsrc::msurface_t::dlightbits);
     constexpr std::size_t o684 = offsetof(goldsrc::msurface_t, lightmaptexturenum);
     using t679 = decltype(goldsrc::msurface_t::lightmaptexturenum);
+    constexpr std::size_t s45 = sizeof(goldsrc::mtexinfo_t);
     constexpr std::size_t o685 = offsetof(goldsrc::mtexinfo_t, vecs);
     using t680 = decltype(goldsrc::mtexinfo_t::vecs);
     constexpr std::size_t o686 = offsetof(goldsrc::mtexinfo_t, mipadjust);
     using t681 = decltype(goldsrc::mtexinfo_t::mipadjust);
     constexpr std::size_t o687 = offsetof(goldsrc::mtexinfo_t, texture);
     using t682 = decltype(goldsrc::mtexinfo_t::texture);
+    constexpr std::size_t s46 = sizeof(goldsrc::mvertex_t);
     constexpr std::size_t o688 = offsetof(goldsrc::mvertex_t, position);
     using t683 = decltype(goldsrc::mvertex_t::position);
+    constexpr std::size_t s47 = sizeof(goldsrc::skin_t);
     constexpr std::size_t o689 = offsetof(goldsrc::skin_t, keynum);
     using t684 = decltype(goldsrc::skin_t::keynum);
     constexpr std::size_t o690 = offsetof(goldsrc::skin_t, topcolor);
@@ -1687,6 +1717,7 @@ namespace goldsrc_equivalence
     using t691 = decltype(goldsrc::skin_t::width);
     constexpr std::size_t o697 = offsetof(goldsrc::skin_t, height);
     using t692 = decltype(goldsrc::skin_t::height);
+    constexpr std::size_t s48 = sizeof(goldsrc::texture_t);
     constexpr std::size_t o698 = offsetof(goldsrc::texture_t, name);
     using t693 = decltype(goldsrc::texture_t::name);
     constexpr std::size_t o699 = offsetof(goldsrc::texture_t, width);
@@ -1695,6 +1726,7 @@ namespace goldsrc_equivalence
     using t695 = decltype(goldsrc::texture_t::height);
     constexpr std::size_t o701 = offsetof(goldsrc::texture_t, gl_texturenum);
     using t696 = decltype(goldsrc::texture_t::gl_texturenum);
+    constexpr std::size_t s49 = sizeof(goldsrc::cachewad_t);
     constexpr std::size_t o702 = offsetof(goldsrc::cachewad_t, name);
     using t697 = decltype(goldsrc::cachewad_t::name);
     constexpr std::size_t o703 = offsetof(goldsrc::cachewad_t, cache);
@@ -1719,6 +1751,7 @@ namespace goldsrc_equivalence
     using t707 = decltype(goldsrc::cachewad_t::lumppathindices);
     constexpr std::size_t o713 = offsetof(goldsrc::cachewad_t, tempWad);
     using t708 = decltype(goldsrc::cachewad_t::tempWad);
+    constexpr std::size_t s50 = sizeof(goldsrc::model_t);
     constexpr std::size_t o714 = offsetof(goldsrc::model_t, name);
     using t709 = decltype(goldsrc::model_t::name);
     constexpr std::size_t o715 = offsetof(goldsrc::model_t, needload);
@@ -1799,6 +1832,7 @@ namespace goldsrc_equivalence
     using t747 = decltype(goldsrc::model_t::entities);
     constexpr std::size_t o753 = offsetof(goldsrc::model_t, cache);
     using t748 = decltype(goldsrc::model_t::cache);
+    constexpr std::size_t s51 = sizeof(goldsrc::msprite_t);
     constexpr std::size_t o754 = offsetof(goldsrc::msprite_t, type);
     using t749 = decltype(goldsrc::msprite_t::type);
     constexpr std::size_t o755 = offsetof(goldsrc::msprite_t, texFormat);
@@ -1817,19 +1851,19 @@ namespace goldsrc_equivalence
     using t756 = decltype(goldsrc::msprite_t::cachespot);
     constexpr std::size_t o762 = offsetof(goldsrc::msprite_t, frames);
     using t757 = decltype(goldsrc::msprite_t::frames);
-    constexpr std::size_t s25 = sizeof(goldsrc::downloadtime_t);
+    constexpr std::size_t s52 = sizeof(goldsrc::downloadtime_t);
     constexpr std::size_t o763 = offsetof(goldsrc::downloadtime_t, bUsed);
     using t758 = decltype(goldsrc::downloadtime_t::bUsed);
     constexpr std::size_t o764 = offsetof(goldsrc::downloadtime_t, fTime);
     using t759 = decltype(goldsrc::downloadtime_t::fTime);
     constexpr std::size_t o765 = offsetof(goldsrc::downloadtime_t, nBytesRemaining);
     using t760 = decltype(goldsrc::downloadtime_t::nBytesRemaining);
-    constexpr std::size_t s26 = sizeof(goldsrc::flowstats_t);
+    constexpr std::size_t s53 = sizeof(goldsrc::flowstats_t);
     constexpr std::size_t o766 = offsetof(goldsrc::flowstats_t, size);
     using t761 = decltype(goldsrc::flowstats_t::size);
     constexpr std::size_t o767 = offsetof(goldsrc::flowstats_t, time);
     using t762 = decltype(goldsrc::flowstats_t::time);
-    constexpr std::size_t s27 = sizeof(goldsrc::sizebuf_t);
+    constexpr std::size_t s54 = sizeof(goldsrc::sizebuf_t);
     constexpr std::size_t o768 = offsetof(goldsrc::sizebuf_t, buffername);
     using t763 = decltype(goldsrc::sizebuf_t::buffername);
     constexpr std::size_t o769 = offsetof(goldsrc::sizebuf_t, flags);
@@ -1840,7 +1874,7 @@ namespace goldsrc_equivalence
     using t766 = decltype(goldsrc::sizebuf_t::maxsize);
     constexpr std::size_t o772 = offsetof(goldsrc::sizebuf_t, cursize);
     using t767 = decltype(goldsrc::sizebuf_t::cursize);
-    constexpr std::size_t s28 = sizeof(goldsrc::flow_t);
+    constexpr std::size_t s55 = sizeof(goldsrc::flow_t);
     constexpr std::size_t o773 = offsetof(goldsrc::flow_t, stats);
     using t768 = decltype(goldsrc::flow_t::stats);
     constexpr std::size_t o774 = offsetof(goldsrc::flow_t, current);
@@ -1851,13 +1885,14 @@ namespace goldsrc_equivalence
     using t771 = decltype(goldsrc::flow_t::kbytespersec);
     constexpr std::size_t o777 = offsetof(goldsrc::flow_t, avgkbytespersec);
     using t772 = decltype(goldsrc::flow_t::avgkbytespersec);
+    constexpr std::size_t s56 = sizeof(goldsrc::fragbuf_t);
     constexpr std::size_t o778 = offsetof(goldsrc::fragbuf_t, next);
     using t773 = decltype(goldsrc::fragbuf_t::next);
     constexpr std::size_t o779 = offsetof(goldsrc::fragbuf_t, bufferid);
     using t774 = decltype(goldsrc::fragbuf_t::bufferid);
     constexpr std::size_t o780 = offsetof(goldsrc::fragbuf_t, frag_message);
     using t775 = decltype(goldsrc::fragbuf_t::frag_message);
-    constexpr std::size_t s29 = sizeof(goldsrc::incomingtransfer_t);
+    constexpr std::size_t s57 = sizeof(goldsrc::incomingtransfer_t);
     constexpr std::size_t o781 = offsetof(goldsrc::incomingtransfer_t, doneregistering);
     using t776 = decltype(goldsrc::incomingtransfer_t::doneregistering);
     constexpr std::size_t o782 = offsetof(goldsrc::incomingtransfer_t, percent);
@@ -1878,8 +1913,8 @@ namespace goldsrc_equivalence
     using t784 = decltype(goldsrc::incomingtransfer_t::fLastStatusUpdate);
     constexpr std::size_t o790 = offsetof(goldsrc::incomingtransfer_t, custom);
     using t785 = decltype(goldsrc::incomingtransfer_t::custom);
-    constexpr std::size_t s30 = sizeof(goldsrc::netadr_t);
-    constexpr std::size_t s31 = sizeof(goldsrc::netchan_t);
+    constexpr std::size_t s58 = sizeof(goldsrc::netadr_t);
+    constexpr std::size_t s59 = sizeof(goldsrc::netchan_t);
     constexpr std::size_t o791 = offsetof(goldsrc::netchan_t, sock);
     using t786 = decltype(goldsrc::netchan_t::sock);
     constexpr std::size_t o792 = offsetof(goldsrc::netchan_t, remote_address);
@@ -1946,10 +1981,10 @@ namespace goldsrc_equivalence
     using t817 = decltype(goldsrc::netchan_t::tempbuffersize);
     constexpr std::size_t o823 = offsetof(goldsrc::netchan_t, flow);
     using t818 = decltype(goldsrc::netchan_t::flow);
-    constexpr std::size_t s32 = sizeof(goldsrc::_resourceinfo_t);
+    constexpr std::size_t s60 = sizeof(goldsrc::_resourceinfo_t);
     constexpr std::size_t o824 = offsetof(goldsrc::_resourceinfo_t, size);
     using t819 = decltype(goldsrc::_resourceinfo_t::size);
-    constexpr std::size_t s33 = sizeof(goldsrc::resource_t);
+    constexpr std::size_t s61 = sizeof(goldsrc::resource_t);
     constexpr std::size_t o825 = offsetof(goldsrc::resource_t, szFileName);
     using t820 = decltype(goldsrc::resource_t::szFileName);
     constexpr std::size_t o826 = offsetof(goldsrc::resource_t, type);
@@ -1970,9 +2005,10 @@ namespace goldsrc_equivalence
     using t828 = decltype(goldsrc::resource_t::pNext);
     constexpr std::size_t o834 = offsetof(goldsrc::resource_t, pPrev);
     using t829 = decltype(goldsrc::resource_t::pPrev);
+    constexpr std::size_t s62 = sizeof(goldsrc::resourceinfo_t);
     constexpr std::size_t o835 = offsetof(goldsrc::resourceinfo_t, info);
     using t830 = decltype(goldsrc::resourceinfo_t::info);
-    constexpr std::size_t s34 = sizeof(goldsrc::customization_t);
+    constexpr std::size_t s63 = sizeof(goldsrc::customization_t);
     constexpr std::size_t o836 = offsetof(goldsrc::customization_t, bInUse);
     using t831 = decltype(goldsrc::customization_t::bInUse);
     constexpr std::size_t o837 = offsetof(goldsrc::customization_t, resource);
@@ -1989,26 +2025,32 @@ namespace goldsrc_equivalence
     using t837 = decltype(goldsrc::customization_t::pBuffer);
     constexpr std::size_t o843 = offsetof(goldsrc::customization_t, pNext);
     using t838 = decltype(goldsrc::customization_t::pNext);
+    constexpr std::size_t s64 = sizeof(goldsrc::server_static_t);
     constexpr std::size_t o844 = offsetof(goldsrc::server_static_t, dll_initialized);
     using t839 = decltype(goldsrc::server_static_t::dll_initialized);
     constexpr std::size_t o845 = offsetof(goldsrc::server_static_t, clients);
     using t840 = decltype(goldsrc::server_static_t::clients);
     constexpr std::size_t o846 = offsetof(goldsrc::server_static_t, maxclients);
     using t841 = decltype(goldsrc::server_static_t::maxclients);
+    constexpr std::size_t s65 = sizeof(goldsrc::server_t);
     constexpr std::size_t o847 = offsetof(goldsrc::server_t, active);
     using t842 = decltype(goldsrc::server_t::active);
+    constexpr std::size_t s66 = sizeof(goldsrc::sfx_t);
     constexpr std::size_t o848 = offsetof(goldsrc::sfx_t, name);
     using t843 = decltype(goldsrc::sfx_t::name);
     constexpr std::size_t o849 = offsetof(goldsrc::sfx_t, cache);
     using t844 = decltype(goldsrc::sfx_t::cache);
+    constexpr std::size_t s67 = sizeof(goldsrc::EngineMsg);
     constexpr std::size_t o850 = offsetof(goldsrc::EngineMsg, number);
     using t845 = decltype(goldsrc::EngineMsg::number);
     constexpr std::size_t o851 = offsetof(goldsrc::EngineMsg, name);
     using t846 = decltype(goldsrc::EngineMsg::name);
     constexpr std::size_t o852 = offsetof(goldsrc::EngineMsg, pfn);
     using t847 = decltype(goldsrc::EngineMsg::pfn);
+    constexpr std::size_t s68 = sizeof(goldsrc::transObjRef);
     constexpr std::size_t o853 = offsetof(goldsrc::transObjRef, pEnt);
     using t848 = decltype(goldsrc::transObjRef::pEnt);
+    constexpr std::size_t s69 = sizeof(goldsrc::viddef_t);
     constexpr std::size_t o854 = offsetof(goldsrc::viddef_t, buffer);
     using t849 = decltype(goldsrc::viddef_t::buffer);
     constexpr std::size_t o855 = offsetof(goldsrc::viddef_t, colormap);
@@ -2033,7 +2075,7 @@ namespace goldsrc_equivalence
     using t859 = decltype(goldsrc::viddef_t::numpages);
     constexpr std::size_t o865 = offsetof(goldsrc::viddef_t, recalc_refdef);
     using t860 = decltype(goldsrc::viddef_t::recalc_refdef);
-    constexpr std::size_t s35 = sizeof(goldsrc::clientdata_t);
+    constexpr std::size_t s70 = sizeof(goldsrc::clientdata_t);
     constexpr std::size_t o866 = offsetof(goldsrc::clientdata_t, origin);
     using t861 = decltype(goldsrc::clientdata_t::origin);
     constexpr std::size_t o867 = offsetof(goldsrc::clientdata_t, velocity);
@@ -2114,7 +2156,7 @@ namespace goldsrc_equivalence
     using t899 = decltype(goldsrc::clientdata_t::vuser3);
     constexpr std::size_t o905 = offsetof(goldsrc::clientdata_t, vuser4);
     using t900 = decltype(goldsrc::clientdata_t::vuser4);
-    constexpr std::size_t s36 = sizeof(goldsrc::entity_state_t);
+    constexpr std::size_t s71 = sizeof(goldsrc::entity_state_t);
     constexpr std::size_t o906 = offsetof(goldsrc::entity_state_t, entityType);
     using t901 = decltype(goldsrc::entity_state_t::entityType);
     constexpr std::size_t o907 = offsetof(goldsrc::entity_state_t, number);
@@ -2239,7 +2281,7 @@ namespace goldsrc_equivalence
     using t961 = decltype(goldsrc::entity_state_t::vuser3);
     constexpr std::size_t o967 = offsetof(goldsrc::entity_state_t, vuser4);
     using t962 = decltype(goldsrc::entity_state_t::vuser4);
-    constexpr std::size_t s37 = sizeof(goldsrc::latchedvars_t);
+    constexpr std::size_t s72 = sizeof(goldsrc::latchedvars_t);
     constexpr std::size_t o968 = offsetof(goldsrc::latchedvars_t, prevanimtime);
     using t963 = decltype(goldsrc::latchedvars_t::prevanimtime);
     constexpr std::size_t o969 = offsetof(goldsrc::latchedvars_t, sequencetime);
@@ -2258,21 +2300,21 @@ namespace goldsrc_equivalence
     using t970 = decltype(goldsrc::latchedvars_t::prevcontroller);
     constexpr std::size_t o976 = offsetof(goldsrc::latchedvars_t, prevblending);
     using t971 = decltype(goldsrc::latchedvars_t::prevblending);
-    constexpr std::size_t s38 = sizeof(goldsrc::mouth_t);
+    constexpr std::size_t s73 = sizeof(goldsrc::mouth_t);
     constexpr std::size_t o977 = offsetof(goldsrc::mouth_t, mouthopen);
     using t972 = decltype(goldsrc::mouth_t::mouthopen);
     constexpr std::size_t o978 = offsetof(goldsrc::mouth_t, sndcount);
     using t973 = decltype(goldsrc::mouth_t::sndcount);
     constexpr std::size_t o979 = offsetof(goldsrc::mouth_t, sndavg);
     using t974 = decltype(goldsrc::mouth_t::sndavg);
-    constexpr std::size_t s39 = sizeof(goldsrc::position_history_t);
+    constexpr std::size_t s74 = sizeof(goldsrc::position_history_t);
     constexpr std::size_t o980 = offsetof(goldsrc::position_history_t, animtime);
     using t975 = decltype(goldsrc::position_history_t::animtime);
     constexpr std::size_t o981 = offsetof(goldsrc::position_history_t, origin);
     using t976 = decltype(goldsrc::position_history_t::origin);
     constexpr std::size_t o982 = offsetof(goldsrc::position_history_t, angles);
     using t977 = decltype(goldsrc::position_history_t::angles);
-    constexpr std::size_t s40 = sizeof(goldsrc::weapon_data_t);
+    constexpr std::size_t s75 = sizeof(goldsrc::weapon_data_t);
     constexpr std::size_t o983 = offsetof(goldsrc::weapon_data_t, m_iId);
     using t978 = decltype(goldsrc::weapon_data_t::m_iId);
     constexpr std::size_t o984 = offsetof(goldsrc::weapon_data_t, m_iClip);
@@ -2317,7 +2359,7 @@ namespace goldsrc_equivalence
     using t998 = decltype(goldsrc::weapon_data_t::fuser3);
     constexpr std::size_t o1004 = offsetof(goldsrc::weapon_data_t, fuser4);
     using t999 = decltype(goldsrc::weapon_data_t::fuser4);
-    constexpr std::size_t s41 = sizeof(goldsrc::cl_entity_t);
+    constexpr std::size_t s76 = sizeof(goldsrc::cl_entity_t);
     constexpr std::size_t o1005 = offsetof(goldsrc::cl_entity_t, index);
     using t1000 = decltype(goldsrc::cl_entity_t::index);
     constexpr std::size_t o1006 = offsetof(goldsrc::cl_entity_t, player);
@@ -2358,14 +2400,14 @@ namespace goldsrc_equivalence
     using t1018 = decltype(goldsrc::cl_entity_t::visframe);
     constexpr std::size_t o1024 = offsetof(goldsrc::cl_entity_t, cvFloorColor);
     using t1019 = decltype(goldsrc::cl_entity_t::cvFloorColor);
-    constexpr std::size_t s42 = sizeof(goldsrc::local_state_t);
+    constexpr std::size_t s77 = sizeof(goldsrc::local_state_t);
     constexpr std::size_t o1025 = offsetof(goldsrc::local_state_t, playerstate);
     using t1020 = decltype(goldsrc::local_state_t::playerstate);
     constexpr std::size_t o1026 = offsetof(goldsrc::local_state_t, client);
     using t1021 = decltype(goldsrc::local_state_t::client);
     constexpr std::size_t o1027 = offsetof(goldsrc::local_state_t, weapondata);
     using t1022 = decltype(goldsrc::local_state_t::weapondata);
-    constexpr std::size_t s43 = sizeof(goldsrc::event_api_s);
+    constexpr std::size_t s78 = sizeof(goldsrc::event_api_s);
     constexpr std::size_t o1028 = offsetof(goldsrc::event_api_s, version);
     using t1023 = decltype(goldsrc::event_api_s::version);
     constexpr std::size_t o1029 = offsetof(goldsrc::event_api_s, EV_PlaySound);
@@ -2410,7 +2452,7 @@ namespace goldsrc_equivalence
     using t1043 = decltype(goldsrc::event_api_s::EV_StopAllSounds);
     constexpr std::size_t o1049 = offsetof(goldsrc::event_api_s, EV_KillEvents);
     using t1044 = decltype(goldsrc::event_api_s::EV_KillEvents);
-    constexpr std::size_t s44 = sizeof(goldsrc::event_args_t);
+    constexpr std::size_t s79 = sizeof(goldsrc::event_args_t);
     constexpr std::size_t o1050 = offsetof(goldsrc::event_args_t, flags);
     using t1045 = decltype(goldsrc::event_args_t::flags);
     constexpr std::size_t o1051 = offsetof(goldsrc::event_args_t, entindex);
@@ -2435,7 +2477,7 @@ namespace goldsrc_equivalence
     using t1055 = decltype(goldsrc::event_args_t::bparam1);
     constexpr std::size_t o1061 = offsetof(goldsrc::event_args_t, bparam2);
     using t1056 = decltype(goldsrc::event_args_t::bparam2);
-    constexpr std::size_t s45 = sizeof(goldsrc::dmodel_t);
+    constexpr std::size_t s80 = sizeof(goldsrc::dmodel_t);
     constexpr std::size_t o1062 = offsetof(goldsrc::dmodel_t, mins);
     using t1057 = decltype(goldsrc::dmodel_t::mins);
     constexpr std::size_t o1063 = offsetof(goldsrc::dmodel_t, maxs);
@@ -2450,20 +2492,20 @@ namespace goldsrc_equivalence
     using t1062 = decltype(goldsrc::dmodel_t::firstface);
     constexpr std::size_t o1068 = offsetof(goldsrc::dmodel_t, numfaces);
     using t1063 = decltype(goldsrc::dmodel_t::numfaces);
-    constexpr std::size_t s46 = sizeof(goldsrc::dspriteframe_t);
+    constexpr std::size_t s81 = sizeof(goldsrc::dspriteframe_t);
     constexpr std::size_t o1069 = offsetof(goldsrc::dspriteframe_t, origin);
     using t1064 = decltype(goldsrc::dspriteframe_t::origin);
     constexpr std::size_t o1070 = offsetof(goldsrc::dspriteframe_t, width);
     using t1065 = decltype(goldsrc::dspriteframe_t::width);
     constexpr std::size_t o1071 = offsetof(goldsrc::dspriteframe_t, height);
     using t1066 = decltype(goldsrc::dspriteframe_t::height);
-    constexpr std::size_t s47 = sizeof(goldsrc::dspritegroup_t);
+    constexpr std::size_t s82 = sizeof(goldsrc::dspritegroup_t);
     constexpr std::size_t o1072 = offsetof(goldsrc::dspritegroup_t, numframes);
     using t1067 = decltype(goldsrc::dspritegroup_t::numframes);
-    constexpr std::size_t s48 = sizeof(goldsrc::dspriteinterval_t);
+    constexpr std::size_t s83 = sizeof(goldsrc::dspriteinterval_t);
     constexpr std::size_t o1073 = offsetof(goldsrc::dspriteinterval_t, interval);
     using t1068 = decltype(goldsrc::dspriteinterval_t::interval);
-    constexpr std::size_t s49 = sizeof(goldsrc::dsprite_t);
+    constexpr std::size_t s84 = sizeof(goldsrc::dsprite_t);
     constexpr std::size_t o1074 = offsetof(goldsrc::dsprite_t, ident);
     using t1069 = decltype(goldsrc::dsprite_t::ident);
     constexpr std::size_t o1075 = offsetof(goldsrc::dsprite_t, version);
@@ -2484,17 +2526,17 @@ namespace goldsrc_equivalence
     using t1077 = decltype(goldsrc::dsprite_t::beamlength);
     constexpr std::size_t o1083 = offsetof(goldsrc::dsprite_t, synctype);
     using t1078 = decltype(goldsrc::dsprite_t::synctype);
-    constexpr std::size_t s50 = sizeof(goldsrc::dspriteframetype_t);
+    constexpr std::size_t s85 = sizeof(goldsrc::dspriteframetype_t);
     constexpr std::size_t o1084 = offsetof(goldsrc::dspriteframetype_t, type);
     using t1079 = decltype(goldsrc::dspriteframetype_t::type);
-    constexpr std::size_t s51 = sizeof(goldsrc::mstudioanim_t);
+    constexpr std::size_t s86 = sizeof(goldsrc::mstudioanim_t);
     constexpr std::size_t o1085 = offsetof(goldsrc::mstudioanim_t, offset);
     using t1080 = decltype(goldsrc::mstudioanim_t::offset);
-    constexpr std::size_t s52 = sizeof(goldsrc::mstudioanimvalue_t);
+    constexpr std::size_t s87 = sizeof(goldsrc::mstudioanimvalue_t);
     constexpr std::size_t o1086 = offsetof(goldsrc::mstudioanimvalue_t, num);
     constexpr std::size_t o1087 = offsetof(goldsrc::mstudioanimvalue_t, value);
     using t1081 = decltype(goldsrc::mstudioanimvalue_t::value);
-    constexpr std::size_t s53 = sizeof(goldsrc::mstudioattachment_t);
+    constexpr std::size_t s88 = sizeof(goldsrc::mstudioattachment_t);
     constexpr std::size_t o1088 = offsetof(goldsrc::mstudioattachment_t, name);
     using t1082 = decltype(goldsrc::mstudioattachment_t::name);
     constexpr std::size_t o1089 = offsetof(goldsrc::mstudioattachment_t, type);
@@ -2505,7 +2547,7 @@ namespace goldsrc_equivalence
     using t1085 = decltype(goldsrc::mstudioattachment_t::org);
     constexpr std::size_t o1092 = offsetof(goldsrc::mstudioattachment_t, vectors);
     using t1086 = decltype(goldsrc::mstudioattachment_t::vectors);
-    constexpr std::size_t s54 = sizeof(goldsrc::mstudiobodyparts_t);
+    constexpr std::size_t s89 = sizeof(goldsrc::mstudiobodyparts_t);
     constexpr std::size_t o1093 = offsetof(goldsrc::mstudiobodyparts_t, name);
     using t1087 = decltype(goldsrc::mstudiobodyparts_t::name);
     constexpr std::size_t o1094 = offsetof(goldsrc::mstudiobodyparts_t, nummodels);
@@ -2514,7 +2556,7 @@ namespace goldsrc_equivalence
     using t1089 = decltype(goldsrc::mstudiobodyparts_t::base);
     constexpr std::size_t o1096 = offsetof(goldsrc::mstudiobodyparts_t, modelindex);
     using t1090 = decltype(goldsrc::mstudiobodyparts_t::modelindex);
-    constexpr std::size_t s55 = sizeof(goldsrc::mstudiobone_t);
+    constexpr std::size_t s90 = sizeof(goldsrc::mstudiobone_t);
     constexpr std::size_t o1097 = offsetof(goldsrc::mstudiobone_t, name);
     using t1091 = decltype(goldsrc::mstudiobone_t::name);
     constexpr std::size_t o1098 = offsetof(goldsrc::mstudiobone_t, parent);
@@ -2527,7 +2569,7 @@ namespace goldsrc_equivalence
     using t1095 = decltype(goldsrc::mstudiobone_t::value);
     constexpr std::size_t o1102 = offsetof(goldsrc::mstudiobone_t, scale);
     using t1096 = decltype(goldsrc::mstudiobone_t::scale);
-    constexpr std::size_t s56 = sizeof(goldsrc::mstudioevent_s);
+    constexpr std::size_t s91 = sizeof(goldsrc::mstudioevent_s);
     constexpr std::size_t o1103 = offsetof(goldsrc::mstudioevent_s, frame);
     using t1097 = decltype(goldsrc::mstudioevent_s::frame);
     constexpr std::size_t o1104 = offsetof(goldsrc::mstudioevent_s, event);
@@ -2536,7 +2578,7 @@ namespace goldsrc_equivalence
     using t1099 = decltype(goldsrc::mstudioevent_s::type);
     constexpr std::size_t o1106 = offsetof(goldsrc::mstudioevent_s, options);
     using t1100 = decltype(goldsrc::mstudioevent_s::options);
-    constexpr std::size_t s57 = sizeof(goldsrc::mstudioseqdesc_t);
+    constexpr std::size_t s92 = sizeof(goldsrc::mstudioseqdesc_t);
     constexpr std::size_t o1107 = offsetof(goldsrc::mstudioseqdesc_t, label);
     using t1101 = decltype(goldsrc::mstudioseqdesc_t::label);
     constexpr std::size_t o1108 = offsetof(goldsrc::mstudioseqdesc_t, fps);
@@ -2593,7 +2635,7 @@ namespace goldsrc_equivalence
     using t1127 = decltype(goldsrc::mstudioseqdesc_t::nodeflags);
     constexpr std::size_t o1134 = offsetof(goldsrc::mstudioseqdesc_t, nextseq);
     using t1128 = decltype(goldsrc::mstudioseqdesc_t::nextseq);
-    constexpr std::size_t s58 = sizeof(goldsrc::mstudiotexture_t);
+    constexpr std::size_t s93 = sizeof(goldsrc::mstudiotexture_t);
     constexpr std::size_t o1135 = offsetof(goldsrc::mstudiotexture_t, name);
     using t1129 = decltype(goldsrc::mstudiotexture_t::name);
     constexpr std::size_t o1136 = offsetof(goldsrc::mstudiotexture_t, flags);
@@ -2604,7 +2646,7 @@ namespace goldsrc_equivalence
     using t1132 = decltype(goldsrc::mstudiotexture_t::height);
     constexpr std::size_t o1139 = offsetof(goldsrc::mstudiotexture_t, index);
     using t1133 = decltype(goldsrc::mstudiotexture_t::index);
-    constexpr std::size_t s59 = sizeof(goldsrc::studiohdr_t);
+    constexpr std::size_t s94 = sizeof(goldsrc::studiohdr_t);
     constexpr std::size_t o1140 = offsetof(goldsrc::studiohdr_t, id);
     using t1134 = decltype(goldsrc::studiohdr_t::id);
     constexpr std::size_t o1141 = offsetof(goldsrc::studiohdr_t, version);
@@ -2677,7 +2719,7 @@ namespace goldsrc_equivalence
     using t1168 = decltype(goldsrc::studiohdr_t::numtransitions);
     constexpr std::size_t o1175 = offsetof(goldsrc::studiohdr_t, transitionindex);
     using t1169 = decltype(goldsrc::studiohdr_t::transitionindex);
-    constexpr std::size_t s60 = sizeof(goldsrc::movevars_s);
+    constexpr std::size_t s95 = sizeof(goldsrc::movevars_s);
     constexpr std::size_t o1176 = offsetof(goldsrc::movevars_s, gravity);
     using t1170 = decltype(goldsrc::movevars_s::gravity);
     constexpr std::size_t o1177 = offsetof(goldsrc::movevars_s, stopspeed);
@@ -2730,7 +2772,7 @@ namespace goldsrc_equivalence
     using t1194 = decltype(goldsrc::movevars_s::skyvec_y);
     constexpr std::size_t o1201 = offsetof(goldsrc::movevars_s, skyvec_z);
     using t1195 = decltype(goldsrc::movevars_s::skyvec_z);
-    constexpr std::size_t s61 = sizeof(goldsrc::physent_t);
+    constexpr std::size_t s96 = sizeof(goldsrc::physent_t);
     constexpr std::size_t o1202 = offsetof(goldsrc::physent_t, name);
     using t1196 = decltype(goldsrc::physent_t::name);
     constexpr std::size_t o1203 = offsetof(goldsrc::physent_t, player);
@@ -2797,12 +2839,12 @@ namespace goldsrc_equivalence
     using t1227 = decltype(goldsrc::physent_t::vuser3);
     constexpr std::size_t o1234 = offsetof(goldsrc::physent_t, vuser4);
     using t1228 = decltype(goldsrc::physent_t::vuser4);
-    constexpr std::size_t s62 = sizeof(goldsrc::pmplane_t);
+    constexpr std::size_t s97 = sizeof(goldsrc::pmplane_t);
     constexpr std::size_t o1235 = offsetof(goldsrc::pmplane_t, normal);
     using t1229 = decltype(goldsrc::pmplane_t::normal);
     constexpr std::size_t o1236 = offsetof(goldsrc::pmplane_t, dist);
     using t1230 = decltype(goldsrc::pmplane_t::dist);
-    constexpr std::size_t s63 = sizeof(goldsrc::pmtrace_t);
+    constexpr std::size_t s98 = sizeof(goldsrc::pmtrace_t);
     constexpr std::size_t o1237 = offsetof(goldsrc::pmtrace_t, allsolid);
     using t1231 = decltype(goldsrc::pmtrace_t::allsolid);
     constexpr std::size_t o1238 = offsetof(goldsrc::pmtrace_t, startsolid);
@@ -2823,7 +2865,7 @@ namespace goldsrc_equivalence
     using t1239 = decltype(goldsrc::pmtrace_t::deltavelocity);
     constexpr std::size_t o1246 = offsetof(goldsrc::pmtrace_t, hitgroup);
     using t1240 = decltype(goldsrc::pmtrace_t::hitgroup);
-    constexpr std::size_t s64 = sizeof(goldsrc::playermove_t);
+    constexpr std::size_t s99 = sizeof(goldsrc::playermove_t);
     constexpr std::size_t o1247 = offsetof(goldsrc::playermove_t, player_index);
     using t1241 = decltype(goldsrc::playermove_t::player_index);
     constexpr std::size_t o1248 = offsetof(goldsrc::playermove_t, server);
@@ -3018,7 +3060,7 @@ namespace goldsrc_equivalence
     using t1336 = decltype(goldsrc::playermove_t::PM_TestPlayerPositionEx);
     constexpr std::size_t o1343 = offsetof(goldsrc::playermove_t, PM_TraceLineEx);
     using t1337 = decltype(goldsrc::playermove_t::PM_TraceLineEx);
-    constexpr std::size_t s65 = sizeof(goldsrc::enginefuncs_t);
+    constexpr std::size_t s100 = sizeof(goldsrc::enginefuncs_t);
     constexpr std::size_t o1344 = offsetof(goldsrc::enginefuncs_t, pfnPrecacheModel);
     using t1338 = decltype(goldsrc::enginefuncs_t::pfnPrecacheModel);
     constexpr std::size_t o1345 = offsetof(goldsrc::enginefuncs_t, pfnPrecacheSound);
@@ -3335,7 +3377,7 @@ namespace goldsrc_equivalence
     using t1494 = decltype(goldsrc::enginefuncs_t::pfnQueryClientCvarValue2);
     constexpr std::size_t o1501 = offsetof(goldsrc::enginefuncs_t, pfnEngCheckParm);
     using t1495 = decltype(goldsrc::enginefuncs_t::pfnEngCheckParm);
-    constexpr std::size_t s66 = sizeof(goldsrc::engine_studio_api_t);
+    constexpr std::size_t s101 = sizeof(goldsrc::engine_studio_api_t);
     constexpr std::size_t o1502 = offsetof(goldsrc::engine_studio_api_t, Mem_Calloc);
     using t1496 = decltype(goldsrc::engine_studio_api_t::Mem_Calloc);
     constexpr std::size_t o1503 = offsetof(goldsrc::engine_studio_api_t, Cache_Check);
@@ -3428,14 +3470,14 @@ namespace goldsrc_equivalence
     using t1540 = decltype(goldsrc::engine_studio_api_t::StudioSetCullState);
     constexpr std::size_t o1547 = offsetof(goldsrc::engine_studio_api_t, StudioRenderShadow);
     using t1541 = decltype(goldsrc::engine_studio_api_t::StudioRenderShadow);
-    constexpr std::size_t s67 = sizeof(goldsrc::r_studio_interface_t);
+    constexpr std::size_t s102 = sizeof(goldsrc::r_studio_interface_t);
     constexpr std::size_t o1548 = offsetof(goldsrc::r_studio_interface_t, version);
     using t1542 = decltype(goldsrc::r_studio_interface_t::version);
     constexpr std::size_t o1549 = offsetof(goldsrc::r_studio_interface_t, StudioDrawModel);
     using t1543 = decltype(goldsrc::r_studio_interface_t::StudioDrawModel);
     constexpr std::size_t o1550 = offsetof(goldsrc::r_studio_interface_t, StudioDrawPlayer);
     using t1544 = decltype(goldsrc::r_studio_interface_t::StudioDrawPlayer);
-    constexpr std::size_t s68 = sizeof(goldsrc::triangleapi_t);
+    constexpr std::size_t s103 = sizeof(goldsrc::triangleapi_t);
     constexpr std::size_t o1551 = offsetof(goldsrc::triangleapi_t, version);
     using t1545 = decltype(goldsrc::triangleapi_t::version);
     constexpr std::size_t o1552 = offsetof(goldsrc::triangleapi_t, RenderMode);
@@ -3476,17 +3518,17 @@ namespace goldsrc_equivalence
     using t1563 = decltype(goldsrc::triangleapi_t::Color4fRendermode);
     constexpr std::size_t o1570 = offsetof(goldsrc::triangleapi_t, FogParams);
     using t1564 = decltype(goldsrc::triangleapi_t::FogParams);
-    constexpr std::size_t s69 = sizeof(goldsrc::cache_user_t);
+    constexpr std::size_t s104 = sizeof(goldsrc::cache_user_t);
     constexpr std::size_t o1571 = offsetof(goldsrc::cache_user_t, data);
     using t1565 = decltype(goldsrc::cache_user_t::data);
-    constexpr std::size_t s70 = sizeof(goldsrc::color24);
+    constexpr std::size_t s105 = sizeof(goldsrc::color24);
     constexpr std::size_t o1572 = offsetof(goldsrc::color24, r);
     using t1566 = decltype(goldsrc::color24::r);
     constexpr std::size_t o1573 = offsetof(goldsrc::color24, g);
     using t1567 = decltype(goldsrc::color24::g);
     constexpr std::size_t o1574 = offsetof(goldsrc::color24, b);
     using t1568 = decltype(goldsrc::color24::b);
-    constexpr std::size_t s71 = sizeof(goldsrc::colorVec);
+    constexpr std::size_t s106 = sizeof(goldsrc::colorVec);
     constexpr std::size_t o1575 = offsetof(goldsrc::colorVec, r);
     using t1569 = decltype(goldsrc::colorVec::r);
     constexpr std::size_t o1576 = offsetof(goldsrc::colorVec, g);
@@ -3495,7 +3537,7 @@ namespace goldsrc_equivalence
     using t1571 = decltype(goldsrc::colorVec::b);
     constexpr std::size_t o1578 = offsetof(goldsrc::colorVec, a);
     using t1572 = decltype(goldsrc::colorVec::a);
-    constexpr std::size_t s72 = sizeof(goldsrc::vrect_t);
+    constexpr std::size_t s107 = sizeof(goldsrc::vrect_t);
     constexpr std::size_t o1579 = offsetof(goldsrc::vrect_t, x);
     using t1573 = decltype(goldsrc::vrect_t::x);
     constexpr std::size_t o1580 = offsetof(goldsrc::vrect_t, y);
@@ -3506,7 +3548,7 @@ namespace goldsrc_equivalence
     using t1576 = decltype(goldsrc::vrect_t::height);
     constexpr std::size_t o1583 = offsetof(goldsrc::vrect_t, pnext);
     using t1577 = decltype(goldsrc::vrect_t::pnext);
-    constexpr std::size_t s73 = sizeof(goldsrc::wrect_t);
+    constexpr std::size_t s108 = sizeof(goldsrc::wrect_t);
     constexpr std::size_t o1584 = offsetof(goldsrc::wrect_t, left);
     using t1578 = decltype(goldsrc::wrect_t::left);
     constexpr std::size_t o1585 = offsetof(goldsrc::wrect_t, right);
@@ -3515,12 +3557,12 @@ namespace goldsrc_equivalence
     using t1580 = decltype(goldsrc::wrect_t::top);
     constexpr std::size_t o1587 = offsetof(goldsrc::wrect_t, bottom);
     using t1581 = decltype(goldsrc::wrect_t::bottom);
-    constexpr std::size_t s74 = sizeof(goldsrc::kbutton_t);
+    constexpr std::size_t s109 = sizeof(goldsrc::kbutton_t);
     constexpr std::size_t o1588 = offsetof(goldsrc::kbutton_t, down);
     using t1582 = decltype(goldsrc::kbutton_t::down);
     constexpr std::size_t o1589 = offsetof(goldsrc::kbutton_t, state);
     using t1583 = decltype(goldsrc::kbutton_t::state);
-    constexpr std::size_t s75 = sizeof(goldsrc::usercmd_t);
+    constexpr std::size_t s110 = sizeof(goldsrc::usercmd_t);
     constexpr std::size_t o1590 = offsetof(goldsrc::usercmd_t, lerp_msec);
     using t1584 = decltype(goldsrc::usercmd_t::lerp_msec);
     constexpr std::size_t o1591 = offsetof(goldsrc::usercmd_t, msec);
@@ -3545,7 +3587,7 @@ namespace goldsrc_equivalence
     using t1594 = decltype(goldsrc::usercmd_t::impact_index);
     constexpr std::size_t o1601 = offsetof(goldsrc::usercmd_t, impact_position);
     using t1595 = decltype(goldsrc::usercmd_t::impact_position);
-    constexpr std::size_t s76 = sizeof(goldsrc::ref_params_t);
+    constexpr std::size_t s111 = sizeof(goldsrc::ref_params_t);
     constexpr std::size_t o1602 = offsetof(goldsrc::ref_params_t, vieworg);
     using t1596 = decltype(goldsrc::ref_params_t::vieworg);
     constexpr std::size_t o1603 = offsetof(goldsrc::ref_params_t, viewangles);
@@ -3612,7 +3654,7 @@ namespace goldsrc_equivalence
     using t1627 = decltype(goldsrc::ref_params_t::nextView);
     constexpr std::size_t o1634 = offsetof(goldsrc::ref_params_t, onlyClientDraw);
     using t1628 = decltype(goldsrc::ref_params_t::onlyClientDraw);
-    constexpr std::size_t s77 = sizeof(goldsrc::refdef_t);
+    constexpr std::size_t s112 = sizeof(goldsrc::refdef_t);
     constexpr std::size_t o1635 = offsetof(goldsrc::refdef_t, vrect);
     using t1629 = decltype(goldsrc::refdef_t::vrect);
     constexpr std::size_t o1636 = offsetof(goldsrc::refdef_t, aliasvrect);
@@ -3661,7 +3703,7 @@ namespace goldsrc_equivalence
     using t1651 = decltype(goldsrc::refdef_t::ambientlight);
     constexpr std::size_t o1658 = offsetof(goldsrc::refdef_t, onlyClientDraws);
     using t1652 = decltype(goldsrc::refdef_t::onlyClientDraws);
-    constexpr std::size_t s78 = sizeof(goldsrc::screenfade_t);
+    constexpr std::size_t s113 = sizeof(goldsrc::screenfade_t);
     constexpr std::size_t o1659 = offsetof(goldsrc::screenfade_t, fadeSpeed);
     using t1653 = decltype(goldsrc::screenfade_t::fadeSpeed);
     constexpr std::size_t o1660 = offsetof(goldsrc::screenfade_t, fadeEnd);
@@ -3680,17 +3722,17 @@ namespace goldsrc_equivalence
     using t1660 = decltype(goldsrc::screenfade_t::fadealpha);
     constexpr std::size_t o1667 = offsetof(goldsrc::screenfade_t, fadeFlags);
     using t1661 = decltype(goldsrc::screenfade_t::fadeFlags);
-    constexpr std::size_t s79 = sizeof(goldsrc::IVoiceTweak_s);
-    constexpr std::size_t o1668 = offsetof(goldsrc::IVoiceTweak_s, StartVoiceTweakMode);
-    using t1662 = decltype(goldsrc::IVoiceTweak_s::StartVoiceTweakMode);
-    constexpr std::size_t o1669 = offsetof(goldsrc::IVoiceTweak_s, EndVoiceTweakMode);
-    using t1663 = decltype(goldsrc::IVoiceTweak_s::EndVoiceTweakMode);
-    constexpr std::size_t o1670 = offsetof(goldsrc::IVoiceTweak_s, SetControlFloat);
-    using t1664 = decltype(goldsrc::IVoiceTweak_s::SetControlFloat);
-    constexpr std::size_t o1671 = offsetof(goldsrc::IVoiceTweak_s, GetControlFloat);
-    using t1665 = decltype(goldsrc::IVoiceTweak_s::GetControlFloat);
-    constexpr std::size_t o1672 = offsetof(goldsrc::IVoiceTweak_s, GetSpeakingVolume);
-    using t1666 = decltype(goldsrc::IVoiceTweak_s::GetSpeakingVolume);
+    constexpr std::size_t s114 = sizeof(goldsrc::IVoiceTweak);
+    constexpr std::size_t o1668 = offsetof(goldsrc::IVoiceTweak, StartVoiceTweakMode);
+    using t1662 = decltype(goldsrc::IVoiceTweak::StartVoiceTweakMode);
+    constexpr std::size_t o1669 = offsetof(goldsrc::IVoiceTweak, EndVoiceTweakMode);
+    using t1663 = decltype(goldsrc::IVoiceTweak::EndVoiceTweakMode);
+    constexpr std::size_t o1670 = offsetof(goldsrc::IVoiceTweak, SetControlFloat);
+    using t1664 = decltype(goldsrc::IVoiceTweak::SetControlFloat);
+    constexpr std::size_t o1671 = offsetof(goldsrc::IVoiceTweak, GetControlFloat);
+    using t1665 = decltype(goldsrc::IVoiceTweak::GetControlFloat);
+    constexpr std::size_t o1672 = offsetof(goldsrc::IVoiceTweak, GetSpeakingVolume);
+    using t1666 = decltype(goldsrc::IVoiceTweak::GetSpeakingVolume);
     constexpr auto c0 = goldsrc::cstrike::DMG_HALLUC;
     constexpr auto c1 = goldsrc::cstrike::DMG_GENERIC;
     constexpr auto c2 = goldsrc::cstrike::DMG_CRUSH;
@@ -3771,617 +3813,625 @@ namespace goldsrc_equivalence
     constexpr auto c77 = goldsrc::cstrike::RGB_GREENISH;
     constexpr auto c78 = goldsrc::cstrike::RGB_REDISH;
     constexpr auto c79 = goldsrc::cstrike::RGB_YELLOWISH;
-    constexpr auto c80 = goldsrc::cstrike::INSET_OFF;
-    constexpr auto c81 = goldsrc::cstrike::INSET_CHASE_FREE;
-    constexpr auto c82 = goldsrc::cstrike::INSET_IN_EYE;
-    constexpr auto c83 = goldsrc::cstrike::INSET_MAP_FREE;
-    constexpr auto c84 = goldsrc::cstrike::INSET_MAP_CHASE;
-    constexpr auto c85 = goldsrc::cstrike::WEAPON_IS_ONTARGET;
-    constexpr auto c86 = goldsrc::FCVAR_ARCHIVE;
-    constexpr auto c87 = goldsrc::FCVAR_USERINFO;
-    constexpr auto c88 = goldsrc::FCVAR_SERVER;
-    constexpr auto c89 = goldsrc::FCVAR_EXTDLL;
-    constexpr auto c90 = goldsrc::FCVAR_CLIENTDLL;
-    constexpr auto c91 = goldsrc::FCVAR_PROTECTED;
-    constexpr auto c92 = goldsrc::FCVAR_SPONLY;
-    constexpr auto c93 = goldsrc::FCVAR_PRINTABLEONLY;
-    constexpr auto c94 = goldsrc::FCVAR_UNLOGGED;
-    constexpr auto c95 = goldsrc::FCVAR_NOEXTRAWHITEPACE;
-    constexpr auto c96 = goldsrc::FCVAR_PRIVILEGED;
-    constexpr auto c97 = goldsrc::FCVAR_FILTERABLE;
-    constexpr auto c98 = goldsrc::FCVAR_ISEXECUTED;
-    constexpr auto c99 = goldsrc::FCVAR_ISPATH;
-    constexpr auto c100 = goldsrc::FCVAR_CHEAT;
-    constexpr auto c101 = goldsrc::COM_MAX_CMD_LINE;
-    constexpr auto c102 = goldsrc::NUM_SAFE_ARGVS;
-    constexpr auto c103 = goldsrc::IDPOLYHEADER;
-    constexpr auto c104 = goldsrc::MAX_KNOWN_MODELS;
-    constexpr auto c105 = goldsrc::SURF_PLANEBACK;
-    constexpr auto c106 = goldsrc::SURF_DRAWSKY;
-    constexpr auto c107 = goldsrc::SURF_DRAWSPRITE;
-    constexpr auto c108 = goldsrc::SURF_DRAWTURB;
-    constexpr auto c109 = goldsrc::SURF_DRAWTILED;
-    constexpr auto c110 = goldsrc::SURF_DRAWBACKGROUND;
-    constexpr auto c111 = goldsrc::SURF_UNDERWATER;
-    constexpr auto c112 = goldsrc::MAX_MODEL_NAME;
-    constexpr auto c113 = goldsrc::SIZEBUF_CHECK_OVERFLOW;
-    constexpr auto c114 = goldsrc::SIZEBUF_ALLOW_OVERFLOW;
-    constexpr auto c115 = goldsrc::SIZEBUF_OVERFLOWED;
-    constexpr auto c116 = goldsrc::FCUST_FROMHPAK;
-    constexpr auto c117 = goldsrc::FCUST_WIPEDATA;
-    constexpr auto c118 = goldsrc::FCUST_IGNOREINIT;
-    constexpr auto c119 = goldsrc::MAX_RESOURCE_LIST;
-    constexpr auto c120 = goldsrc::RES_FATALIFMISSING;
-    constexpr auto c121 = goldsrc::RES_WASMISSING;
-    constexpr auto c122 = goldsrc::RES_CUSTOM;
-    constexpr auto c123 = goldsrc::RES_REQUESTED;
-    constexpr auto c124 = goldsrc::RES_PRECACHED;
-    constexpr auto c125 = goldsrc::RES_ALWAYS;
-    constexpr auto c126 = goldsrc::RES_UNK_6;
-    constexpr auto c127 = goldsrc::RES_CHECKFILE;
-    constexpr auto c128 = goldsrc::CHAN_AUTO;
-    constexpr auto c129 = goldsrc::CHAN_WEAPON;
-    constexpr auto c130 = goldsrc::CHAN_VOICE;
-    constexpr auto c131 = goldsrc::CHAN_ITEM;
-    constexpr auto c132 = goldsrc::CHAN_BODY;
-    constexpr auto c133 = goldsrc::CHAN_STREAM;
-    constexpr auto c134 = goldsrc::CHAN_STATIC;
-    constexpr auto c135 = goldsrc::CHAN_NETWORKVOICE_BASE;
-    constexpr auto c136 = goldsrc::CHAN_NETWORKVOICE_END;
-    constexpr auto c137 = goldsrc::CHAN_BOT;
-    constexpr auto c138 = goldsrc::OFF_SVC_MESSAGES_P;
-    constexpr auto c139 = goldsrc::EF_BRIGHTFIELD;
-    constexpr auto c140 = goldsrc::EF_MUZZLEFLASH;
-    constexpr auto c141 = goldsrc::EF_BRIGHTLIGHT;
-    constexpr auto c142 = goldsrc::EF_DIMLIGHT;
-    constexpr auto c143 = goldsrc::EF_INVLIGHT;
-    constexpr auto c144 = goldsrc::EF_NOINTERP;
-    constexpr auto c145 = goldsrc::EF_LIGHT;
-    constexpr auto c146 = goldsrc::EF_NODRAW;
-    constexpr auto c147 = goldsrc::EF_NIGHTVISION;
-    constexpr auto c148 = goldsrc::EF_SNIPERLASER;
-    constexpr auto c149 = goldsrc::EF_FIBERCAMERA;
-    constexpr auto c150 = goldsrc::FL_DORMANT;
-    constexpr auto c151 = goldsrc::FL_FLY;
-    constexpr auto c152 = goldsrc::FL_SWIM;
-    constexpr auto c153 = goldsrc::FL_CONVEYOR;
-    constexpr auto c154 = goldsrc::FL_CLIENT;
-    constexpr auto c155 = goldsrc::FL_INWATER;
-    constexpr auto c156 = goldsrc::FL_MONSTER;
-    constexpr auto c157 = goldsrc::FL_GODMODE;
-    constexpr auto c158 = goldsrc::FL_NOTARGET;
-    constexpr auto c159 = goldsrc::FL_SKIPLOCALHOST;
-    constexpr auto c160 = goldsrc::FL_ONGROUND;
-    constexpr auto c161 = goldsrc::FL_PARTIALGROUND;
-    constexpr auto c162 = goldsrc::FL_WATERJUMP;
-    constexpr auto c163 = goldsrc::FL_FROZEN;
-    constexpr auto c164 = goldsrc::FL_FAKECLIENT;
-    constexpr auto c165 = goldsrc::FL_DUCKING;
-    constexpr auto c166 = goldsrc::FL_FLOAT;
-    constexpr auto c167 = goldsrc::FL_GRAPHED;
-    constexpr auto c168 = goldsrc::FL_IMMUNE_WATER;
-    constexpr auto c169 = goldsrc::FL_IMMUNE_SLIME;
-    constexpr auto c170 = goldsrc::FL_IMMUNE_LAVA;
-    constexpr auto c171 = goldsrc::FL_PROXY;
-    constexpr auto c172 = goldsrc::FL_ALWAYSTHINK;
-    constexpr auto c173 = goldsrc::FL_BASEVELOCITY;
-    constexpr auto c174 = goldsrc::FL_MONSTERCLIP;
-    constexpr auto c175 = goldsrc::FL_ONTRAIN;
-    constexpr auto c176 = goldsrc::FL_WORLDBRUSH;
-    constexpr auto c177 = goldsrc::FL_SPECTATOR;
-    constexpr auto c178 = goldsrc::FL_CUSTOMENTITY;
-    constexpr auto c179 = goldsrc::FL_KILLME;
-    constexpr auto c180 = goldsrc::HISTORY_MASK;
-    constexpr auto c181 = goldsrc::HISTORY_MAX;
-    constexpr auto c182 = goldsrc::MOVETYPE_NONE;
-    constexpr auto c183 = goldsrc::MOVETYPE_WALK;
-    constexpr auto c184 = goldsrc::MOVETYPE_STEP;
-    constexpr auto c185 = goldsrc::MOVETYPE_FLY;
-    constexpr auto c186 = goldsrc::MOVETYPE_TOSS;
-    constexpr auto c187 = goldsrc::MOVETYPE_PUSH;
-    constexpr auto c188 = goldsrc::MOVETYPE_NOCLIP;
-    constexpr auto c189 = goldsrc::MOVETYPE_FLYMISSILE;
-    constexpr auto c190 = goldsrc::MOVETYPE_BOUNCE;
-    constexpr auto c191 = goldsrc::MOVETYPE_BOUNCEMISSILE;
-    constexpr auto c192 = goldsrc::MOVETYPE_FOLLOW;
-    constexpr auto c193 = goldsrc::MOVETYPE_PUSHSTEP;
-    constexpr auto c194 = goldsrc::HLBSP_VERSION;
-    constexpr auto c195 = goldsrc::Q1BSP_VERSION;
-    constexpr auto c196 = goldsrc::IDSPRITEHEADER;
-    constexpr auto c197 = goldsrc::SPRITE_VERSION;
-    constexpr auto c198 = goldsrc::MAXSTUDIOSKINS;
-    constexpr auto c199 = goldsrc::STUDIO_HAS_NORMALS;
-    constexpr auto c200 = goldsrc::STUDIO_LOOPING;
-    constexpr auto c201 = goldsrc::STUDIO_NF_FLATSHADE;
-    constexpr auto c202 = goldsrc::STUDIO_X;
-    constexpr auto c203 = goldsrc::STUDIO_HAS_VERTICES;
-    constexpr auto c204 = goldsrc::STUDIO_NF_CHROME;
-    constexpr auto c205 = goldsrc::STUDIO_Y;
-    constexpr auto c206 = goldsrc::STUDIO_HAS_BBOX;
-    constexpr auto c207 = goldsrc::STUDIO_NF_FULLBRIGHT;
-    constexpr auto c208 = goldsrc::STUDIO_Z;
-    constexpr auto c209 = goldsrc::STUDIO_HAS_CHROME;
-    constexpr auto c210 = goldsrc::STUDIO_NF_NOMIPS;
-    constexpr auto c211 = goldsrc::STUDIO_XR;
-    constexpr auto c212 = goldsrc::STUDIO_NF_ALPHA;
-    constexpr auto c213 = goldsrc::STUDIO_YR;
-    constexpr auto c214 = goldsrc::STUDIO_NF_ADDITIVE;
-    constexpr auto c215 = goldsrc::STUDIO_ZR;
-    constexpr auto c216 = goldsrc::STUDIO_LX;
-    constexpr auto c217 = goldsrc::STUDIO_NF_MASKED;
-    constexpr auto c218 = goldsrc::STUDIO_LY;
-    constexpr auto c219 = goldsrc::STUDIO_DYNAMIC_LIGHT;
-    constexpr auto c220 = goldsrc::STUDIO_LZ;
-    constexpr auto c221 = goldsrc::STUDIO_AX;
-    constexpr auto c222 = goldsrc::STUDIO_TRACE_HITBOX;
-    constexpr auto c223 = goldsrc::STUDIO_AY;
-    constexpr auto c224 = goldsrc::STUDIO_AZ;
-    constexpr auto c225 = goldsrc::STUDIO_AXR;
-    constexpr auto c226 = goldsrc::STUDIO_AYR;
-    constexpr auto c227 = goldsrc::STUDIO_AZR;
-    constexpr auto c228 = goldsrc::STUDIO_TYPES;
-    constexpr auto c229 = goldsrc::STUDIO_RLOOP;
-    constexpr auto c230 = goldsrc::STUDIO_CACHE_SIZE;
-    constexpr auto c231 = goldsrc::STUDIO_MOUTH;
-    constexpr auto c232 = goldsrc::STUDIO_NUM_HULLS;
-    constexpr auto c233 = goldsrc::STUDIO_NUM_PLANES;
-    constexpr auto c234 = goldsrc::STUDIO_TO_RAD;
-    constexpr auto c235 = goldsrc::DRC_CMD_NONE;
-    constexpr auto c236 = goldsrc::DRC_CMD_START;
-    constexpr auto c237 = goldsrc::DRC_CMD_EVENT;
-    constexpr auto c238 = goldsrc::DRC_CMD_MODE;
-    constexpr auto c239 = goldsrc::DRC_CMD_CAMERA;
-    constexpr auto c240 = goldsrc::DRC_CMD_TIMESCALE;
-    constexpr auto c241 = goldsrc::DRC_CMD_MESSAGE;
-    constexpr auto c242 = goldsrc::DRC_CMD_SOUND;
-    constexpr auto c243 = goldsrc::DRC_CMD_STATUS;
-    constexpr auto c244 = goldsrc::DRC_CMD_BANNER;
-    constexpr auto c245 = goldsrc::DRC_CMD_STUFFTEXT;
-    constexpr auto c246 = goldsrc::DRC_CMD_CHASE;
-    constexpr auto c247 = goldsrc::DRC_CMD_INEYE;
-    constexpr auto c248 = goldsrc::DRC_CMD_MAP;
-    constexpr auto c249 = goldsrc::DRC_CMD_CAMPATH;
-    constexpr auto c250 = goldsrc::DRC_CMD_LAST;
-    constexpr auto c251 = goldsrc::DRC_CMD_WAYPOINTS;
-    constexpr auto c252 = goldsrc::DRC_FLAG_STARTPATH;
-    constexpr auto c253 = goldsrc::DRC_FLAG_SLOWSTART;
-    constexpr auto c254 = goldsrc::DRC_FLAG_SLOWEND;
-    constexpr auto c255 = goldsrc::DRC_FLAG_PRIO_MASK;
-    constexpr auto c256 = goldsrc::DRC_FLAG_SIDE;
-    constexpr auto c257 = goldsrc::DRC_FLAG_DRAMATIC;
-    constexpr auto c258 = goldsrc::DRC_FLAG_SLOWMOTION;
-    constexpr auto c259 = goldsrc::DRC_FLAG_FACEPLAYER;
-    constexpr auto c260 = goldsrc::DRC_FLAG_INTRO;
-    constexpr auto c261 = goldsrc::DRC_FLAG_FINAL;
-    constexpr auto c262 = goldsrc::DRC_FLAG_NO_RANDOM;
-    constexpr auto c263 = goldsrc::HLTV_ACTIVE;
-    constexpr auto c264 = goldsrc::HLTV_STATUS;
-    constexpr auto c265 = goldsrc::HLTV_LISTEN;
-    constexpr auto c266 = goldsrc::TYPE_CLIENT;
-    constexpr auto c267 = goldsrc::TYPE_PROXY;
-    constexpr auto c268 = goldsrc::TYPE_DIRECTOR;
-    constexpr auto c269 = goldsrc::TYPE_COMMENTATOR;
-    constexpr auto c270 = goldsrc::TYPE_DEMO;
-    constexpr auto c271 = goldsrc::K_TAB;
-    constexpr auto c272 = goldsrc::K_ENTER;
-    constexpr auto c273 = goldsrc::K_ESCAPE;
-    constexpr auto c274 = goldsrc::K_SPACE;
-    constexpr auto c275 = goldsrc::K_BACKSPACE;
-    constexpr auto c276 = goldsrc::K_UPARROW;
-    constexpr auto c277 = goldsrc::K_DOWNARROW;
-    constexpr auto c278 = goldsrc::K_LEFTARROW;
-    constexpr auto c279 = goldsrc::K_RIGHTARROW;
-    constexpr auto c280 = goldsrc::K_ALT;
-    constexpr auto c281 = goldsrc::K_CTRL;
-    constexpr auto c282 = goldsrc::K_SHIFT;
-    constexpr auto c283 = goldsrc::K_F1;
-    constexpr auto c284 = goldsrc::K_F2;
-    constexpr auto c285 = goldsrc::K_F3;
-    constexpr auto c286 = goldsrc::K_F4;
-    constexpr auto c287 = goldsrc::K_F5;
-    constexpr auto c288 = goldsrc::K_F6;
-    constexpr auto c289 = goldsrc::K_F7;
-    constexpr auto c290 = goldsrc::K_F8;
-    constexpr auto c291 = goldsrc::K_F9;
-    constexpr auto c292 = goldsrc::K_F10;
-    constexpr auto c293 = goldsrc::K_F11;
-    constexpr auto c294 = goldsrc::K_F12;
-    constexpr auto c295 = goldsrc::K_INS;
-    constexpr auto c296 = goldsrc::K_DEL;
-    constexpr auto c297 = goldsrc::K_PGDN;
-    constexpr auto c298 = goldsrc::K_PGUP;
-    constexpr auto c299 = goldsrc::K_HOME;
-    constexpr auto c300 = goldsrc::K_END;
-    constexpr auto c301 = goldsrc::K_KP_HOME;
-    constexpr auto c302 = goldsrc::K_KP_UPARROW;
-    constexpr auto c303 = goldsrc::K_KP_PGUP;
-    constexpr auto c304 = goldsrc::K_KP_LEFTARROW;
-    constexpr auto c305 = goldsrc::K_KP_5;
-    constexpr auto c306 = goldsrc::K_KP_RIGHTARROW;
-    constexpr auto c307 = goldsrc::K_KP_END;
-    constexpr auto c308 = goldsrc::K_KP_DOWNARROW;
-    constexpr auto c309 = goldsrc::K_KP_PGDN;
-    constexpr auto c310 = goldsrc::K_KP_ENTER;
-    constexpr auto c311 = goldsrc::K_KP_INS;
-    constexpr auto c312 = goldsrc::K_KP_DEL;
-    constexpr auto c313 = goldsrc::K_KP_SLASH;
-    constexpr auto c314 = goldsrc::K_KP_MINUS;
-    constexpr auto c315 = goldsrc::K_KP_PLUS;
-    constexpr auto c316 = goldsrc::K_CAPSLOCK;
-    constexpr auto c317 = goldsrc::K_JOY1;
-    constexpr auto c318 = goldsrc::K_JOY2;
-    constexpr auto c319 = goldsrc::K_JOY3;
-    constexpr auto c320 = goldsrc::K_JOY4;
-    constexpr auto c321 = goldsrc::K_AUX1;
-    constexpr auto c322 = goldsrc::K_AUX2;
-    constexpr auto c323 = goldsrc::K_AUX3;
-    constexpr auto c324 = goldsrc::K_AUX4;
-    constexpr auto c325 = goldsrc::K_AUX5;
-    constexpr auto c326 = goldsrc::K_AUX6;
-    constexpr auto c327 = goldsrc::K_AUX7;
-    constexpr auto c328 = goldsrc::K_AUX8;
-    constexpr auto c329 = goldsrc::K_AUX9;
-    constexpr auto c330 = goldsrc::K_AUX10;
-    constexpr auto c331 = goldsrc::K_AUX11;
-    constexpr auto c332 = goldsrc::K_AUX12;
-    constexpr auto c333 = goldsrc::K_AUX13;
-    constexpr auto c334 = goldsrc::K_AUX14;
-    constexpr auto c335 = goldsrc::K_AUX15;
-    constexpr auto c336 = goldsrc::K_AUX16;
-    constexpr auto c337 = goldsrc::K_AUX17;
-    constexpr auto c338 = goldsrc::K_AUX18;
-    constexpr auto c339 = goldsrc::K_AUX19;
-    constexpr auto c340 = goldsrc::K_AUX20;
-    constexpr auto c341 = goldsrc::K_AUX21;
-    constexpr auto c342 = goldsrc::K_AUX22;
-    constexpr auto c343 = goldsrc::K_AUX23;
-    constexpr auto c344 = goldsrc::K_AUX24;
-    constexpr auto c345 = goldsrc::K_AUX25;
-    constexpr auto c346 = goldsrc::K_AUX26;
-    constexpr auto c347 = goldsrc::K_AUX27;
-    constexpr auto c348 = goldsrc::K_AUX28;
-    constexpr auto c349 = goldsrc::K_AUX29;
-    constexpr auto c350 = goldsrc::K_AUX30;
-    constexpr auto c351 = goldsrc::K_AUX31;
-    constexpr auto c352 = goldsrc::K_AUX32;
-    constexpr auto c353 = goldsrc::K_MWHEELDOWN;
-    constexpr auto c354 = goldsrc::K_MWHEELUP;
-    constexpr auto c355 = goldsrc::K_MOUSE1;
-    constexpr auto c356 = goldsrc::K_MOUSE2;
-    constexpr auto c357 = goldsrc::K_MOUSE3;
-    constexpr auto c358 = goldsrc::K_MOUSE4;
-    constexpr auto c359 = goldsrc::K_MOUSE5;
-    constexpr auto c360 = goldsrc::K_PAUSE;
-    constexpr auto c361 = goldsrc::MAX_LIGHTSTYLE_INDEX_BITS;
-    constexpr auto c362 = goldsrc::MAX_DECAL_INDEX_BITS;
-    constexpr auto c363 = goldsrc::MAX_GENERIC_INDEX_BITS;
-    constexpr auto c364 = goldsrc::MAX_MODEL_INDEX_BITS;
-    constexpr auto c365 = goldsrc::MAX_SOUND_INDEX_BITS;
-    constexpr auto c366 = goldsrc::MAX_NUM_ARGVS;
-    constexpr auto c367 = goldsrc::MAX_LIGHTSTYLES;
-    constexpr auto c368 = goldsrc::MAX_QPATH;
-    constexpr auto c369 = goldsrc::MAX_EVENTS;
-    constexpr auto c370 = goldsrc::MAX_PACKET_ENTITIES;
-    constexpr auto c371 = goldsrc::MAX_OSPATH;
-    constexpr auto c372 = goldsrc::MAX_BASE_DECALS;
-    constexpr auto c373 = goldsrc::MAX_GENERIC;
-    constexpr auto c374 = goldsrc::MAX_MODELS;
-    constexpr auto c375 = goldsrc::MAX_SOUNDS;
-    constexpr auto c376 = goldsrc::MAX_SOUNDS_HASHLOOKUP_SIZE;
-    constexpr auto c377 = goldsrc::MAX_CLIENTS;
-    constexpr auto c378 = goldsrc::PM_NORMAL;
-    constexpr auto c379 = goldsrc::PM_TRACELINE_PHYSENTSONLY;
-    constexpr auto c380 = goldsrc::PM_STUDIO_IGNORE;
-    constexpr auto c381 = goldsrc::PM_TRACELINE_ANYVISIBLE;
-    constexpr auto c382 = goldsrc::PM_STUDIO_BOX;
-    constexpr auto c383 = goldsrc::PM_GLASS_IGNORE;
-    constexpr auto c384 = goldsrc::PM_WORLD_ONLY;
-    constexpr auto c385 = goldsrc::PM_CHECKSTUCK_MINTIME;
-    constexpr auto c386 = goldsrc::PM_DEAD_VIEWHEIGHT;
-    constexpr auto c387 = goldsrc::PM_PLAYER_FALL_PUNCH_THRESHHOLD;
-    constexpr auto c388 = goldsrc::PM_PLAYER_MIN_BOUNCE_SPEED;
-    constexpr auto c389 = goldsrc::PM_PLAYER_MAX_SAFE_FALL_SPEED;
-    constexpr auto c390 = goldsrc::PM_VEC_HULL_MIN;
-    constexpr auto c391 = goldsrc::PM_VEC_DUCK_HULL_MIN;
-    constexpr auto c392 = goldsrc::PM_VEC_DUCK_VIEW;
-    constexpr auto c393 = goldsrc::PM_VEC_VIEW;
-    constexpr auto c394 = goldsrc::SVC_BAD;
-    constexpr auto c395 = goldsrc::SVC_NOP;
-    constexpr auto c396 = goldsrc::SVC_DISCONNECT;
-    constexpr auto c397 = goldsrc::SVC_EVENT;
-    constexpr auto c398 = goldsrc::SVC_VERSION;
-    constexpr auto c399 = goldsrc::SVC_SETVIEW;
-    constexpr auto c400 = goldsrc::SVC_SOUND;
-    constexpr auto c401 = goldsrc::SVC_TIME;
-    constexpr auto c402 = goldsrc::SVC_PRINT;
-    constexpr auto c403 = goldsrc::SVC_STUFFTEXT;
-    constexpr auto c404 = goldsrc::SVC_SETANGLE;
-    constexpr auto c405 = goldsrc::SVC_SERVERINFO;
-    constexpr auto c406 = goldsrc::SVC_LIGHTSTYLE;
-    constexpr auto c407 = goldsrc::SVC_UPDATEUSERINFO;
-    constexpr auto c408 = goldsrc::SVC_DELTADESCRIPTION;
-    constexpr auto c409 = goldsrc::SVC_CLIENTDATA;
-    constexpr auto c410 = goldsrc::SVC_STOPSOUND;
-    constexpr auto c411 = goldsrc::SVC_PINGS;
-    constexpr auto c412 = goldsrc::SVC_PARTICLE;
-    constexpr auto c413 = goldsrc::SVC_DAMAGE;
-    constexpr auto c414 = goldsrc::SVC_SPAWNSTATIC;
-    constexpr auto c415 = goldsrc::SVC_EVENT_RELIABLE;
-    constexpr auto c416 = goldsrc::SVC_SPAWNBASELINE;
-    constexpr auto c417 = goldsrc::SVC_TEMPENTITY;
-    constexpr auto c418 = goldsrc::SVC_SETPAUSE;
-    constexpr auto c419 = goldsrc::SVC_SIGNONNUM;
-    constexpr auto c420 = goldsrc::SVC_CENTERPRINT;
-    constexpr auto c421 = goldsrc::SVC_KILLEDMONSTER;
-    constexpr auto c422 = goldsrc::SVC_FOUNDSECRET;
-    constexpr auto c423 = goldsrc::SVC_SPAWNSTATICSOUND;
-    constexpr auto c424 = goldsrc::SVC_INTERMISSION;
-    constexpr auto c425 = goldsrc::SVC_FINALE;
-    constexpr auto c426 = goldsrc::SVC_CDTRACK;
-    constexpr auto c427 = goldsrc::SVC_RESTORE;
-    constexpr auto c428 = goldsrc::SVC_CUTSCENE;
-    constexpr auto c429 = goldsrc::SVC_WEAPONANIM;
-    constexpr auto c430 = goldsrc::SVC_DECALNAME;
-    constexpr auto c431 = goldsrc::SVC_ROOMTYPE;
-    constexpr auto c432 = goldsrc::SVC_ADDANGLE;
-    constexpr auto c433 = goldsrc::SVC_NEWUSERMSG;
-    constexpr auto c434 = goldsrc::SVC_PACKETENTITIES;
-    constexpr auto c435 = goldsrc::SVC_DELTAPACKETENTITIES;
-    constexpr auto c436 = goldsrc::SVC_CHOKE;
-    constexpr auto c437 = goldsrc::SVC_RESOURCELIST;
-    constexpr auto c438 = goldsrc::SVC_NEWMOVEVARS;
-    constexpr auto c439 = goldsrc::SVC_RESOURCEREQUEST;
-    constexpr auto c440 = goldsrc::SVC_CUSTOMIZATION;
-    constexpr auto c441 = goldsrc::SVC_CROSSHAIRANGLE;
-    constexpr auto c442 = goldsrc::SVC_SOUNDFADE;
-    constexpr auto c443 = goldsrc::SVC_FILETXFERFAILED;
-    constexpr auto c444 = goldsrc::SVC_HLTV;
-    constexpr auto c445 = goldsrc::SVC_DIRECTOR;
-    constexpr auto c446 = goldsrc::SVC_VOICEINIT;
-    constexpr auto c447 = goldsrc::SVC_VOICEDATA;
-    constexpr auto c448 = goldsrc::SVC_SENDEXTRAINFO;
-    constexpr auto c449 = goldsrc::SVC_TIMESCALE;
-    constexpr auto c450 = goldsrc::SVC_RESOURCELOCATION;
-    constexpr auto c451 = goldsrc::SVC_SENDCVARVALUE;
-    constexpr auto c452 = goldsrc::SVC_SENDCVARVALUE2;
-    constexpr auto c453 = goldsrc::STUDIO_RENDER;
-    constexpr auto c454 = goldsrc::STUDIO_EVENTS;
-    constexpr auto c455 = goldsrc::TRI_TRIANGLES;
-    constexpr auto c456 = goldsrc::TRI_API_VERSION;
-    constexpr auto c457 = goldsrc::TRI_TRIANGLE_FAN;
-    constexpr auto c458 = goldsrc::TRI_QUADS;
-    constexpr auto c459 = goldsrc::TRI_POLYGON;
-    constexpr auto c460 = goldsrc::TRI_LINES;
-    constexpr auto c461 = goldsrc::TRI_TRIANGLE_STRIP;
-    constexpr auto c462 = goldsrc::TRI_QUAD_STRIP;
-    constexpr auto c463 = goldsrc::cstrike::MAX_PLAYERS;
-    constexpr auto c464 = goldsrc::cstrike::MAX_TEAMS;
-    constexpr auto c465 = goldsrc::cstrike::MAX_TEAM_NAME;
-    constexpr auto c466 = goldsrc::cstrike::MAX_LOCATION_NAME;
-    constexpr auto c467 = goldsrc::cstrike::MAX_HOSTAGES;
-    constexpr auto c468 = goldsrc::cstrike::WEAPON_NONE;
-    constexpr auto c469 = goldsrc::cstrike::WEAPON_P228;
-    constexpr auto c470 = goldsrc::cstrike::WEAPON_GLOCK;
-    constexpr auto c471 = goldsrc::cstrike::WEAPON_SCOUT;
-    constexpr auto c472 = goldsrc::cstrike::WEAPON_HEGRENADE;
-    constexpr auto c473 = goldsrc::cstrike::WEAPON_XM1014;
-    constexpr auto c474 = goldsrc::cstrike::WEAPON_C4;
-    constexpr auto c475 = goldsrc::cstrike::WEAPON_MAC10;
-    constexpr auto c476 = goldsrc::cstrike::WEAPON_AUG;
-    constexpr auto c477 = goldsrc::cstrike::WEAPON_SMOKEGRENADE;
-    constexpr auto c478 = goldsrc::cstrike::WEAPON_ELITE;
-    constexpr auto c479 = goldsrc::cstrike::WEAPON_FIVESEVEN;
-    constexpr auto c480 = goldsrc::cstrike::WEAPON_UMP45;
-    constexpr auto c481 = goldsrc::cstrike::WEAPON_SG550;
-    constexpr auto c482 = goldsrc::cstrike::WEAPON_GALIL;
-    constexpr auto c483 = goldsrc::cstrike::WEAPON_FAMAS;
-    constexpr auto c484 = goldsrc::cstrike::WEAPON_USP;
-    constexpr auto c485 = goldsrc::cstrike::WEAPON_GLOCK18;
-    constexpr auto c486 = goldsrc::cstrike::WEAPON_AWP;
-    constexpr auto c487 = goldsrc::cstrike::WEAPON_MP5N;
-    constexpr auto c488 = goldsrc::cstrike::WEAPON_M249;
-    constexpr auto c489 = goldsrc::cstrike::WEAPON_M3;
-    constexpr auto c490 = goldsrc::cstrike::WEAPON_M4A1;
-    constexpr auto c491 = goldsrc::cstrike::WEAPON_TMP;
-    constexpr auto c492 = goldsrc::cstrike::WEAPON_G3SG1;
-    constexpr auto c493 = goldsrc::cstrike::WEAPON_FLASHBANG;
-    constexpr auto c494 = goldsrc::cstrike::WEAPON_DEAGLE;
-    constexpr auto c495 = goldsrc::cstrike::WEAPON_SG552;
-    constexpr auto c496 = goldsrc::cstrike::WEAPON_AK47;
-    constexpr auto c497 = goldsrc::cstrike::WEAPON_KNIFE;
-    constexpr auto c498 = goldsrc::cstrike::WEAPON_P90;
-    constexpr auto c499 = goldsrc::cstrike::WEAPON_SHIELDGUN;
-    constexpr auto c500 = goldsrc::cstrike::WPNSTATE_USP_SILENCED;
-    constexpr auto c501 = goldsrc::cstrike::WPNSTATE_GLOCK18_BURST_MODE;
-    constexpr auto c502 = goldsrc::cstrike::WPNSTATE_M4A1_SILENCED;
-    constexpr auto c503 = goldsrc::cstrike::WPNSTATE_ELITE_LEFT;
-    constexpr auto c504 = goldsrc::cstrike::WPNSTATE_FAMAS_BURST_MODE;
-    constexpr auto c505 = goldsrc::cstrike::WPNSTATE_SHIELD_DRAWN;
-    constexpr auto c506 = goldsrc::cstrike::ELITE_IDLE;
-    constexpr auto c507 = goldsrc::cstrike::ELITE_IDLE_LEFTEMPTY;
-    constexpr auto c508 = goldsrc::cstrike::ELITE_SHOOTLEFT1;
-    constexpr auto c509 = goldsrc::cstrike::ELITE_SHOOTLEFT2;
-    constexpr auto c510 = goldsrc::cstrike::ELITE_SHOOTLEFT3;
-    constexpr auto c511 = goldsrc::cstrike::ELITE_SHOOTLEFT4;
-    constexpr auto c512 = goldsrc::cstrike::ELITE_SHOOTLEFT5;
-    constexpr auto c513 = goldsrc::cstrike::ELITE_SHOOTLEFTLAST;
-    constexpr auto c514 = goldsrc::cstrike::ELITE_SHOOTRIGHT1;
-    constexpr auto c515 = goldsrc::cstrike::ELITE_SHOOTRIGHT2;
-    constexpr auto c516 = goldsrc::cstrike::ELITE_SHOOTRIGHT3;
-    constexpr auto c517 = goldsrc::cstrike::ELITE_SHOOTRIGHT4;
-    constexpr auto c518 = goldsrc::cstrike::ELITE_SHOOTRIGHT5;
-    constexpr auto c519 = goldsrc::cstrike::ELITE_SHOOTRIGHTLAST;
-    constexpr auto c520 = goldsrc::cstrike::ELITE_RELOAD;
-    constexpr auto c521 = goldsrc::cstrike::ELITE_DRAW;
-    constexpr auto c522 = goldsrc::cstrike::GLOCK18_IDLE1;
-    constexpr auto c523 = goldsrc::cstrike::GLOCK18_IDLE2;
-    constexpr auto c524 = goldsrc::cstrike::GLOCK18_IDLE3;
-    constexpr auto c525 = goldsrc::cstrike::GLOCK18_SHOOT;
-    constexpr auto c526 = goldsrc::cstrike::GLOCK18_SHOOT2;
-    constexpr auto c527 = goldsrc::cstrike::GLOCK18_SHOOT3;
-    constexpr auto c528 = goldsrc::cstrike::GLOCK18_SHOOT_EMPTY;
-    constexpr auto c529 = goldsrc::cstrike::GLOCK18_RELOAD;
-    constexpr auto c530 = goldsrc::cstrike::GLOCK18_DRAW;
-    constexpr auto c531 = goldsrc::cstrike::GLOCK18_HOLSTER;
-    constexpr auto c532 = goldsrc::cstrike::GLOCK18_ADD_SILENCER;
-    constexpr auto c533 = goldsrc::cstrike::GLOCK18_DRAW2;
-    constexpr auto c534 = goldsrc::cstrike::GLOCK18_RELOAD2;
-    constexpr auto c535 = goldsrc::cstrike::M4A1_IDLE;
-    constexpr auto c536 = goldsrc::cstrike::M4A1_SHOOT1;
-    constexpr auto c537 = goldsrc::cstrike::M4A1_SHOOT2;
-    constexpr auto c538 = goldsrc::cstrike::M4A1_SHOOT3;
-    constexpr auto c539 = goldsrc::cstrike::M4A1_RELOAD;
-    constexpr auto c540 = goldsrc::cstrike::M4A1_DRAW;
-    constexpr auto c541 = goldsrc::cstrike::M4A1_ATTACH_SILENCER;
-    constexpr auto c542 = goldsrc::cstrike::M4A1_UNSIL_IDLE;
-    constexpr auto c543 = goldsrc::cstrike::M4A1_UNSIL_SHOOT1;
-    constexpr auto c544 = goldsrc::cstrike::M4A1_UNSIL_SHOOT2;
-    constexpr auto c545 = goldsrc::cstrike::M4A1_UNSIL_SHOOT3;
-    constexpr auto c546 = goldsrc::cstrike::M4A1_UNSIL_RELOAD;
-    constexpr auto c547 = goldsrc::cstrike::M4A1_UNSIL_DRAW;
-    constexpr auto c548 = goldsrc::cstrike::M4A1_DETACH_SILENCER;
-    constexpr auto c549 = goldsrc::cstrike::USP_IDLE;
-    constexpr auto c550 = goldsrc::cstrike::USP_SHOOT1;
-    constexpr auto c551 = goldsrc::cstrike::USP_SHOOT2;
-    constexpr auto c552 = goldsrc::cstrike::USP_SHOOT3;
-    constexpr auto c553 = goldsrc::cstrike::USP_SHOOT_EMPTY;
-    constexpr auto c554 = goldsrc::cstrike::USP_RELOAD;
-    constexpr auto c555 = goldsrc::cstrike::USP_DRAW;
-    constexpr auto c556 = goldsrc::cstrike::USP_ATTACH_SILENCER;
-    constexpr auto c557 = goldsrc::cstrike::USP_UNSIL_IDLE;
-    constexpr auto c558 = goldsrc::cstrike::USP_UNSIL_SHOOT1;
-    constexpr auto c559 = goldsrc::cstrike::USP_UNSIL_SHOOT2;
-    constexpr auto c560 = goldsrc::cstrike::USP_UNSIL_SHOOT3;
-    constexpr auto c561 = goldsrc::cstrike::USP_UNSIL_SHOOT_EMPTY;
-    constexpr auto c562 = goldsrc::cstrike::USP_UNSIL_RELOAD;
-    constexpr auto c563 = goldsrc::cstrike::USP_UNSIL_DRAW;
-    constexpr auto c564 = goldsrc::cstrike::USP_DETACH_SILENCER;
-    constexpr auto c565 = goldsrc::CAREER_NONE;
-    constexpr auto c566 = goldsrc::CAREER_LOADING;
-    constexpr auto c567 = goldsrc::CAREER_PLAYING;
-    constexpr auto c568 = goldsrc::ca_dedicated;
-    constexpr auto c569 = goldsrc::ca_disconnected;
-    constexpr auto c570 = goldsrc::ca_connecting;
-    constexpr auto c571 = goldsrc::ca_connected;
-    constexpr auto c572 = goldsrc::ca_uninitialized;
-    constexpr auto c573 = goldsrc::ca_active;
-    constexpr auto c574 = goldsrc::src_client;
-    constexpr auto c575 = goldsrc::src_command;
-    constexpr auto c576 = goldsrc::mod_bad;
-    constexpr auto c577 = goldsrc::mod_brush;
-    constexpr auto c578 = goldsrc::mod_sprite;
-    constexpr auto c579 = goldsrc::mod_alias;
-    constexpr auto c580 = goldsrc::mod_studio;
-    constexpr auto c581 = goldsrc::clc_bad;
-    constexpr auto c582 = goldsrc::clc_nop;
-    constexpr auto c583 = goldsrc::clc_move;
-    constexpr auto c584 = goldsrc::clc_stringcmd;
-    constexpr auto c585 = goldsrc::clc_delta;
-    constexpr auto c586 = goldsrc::clc_resourcelist;
-    constexpr auto c587 = goldsrc::clc_tmove;
-    constexpr auto c588 = goldsrc::clc_fileconsistency;
-    constexpr auto c589 = goldsrc::clc_voicedata;
-    constexpr auto c590 = goldsrc::clc_hltv;
-    constexpr auto c591 = goldsrc::clc_cvarvalue;
-    constexpr auto c592 = goldsrc::clc_cvarvalue2;
-    constexpr auto c593 = goldsrc::clc_endoflist;
-    constexpr auto c594 = goldsrc::NA_UNUSED;
-    constexpr auto c595 = goldsrc::NA_LOOPBACK;
-    constexpr auto c596 = goldsrc::NA_BROADCAST;
-    constexpr auto c597 = goldsrc::NA_IP;
-    constexpr auto c598 = goldsrc::NA_IPX;
-    constexpr auto c599 = goldsrc::NA_BROADCAST_IPX;
-    constexpr auto c600 = goldsrc::NS_CLIENT;
-    constexpr auto c601 = goldsrc::NS_SERVER;
-    constexpr auto c602 = goldsrc::NS_MULTICAST;
-    constexpr auto c603 = goldsrc::NS_MAX;
-    constexpr auto c604 = goldsrc::FRAG_NORMAL_STREAM;
-    constexpr auto c605 = goldsrc::FRAG_FILE_STREAM;
-    constexpr auto c606 = goldsrc::MAX_STREAMS;
-    constexpr auto c607 = goldsrc::t_sound;
-    constexpr auto c608 = goldsrc::t_skin;
-    constexpr auto c609 = goldsrc::t_model;
-    constexpr auto c610 = goldsrc::t_decal;
-    constexpr auto c611 = goldsrc::t_generic;
-    constexpr auto c612 = goldsrc::t_eventscript;
-    constexpr auto c613 = goldsrc::t_world;
-    constexpr auto c614 = goldsrc::rt_unk;
-    constexpr auto c615 = goldsrc::rt_max;
-    constexpr auto c616 = goldsrc::VT_None;
-    constexpr auto c617 = goldsrc::VT_Software;
-    constexpr auto c618 = goldsrc::VT_OpenGL;
-    constexpr auto c619 = goldsrc::VT_Direct3D;
-    constexpr auto c620 = goldsrc::kRenderNormal;
-    constexpr auto c621 = goldsrc::kRenderTransColor;
-    constexpr auto c622 = goldsrc::kRenderTransTexture;
-    constexpr auto c623 = goldsrc::kRenderGlow;
-    constexpr auto c624 = goldsrc::kRenderTransAlpha;
-    constexpr auto c625 = goldsrc::kRenderTransAdd;
-    constexpr auto c626 = goldsrc::kRenderFxNone;
-    constexpr auto c627 = goldsrc::kRenderFxPulseSlow;
-    constexpr auto c628 = goldsrc::kRenderFxPulseFast;
-    constexpr auto c629 = goldsrc::kRenderFxPulseSlowWide;
-    constexpr auto c630 = goldsrc::kRenderFxPulseFastWide;
-    constexpr auto c631 = goldsrc::kRenderFxFadeSlow;
-    constexpr auto c632 = goldsrc::kRenderFxFadeFast;
-    constexpr auto c633 = goldsrc::kRenderFxSolidSlow;
-    constexpr auto c634 = goldsrc::kRenderFxSolidFast;
-    constexpr auto c635 = goldsrc::kRenderFxStrobeSlow;
-    constexpr auto c636 = goldsrc::kRenderFxStrobeFast;
-    constexpr auto c637 = goldsrc::kRenderFxStrobeFaster;
-    constexpr auto c638 = goldsrc::kRenderFxFlickerSlow;
-    constexpr auto c639 = goldsrc::kRenderFxFlickerFast;
-    constexpr auto c640 = goldsrc::kRenderFxNoDissipation;
-    constexpr auto c641 = goldsrc::kRenderFxDistort;
-    constexpr auto c642 = goldsrc::kRenderFxHologram;
-    constexpr auto c643 = goldsrc::kRenderFxDeadPlayer;
-    constexpr auto c644 = goldsrc::kRenderFxExplode;
-    constexpr auto c645 = goldsrc::kRenderFxGlowShell;
-    constexpr auto c646 = goldsrc::kRenderFxClampMinScale;
-    constexpr auto c647 = goldsrc::kRenderFxLightMultiplier;
-    constexpr auto c648 = goldsrc::SPR_SINGLE;
-    constexpr auto c649 = goldsrc::SPR_GROUP;
-    constexpr auto c650 = goldsrc::SPR_ANGLED;
-    constexpr auto c651 = goldsrc::ST_SYNC;
-    constexpr auto c652 = goldsrc::ST_RAND;
-    constexpr auto c653 = goldsrc::key_game;
-    constexpr auto c654 = goldsrc::key_message;
-    constexpr auto c655 = goldsrc::key_menu;
-    constexpr auto c656 = goldsrc::at_notice;
-    constexpr auto c657 = goldsrc::at_console;
-    constexpr auto c658 = goldsrc::at_aiconsole;
-    constexpr auto c659 = goldsrc::at_warning;
-    constexpr auto c660 = goldsrc::at_error;
-    constexpr auto c661 = goldsrc::at_logged;
-    constexpr auto c662 = goldsrc::force_exactfile;
-    constexpr auto c663 = goldsrc::force_model_samebounds;
-    constexpr auto c664 = goldsrc::force_model_specifybounds;
-    constexpr auto c665 = goldsrc::force_model_specifybounds_if_avail;
-    constexpr auto c666 = goldsrc::print_console;
-    constexpr auto c667 = goldsrc::print_center;
-    constexpr auto c668 = goldsrc::print_chat;
-    constexpr auto c669 = goldsrc::TRI_FRONT;
-    constexpr auto c670 = goldsrc::TRI_NONE;
-    constexpr auto c671 = goldsrc::MicrophoneVolume;
-    constexpr auto c672 = goldsrc::OtherSpeakerScale;
-    constexpr auto c673 = goldsrc::MicBoost;
-    constexpr auto c674 = goldsrc::cstrike::CHudAmmoSecondary::MAX_SEC_AMMO_VALUES;
-    constexpr auto c675 = goldsrc::cstrike::CHudMessage::MESSAGE_ARG_LEN;
-    constexpr auto c676 = goldsrc::cstrike::CHudMessage::MAX_MESSAGE_ARGS;
-    constexpr auto c677 = goldsrc::cstrike::CHudStatusBar::MAX_STATUSTEXT_LENGTH;
-    constexpr auto c678 = goldsrc::cstrike::CHudStatusBar::MAX_STATUSBAR_VALUES;
-    constexpr auto c679 = goldsrc::cstrike::CHudStatusBar::MAX_STATUSBAR_LINES;
-    constexpr auto c680 = goldsrc::cstrike::CHudStatusIcons::MAX_ICONSPRITENAME_LENGTH;
-    constexpr auto c681 = goldsrc::cstrike::CHudStatusIcons::MAX_ICONSPRITES;
+    constexpr auto c80 = goldsrc::cstrike::MAX_SPRITE_NAME_LENGTH;
+    constexpr auto c81 = goldsrc::cstrike::INSET_OFF;
+    constexpr auto c82 = goldsrc::cstrike::INSET_CHASE_FREE;
+    constexpr auto c83 = goldsrc::cstrike::INSET_IN_EYE;
+    constexpr auto c84 = goldsrc::cstrike::INSET_MAP_FREE;
+    constexpr auto c85 = goldsrc::cstrike::INSET_MAP_CHASE;
+    constexpr auto c86 = goldsrc::cstrike::WEAPON_IS_ONTARGET;
+    constexpr auto c87 = goldsrc::FCVAR_ARCHIVE;
+    constexpr auto c88 = goldsrc::FCVAR_USERINFO;
+    constexpr auto c89 = goldsrc::FCVAR_SERVER;
+    constexpr auto c90 = goldsrc::FCVAR_EXTDLL;
+    constexpr auto c91 = goldsrc::FCVAR_CLIENTDLL;
+    constexpr auto c92 = goldsrc::FCVAR_PROTECTED;
+    constexpr auto c93 = goldsrc::FCVAR_SPONLY;
+    constexpr auto c94 = goldsrc::FCVAR_PRINTABLEONLY;
+    constexpr auto c95 = goldsrc::FCVAR_UNLOGGED;
+    constexpr auto c96 = goldsrc::FCVAR_NOEXTRAWHITEPACE;
+    constexpr auto c97 = goldsrc::FCVAR_PRIVILEGED;
+    constexpr auto c98 = goldsrc::FCVAR_FILTERABLE;
+    constexpr auto c99 = goldsrc::FCVAR_ISEXECUTED;
+    constexpr auto c100 = goldsrc::FCVAR_ISPATH;
+    constexpr auto c101 = goldsrc::FCVAR_CHEAT;
+    constexpr auto c102 = goldsrc::COM_MAX_CMD_LINE;
+    constexpr auto c103 = goldsrc::NUM_SAFE_ARGVS;
+    constexpr auto c104 = goldsrc::IDPOLYHEADER;
+    constexpr auto c105 = goldsrc::MAX_KNOWN_MODELS;
+    constexpr auto c106 = goldsrc::SURF_PLANEBACK;
+    constexpr auto c107 = goldsrc::SURF_DRAWSKY;
+    constexpr auto c108 = goldsrc::SURF_DRAWSPRITE;
+    constexpr auto c109 = goldsrc::SURF_DRAWTURB;
+    constexpr auto c110 = goldsrc::SURF_DRAWTILED;
+    constexpr auto c111 = goldsrc::SURF_DRAWBACKGROUND;
+    constexpr auto c112 = goldsrc::SURF_UNDERWATER;
+    constexpr auto c113 = goldsrc::MAX_MODEL_NAME;
+    constexpr auto c114 = goldsrc::SIZEBUF_CHECK_OVERFLOW;
+    constexpr auto c115 = goldsrc::SIZEBUF_ALLOW_OVERFLOW;
+    constexpr auto c116 = goldsrc::SIZEBUF_OVERFLOWED;
+    constexpr auto c117 = goldsrc::FCUST_FROMHPAK;
+    constexpr auto c118 = goldsrc::FCUST_WIPEDATA;
+    constexpr auto c119 = goldsrc::FCUST_IGNOREINIT;
+    constexpr auto c120 = goldsrc::MAX_RESOURCE_LIST;
+    constexpr auto c121 = goldsrc::RES_FATALIFMISSING;
+    constexpr auto c122 = goldsrc::RES_WASMISSING;
+    constexpr auto c123 = goldsrc::RES_CUSTOM;
+    constexpr auto c124 = goldsrc::RES_REQUESTED;
+    constexpr auto c125 = goldsrc::RES_PRECACHED;
+    constexpr auto c126 = goldsrc::RES_ALWAYS;
+    constexpr auto c127 = goldsrc::RES_UNK_6;
+    constexpr auto c128 = goldsrc::RES_CHECKFILE;
+    constexpr auto c129 = goldsrc::CHAN_AUTO;
+    constexpr auto c130 = goldsrc::CHAN_WEAPON;
+    constexpr auto c131 = goldsrc::CHAN_VOICE;
+    constexpr auto c132 = goldsrc::CHAN_ITEM;
+    constexpr auto c133 = goldsrc::CHAN_BODY;
+    constexpr auto c134 = goldsrc::CHAN_STREAM;
+    constexpr auto c135 = goldsrc::CHAN_STATIC;
+    constexpr auto c136 = goldsrc::CHAN_NETWORKVOICE_BASE;
+    constexpr auto c137 = goldsrc::CHAN_NETWORKVOICE_END;
+    constexpr auto c138 = goldsrc::CHAN_BOT;
+    constexpr auto c139 = goldsrc::CVOXFILESENTENCEMAX;
+    constexpr auto c140 = goldsrc::OFF_SVC_MESSAGES_P;
+    constexpr auto c141 = goldsrc::EF_BRIGHTFIELD;
+    constexpr auto c142 = goldsrc::EF_MUZZLEFLASH;
+    constexpr auto c143 = goldsrc::EF_BRIGHTLIGHT;
+    constexpr auto c144 = goldsrc::EF_DIMLIGHT;
+    constexpr auto c145 = goldsrc::EF_INVLIGHT;
+    constexpr auto c146 = goldsrc::EF_NOINTERP;
+    constexpr auto c147 = goldsrc::EF_LIGHT;
+    constexpr auto c148 = goldsrc::EF_NODRAW;
+    constexpr auto c149 = goldsrc::EF_NIGHTVISION;
+    constexpr auto c150 = goldsrc::EF_SNIPERLASER;
+    constexpr auto c151 = goldsrc::EF_FIBERCAMERA;
+    constexpr auto c152 = goldsrc::FL_DORMANT;
+    constexpr auto c153 = goldsrc::FL_FLY;
+    constexpr auto c154 = goldsrc::FL_SWIM;
+    constexpr auto c155 = goldsrc::FL_CONVEYOR;
+    constexpr auto c156 = goldsrc::FL_CLIENT;
+    constexpr auto c157 = goldsrc::FL_INWATER;
+    constexpr auto c158 = goldsrc::FL_MONSTER;
+    constexpr auto c159 = goldsrc::FL_GODMODE;
+    constexpr auto c160 = goldsrc::FL_NOTARGET;
+    constexpr auto c161 = goldsrc::FL_SKIPLOCALHOST;
+    constexpr auto c162 = goldsrc::FL_ONGROUND;
+    constexpr auto c163 = goldsrc::FL_PARTIALGROUND;
+    constexpr auto c164 = goldsrc::FL_WATERJUMP;
+    constexpr auto c165 = goldsrc::FL_FROZEN;
+    constexpr auto c166 = goldsrc::FL_FAKECLIENT;
+    constexpr auto c167 = goldsrc::FL_DUCKING;
+    constexpr auto c168 = goldsrc::FL_FLOAT;
+    constexpr auto c169 = goldsrc::FL_GRAPHED;
+    constexpr auto c170 = goldsrc::FL_IMMUNE_WATER;
+    constexpr auto c171 = goldsrc::FL_IMMUNE_SLIME;
+    constexpr auto c172 = goldsrc::FL_IMMUNE_LAVA;
+    constexpr auto c173 = goldsrc::FL_PROXY;
+    constexpr auto c174 = goldsrc::FL_ALWAYSTHINK;
+    constexpr auto c175 = goldsrc::FL_BASEVELOCITY;
+    constexpr auto c176 = goldsrc::FL_MONSTERCLIP;
+    constexpr auto c177 = goldsrc::FL_ONTRAIN;
+    constexpr auto c178 = goldsrc::FL_WORLDBRUSH;
+    constexpr auto c179 = goldsrc::FL_SPECTATOR;
+    constexpr auto c180 = goldsrc::FL_CUSTOMENTITY;
+    constexpr auto c181 = goldsrc::FL_KILLME;
+    constexpr auto c182 = goldsrc::HISTORY_MASK;
+    constexpr auto c183 = goldsrc::HISTORY_MAX;
+    constexpr auto c184 = goldsrc::MOVETYPE_NONE;
+    constexpr auto c185 = goldsrc::MOVETYPE_WALK;
+    constexpr auto c186 = goldsrc::MOVETYPE_STEP;
+    constexpr auto c187 = goldsrc::MOVETYPE_FLY;
+    constexpr auto c188 = goldsrc::MOVETYPE_TOSS;
+    constexpr auto c189 = goldsrc::MOVETYPE_PUSH;
+    constexpr auto c190 = goldsrc::MOVETYPE_NOCLIP;
+    constexpr auto c191 = goldsrc::MOVETYPE_FLYMISSILE;
+    constexpr auto c192 = goldsrc::MOVETYPE_BOUNCE;
+    constexpr auto c193 = goldsrc::MOVETYPE_BOUNCEMISSILE;
+    constexpr auto c194 = goldsrc::MOVETYPE_FOLLOW;
+    constexpr auto c195 = goldsrc::MOVETYPE_PUSHSTEP;
+    constexpr auto c196 = goldsrc::HLBSP_VERSION;
+    constexpr auto c197 = goldsrc::Q1BSP_VERSION;
+    constexpr auto c198 = goldsrc::IDSPRITEHEADER;
+    constexpr auto c199 = goldsrc::SPRITE_VERSION;
+    constexpr auto c200 = goldsrc::MAXSTUDIOSKINS;
+    constexpr auto c201 = goldsrc::STUDIO_HAS_NORMALS;
+    constexpr auto c202 = goldsrc::STUDIO_LOOPING;
+    constexpr auto c203 = goldsrc::STUDIO_NF_FLATSHADE;
+    constexpr auto c204 = goldsrc::STUDIO_X;
+    constexpr auto c205 = goldsrc::STUDIO_HAS_VERTICES;
+    constexpr auto c206 = goldsrc::STUDIO_NF_CHROME;
+    constexpr auto c207 = goldsrc::STUDIO_Y;
+    constexpr auto c208 = goldsrc::STUDIO_HAS_BBOX;
+    constexpr auto c209 = goldsrc::STUDIO_NF_FULLBRIGHT;
+    constexpr auto c210 = goldsrc::STUDIO_Z;
+    constexpr auto c211 = goldsrc::STUDIO_HAS_CHROME;
+    constexpr auto c212 = goldsrc::STUDIO_NF_NOMIPS;
+    constexpr auto c213 = goldsrc::STUDIO_XR;
+    constexpr auto c214 = goldsrc::STUDIO_NF_ALPHA;
+    constexpr auto c215 = goldsrc::STUDIO_YR;
+    constexpr auto c216 = goldsrc::STUDIO_NF_ADDITIVE;
+    constexpr auto c217 = goldsrc::STUDIO_ZR;
+    constexpr auto c218 = goldsrc::STUDIO_LX;
+    constexpr auto c219 = goldsrc::STUDIO_NF_MASKED;
+    constexpr auto c220 = goldsrc::STUDIO_LY;
+    constexpr auto c221 = goldsrc::STUDIO_DYNAMIC_LIGHT;
+    constexpr auto c222 = goldsrc::STUDIO_LZ;
+    constexpr auto c223 = goldsrc::STUDIO_AX;
+    constexpr auto c224 = goldsrc::STUDIO_TRACE_HITBOX;
+    constexpr auto c225 = goldsrc::STUDIO_AY;
+    constexpr auto c226 = goldsrc::STUDIO_AZ;
+    constexpr auto c227 = goldsrc::STUDIO_AXR;
+    constexpr auto c228 = goldsrc::STUDIO_AYR;
+    constexpr auto c229 = goldsrc::STUDIO_AZR;
+    constexpr auto c230 = goldsrc::STUDIO_TYPES;
+    constexpr auto c231 = goldsrc::STUDIO_RLOOP;
+    constexpr auto c232 = goldsrc::STUDIO_CACHE_SIZE;
+    constexpr auto c233 = goldsrc::STUDIO_MOUTH;
+    constexpr auto c234 = goldsrc::STUDIO_NUM_HULLS;
+    constexpr auto c235 = goldsrc::STUDIO_NUM_PLANES;
+    constexpr auto c236 = goldsrc::STUDIO_TO_RAD;
+    constexpr auto c237 = goldsrc::DRC_CMD_NONE;
+    constexpr auto c238 = goldsrc::DRC_CMD_START;
+    constexpr auto c239 = goldsrc::DRC_CMD_EVENT;
+    constexpr auto c240 = goldsrc::DRC_CMD_MODE;
+    constexpr auto c241 = goldsrc::DRC_CMD_CAMERA;
+    constexpr auto c242 = goldsrc::DRC_CMD_TIMESCALE;
+    constexpr auto c243 = goldsrc::DRC_CMD_MESSAGE;
+    constexpr auto c244 = goldsrc::DRC_CMD_SOUND;
+    constexpr auto c245 = goldsrc::DRC_CMD_STATUS;
+    constexpr auto c246 = goldsrc::DRC_CMD_BANNER;
+    constexpr auto c247 = goldsrc::DRC_CMD_STUFFTEXT;
+    constexpr auto c248 = goldsrc::DRC_CMD_CHASE;
+    constexpr auto c249 = goldsrc::DRC_CMD_INEYE;
+    constexpr auto c250 = goldsrc::DRC_CMD_MAP;
+    constexpr auto c251 = goldsrc::DRC_CMD_CAMPATH;
+    constexpr auto c252 = goldsrc::DRC_CMD_LAST;
+    constexpr auto c253 = goldsrc::DRC_CMD_WAYPOINTS;
+    constexpr auto c254 = goldsrc::DRC_FLAG_STARTPATH;
+    constexpr auto c255 = goldsrc::DRC_FLAG_SLOWSTART;
+    constexpr auto c256 = goldsrc::DRC_FLAG_SLOWEND;
+    constexpr auto c257 = goldsrc::DRC_FLAG_PRIO_MASK;
+    constexpr auto c258 = goldsrc::DRC_FLAG_SIDE;
+    constexpr auto c259 = goldsrc::DRC_FLAG_DRAMATIC;
+    constexpr auto c260 = goldsrc::DRC_FLAG_SLOWMOTION;
+    constexpr auto c261 = goldsrc::DRC_FLAG_FACEPLAYER;
+    constexpr auto c262 = goldsrc::DRC_FLAG_INTRO;
+    constexpr auto c263 = goldsrc::DRC_FLAG_FINAL;
+    constexpr auto c264 = goldsrc::DRC_FLAG_NO_RANDOM;
+    constexpr auto c265 = goldsrc::HLTV_ACTIVE;
+    constexpr auto c266 = goldsrc::HLTV_STATUS;
+    constexpr auto c267 = goldsrc::HLTV_LISTEN;
+    constexpr auto c268 = goldsrc::TYPE_CLIENT;
+    constexpr auto c269 = goldsrc::TYPE_PROXY;
+    constexpr auto c270 = goldsrc::TYPE_DIRECTOR;
+    constexpr auto c271 = goldsrc::TYPE_COMMENTATOR;
+    constexpr auto c272 = goldsrc::TYPE_DEMO;
+    constexpr auto c273 = goldsrc::K_TAB;
+    constexpr auto c274 = goldsrc::K_ENTER;
+    constexpr auto c275 = goldsrc::K_ESCAPE;
+    constexpr auto c276 = goldsrc::K_SPACE;
+    constexpr auto c277 = goldsrc::K_BACKSPACE;
+    constexpr auto c278 = goldsrc::K_UPARROW;
+    constexpr auto c279 = goldsrc::K_DOWNARROW;
+    constexpr auto c280 = goldsrc::K_LEFTARROW;
+    constexpr auto c281 = goldsrc::K_RIGHTARROW;
+    constexpr auto c282 = goldsrc::K_ALT;
+    constexpr auto c283 = goldsrc::K_CTRL;
+    constexpr auto c284 = goldsrc::K_SHIFT;
+    constexpr auto c285 = goldsrc::K_F1;
+    constexpr auto c286 = goldsrc::K_F2;
+    constexpr auto c287 = goldsrc::K_F3;
+    constexpr auto c288 = goldsrc::K_F4;
+    constexpr auto c289 = goldsrc::K_F5;
+    constexpr auto c290 = goldsrc::K_F6;
+    constexpr auto c291 = goldsrc::K_F7;
+    constexpr auto c292 = goldsrc::K_F8;
+    constexpr auto c293 = goldsrc::K_F9;
+    constexpr auto c294 = goldsrc::K_F10;
+    constexpr auto c295 = goldsrc::K_F11;
+    constexpr auto c296 = goldsrc::K_F12;
+    constexpr auto c297 = goldsrc::K_INS;
+    constexpr auto c298 = goldsrc::K_DEL;
+    constexpr auto c299 = goldsrc::K_PGDN;
+    constexpr auto c300 = goldsrc::K_PGUP;
+    constexpr auto c301 = goldsrc::K_HOME;
+    constexpr auto c302 = goldsrc::K_END;
+    constexpr auto c303 = goldsrc::K_KP_HOME;
+    constexpr auto c304 = goldsrc::K_KP_UPARROW;
+    constexpr auto c305 = goldsrc::K_KP_PGUP;
+    constexpr auto c306 = goldsrc::K_KP_LEFTARROW;
+    constexpr auto c307 = goldsrc::K_KP_5;
+    constexpr auto c308 = goldsrc::K_KP_RIGHTARROW;
+    constexpr auto c309 = goldsrc::K_KP_END;
+    constexpr auto c310 = goldsrc::K_KP_DOWNARROW;
+    constexpr auto c311 = goldsrc::K_KP_PGDN;
+    constexpr auto c312 = goldsrc::K_KP_ENTER;
+    constexpr auto c313 = goldsrc::K_KP_INS;
+    constexpr auto c314 = goldsrc::K_KP_DEL;
+    constexpr auto c315 = goldsrc::K_KP_SLASH;
+    constexpr auto c316 = goldsrc::K_KP_MINUS;
+    constexpr auto c317 = goldsrc::K_KP_PLUS;
+    constexpr auto c318 = goldsrc::K_CAPSLOCK;
+    constexpr auto c319 = goldsrc::K_JOY1;
+    constexpr auto c320 = goldsrc::K_JOY2;
+    constexpr auto c321 = goldsrc::K_JOY3;
+    constexpr auto c322 = goldsrc::K_JOY4;
+    constexpr auto c323 = goldsrc::K_AUX1;
+    constexpr auto c324 = goldsrc::K_AUX2;
+    constexpr auto c325 = goldsrc::K_AUX3;
+    constexpr auto c326 = goldsrc::K_AUX4;
+    constexpr auto c327 = goldsrc::K_AUX5;
+    constexpr auto c328 = goldsrc::K_AUX6;
+    constexpr auto c329 = goldsrc::K_AUX7;
+    constexpr auto c330 = goldsrc::K_AUX8;
+    constexpr auto c331 = goldsrc::K_AUX9;
+    constexpr auto c332 = goldsrc::K_AUX10;
+    constexpr auto c333 = goldsrc::K_AUX11;
+    constexpr auto c334 = goldsrc::K_AUX12;
+    constexpr auto c335 = goldsrc::K_AUX13;
+    constexpr auto c336 = goldsrc::K_AUX14;
+    constexpr auto c337 = goldsrc::K_AUX15;
+    constexpr auto c338 = goldsrc::K_AUX16;
+    constexpr auto c339 = goldsrc::K_AUX17;
+    constexpr auto c340 = goldsrc::K_AUX18;
+    constexpr auto c341 = goldsrc::K_AUX19;
+    constexpr auto c342 = goldsrc::K_AUX20;
+    constexpr auto c343 = goldsrc::K_AUX21;
+    constexpr auto c344 = goldsrc::K_AUX22;
+    constexpr auto c345 = goldsrc::K_AUX23;
+    constexpr auto c346 = goldsrc::K_AUX24;
+    constexpr auto c347 = goldsrc::K_AUX25;
+    constexpr auto c348 = goldsrc::K_AUX26;
+    constexpr auto c349 = goldsrc::K_AUX27;
+    constexpr auto c350 = goldsrc::K_AUX28;
+    constexpr auto c351 = goldsrc::K_AUX29;
+    constexpr auto c352 = goldsrc::K_AUX30;
+    constexpr auto c353 = goldsrc::K_AUX31;
+    constexpr auto c354 = goldsrc::K_AUX32;
+    constexpr auto c355 = goldsrc::K_MWHEELDOWN;
+    constexpr auto c356 = goldsrc::K_MWHEELUP;
+    constexpr auto c357 = goldsrc::K_MOUSE1;
+    constexpr auto c358 = goldsrc::K_MOUSE2;
+    constexpr auto c359 = goldsrc::K_MOUSE3;
+    constexpr auto c360 = goldsrc::K_MOUSE4;
+    constexpr auto c361 = goldsrc::K_MOUSE5;
+    constexpr auto c362 = goldsrc::K_PAUSE;
+    constexpr auto c363 = goldsrc::MAX_LIGHTSTYLE_INDEX_BITS;
+    constexpr auto c364 = goldsrc::MAX_DECAL_INDEX_BITS;
+    constexpr auto c365 = goldsrc::MAX_GENERIC_INDEX_BITS;
+    constexpr auto c366 = goldsrc::MAX_MODEL_INDEX_BITS;
+    constexpr auto c367 = goldsrc::MAX_SOUND_INDEX_BITS;
+    constexpr auto c368 = goldsrc::MAX_NUM_ARGVS;
+    constexpr auto c369 = goldsrc::MAX_LIGHTSTYLES;
+    constexpr auto c370 = goldsrc::MAX_QPATH;
+    constexpr auto c371 = goldsrc::MAX_EVENTS;
+    constexpr auto c372 = goldsrc::MAX_PACKET_ENTITIES;
+    constexpr auto c373 = goldsrc::MAX_OSPATH;
+    constexpr auto c374 = goldsrc::MAX_BASE_DECALS;
+    constexpr auto c375 = goldsrc::MAX_GENERIC;
+    constexpr auto c376 = goldsrc::MAX_MODELS;
+    constexpr auto c377 = goldsrc::MAX_SOUNDS;
+    constexpr auto c378 = goldsrc::MAX_SOUNDS_HASHLOOKUP_SIZE;
+    constexpr auto c379 = goldsrc::MAX_CLIENTS;
+    constexpr auto c380 = goldsrc::PM_NORMAL;
+    constexpr auto c381 = goldsrc::PM_TRACELINE_PHYSENTSONLY;
+    constexpr auto c382 = goldsrc::PM_STUDIO_IGNORE;
+    constexpr auto c383 = goldsrc::PM_TRACELINE_ANYVISIBLE;
+    constexpr auto c384 = goldsrc::PM_STUDIO_BOX;
+    constexpr auto c385 = goldsrc::PM_GLASS_IGNORE;
+    constexpr auto c386 = goldsrc::PM_WORLD_ONLY;
+    constexpr auto c387 = goldsrc::PM_CHECKSTUCK_MINTIME;
+    constexpr auto c388 = goldsrc::PM_DEAD_VIEWHEIGHT;
+    constexpr auto c389 = goldsrc::PM_PLAYER_FALL_PUNCH_THRESHHOLD;
+    constexpr auto c390 = goldsrc::PM_PLAYER_MIN_BOUNCE_SPEED;
+    constexpr auto c391 = goldsrc::PM_PLAYER_MAX_SAFE_FALL_SPEED;
+    constexpr auto c392 = goldsrc::PM_VEC_HULL_MIN;
+    constexpr auto c393 = goldsrc::PM_VEC_DUCK_HULL_MIN;
+    constexpr auto c394 = goldsrc::PM_VEC_DUCK_VIEW;
+    constexpr auto c395 = goldsrc::PM_VEC_VIEW;
+    constexpr auto c396 = goldsrc::SVC_BAD;
+    constexpr auto c397 = goldsrc::SVC_NOP;
+    constexpr auto c398 = goldsrc::SVC_DISCONNECT;
+    constexpr auto c399 = goldsrc::SVC_EVENT;
+    constexpr auto c400 = goldsrc::SVC_VERSION;
+    constexpr auto c401 = goldsrc::SVC_SETVIEW;
+    constexpr auto c402 = goldsrc::SVC_SOUND;
+    constexpr auto c403 = goldsrc::SVC_TIME;
+    constexpr auto c404 = goldsrc::SVC_PRINT;
+    constexpr auto c405 = goldsrc::SVC_STUFFTEXT;
+    constexpr auto c406 = goldsrc::SVC_SETANGLE;
+    constexpr auto c407 = goldsrc::SVC_SERVERINFO;
+    constexpr auto c408 = goldsrc::SVC_LIGHTSTYLE;
+    constexpr auto c409 = goldsrc::SVC_UPDATEUSERINFO;
+    constexpr auto c410 = goldsrc::SVC_DELTADESCRIPTION;
+    constexpr auto c411 = goldsrc::SVC_CLIENTDATA;
+    constexpr auto c412 = goldsrc::SVC_STOPSOUND;
+    constexpr auto c413 = goldsrc::SVC_PINGS;
+    constexpr auto c414 = goldsrc::SVC_PARTICLE;
+    constexpr auto c415 = goldsrc::SVC_DAMAGE;
+    constexpr auto c416 = goldsrc::SVC_SPAWNSTATIC;
+    constexpr auto c417 = goldsrc::SVC_EVENT_RELIABLE;
+    constexpr auto c418 = goldsrc::SVC_SPAWNBASELINE;
+    constexpr auto c419 = goldsrc::SVC_TEMPENTITY;
+    constexpr auto c420 = goldsrc::SVC_SETPAUSE;
+    constexpr auto c421 = goldsrc::SVC_SIGNONNUM;
+    constexpr auto c422 = goldsrc::SVC_CENTERPRINT;
+    constexpr auto c423 = goldsrc::SVC_KILLEDMONSTER;
+    constexpr auto c424 = goldsrc::SVC_FOUNDSECRET;
+    constexpr auto c425 = goldsrc::SVC_SPAWNSTATICSOUND;
+    constexpr auto c426 = goldsrc::SVC_INTERMISSION;
+    constexpr auto c427 = goldsrc::SVC_FINALE;
+    constexpr auto c428 = goldsrc::SVC_CDTRACK;
+    constexpr auto c429 = goldsrc::SVC_RESTORE;
+    constexpr auto c430 = goldsrc::SVC_CUTSCENE;
+    constexpr auto c431 = goldsrc::SVC_WEAPONANIM;
+    constexpr auto c432 = goldsrc::SVC_DECALNAME;
+    constexpr auto c433 = goldsrc::SVC_ROOMTYPE;
+    constexpr auto c434 = goldsrc::SVC_ADDANGLE;
+    constexpr auto c435 = goldsrc::SVC_NEWUSERMSG;
+    constexpr auto c436 = goldsrc::SVC_PACKETENTITIES;
+    constexpr auto c437 = goldsrc::SVC_DELTAPACKETENTITIES;
+    constexpr auto c438 = goldsrc::SVC_CHOKE;
+    constexpr auto c439 = goldsrc::SVC_RESOURCELIST;
+    constexpr auto c440 = goldsrc::SVC_NEWMOVEVARS;
+    constexpr auto c441 = goldsrc::SVC_RESOURCEREQUEST;
+    constexpr auto c442 = goldsrc::SVC_CUSTOMIZATION;
+    constexpr auto c443 = goldsrc::SVC_CROSSHAIRANGLE;
+    constexpr auto c444 = goldsrc::SVC_SOUNDFADE;
+    constexpr auto c445 = goldsrc::SVC_FILETXFERFAILED;
+    constexpr auto c446 = goldsrc::SVC_HLTV;
+    constexpr auto c447 = goldsrc::SVC_DIRECTOR;
+    constexpr auto c448 = goldsrc::SVC_VOICEINIT;
+    constexpr auto c449 = goldsrc::SVC_VOICEDATA;
+    constexpr auto c450 = goldsrc::SVC_SENDEXTRAINFO;
+    constexpr auto c451 = goldsrc::SVC_TIMESCALE;
+    constexpr auto c452 = goldsrc::SVC_RESOURCELOCATION;
+    constexpr auto c453 = goldsrc::SVC_SENDCVARVALUE;
+    constexpr auto c454 = goldsrc::SVC_SENDCVARVALUE2;
+    constexpr auto c455 = goldsrc::STUDIO_RENDER;
+    constexpr auto c456 = goldsrc::STUDIO_EVENTS;
+    constexpr auto c457 = goldsrc::TRI_TRIANGLES;
+    constexpr auto c458 = goldsrc::TRI_API_VERSION;
+    constexpr auto c459 = goldsrc::TRI_TRIANGLE_FAN;
+    constexpr auto c460 = goldsrc::TRI_QUADS;
+    constexpr auto c461 = goldsrc::TRI_POLYGON;
+    constexpr auto c462 = goldsrc::TRI_LINES;
+    constexpr auto c463 = goldsrc::TRI_TRIANGLE_STRIP;
+    constexpr auto c464 = goldsrc::TRI_QUAD_STRIP;
+    constexpr auto c465 = goldsrc::cstrike::MAX_PLAYERS;
+    constexpr auto c466 = goldsrc::cstrike::MAX_TEAMS;
+    constexpr auto c467 = goldsrc::cstrike::MAX_TEAM_NAME;
+    constexpr auto c468 = goldsrc::cstrike::MAX_LOCATION_NAME;
+    constexpr auto c469 = goldsrc::cstrike::MAX_HOSTAGES;
+    constexpr auto c470 = goldsrc::cstrike::WEAPON_NONE;
+    constexpr auto c471 = goldsrc::cstrike::WEAPON_P228;
+    constexpr auto c472 = goldsrc::cstrike::WEAPON_GLOCK;
+    constexpr auto c473 = goldsrc::cstrike::WEAPON_SCOUT;
+    constexpr auto c474 = goldsrc::cstrike::WEAPON_HEGRENADE;
+    constexpr auto c475 = goldsrc::cstrike::WEAPON_XM1014;
+    constexpr auto c476 = goldsrc::cstrike::WEAPON_C4;
+    constexpr auto c477 = goldsrc::cstrike::WEAPON_MAC10;
+    constexpr auto c478 = goldsrc::cstrike::WEAPON_AUG;
+    constexpr auto c479 = goldsrc::cstrike::WEAPON_SMOKEGRENADE;
+    constexpr auto c480 = goldsrc::cstrike::WEAPON_ELITE;
+    constexpr auto c481 = goldsrc::cstrike::WEAPON_FIVESEVEN;
+    constexpr auto c482 = goldsrc::cstrike::WEAPON_UMP45;
+    constexpr auto c483 = goldsrc::cstrike::WEAPON_SG550;
+    constexpr auto c484 = goldsrc::cstrike::WEAPON_GALIL;
+    constexpr auto c485 = goldsrc::cstrike::WEAPON_FAMAS;
+    constexpr auto c486 = goldsrc::cstrike::WEAPON_USP;
+    constexpr auto c487 = goldsrc::cstrike::WEAPON_GLOCK18;
+    constexpr auto c488 = goldsrc::cstrike::WEAPON_AWP;
+    constexpr auto c489 = goldsrc::cstrike::WEAPON_MP5N;
+    constexpr auto c490 = goldsrc::cstrike::WEAPON_M249;
+    constexpr auto c491 = goldsrc::cstrike::WEAPON_M3;
+    constexpr auto c492 = goldsrc::cstrike::WEAPON_M4A1;
+    constexpr auto c493 = goldsrc::cstrike::WEAPON_TMP;
+    constexpr auto c494 = goldsrc::cstrike::WEAPON_G3SG1;
+    constexpr auto c495 = goldsrc::cstrike::WEAPON_FLASHBANG;
+    constexpr auto c496 = goldsrc::cstrike::WEAPON_DEAGLE;
+    constexpr auto c497 = goldsrc::cstrike::WEAPON_SG552;
+    constexpr auto c498 = goldsrc::cstrike::WEAPON_AK47;
+    constexpr auto c499 = goldsrc::cstrike::WEAPON_KNIFE;
+    constexpr auto c500 = goldsrc::cstrike::WEAPON_P90;
+    constexpr auto c501 = goldsrc::cstrike::WEAPON_SHIELDGUN;
+    constexpr auto c502 = goldsrc::cstrike::WPNSTATE_USP_SILENCED;
+    constexpr auto c503 = goldsrc::cstrike::WPNSTATE_GLOCK18_BURST_MODE;
+    constexpr auto c504 = goldsrc::cstrike::WPNSTATE_M4A1_SILENCED;
+    constexpr auto c505 = goldsrc::cstrike::WPNSTATE_ELITE_LEFT;
+    constexpr auto c506 = goldsrc::cstrike::WPNSTATE_FAMAS_BURST_MODE;
+    constexpr auto c507 = goldsrc::cstrike::WPNSTATE_SHIELD_DRAWN;
+    constexpr auto c508 = goldsrc::cstrike::ELITE_IDLE;
+    constexpr auto c509 = goldsrc::cstrike::ELITE_IDLE_LEFTEMPTY;
+    constexpr auto c510 = goldsrc::cstrike::ELITE_SHOOTLEFT1;
+    constexpr auto c511 = goldsrc::cstrike::ELITE_SHOOTLEFT2;
+    constexpr auto c512 = goldsrc::cstrike::ELITE_SHOOTLEFT3;
+    constexpr auto c513 = goldsrc::cstrike::ELITE_SHOOTLEFT4;
+    constexpr auto c514 = goldsrc::cstrike::ELITE_SHOOTLEFT5;
+    constexpr auto c515 = goldsrc::cstrike::ELITE_SHOOTLEFTLAST;
+    constexpr auto c516 = goldsrc::cstrike::ELITE_SHOOTRIGHT1;
+    constexpr auto c517 = goldsrc::cstrike::ELITE_SHOOTRIGHT2;
+    constexpr auto c518 = goldsrc::cstrike::ELITE_SHOOTRIGHT3;
+    constexpr auto c519 = goldsrc::cstrike::ELITE_SHOOTRIGHT4;
+    constexpr auto c520 = goldsrc::cstrike::ELITE_SHOOTRIGHT5;
+    constexpr auto c521 = goldsrc::cstrike::ELITE_SHOOTRIGHTLAST;
+    constexpr auto c522 = goldsrc::cstrike::ELITE_RELOAD;
+    constexpr auto c523 = goldsrc::cstrike::ELITE_DRAW;
+    constexpr auto c524 = goldsrc::cstrike::GLOCK18_IDLE1;
+    constexpr auto c525 = goldsrc::cstrike::GLOCK18_IDLE2;
+    constexpr auto c526 = goldsrc::cstrike::GLOCK18_IDLE3;
+    constexpr auto c527 = goldsrc::cstrike::GLOCK18_SHOOT;
+    constexpr auto c528 = goldsrc::cstrike::GLOCK18_SHOOT2;
+    constexpr auto c529 = goldsrc::cstrike::GLOCK18_SHOOT3;
+    constexpr auto c530 = goldsrc::cstrike::GLOCK18_SHOOT_EMPTY;
+    constexpr auto c531 = goldsrc::cstrike::GLOCK18_RELOAD;
+    constexpr auto c532 = goldsrc::cstrike::GLOCK18_DRAW;
+    constexpr auto c533 = goldsrc::cstrike::GLOCK18_HOLSTER;
+    constexpr auto c534 = goldsrc::cstrike::GLOCK18_ADD_SILENCER;
+    constexpr auto c535 = goldsrc::cstrike::GLOCK18_DRAW2;
+    constexpr auto c536 = goldsrc::cstrike::GLOCK18_RELOAD2;
+    constexpr auto c537 = goldsrc::cstrike::M4A1_IDLE;
+    constexpr auto c538 = goldsrc::cstrike::M4A1_SHOOT1;
+    constexpr auto c539 = goldsrc::cstrike::M4A1_SHOOT2;
+    constexpr auto c540 = goldsrc::cstrike::M4A1_SHOOT3;
+    constexpr auto c541 = goldsrc::cstrike::M4A1_RELOAD;
+    constexpr auto c542 = goldsrc::cstrike::M4A1_DRAW;
+    constexpr auto c543 = goldsrc::cstrike::M4A1_ATTACH_SILENCER;
+    constexpr auto c544 = goldsrc::cstrike::M4A1_UNSIL_IDLE;
+    constexpr auto c545 = goldsrc::cstrike::M4A1_UNSIL_SHOOT1;
+    constexpr auto c546 = goldsrc::cstrike::M4A1_UNSIL_SHOOT2;
+    constexpr auto c547 = goldsrc::cstrike::M4A1_UNSIL_SHOOT3;
+    constexpr auto c548 = goldsrc::cstrike::M4A1_UNSIL_RELOAD;
+    constexpr auto c549 = goldsrc::cstrike::M4A1_UNSIL_DRAW;
+    constexpr auto c550 = goldsrc::cstrike::M4A1_DETACH_SILENCER;
+    constexpr auto c551 = goldsrc::cstrike::USP_IDLE;
+    constexpr auto c552 = goldsrc::cstrike::USP_SHOOT1;
+    constexpr auto c553 = goldsrc::cstrike::USP_SHOOT2;
+    constexpr auto c554 = goldsrc::cstrike::USP_SHOOT3;
+    constexpr auto c555 = goldsrc::cstrike::USP_SHOOT_EMPTY;
+    constexpr auto c556 = goldsrc::cstrike::USP_RELOAD;
+    constexpr auto c557 = goldsrc::cstrike::USP_DRAW;
+    constexpr auto c558 = goldsrc::cstrike::USP_ATTACH_SILENCER;
+    constexpr auto c559 = goldsrc::cstrike::USP_UNSIL_IDLE;
+    constexpr auto c560 = goldsrc::cstrike::USP_UNSIL_SHOOT1;
+    constexpr auto c561 = goldsrc::cstrike::USP_UNSIL_SHOOT2;
+    constexpr auto c562 = goldsrc::cstrike::USP_UNSIL_SHOOT3;
+    constexpr auto c563 = goldsrc::cstrike::USP_UNSIL_SHOOT_EMPTY;
+    constexpr auto c564 = goldsrc::cstrike::USP_UNSIL_RELOAD;
+    constexpr auto c565 = goldsrc::cstrike::USP_UNSIL_DRAW;
+    constexpr auto c566 = goldsrc::cstrike::USP_DETACH_SILENCER;
+    constexpr auto c567 = goldsrc::CAREER_NONE;
+    constexpr auto c568 = goldsrc::CAREER_LOADING;
+    constexpr auto c569 = goldsrc::CAREER_PLAYING;
+    constexpr auto c570 = goldsrc::ca_dedicated;
+    constexpr auto c571 = goldsrc::ca_disconnected;
+    constexpr auto c572 = goldsrc::ca_connecting;
+    constexpr auto c573 = goldsrc::ca_connected;
+    constexpr auto c574 = goldsrc::ca_uninitialized;
+    constexpr auto c575 = goldsrc::ca_active;
+    constexpr auto c576 = goldsrc::src_client;
+    constexpr auto c577 = goldsrc::src_command;
+    constexpr auto c578 = goldsrc::mod_bad;
+    constexpr auto c579 = goldsrc::mod_brush;
+    constexpr auto c580 = goldsrc::mod_sprite;
+    constexpr auto c581 = goldsrc::mod_alias;
+    constexpr auto c582 = goldsrc::mod_studio;
+    constexpr auto c583 = goldsrc::clc_bad;
+    constexpr auto c584 = goldsrc::clc_nop;
+    constexpr auto c585 = goldsrc::clc_move;
+    constexpr auto c586 = goldsrc::clc_stringcmd;
+    constexpr auto c587 = goldsrc::clc_delta;
+    constexpr auto c588 = goldsrc::clc_resourcelist;
+    constexpr auto c589 = goldsrc::clc_tmove;
+    constexpr auto c590 = goldsrc::clc_fileconsistency;
+    constexpr auto c591 = goldsrc::clc_voicedata;
+    constexpr auto c592 = goldsrc::clc_hltv;
+    constexpr auto c593 = goldsrc::clc_cvarvalue;
+    constexpr auto c594 = goldsrc::clc_cvarvalue2;
+    constexpr auto c595 = goldsrc::clc_endoflist;
+    constexpr auto c596 = goldsrc::NA_UNUSED;
+    constexpr auto c597 = goldsrc::NA_LOOPBACK;
+    constexpr auto c598 = goldsrc::NA_BROADCAST;
+    constexpr auto c599 = goldsrc::NA_IP;
+    constexpr auto c600 = goldsrc::NA_IPX;
+    constexpr auto c601 = goldsrc::NA_BROADCAST_IPX;
+    constexpr auto c602 = goldsrc::NS_CLIENT;
+    constexpr auto c603 = goldsrc::NS_SERVER;
+    constexpr auto c604 = goldsrc::NS_MULTICAST;
+    constexpr auto c605 = goldsrc::NS_MAX;
+    constexpr auto c606 = goldsrc::FRAG_NORMAL_STREAM;
+    constexpr auto c607 = goldsrc::FRAG_FILE_STREAM;
+    constexpr auto c608 = goldsrc::MAX_STREAMS;
+    constexpr auto c609 = goldsrc::t_sound;
+    constexpr auto c610 = goldsrc::t_skin;
+    constexpr auto c611 = goldsrc::t_model;
+    constexpr auto c612 = goldsrc::t_decal;
+    constexpr auto c613 = goldsrc::t_generic;
+    constexpr auto c614 = goldsrc::t_eventscript;
+    constexpr auto c615 = goldsrc::t_world;
+    constexpr auto c616 = goldsrc::rt_unk;
+    constexpr auto c617 = goldsrc::rt_max;
+    constexpr auto c618 = goldsrc::VT_None;
+    constexpr auto c619 = goldsrc::VT_Software;
+    constexpr auto c620 = goldsrc::VT_OpenGL;
+    constexpr auto c621 = goldsrc::VT_Direct3D;
+    constexpr auto c622 = goldsrc::kRenderNormal;
+    constexpr auto c623 = goldsrc::kRenderTransColor;
+    constexpr auto c624 = goldsrc::kRenderTransTexture;
+    constexpr auto c625 = goldsrc::kRenderGlow;
+    constexpr auto c626 = goldsrc::kRenderTransAlpha;
+    constexpr auto c627 = goldsrc::kRenderTransAdd;
+    constexpr auto c628 = goldsrc::kRenderFxNone;
+    constexpr auto c629 = goldsrc::kRenderFxPulseSlow;
+    constexpr auto c630 = goldsrc::kRenderFxPulseFast;
+    constexpr auto c631 = goldsrc::kRenderFxPulseSlowWide;
+    constexpr auto c632 = goldsrc::kRenderFxPulseFastWide;
+    constexpr auto c633 = goldsrc::kRenderFxFadeSlow;
+    constexpr auto c634 = goldsrc::kRenderFxFadeFast;
+    constexpr auto c635 = goldsrc::kRenderFxSolidSlow;
+    constexpr auto c636 = goldsrc::kRenderFxSolidFast;
+    constexpr auto c637 = goldsrc::kRenderFxStrobeSlow;
+    constexpr auto c638 = goldsrc::kRenderFxStrobeFast;
+    constexpr auto c639 = goldsrc::kRenderFxStrobeFaster;
+    constexpr auto c640 = goldsrc::kRenderFxFlickerSlow;
+    constexpr auto c641 = goldsrc::kRenderFxFlickerFast;
+    constexpr auto c642 = goldsrc::kRenderFxNoDissipation;
+    constexpr auto c643 = goldsrc::kRenderFxDistort;
+    constexpr auto c644 = goldsrc::kRenderFxHologram;
+    constexpr auto c645 = goldsrc::kRenderFxDeadPlayer;
+    constexpr auto c646 = goldsrc::kRenderFxExplode;
+    constexpr auto c647 = goldsrc::kRenderFxGlowShell;
+    constexpr auto c648 = goldsrc::kRenderFxClampMinScale;
+    constexpr auto c649 = goldsrc::kRenderFxLightMultiplier;
+    constexpr auto c650 = goldsrc::SPR_SINGLE;
+    constexpr auto c651 = goldsrc::SPR_GROUP;
+    constexpr auto c652 = goldsrc::SPR_ANGLED;
+    constexpr auto c653 = goldsrc::ST_SYNC;
+    constexpr auto c654 = goldsrc::ST_RAND;
+    constexpr auto c655 = goldsrc::key_game;
+    constexpr auto c656 = goldsrc::key_message;
+    constexpr auto c657 = goldsrc::key_menu;
+    constexpr auto c658 = goldsrc::at_notice;
+    constexpr auto c659 = goldsrc::at_console;
+    constexpr auto c660 = goldsrc::at_aiconsole;
+    constexpr auto c661 = goldsrc::at_warning;
+    constexpr auto c662 = goldsrc::at_error;
+    constexpr auto c663 = goldsrc::at_logged;
+    constexpr auto c664 = goldsrc::force_exactfile;
+    constexpr auto c665 = goldsrc::force_model_samebounds;
+    constexpr auto c666 = goldsrc::force_model_specifybounds;
+    constexpr auto c667 = goldsrc::force_model_specifybounds_if_avail;
+    constexpr auto c668 = goldsrc::print_console;
+    constexpr auto c669 = goldsrc::print_center;
+    constexpr auto c670 = goldsrc::print_chat;
+    constexpr auto c671 = goldsrc::TRI_FRONT;
+    constexpr auto c672 = goldsrc::TRI_NONE;
+    constexpr auto c673 = goldsrc::MicrophoneVolume;
+    constexpr auto c674 = goldsrc::OtherSpeakerScale;
+    constexpr auto c675 = goldsrc::MicBoost;
+    constexpr auto c676 = goldsrc::cstrike::CHudAmmoSecondary::MAX_SEC_AMMO_VALUES;
+    constexpr auto c677 = goldsrc::cstrike::CHudMessage::MESSAGE_ARG_LEN;
+    constexpr auto c678 = goldsrc::cstrike::CHudMessage::MAX_MESSAGE_ARGS;
+    constexpr auto c679 = goldsrc::cstrike::CHudStatusBar::MAX_STATUSTEXT_LENGTH;
+    constexpr auto c680 = goldsrc::cstrike::CHudStatusBar::MAX_STATUSBAR_VALUES;
+    constexpr auto c681 = goldsrc::cstrike::CHudStatusBar::MAX_STATUSBAR_LINES;
+    constexpr auto c682 = goldsrc::cstrike::CHudStatusIcons::MAX_ICONSPRITENAME_LENGTH;
+    constexpr auto c683 = goldsrc::cstrike::CHudStatusIcons::MAX_ICONSPRITES;
 } // namespace goldsrc_equivalence
 
 struct tagPOINT;
 struct alight_s;
+struct channel_t;
 struct con_nprint_s;
 struct delta_s;
 struct demo_api_s;
-struct lumpinfo_s;
+struct dma_t;
 struct net_api_s;
+struct sfxcache_t;
+struct wavstream_t;
+struct lumpinfo_s;
+struct qpic_t;
+struct wadinfo_t;
 #include "dep/ncl-hl1-source-sdk/dlls/extdll.h"
 #include "dep/ncl-hl1-source-sdk/pm_shared/pm_defs.h"
 #include "dep/ncl-hl1-source-sdk/engine/client.h"
@@ -4897,489 +4947,519 @@ namespace goldsrc_equivalence
         using type = r94;
     };
     template <>
-    struct map<::movevars_s>
+    struct map<::lumpinfo_s>
     {
         using type = r95;
     };
     template <>
-    struct map<::physent_s>
+    struct map<::qpic_t>
     {
         using type = r96;
     };
     template <>
-    struct map<::pmplane_t>
+    struct map<::wadinfo_t>
     {
         using type = r97;
     };
     template <>
-    struct map<::pmtrace_s>
+    struct map<::movevars_s>
     {
         using type = r98;
     };
     template <>
-    struct map<::playermove_s>
+    struct map<::physent_s>
     {
         using type = r99;
     };
     template <>
-    struct map<::enginefuncs_s>
+    struct map<::pmplane_t>
     {
         using type = r100;
     };
     template <>
-    struct map<::engine_studio_api_s>
+    struct map<::pmtrace_s>
     {
         using type = r101;
     };
     template <>
-    struct map<::r_studio_interface_s>
+    struct map<::playermove_s>
     {
         using type = r102;
     };
     template <>
-    struct map<::triangleapi_s>
+    struct map<::enginefuncs_s>
     {
         using type = r103;
     };
     template <>
-    struct map<::cache_user_s>
+    struct map<::engine_studio_api_s>
     {
         using type = r104;
     };
     template <>
-    struct map<::color24>
+    struct map<::r_studio_interface_s>
     {
         using type = r105;
     };
     template <>
-    struct map<::colorVec>
+    struct map<::triangleapi_s>
     {
         using type = r106;
     };
     template <>
-    struct map<::vrect_t>
+    struct map<::cache_user_s>
     {
         using type = r107;
     };
     template <>
-    struct map<::rect_s>
+    struct map<::color24>
     {
         using type = r108;
     };
     template <>
-    struct map<::kbutton_s>
+    struct map<::colorVec>
     {
         using type = r109;
     };
     template <>
-    struct map<::usercmd_s>
+    struct map<::vrect_t>
     {
         using type = r110;
     };
     template <>
-    struct map<::ref_params_s>
+    struct map<::rect_s>
     {
         using type = r111;
     };
     template <>
-    struct map<::refdef_s>
+    struct map<::kbutton_s>
     {
         using type = r112;
     };
     template <>
-    struct map<::screenfade_s>
+    struct map<::usercmd_s>
     {
         using type = r113;
     };
     template <>
-    struct map<::IVoiceTweak_s>
+    struct map<::ref_params_s>
     {
         using type = r114;
     };
     template <>
-    struct map<::CHudAccountBalance>
+    struct map<::refdef_s>
     {
         using type = r115;
     };
     template <>
-    struct map<::CHudBattery>
+    struct map<::screenfade_s>
     {
         using type = r116;
     };
     template <>
-    struct map<::CHudCareerTaskTimer>
+    struct map<::IVoiceTweak_s>
     {
         using type = r117;
     };
     template <>
-    struct map<::CHudDeathNotice>
+    struct map<::CHudAccountBalance>
     {
         using type = r118;
     };
     template <>
-    struct map<::CHudFlashlight>
+    struct map<::CHudBattery>
     {
         using type = r119;
     };
     template <>
-    struct map<::CHudGeiger>
+    struct map<::CHudCareerTaskTimer>
     {
         using type = r120;
     };
     template <>
-    struct map<::CHudMenu>
+    struct map<::CHudDeathNotice>
     {
         using type = r121;
     };
     template <>
-    struct map<::CHudProgressBar>
+    struct map<::CHudFlashlight>
     {
         using type = r122;
     };
     template <>
-    struct map<::CHudSayText>
+    struct map<::CHudGeiger>
     {
         using type = r123;
     };
     template <>
-    struct map<::CHudScenarioStatus>
+    struct map<::CHudMenu>
     {
         using type = r124;
     };
     template <>
-    struct map<::CHudSniperScope>
+    struct map<::CHudProgressBar>
     {
         using type = r125;
     };
     template <>
-    struct map<::CHudSpectator>
+    struct map<::CHudSayText>
     {
         using type = r126;
     };
     template <>
-    struct map<::CHudTextMessage>
+    struct map<::CHudScenarioStatus>
     {
         using type = r127;
     };
     template <>
-    struct map<::CHudTrain>
+    struct map<::CHudSniperScope>
     {
         using type = r128;
     };
     template <>
-    struct map<::CHudVGUI2Print>
+    struct map<::CHudSpectator>
     {
         using type = r129;
     };
     template <>
-    struct map<::CInterpolation>
+    struct map<::CHudTextMessage>
     {
         using type = r130;
     };
     template <>
-    struct map<::HUDLIST>
+    struct map<::CHudTrain>
     {
         using type = r131;
     };
     template <>
-    struct map<::TraceResult>
+    struct map<::CHudVGUI2Print>
     {
         using type = r132;
     };
     template <>
-    struct map<::WEAPON>
+    struct map<::CInterpolation>
     {
         using type = r133;
     };
     template <>
-    struct map<::cameraWayPoint_s>
+    struct map<::HUDLIST>
     {
         using type = r134;
     };
     template <>
-    struct map<::cldll_func_dst_t>
+    struct map<::TraceResult>
     {
         using type = r135;
     };
     template <>
-    struct map<::client_s>
+    struct map<::WEAPON>
     {
         using type = r136;
     };
     template <>
-    struct map<::client_sprite_s>
+    struct map<::cameraWayPoint_s>
     {
         using type = r137;
     };
     template <>
-    struct map<::client_textmessage_s>
+    struct map<::cldll_func_dst_t>
     {
         using type = r138;
     };
     template <>
-    struct map<::cmdalias_s>
+    struct map<::client_s>
     {
         using type = r139;
     };
     template <>
-    struct map<::dclipnode_s>
+    struct map<::client_sprite_s>
     {
         using type = r140;
     };
     template <>
-    struct map<::dlight_s>
+    struct map<::client_textmessage_s>
     {
         using type = r141;
     };
     template <>
-    struct map<::edict_s>
+    struct map<::cmdalias_s>
     {
         using type = r142;
     };
     template <>
-    struct map<::efrag_s>
+    struct map<::dclipnode_s>
     {
         using type = r143;
     };
     template <>
-    struct map<::efx_api_s>
+    struct map<::dlight_s>
     {
         using type = r144;
     };
     template <>
-    struct map<::engdata_s>
+    struct map<::edict_s>
     {
         using type = r145;
     };
     template <>
-    struct map<::entvars_s>
+    struct map<::efrag_s>
     {
         using type = r146;
     };
     template <>
-    struct map<::fragbufwaiting_s>
+    struct map<::efx_api_s>
     {
         using type = r147;
     };
     template <>
-    struct map<::hostage_info_t>
+    struct map<::engdata_s>
     {
         using type = r148;
     };
     template <>
-    struct map<::message_parms_t>
+    struct map<::entvars_s>
     {
         using type = r149;
     };
     template <>
-    struct map<::mleaf_s>
+    struct map<::fragbufwaiting_s>
     {
         using type = r150;
     };
     template <>
-    struct map<::mnode_s>
+    struct map<::hostage_info_t>
     {
         using type = r151;
     };
     template <>
-    struct map<::modchelpers_s>
+    struct map<::message_parms_t>
     {
         using type = r152;
     };
     template <>
-    struct map<::modshelpers_s>
+    struct map<::mleaf_s>
     {
         using type = r153;
     };
     template <>
-    struct map<::nitroapi::UserMsg>
+    struct map<::mnode_s>
     {
         using type = r154;
     };
     template <>
-    struct map<::nitroapi::VoiceRecordInterface>
+    struct map<::modchelpers_s>
     {
         using type = r155;
     };
     template <>
-    struct map<::overviewEntity_s>
+    struct map<::modshelpers_s>
     {
         using type = r156;
     };
     template <>
-    struct map<::overviewInfo_s>
+    struct map<::nitroapi::UserMsg>
     {
         using type = r157;
     };
     template <>
-    struct map<::sentenceEntry_>
+    struct map<::nitroapi::VoiceRecordInterface>
     {
         using type = r158;
     };
     template <>
-    struct map<::sequenceEntry_>
+    struct map<::overviewEntity_s>
     {
         using type = r159;
     };
     template <>
-    struct map<::tempent_s>
+    struct map<::overviewInfo_s>
     {
         using type = r160;
     };
     template <>
-    struct map<::trace_s>
+    struct map<::sentenceEntry_>
     {
         using type = r161;
     };
     template <>
-    struct map<::WeaponIdType>
+    struct map<::sequenceEntry_>
     {
         using type = r162;
     };
     template <>
-    struct map<::WeaponState>
+    struct map<::tempent_s>
     {
         using type = r163;
     };
     template <>
-    struct map<::elite_e>
+    struct map<::trace_s>
     {
         using type = r164;
     };
     template <>
-    struct map<::glock18_e>
+    struct map<::WeaponIdType>
     {
         using type = r165;
     };
     template <>
-    struct map<::m4a1_e>
+    struct map<::WeaponState>
     {
         using type = r166;
     };
     template <>
-    struct map<::usp_e>
+    struct map<::elite_e>
     {
         using type = r167;
     };
     template <>
-    struct map<::CareerStateType_e>
+    struct map<::glock18_e>
     {
         using type = r168;
     };
     template <>
-    struct map<::cactive_e>
+    struct map<::m4a1_e>
     {
         using type = r169;
     };
     template <>
-    struct map<::cmd_source_s>
+    struct map<::usp_e>
     {
         using type = r170;
     };
     template <>
-    struct map<::modtype_e>
+    struct map<::CareerStateType_e>
     {
         using type = r171;
     };
     template <>
-    struct map<::clc_commands_e>
+    struct map<::cactive_e>
     {
         using type = r172;
     };
     template <>
-    struct map<::netadrtype_t>
+    struct map<::cmd_source_s>
     {
         using type = r173;
     };
     template <>
-    struct map<::netsrc_s>
+    struct map<::modtype_e>
     {
         using type = r174;
     };
     template <>
-    struct map<::resourcetype_t>
+    struct map<::clc_commands_e>
     {
         using type = r175;
     };
     template <>
-    struct map<::nitroapi::VidTypes>
+    struct map<::netadrtype_t>
     {
         using type = r176;
     };
     template <>
-    struct map<::spriteframetype_e>
+    struct map<::netsrc_s>
     {
         using type = r177;
     };
     template <>
-    struct map<::synctype_e>
+    struct map<::resourcetype_t>
     {
         using type = r178;
     };
     template <>
-    struct map<::keydest_t>
+    struct map<::nitroapi::VidTypes>
     {
         using type = r179;
     };
     template <>
-    struct map<::ALERT_TYPE>
+    struct map<::spriteframetype_e>
     {
         using type = r180;
     };
     template <>
-    struct map<::FORCE_TYPE>
+    struct map<::synctype_e>
     {
         using type = r181;
     };
     template <>
-    struct map<::PRINT_TYPE>
+    struct map<::keydest_t>
     {
         using type = r182;
     };
     template <>
-    struct map<::TRICULLSTYLE>
+    struct map<::ALERT_TYPE>
     {
         using type = r183;
     };
     template <>
-    struct map<::VoiceTweakControl>
+    struct map<::FORCE_TYPE>
     {
         using type = r184;
     };
     template <>
-    struct map<::tagPOINT>
+    struct map<::PRINT_TYPE>
     {
         using type = r185;
     };
     template <>
-    struct map<::alight_s>
+    struct map<::TRICULLSTYLE>
     {
         using type = r186;
     };
     template <>
-    struct map<::con_nprint_s>
+    struct map<::VoiceTweakControl>
     {
         using type = r187;
     };
     template <>
-    struct map<::delta_s>
+    struct map<::tagPOINT>
     {
         using type = r188;
     };
     template <>
-    struct map<::demo_api_s>
+    struct map<::alight_s>
     {
         using type = r189;
     };
     template <>
-    struct map<::lumpinfo_s>
+    struct map<::channel_t>
     {
         using type = r190;
     };
     template <>
-    struct map<::net_api_s>
+    struct map<::con_nprint_s>
     {
         using type = r191;
+    };
+    template <>
+    struct map<::delta_s>
+    {
+        using type = r192;
+    };
+    template <>
+    struct map<::demo_api_s>
+    {
+        using type = r193;
+    };
+    template <>
+    struct map<::dma_t>
+    {
+        using type = r194;
+    };
+    template <>
+    struct map<::net_api_s>
+    {
+        using type = r195;
+    };
+    template <>
+    struct map<::sfxcache_t>
+    {
+        using type = r196;
+    };
+    template <>
+    struct map<::wavstream_t>
+    {
+        using type = r197;
     };
 
     static_assert(s0 == sizeof(::SCREENINFO_s), "sizeof SCREENINFO_s");
@@ -6473,6 +6553,7 @@ namespace goldsrc_equivalence
         std::is_same_v<t346, map_t<decltype(::cl_enginefuncs_s::pfnVguiWrap2_GetMouseDelta)>>,
         "type cl_enginefuncs_s.pfnVguiWrap2_GetMouseDelta"
     );
+    static_assert(s7 == sizeof(::CHud), "sizeof CHud");
     static_assert(o347 == offsetof(::CHud, m_pHudList), "offsetof CHud.m_pHudList");
     static_assert(std::is_same_v<t347, map_t<decltype(::CHud::m_pHudList)>>, "type CHud.m_pHudList");
     static_assert(o348 == offsetof(::CHud, m_hsprLogo), "offsetof CHud.m_hsprLogo");
@@ -6527,18 +6608,19 @@ namespace goldsrc_equivalence
     static_assert(std::is_same_v<t370, map_t<decltype(::CHud::m_rghSprites)>>, "type CHud.m_rghSprites");
     static_assert(o373 == offsetof(::CHud, m_rgrcRects), "offsetof CHud.m_rgrcRects");
     static_assert(std::is_same_v<t371, map_t<decltype(::CHud::m_rgrcRects)>>, "type CHud.m_rgrcRects");
-    static_assert(s7 == sizeof(::CHudBase), "sizeof CHudBase");
+    static_assert(s8 == sizeof(::CHudBase), "sizeof CHudBase");
     static_assert(o374 == offsetof(::CHudBase, m_pos), "offsetof CHudBase.m_pos");
     static_assert(std::is_same_v<t372, map_t<decltype(::CHudBase::m_pos)>>, "type CHudBase.m_pos");
     static_assert(o375 == offsetof(::CHudBase, m_type), "offsetof CHudBase.m_type");
     static_assert(std::is_same_v<t373, map_t<decltype(::CHudBase::m_type)>>, "type CHudBase.m_type");
     static_assert(o376 == offsetof(::CHudBase, m_iFlags), "offsetof CHudBase.m_iFlags");
     static_assert(std::is_same_v<t374, map_t<decltype(::CHudBase::m_iFlags)>>, "type CHudBase.m_iFlags");
-    static_assert(s8 == sizeof(::CHudBase::POSITION), "sizeof CHudBase::POSITION");
+    static_assert(s9 == sizeof(::CHudBase::POSITION), "sizeof CHudBase::POSITION");
     static_assert(o377 == offsetof(::CHudBase::POSITION, x), "offsetof CHudBase::POSITION.x");
     static_assert(std::is_same_v<t375, map_t<decltype(::CHudBase::POSITION::x)>>, "type CHudBase::POSITION.x");
     static_assert(o378 == offsetof(::CHudBase::POSITION, y), "offsetof CHudBase::POSITION.y");
     static_assert(std::is_same_v<t376, map_t<decltype(::CHudBase::POSITION::y)>>, "type CHudBase::POSITION.y");
+    static_assert(s10 == sizeof(::extra_player_info_t), "sizeof extra_player_info_t");
     static_assert(o379 == offsetof(::extra_player_info_t, frags), "offsetof extra_player_info_t.frags");
     static_assert(std::is_same_v<t377, map_t<decltype(::extra_player_info_t::frags)>>, "type extra_player_info_t.frags");
     static_assert(o380 == offsetof(::extra_player_info_t, deaths), "offsetof extra_player_info_t.deaths");
@@ -6573,7 +6655,8 @@ namespace goldsrc_equivalence
     static_assert(std::is_same_v<t392, map_t<decltype(::extra_player_info_t::location)>>, "type extra_player_info_t.location");
     static_assert(o395 == offsetof(::extra_player_info_t, sb_health), "offsetof extra_player_info_t.sb_health");
     static_assert(std::is_same_v<t393, map_t<decltype(::extra_player_info_t::sb_health)>>, "type extra_player_info_t.sb_health");
-    static_assert(s9 == sizeof(::CHudAmmo::RGBA), "sizeof CHudAmmo::RGBA");
+    static_assert(s11 == sizeof(::CHudAmmo), "sizeof CHudAmmo");
+    static_assert(s12 == sizeof(::CHudAmmo::RGBA), "sizeof CHudAmmo::RGBA");
     static_assert(o396 == offsetof(::CHudAmmo::RGBA, r), "offsetof CHudAmmo::RGBA.r");
     static_assert(std::is_same_v<t394, map_t<decltype(::CHudAmmo::RGBA::r)>>, "type CHudAmmo::RGBA.r");
     static_assert(o397 == offsetof(::CHudAmmo::RGBA, g), "offsetof CHudAmmo::RGBA.g");
@@ -6582,7 +6665,9 @@ namespace goldsrc_equivalence
     static_assert(std::is_same_v<t396, map_t<decltype(::CHudAmmo::RGBA::b)>>, "type CHudAmmo::RGBA.b");
     static_assert(o399 == offsetof(::CHudAmmo::RGBA, a), "offsetof CHudAmmo::RGBA.a");
     static_assert(std::is_same_v<t397, map_t<decltype(::CHudAmmo::RGBA::a)>>, "type CHudAmmo::RGBA.a");
-    static_assert(s10 == sizeof(::CHudMessage::client_message_t), "sizeof CHudMessage::client_message_t");
+    static_assert(s13 == sizeof(::CHudAmmoSecondary), "sizeof CHudAmmoSecondary");
+    static_assert(s14 == sizeof(::CHudMessage), "sizeof CHudMessage");
+    static_assert(s15 == sizeof(::CHudMessage::client_message_t), "sizeof CHudMessage::client_message_t");
     static_assert(o400 == offsetof(::CHudMessage::client_message_t, pMessage), "offsetof CHudMessage::client_message_t.pMessage");
     static_assert(
         std::is_same_v<t398, map_t<decltype(::CHudMessage::client_message_t::pMessage)>>,
@@ -6597,8 +6682,10 @@ namespace goldsrc_equivalence
         std::is_same_v<t400, map_t<decltype(::CHudMessage::client_message_t::numArgs)>>,
         "type CHudMessage::client_message_t.numArgs"
     );
+    static_assert(s16 == sizeof(::CHudNightVision), "sizeof CHudNightVision");
     static_assert(o404 == offsetof(::CHudNightVision, m_fOn), "offsetof CHudNightVision.m_fOn");
     static_assert(std::is_same_v<t401, map_t<decltype(::CHudNightVision::m_fOn)>>, "type CHudNightVision.m_fOn");
+    static_assert(s17 == sizeof(::CHudRoundTimer), "sizeof CHudRoundTimer");
     static_assert(o405 == offsetof(::CHudRoundTimer, m_flTimeEnd), "offsetof CHudRoundTimer.m_flTimeEnd");
     static_assert(std::is_same_v<t402, map_t<decltype(::CHudRoundTimer::m_flTimeEnd)>>, "type CHudRoundTimer.m_flTimeEnd");
     static_assert(o406 == offsetof(::CHudRoundTimer, m_HUD_stopwatch), "offsetof CHudRoundTimer.m_HUD_stopwatch");
@@ -6613,7 +6700,9 @@ namespace goldsrc_equivalence
     static_assert(std::is_same_v<t407, map_t<decltype(::CHudRoundTimer::m_bPanicColor)>>, "type CHudRoundTimer.m_bPanicColor");
     static_assert(o411 == offsetof(::CHudRoundTimer, m_closestRight), "offsetof CHudRoundTimer.m_closestRight");
     static_assert(std::is_same_v<t408, map_t<decltype(::CHudRoundTimer::m_closestRight)>>, "type CHudRoundTimer.m_closestRight");
-    static_assert(s11 == sizeof(::CHudStatusIcons::icon_sprite_t), "sizeof CHudStatusIcons::icon_sprite_t");
+    static_assert(s18 == sizeof(::CHudStatusBar), "sizeof CHudStatusBar");
+    static_assert(s19 == sizeof(::CHudStatusIcons), "sizeof CHudStatusIcons");
+    static_assert(s20 == sizeof(::CHudStatusIcons::icon_sprite_t), "sizeof CHudStatusIcons::icon_sprite_t");
     static_assert(o412 == offsetof(::CHudStatusIcons::icon_sprite_t, szSpriteName), "offsetof CHudStatusIcons::icon_sprite_t.szSpriteName");
     static_assert(
         std::is_same_v<t409, map_t<decltype(::CHudStatusIcons::icon_sprite_t::szSpriteName)>>,
@@ -6634,7 +6723,7 @@ namespace goldsrc_equivalence
         std::is_same_v<t415, map_t<decltype(::CHudStatusIcons::icon_sprite_t::bFlash)>>,
         "type CHudStatusIcons::icon_sprite_t.bFlash"
     );
-    static_assert(s12 == sizeof(::DAMAGE_IMAGE), "sizeof DAMAGE_IMAGE");
+    static_assert(s21 == sizeof(::DAMAGE_IMAGE), "sizeof DAMAGE_IMAGE");
     static_assert(o419 == offsetof(::DAMAGE_IMAGE, fExpire), "offsetof DAMAGE_IMAGE.fExpire");
     static_assert(std::is_same_v<t416, map_t<decltype(::DAMAGE_IMAGE::fExpire)>>, "type DAMAGE_IMAGE.fExpire");
     static_assert(o420 == offsetof(::DAMAGE_IMAGE, fBaseline), "offsetof DAMAGE_IMAGE.fBaseline");
@@ -6643,6 +6732,7 @@ namespace goldsrc_equivalence
     static_assert(std::is_same_v<t418, map_t<decltype(::DAMAGE_IMAGE::x)>>, "type DAMAGE_IMAGE.x");
     static_assert(o422 == offsetof(::DAMAGE_IMAGE, y), "offsetof DAMAGE_IMAGE.y");
     static_assert(std::is_same_v<t419, map_t<decltype(::DAMAGE_IMAGE::y)>>, "type DAMAGE_IMAGE.y");
+    static_assert(s22 == sizeof(::CHudHealth), "sizeof CHudHealth");
     static_assert(o423 == offsetof(::CHudHealth, m_iHealth), "offsetof CHudHealth.m_iHealth");
     static_assert(std::is_same_v<t420, map_t<decltype(::CHudHealth::m_iHealth)>>, "type CHudHealth.m_iHealth");
     static_assert(o424 == offsetof(::CHudHealth, m_HUD_dmg_bio), "offsetof CHudHealth.m_HUD_dmg_bio");
@@ -6683,7 +6773,7 @@ namespace goldsrc_equivalence
     static_assert(std::is_same_v<t438, map_t<decltype(::CHudHealth::m_dmg)>>, "type CHudHealth.m_dmg");
     static_assert(o442 == offsetof(::CHudHealth, m_bitsDamage), "offsetof CHudHealth.m_bitsDamage");
     static_assert(std::is_same_v<t439, map_t<decltype(::CHudHealth::m_bitsDamage)>>, "type CHudHealth.m_bitsDamage");
-    static_assert(s13 == sizeof(::cvar_s), "sizeof cvar_s");
+    static_assert(s23 == sizeof(::cvar_s), "sizeof cvar_s");
     static_assert(o443 == offsetof(::cvar_s, name), "offsetof cvar_s.name");
     static_assert(std::is_same_v<t440, map_t<decltype(::cvar_s::name)>>, "type cvar_s.name");
     static_assert(o444 == offsetof(::cvar_s, string), "offsetof cvar_s.string");
@@ -6694,7 +6784,7 @@ namespace goldsrc_equivalence
     static_assert(std::is_same_v<t443, map_t<decltype(::cvar_s::value)>>, "type cvar_s.value");
     static_assert(o447 == offsetof(::cvar_s, next), "offsetof cvar_s.next");
     static_assert(std::is_same_v<t444, map_t<decltype(::cvar_s::next)>>, "type cvar_s.next");
-    static_assert(s14 == sizeof(::cmd_s), "sizeof cmd_s");
+    static_assert(s24 == sizeof(::cmd_s), "sizeof cmd_s");
     static_assert(o448 == offsetof(::cmd_s, cmd), "offsetof cmd_s.cmd");
     static_assert(std::is_same_v<t445, map_t<decltype(::cmd_s::cmd)>>, "type cmd_s.cmd");
     static_assert(o449 == offsetof(::cmd_s, senttime), "offsetof cmd_s.senttime");
@@ -6709,7 +6799,7 @@ namespace goldsrc_equivalence
     static_assert(std::is_same_v<t450, map_t<decltype(::cmd_s::heldback)>>, "type cmd_s.heldback");
     static_assert(o454 == offsetof(::cmd_s, sendsize), "offsetof cmd_s.sendsize");
     static_assert(std::is_same_v<t451, map_t<decltype(::cmd_s::sendsize)>>, "type cmd_s.sendsize");
-    static_assert(s15 == sizeof(::consistency_s), "sizeof consistency_s");
+    static_assert(s25 == sizeof(::consistency_s), "sizeof consistency_s");
     static_assert(o455 == offsetof(::consistency_s, filename), "offsetof consistency_s.filename");
     static_assert(std::is_same_v<t452, map_t<decltype(::consistency_s::filename)>>, "type consistency_s.filename");
     static_assert(o456 == offsetof(::consistency_s, issound), "offsetof consistency_s.issound");
@@ -6724,14 +6814,14 @@ namespace goldsrc_equivalence
     static_assert(std::is_same_v<t457, map_t<decltype(::consistency_s::mins)>>, "type consistency_s.mins");
     static_assert(o461 == offsetof(::consistency_s, maxs), "offsetof consistency_s.maxs");
     static_assert(std::is_same_v<t458, map_t<decltype(::consistency_s::maxs)>>, "type consistency_s.maxs");
-    static_assert(s16 == sizeof(::packet_entities_s), "sizeof packet_entities_s");
+    static_assert(s26 == sizeof(::packet_entities_s), "sizeof packet_entities_s");
     static_assert(o462 == offsetof(::packet_entities_s, num_entities), "offsetof packet_entities_s.num_entities");
     static_assert(std::is_same_v<t459, map_t<decltype(::packet_entities_s::num_entities)>>, "type packet_entities_s.num_entities");
     static_assert(o463 == offsetof(::packet_entities_s, flags), "offsetof packet_entities_s.flags");
     static_assert(std::is_same_v<t460, map_t<decltype(::packet_entities_s::flags)>>, "type packet_entities_s.flags");
     static_assert(o464 == offsetof(::packet_entities_s, entities), "offsetof packet_entities_s.entities");
     static_assert(std::is_same_v<t461, map_t<decltype(::packet_entities_s::entities)>>, "type packet_entities_s.entities");
-    static_assert(s17 == sizeof(::player_info_s), "sizeof player_info_s");
+    static_assert(s27 == sizeof(::player_info_s), "sizeof player_info_s");
     static_assert(o465 == offsetof(::player_info_s, userid), "offsetof player_info_s.userid");
     static_assert(std::is_same_v<t462, map_t<decltype(::player_info_s::userid)>>, "type player_info_s.userid");
     static_assert(o466 == offsetof(::player_info_s, userinfo), "offsetof player_info_s.userinfo");
@@ -6766,7 +6856,7 @@ namespace goldsrc_equivalence
     static_assert(std::is_same_v<t477, map_t<decltype(::player_info_s::hashedcdkey)>>, "type player_info_s.hashedcdkey");
     static_assert(o481 == offsetof(::player_info_s, m_nSteamID), "offsetof player_info_s.m_nSteamID");
     static_assert(std::is_same_v<t478, map_t<decltype(::player_info_s::m_nSteamID)>>, "type player_info_s.m_nSteamID");
-    static_assert(s18 == sizeof(::soundfade_s), "sizeof soundfade_s");
+    static_assert(s28 == sizeof(::soundfade_s), "sizeof soundfade_s");
     static_assert(o482 == offsetof(::soundfade_s, nStartPercent), "offsetof soundfade_s.nStartPercent");
     static_assert(std::is_same_v<t479, map_t<decltype(::soundfade_s::nStartPercent)>>, "type soundfade_s.nStartPercent");
     static_assert(o483 == offsetof(::soundfade_s, nClientSoundFadePercent), "offsetof soundfade_s.nClientSoundFadePercent");
@@ -6782,6 +6872,7 @@ namespace goldsrc_equivalence
     static_assert(std::is_same_v<t483, map_t<decltype(::soundfade_s::soundFadeHoldTime)>>, "type soundfade_s.soundFadeHoldTime");
     static_assert(o487 == offsetof(::soundfade_s, soundFadeInTime), "offsetof soundfade_s.soundFadeInTime");
     static_assert(std::is_same_v<t484, map_t<decltype(::soundfade_s::soundFadeInTime)>>, "type soundfade_s.soundFadeInTime");
+    static_assert(s29 == sizeof(::client_static_s), "sizeof client_static_s");
     static_assert(o488 == offsetof(::client_static_s, state), "offsetof client_static_s.state");
     static_assert(std::is_same_v<t485, map_t<decltype(::client_static_s::state)>>, "type client_static_s.state");
     static_assert(o489 == offsetof(::client_static_s, netchan), "offsetof client_static_s.netchan");
@@ -6890,7 +6981,7 @@ namespace goldsrc_equivalence
     static_assert(std::is_same_v<t532, map_t<decltype(::client_static_s::GameServerSteamID)>>, "type client_static_s.GameServerSteamID");
     static_assert(o538 == offsetof(::client_static_s, build_num), "offsetof client_static_s.build_num");
     static_assert(std::is_same_v<t533, map_t<decltype(::client_static_s::build_num)>>, "type client_static_s.build_num");
-    static_assert(s19 == sizeof(::frame_s), "sizeof frame_s");
+    static_assert(s30 == sizeof(::frame_s), "sizeof frame_s");
     static_assert(o539 == offsetof(::frame_s, receivedtime), "offsetof frame_s.receivedtime");
     static_assert(std::is_same_v<t534, map_t<decltype(::frame_s::receivedtime)>>, "type frame_s.receivedtime");
     static_assert(o540 == offsetof(::frame_s, latency), "offsetof frame_s.latency");
@@ -6927,6 +7018,7 @@ namespace goldsrc_equivalence
     static_assert(std::is_same_v<t550, map_t<decltype(::frame_s::voicebytes)>>, "type frame_s.voicebytes");
     static_assert(o556 == offsetof(::frame_s, msgbytes), "offsetof frame_s.msgbytes");
     static_assert(std::is_same_v<t551, map_t<decltype(::frame_s::msgbytes)>>, "type frame_s.msgbytes");
+    static_assert(s31 == sizeof(::client_state_s), "sizeof client_state_s");
     static_assert(o557 == offsetof(::client_state_s, max_edicts), "offsetof client_state_s.max_edicts");
     static_assert(std::is_same_v<t552, map_t<decltype(::client_state_s::max_edicts)>>, "type client_state_s.max_edicts");
     static_assert(o558 == offsetof(::client_state_s, resourcesonhand), "offsetof client_state_s.resourcesonhand");
@@ -7083,7 +7175,7 @@ namespace goldsrc_equivalence
     static_assert(std::is_same_v<t622, map_t<decltype(::client_state_s::events)>>, "type client_state_s.events");
     static_assert(o628 == offsetof(::client_state_s, downloadUrl), "offsetof client_state_s.downloadUrl");
     static_assert(std::is_same_v<t623, map_t<decltype(::client_state_s::downloadUrl)>>, "type client_state_s.downloadUrl");
-    static_assert(s20 == sizeof(::event_info_s), "sizeof event_info_s");
+    static_assert(s32 == sizeof(::event_info_s), "sizeof event_info_s");
     static_assert(o629 == offsetof(::event_info_s, index), "offsetof event_info_s.index");
     static_assert(std::is_same_v<t624, map_t<decltype(::event_info_s::index)>>, "type event_info_s.index");
     static_assert(o630 == offsetof(::event_info_s, packet_index), "offsetof event_info_s.packet_index");
@@ -7096,7 +7188,7 @@ namespace goldsrc_equivalence
     static_assert(std::is_same_v<t628, map_t<decltype(::event_info_s::args)>>, "type event_info_s.args");
     static_assert(o634 == offsetof(::event_info_s, flags), "offsetof event_info_s.flags");
     static_assert(std::is_same_v<t629, map_t<decltype(::event_info_s::flags)>>, "type event_info_s.flags");
-    static_assert(s21 == sizeof(::event_s), "sizeof event_s");
+    static_assert(s33 == sizeof(::event_s), "sizeof event_s");
     static_assert(o635 == offsetof(::event_s, index), "offsetof event_s.index");
     static_assert(std::is_same_v<t630, map_t<decltype(::event_s::index)>>, "type event_s.index");
     static_assert(o636 == offsetof(::event_s, filename), "offsetof event_s.filename");
@@ -7105,13 +7197,15 @@ namespace goldsrc_equivalence
     static_assert(std::is_same_v<t632, map_t<decltype(::event_s::filesize)>>, "type event_s.filesize");
     static_assert(o638 == offsetof(::event_s, pszScript), "offsetof event_s.pszScript");
     static_assert(std::is_same_v<t633, map_t<decltype(::event_s::pszScript)>>, "type event_s.pszScript");
-    static_assert(s22 == sizeof(::event_state_s), "sizeof event_state_s");
+    static_assert(s34 == sizeof(::event_state_s), "sizeof event_state_s");
     static_assert(o639 == offsetof(::event_state_s, ei), "offsetof event_state_s.ei");
     static_assert(std::is_same_v<t634, map_t<decltype(::event_state_s::ei)>>, "type event_state_s.ei");
+    static_assert(s35 == sizeof(::cacheentry_s), "sizeof cacheentry_s");
     static_assert(o640 == offsetof(::cacheentry_s, name), "offsetof cacheentry_s.name");
     static_assert(std::is_same_v<t635, map_t<decltype(::cacheentry_s::name)>>, "type cacheentry_s.name");
     static_assert(o641 == offsetof(::cacheentry_s, cache), "offsetof cacheentry_s.cache");
     static_assert(std::is_same_v<t636, map_t<decltype(::cacheentry_s::cache)>>, "type cacheentry_s.cache");
+    static_assert(s36 == sizeof(::glpoly_s), "sizeof glpoly_s");
     static_assert(o642 == offsetof(::glpoly_s, next), "offsetof glpoly_s.next");
     static_assert(std::is_same_v<t637, map_t<decltype(::glpoly_s::next)>>, "type glpoly_s.next");
     static_assert(o643 == offsetof(::glpoly_s, chain), "offsetof glpoly_s.chain");
@@ -7122,7 +7216,7 @@ namespace goldsrc_equivalence
     static_assert(std::is_same_v<t640, map_t<decltype(::glpoly_s::flags)>>, "type glpoly_s.flags");
     static_assert(o646 == offsetof(::glpoly_s, verts), "offsetof glpoly_s.verts");
     static_assert(std::is_same_v<t641, map_t<decltype(::glpoly_s::verts)>>, "type glpoly_s.verts");
-    static_assert(s23 == sizeof(::hull_s), "sizeof hull_s");
+    static_assert(s37 == sizeof(::hull_s), "sizeof hull_s");
     static_assert(o647 == offsetof(::hull_s, clipnodes), "offsetof hull_s.clipnodes");
     static_assert(std::is_same_v<t642, map_t<decltype(::hull_s::clipnodes)>>, "type hull_s.clipnodes");
     static_assert(o648 == offsetof(::hull_s, planes), "offsetof hull_s.planes");
@@ -7135,16 +7229,20 @@ namespace goldsrc_equivalence
     static_assert(std::is_same_v<t646, map_t<decltype(::hull_s::clip_mins)>>, "type hull_s.clip_mins");
     static_assert(o652 == offsetof(::hull_s, clip_maxs), "offsetof hull_s.clip_maxs");
     static_assert(std::is_same_v<t647, map_t<decltype(::hull_s::clip_maxs)>>, "type hull_s.clip_maxs");
+    static_assert(s38 == sizeof(::medge_s), "sizeof medge_s");
     static_assert(o653 == offsetof(::medge_s, v), "offsetof medge_s.v");
     static_assert(std::is_same_v<t648, map_t<decltype(::medge_s::v)>>, "type medge_s.v");
+    static_assert(s39 == sizeof(::mod_known_info_s), "sizeof mod_known_info_s");
     static_assert(o654 == offsetof(::mod_known_info_s, shouldCRC), "offsetof mod_known_info_s.shouldCRC");
     static_assert(std::is_same_v<t649, map_t<decltype(::mod_known_info_s::shouldCRC)>>, "type mod_known_info_s.shouldCRC");
     static_assert(o655 == offsetof(::mod_known_info_s, firstCRCDone), "offsetof mod_known_info_s.firstCRCDone");
     static_assert(std::is_same_v<t650, map_t<decltype(::mod_known_info_s::firstCRCDone)>>, "type mod_known_info_s.firstCRCDone");
     static_assert(o656 == offsetof(::mod_known_info_s, initialCRC), "offsetof mod_known_info_s.initialCRC");
     static_assert(std::is_same_v<t651, map_t<decltype(::mod_known_info_s::initialCRC)>>, "type mod_known_info_s.initialCRC");
+    static_assert(s40 == sizeof(::mplane_s), "sizeof mplane_s");
     static_assert(o657 == offsetof(::mplane_s, normal), "offsetof mplane_s.normal");
     static_assert(std::is_same_v<t652, map_t<decltype(::mplane_s::normal)>>, "type mplane_s.normal");
+    static_assert(s41 == sizeof(::mspriteframe_s), "sizeof mspriteframe_s");
     static_assert(o658 == offsetof(::mspriteframe_s, width), "offsetof mspriteframe_s.width");
     static_assert(std::is_same_v<t653, map_t<decltype(::mspriteframe_s::width)>>, "type mspriteframe_s.width");
     static_assert(o659 == offsetof(::mspriteframe_s, height), "offsetof mspriteframe_s.height");
@@ -7159,17 +7257,19 @@ namespace goldsrc_equivalence
     static_assert(std::is_same_v<t658, map_t<decltype(::mspriteframe_s::right)>>, "type mspriteframe_s.right");
     static_assert(o664 == offsetof(::mspriteframe_s, gl_texturenum), "offsetof mspriteframe_s.gl_texturenum");
     static_assert(std::is_same_v<t659, map_t<decltype(::mspriteframe_s::gl_texturenum)>>, "type mspriteframe_s.gl_texturenum");
-    static_assert(s24 == sizeof(::mspriteframedesc_s), "sizeof mspriteframedesc_s");
+    static_assert(s42 == sizeof(::mspriteframedesc_s), "sizeof mspriteframedesc_s");
     static_assert(o665 == offsetof(::mspriteframedesc_s, type), "offsetof mspriteframedesc_s.type");
     static_assert(std::is_same_v<t660, map_t<decltype(::mspriteframedesc_s::type)>>, "type mspriteframedesc_s.type");
     static_assert(o666 == offsetof(::mspriteframedesc_s, frameptr), "offsetof mspriteframedesc_s.frameptr");
     static_assert(std::is_same_v<t661, map_t<decltype(::mspriteframedesc_s::frameptr)>>, "type mspriteframedesc_s.frameptr");
+    static_assert(s43 == sizeof(::mspritegroup_s), "sizeof mspritegroup_s");
     static_assert(o667 == offsetof(::mspritegroup_s, numframes), "offsetof mspritegroup_s.numframes");
     static_assert(std::is_same_v<t662, map_t<decltype(::mspritegroup_s::numframes)>>, "type mspritegroup_s.numframes");
     static_assert(o668 == offsetof(::mspritegroup_s, intervals), "offsetof mspritegroup_s.intervals");
     static_assert(std::is_same_v<t663, map_t<decltype(::mspritegroup_s::intervals)>>, "type mspritegroup_s.intervals");
     static_assert(o669 == offsetof(::mspritegroup_s, frames), "offsetof mspritegroup_s.frames");
     static_assert(std::is_same_v<t664, map_t<decltype(::mspritegroup_s::frames)>>, "type mspritegroup_s.frames");
+    static_assert(s44 == sizeof(::msurface_s), "sizeof msurface_s");
     static_assert(o670 == offsetof(::msurface_s, visframe), "offsetof msurface_s.visframe");
     static_assert(std::is_same_v<t665, map_t<decltype(::msurface_s::visframe)>>, "type msurface_s.visframe");
     static_assert(o671 == offsetof(::msurface_s, plane), "offsetof msurface_s.plane");
@@ -7200,14 +7300,17 @@ namespace goldsrc_equivalence
     static_assert(std::is_same_v<t678, map_t<decltype(::msurface_s::dlightbits)>>, "type msurface_s.dlightbits");
     static_assert(o684 == offsetof(::msurface_s, lightmaptexturenum), "offsetof msurface_s.lightmaptexturenum");
     static_assert(std::is_same_v<t679, map_t<decltype(::msurface_s::lightmaptexturenum)>>, "type msurface_s.lightmaptexturenum");
+    static_assert(s45 == sizeof(::mtexinfo_s), "sizeof mtexinfo_s");
     static_assert(o685 == offsetof(::mtexinfo_s, vecs), "offsetof mtexinfo_s.vecs");
     static_assert(std::is_same_v<t680, map_t<decltype(::mtexinfo_s::vecs)>>, "type mtexinfo_s.vecs");
     static_assert(o686 == offsetof(::mtexinfo_s, mipadjust), "offsetof mtexinfo_s.mipadjust");
     static_assert(std::is_same_v<t681, map_t<decltype(::mtexinfo_s::mipadjust)>>, "type mtexinfo_s.mipadjust");
     static_assert(o687 == offsetof(::mtexinfo_s, texture), "offsetof mtexinfo_s.texture");
     static_assert(std::is_same_v<t682, map_t<decltype(::mtexinfo_s::texture)>>, "type mtexinfo_s.texture");
+    static_assert(s46 == sizeof(::mvertex_s), "sizeof mvertex_s");
     static_assert(o688 == offsetof(::mvertex_s, position), "offsetof mvertex_s.position");
     static_assert(std::is_same_v<t683, map_t<decltype(::mvertex_s::position)>>, "type mvertex_s.position");
+    static_assert(s47 == sizeof(::skin_s), "sizeof skin_s");
     static_assert(o689 == offsetof(::skin_s, keynum), "offsetof skin_s.keynum");
     static_assert(std::is_same_v<t684, map_t<decltype(::skin_s::keynum)>>, "type skin_s.keynum");
     static_assert(o690 == offsetof(::skin_s, topcolor), "offsetof skin_s.topcolor");
@@ -7226,6 +7329,7 @@ namespace goldsrc_equivalence
     static_assert(std::is_same_v<t691, map_t<decltype(::skin_s::width)>>, "type skin_s.width");
     static_assert(o697 == offsetof(::skin_s, height), "offsetof skin_s.height");
     static_assert(std::is_same_v<t692, map_t<decltype(::skin_s::height)>>, "type skin_s.height");
+    static_assert(s48 == sizeof(::texture_s), "sizeof texture_s");
     static_assert(o698 == offsetof(::texture_s, name), "offsetof texture_s.name");
     static_assert(std::is_same_v<t693, map_t<decltype(::texture_s::name)>>, "type texture_s.name");
     static_assert(o699 == offsetof(::texture_s, width), "offsetof texture_s.width");
@@ -7234,6 +7338,7 @@ namespace goldsrc_equivalence
     static_assert(std::is_same_v<t695, map_t<decltype(::texture_s::height)>>, "type texture_s.height");
     static_assert(o701 == offsetof(::texture_s, gl_texturenum), "offsetof texture_s.gl_texturenum");
     static_assert(std::is_same_v<t696, map_t<decltype(::texture_s::gl_texturenum)>>, "type texture_s.gl_texturenum");
+    static_assert(s49 == sizeof(::cachewad_s), "sizeof cachewad_s");
     static_assert(o702 == offsetof(::cachewad_s, name), "offsetof cachewad_s.name");
     static_assert(std::is_same_v<t697, map_t<decltype(::cachewad_s::name)>>, "type cachewad_s.name");
     static_assert(o703 == offsetof(::cachewad_s, cache), "offsetof cachewad_s.cache");
@@ -7258,6 +7363,7 @@ namespace goldsrc_equivalence
     static_assert(std::is_same_v<t707, map_t<decltype(::cachewad_s::lumppathindices)>>, "type cachewad_s.lumppathindices");
     static_assert(o713 == offsetof(::cachewad_s, tempWad), "offsetof cachewad_s.tempWad");
     static_assert(std::is_same_v<t708, map_t<decltype(::cachewad_s::tempWad)>>, "type cachewad_s.tempWad");
+    static_assert(s50 == sizeof(::model_s), "sizeof model_s");
     static_assert(o714 == offsetof(::model_s, name), "offsetof model_s.name");
     static_assert(std::is_same_v<t709, map_t<decltype(::model_s::name)>>, "type model_s.name");
     static_assert(o715 == offsetof(::model_s, needload), "offsetof model_s.needload");
@@ -7338,6 +7444,7 @@ namespace goldsrc_equivalence
     static_assert(std::is_same_v<t747, map_t<decltype(::model_s::entities)>>, "type model_s.entities");
     static_assert(o753 == offsetof(::model_s, cache), "offsetof model_s.cache");
     static_assert(std::is_same_v<t748, map_t<decltype(::model_s::cache)>>, "type model_s.cache");
+    static_assert(s51 == sizeof(::msprite_s), "sizeof msprite_s");
     static_assert(o754 == offsetof(::msprite_s, type), "offsetof msprite_s.type");
     static_assert(std::is_same_v<t749, map_t<decltype(::msprite_s::type)>>, "type msprite_s.type");
     static_assert(o755 == offsetof(::msprite_s, texFormat), "offsetof msprite_s.texFormat");
@@ -7356,19 +7463,19 @@ namespace goldsrc_equivalence
     static_assert(std::is_same_v<t756, map_t<decltype(::msprite_s::cachespot)>>, "type msprite_s.cachespot");
     static_assert(o762 == offsetof(::msprite_s, frames), "offsetof msprite_s.frames");
     static_assert(std::is_same_v<t757, map_t<decltype(::msprite_s::frames)>>, "type msprite_s.frames");
-    static_assert(s25 == sizeof(::downloadtime_s), "sizeof downloadtime_s");
+    static_assert(s52 == sizeof(::downloadtime_s), "sizeof downloadtime_s");
     static_assert(o763 == offsetof(::downloadtime_s, bUsed), "offsetof downloadtime_s.bUsed");
     static_assert(std::is_same_v<t758, map_t<decltype(::downloadtime_s::bUsed)>>, "type downloadtime_s.bUsed");
     static_assert(o764 == offsetof(::downloadtime_s, fTime), "offsetof downloadtime_s.fTime");
     static_assert(std::is_same_v<t759, map_t<decltype(::downloadtime_s::fTime)>>, "type downloadtime_s.fTime");
     static_assert(o765 == offsetof(::downloadtime_s, nBytesRemaining), "offsetof downloadtime_s.nBytesRemaining");
     static_assert(std::is_same_v<t760, map_t<decltype(::downloadtime_s::nBytesRemaining)>>, "type downloadtime_s.nBytesRemaining");
-    static_assert(s26 == sizeof(::flowstats_s), "sizeof flowstats_s");
+    static_assert(s53 == sizeof(::flowstats_s), "sizeof flowstats_s");
     static_assert(o766 == offsetof(::flowstats_s, size), "offsetof flowstats_s.size");
     static_assert(std::is_same_v<t761, map_t<decltype(::flowstats_s::size)>>, "type flowstats_s.size");
     static_assert(o767 == offsetof(::flowstats_s, time), "offsetof flowstats_s.time");
     static_assert(std::is_same_v<t762, map_t<decltype(::flowstats_s::time)>>, "type flowstats_s.time");
-    static_assert(s27 == sizeof(::sizebuf_s), "sizeof sizebuf_s");
+    static_assert(s54 == sizeof(::sizebuf_s), "sizeof sizebuf_s");
     static_assert(o768 == offsetof(::sizebuf_s, buffername), "offsetof sizebuf_s.buffername");
     static_assert(std::is_same_v<t763, map_t<decltype(::sizebuf_s::buffername)>>, "type sizebuf_s.buffername");
     static_assert(o769 == offsetof(::sizebuf_s, flags), "offsetof sizebuf_s.flags");
@@ -7379,7 +7486,7 @@ namespace goldsrc_equivalence
     static_assert(std::is_same_v<t766, map_t<decltype(::sizebuf_s::maxsize)>>, "type sizebuf_s.maxsize");
     static_assert(o772 == offsetof(::sizebuf_s, cursize), "offsetof sizebuf_s.cursize");
     static_assert(std::is_same_v<t767, map_t<decltype(::sizebuf_s::cursize)>>, "type sizebuf_s.cursize");
-    static_assert(s28 == sizeof(::flow_s), "sizeof flow_s");
+    static_assert(s55 == sizeof(::flow_s), "sizeof flow_s");
     static_assert(o773 == offsetof(::flow_s, stats), "offsetof flow_s.stats");
     static_assert(std::is_same_v<t768, map_t<decltype(::flow_s::stats)>>, "type flow_s.stats");
     static_assert(o774 == offsetof(::flow_s, current), "offsetof flow_s.current");
@@ -7390,13 +7497,14 @@ namespace goldsrc_equivalence
     static_assert(std::is_same_v<t771, map_t<decltype(::flow_s::kbytespersec)>>, "type flow_s.kbytespersec");
     static_assert(o777 == offsetof(::flow_s, avgkbytespersec), "offsetof flow_s.avgkbytespersec");
     static_assert(std::is_same_v<t772, map_t<decltype(::flow_s::avgkbytespersec)>>, "type flow_s.avgkbytespersec");
+    static_assert(s56 == sizeof(::fragbuf_s), "sizeof fragbuf_s");
     static_assert(o778 == offsetof(::fragbuf_s, next), "offsetof fragbuf_s.next");
     static_assert(std::is_same_v<t773, map_t<decltype(::fragbuf_s::next)>>, "type fragbuf_s.next");
     static_assert(o779 == offsetof(::fragbuf_s, bufferid), "offsetof fragbuf_s.bufferid");
     static_assert(std::is_same_v<t774, map_t<decltype(::fragbuf_s::bufferid)>>, "type fragbuf_s.bufferid");
     static_assert(o780 == offsetof(::fragbuf_s, frag_message), "offsetof fragbuf_s.frag_message");
     static_assert(std::is_same_v<t775, map_t<decltype(::fragbuf_s::frag_message)>>, "type fragbuf_s.frag_message");
-    static_assert(s29 == sizeof(::incomingtransfer_s), "sizeof incomingtransfer_s");
+    static_assert(s57 == sizeof(::incomingtransfer_s), "sizeof incomingtransfer_s");
     static_assert(o781 == offsetof(::incomingtransfer_s, doneregistering), "offsetof incomingtransfer_s.doneregistering");
     static_assert(std::is_same_v<t776, map_t<decltype(::incomingtransfer_s::doneregistering)>>, "type incomingtransfer_s.doneregistering");
     static_assert(o782 == offsetof(::incomingtransfer_s, percent), "offsetof incomingtransfer_s.percent");
@@ -7429,12 +7537,12 @@ namespace goldsrc_equivalence
     );
     static_assert(o790 == offsetof(::incomingtransfer_s, custom), "offsetof incomingtransfer_s.custom");
     static_assert(std::is_same_v<t785, map_t<decltype(::incomingtransfer_s::custom)>>, "type incomingtransfer_s.custom");
-    static_assert(s30 == sizeof(::netadr_s), "sizeof netadr_s");
+    static_assert(s58 == sizeof(::netadr_s), "sizeof netadr_s");
     // netadr_s.type: comparisons skipped - declared private in the old header
     // netadr_s.ip: comparisons skipped - declared private in the old header
     // netadr_s.ipx: comparisons skipped - declared private in the old header
     // netadr_s.port: comparisons skipped - declared private in the old header
-    static_assert(s31 == sizeof(::netchan_s), "sizeof netchan_s");
+    static_assert(s59 == sizeof(::netchan_s), "sizeof netchan_s");
     static_assert(o791 == offsetof(::netchan_s, sock), "offsetof netchan_s.sock");
     static_assert(std::is_same_v<t786, map_t<decltype(::netchan_s::sock)>>, "type netchan_s.sock");
     static_assert(o792 == offsetof(::netchan_s, remote_address), "offsetof netchan_s.remote_address");
@@ -7507,10 +7615,10 @@ namespace goldsrc_equivalence
     static_assert(std::is_same_v<t817, map_t<decltype(::netchan_s::tempbuffersize)>>, "type netchan_s.tempbuffersize");
     static_assert(o823 == offsetof(::netchan_s, flow), "offsetof netchan_s.flow");
     static_assert(std::is_same_v<t818, map_t<decltype(::netchan_s::flow)>>, "type netchan_s.flow");
-    static_assert(s32 == sizeof(::_resourceinfo_t), "sizeof _resourceinfo_t");
+    static_assert(s60 == sizeof(::_resourceinfo_t), "sizeof _resourceinfo_t");
     static_assert(o824 == offsetof(::_resourceinfo_t, size), "offsetof _resourceinfo_t.size");
     static_assert(std::is_same_v<t819, map_t<decltype(::_resourceinfo_t::size)>>, "type _resourceinfo_t.size");
-    static_assert(s33 == sizeof(::resource_s), "sizeof resource_s");
+    static_assert(s61 == sizeof(::resource_s), "sizeof resource_s");
     static_assert(o825 == offsetof(::resource_s, szFileName), "offsetof resource_s.szFileName");
     static_assert(std::is_same_v<t820, map_t<decltype(::resource_s::szFileName)>>, "type resource_s.szFileName");
     static_assert(o826 == offsetof(::resource_s, type), "offsetof resource_s.type");
@@ -7531,9 +7639,10 @@ namespace goldsrc_equivalence
     static_assert(std::is_same_v<t828, map_t<decltype(::resource_s::pNext)>>, "type resource_s.pNext");
     static_assert(o834 == offsetof(::resource_s, pPrev), "offsetof resource_s.pPrev");
     static_assert(std::is_same_v<t829, map_t<decltype(::resource_s::pPrev)>>, "type resource_s.pPrev");
+    static_assert(s62 == sizeof(::resourceinfo_s), "sizeof resourceinfo_s");
     static_assert(o835 == offsetof(::resourceinfo_s, info), "offsetof resourceinfo_s.info");
     static_assert(std::is_same_v<t830, map_t<decltype(::resourceinfo_s::info)>>, "type resourceinfo_s.info");
-    static_assert(s34 == sizeof(::customization_s), "sizeof customization_s");
+    static_assert(s63 == sizeof(::customization_s), "sizeof customization_s");
     static_assert(o836 == offsetof(::customization_s, bInUse), "offsetof customization_s.bInUse");
     static_assert(std::is_same_v<t831, map_t<decltype(::customization_s::bInUse)>>, "type customization_s.bInUse");
     static_assert(o837 == offsetof(::customization_s, resource), "offsetof customization_s.resource");
@@ -7550,26 +7659,32 @@ namespace goldsrc_equivalence
     static_assert(std::is_same_v<t837, map_t<decltype(::customization_s::pBuffer)>>, "type customization_s.pBuffer");
     static_assert(o843 == offsetof(::customization_s, pNext), "offsetof customization_s.pNext");
     static_assert(std::is_same_v<t838, map_t<decltype(::customization_s::pNext)>>, "type customization_s.pNext");
+    static_assert(s64 == sizeof(::server_static_s), "sizeof server_static_s");
     static_assert(o844 == offsetof(::server_static_s, dll_initialized), "offsetof server_static_s.dll_initialized");
     static_assert(std::is_same_v<t839, map_t<decltype(::server_static_s::dll_initialized)>>, "type server_static_s.dll_initialized");
     static_assert(o845 == offsetof(::server_static_s, clients), "offsetof server_static_s.clients");
     static_assert(std::is_same_v<t840, map_t<decltype(::server_static_s::clients)>>, "type server_static_s.clients");
     static_assert(o846 == offsetof(::server_static_s, maxclients), "offsetof server_static_s.maxclients");
     static_assert(std::is_same_v<t841, map_t<decltype(::server_static_s::maxclients)>>, "type server_static_s.maxclients");
+    static_assert(s65 == sizeof(::server_s), "sizeof server_s");
     static_assert(o847 == offsetof(::server_s, active), "offsetof server_s.active");
     static_assert(std::is_same_v<t842, map_t<decltype(::server_s::active)>>, "type server_s.active");
+    static_assert(s66 == sizeof(::sfx_t), "sizeof sfx_t");
     static_assert(o848 == offsetof(::sfx_t, name), "offsetof sfx_t.name");
     static_assert(std::is_same_v<t843, map_t<decltype(::sfx_t::name)>>, "type sfx_t.name");
     static_assert(o849 == offsetof(::sfx_t, cache), "offsetof sfx_t.cache");
     static_assert(std::is_same_v<t844, map_t<decltype(::sfx_t::cache)>>, "type sfx_t.cache");
+    static_assert(s67 == sizeof(::nitroapi::EngineMsg), "sizeof nitroapi::EngineMsg");
     static_assert(o850 == offsetof(::nitroapi::EngineMsg, number), "offsetof nitroapi::EngineMsg.number");
     static_assert(std::is_same_v<t845, map_t<decltype(::nitroapi::EngineMsg::number)>>, "type nitroapi::EngineMsg.number");
     static_assert(o851 == offsetof(::nitroapi::EngineMsg, name), "offsetof nitroapi::EngineMsg.name");
     static_assert(std::is_same_v<t846, map_t<decltype(::nitroapi::EngineMsg::name)>>, "type nitroapi::EngineMsg.name");
     static_assert(o852 == offsetof(::nitroapi::EngineMsg, pfn), "offsetof nitroapi::EngineMsg.pfn");
     static_assert(std::is_same_v<t847, map_t<decltype(::nitroapi::EngineMsg::pfn)>>, "type nitroapi::EngineMsg.pfn");
+    static_assert(s68 == sizeof(::nitroapi::transObjRef), "sizeof nitroapi::transObjRef");
     static_assert(o853 == offsetof(::nitroapi::transObjRef, pEnt), "offsetof nitroapi::transObjRef.pEnt");
     static_assert(std::is_same_v<t848, map_t<decltype(::nitroapi::transObjRef::pEnt)>>, "type nitroapi::transObjRef.pEnt");
+    static_assert(s69 == sizeof(::nitroapi::viddef_s), "sizeof nitroapi::viddef_s");
     static_assert(o854 == offsetof(::nitroapi::viddef_s, buffer), "offsetof nitroapi::viddef_s.buffer");
     static_assert(std::is_same_v<t849, map_t<decltype(::nitroapi::viddef_s::buffer)>>, "type nitroapi::viddef_s.buffer");
     static_assert(o855 == offsetof(::nitroapi::viddef_s, colormap), "offsetof nitroapi::viddef_s.colormap");
@@ -7594,7 +7709,7 @@ namespace goldsrc_equivalence
     static_assert(std::is_same_v<t859, map_t<decltype(::nitroapi::viddef_s::numpages)>>, "type nitroapi::viddef_s.numpages");
     static_assert(o865 == offsetof(::nitroapi::viddef_s, recalc_refdef), "offsetof nitroapi::viddef_s.recalc_refdef");
     static_assert(std::is_same_v<t860, map_t<decltype(::nitroapi::viddef_s::recalc_refdef)>>, "type nitroapi::viddef_s.recalc_refdef");
-    static_assert(s35 == sizeof(::clientdata_s), "sizeof clientdata_s");
+    static_assert(s70 == sizeof(::clientdata_s), "sizeof clientdata_s");
     static_assert(o866 == offsetof(::clientdata_s, origin), "offsetof clientdata_s.origin");
     static_assert(std::is_same_v<t861, map_t<decltype(::clientdata_s::origin)>>, "type clientdata_s.origin");
     static_assert(o867 == offsetof(::clientdata_s, velocity), "offsetof clientdata_s.velocity");
@@ -7675,7 +7790,7 @@ namespace goldsrc_equivalence
     static_assert(std::is_same_v<t899, map_t<decltype(::clientdata_s::vuser3)>>, "type clientdata_s.vuser3");
     static_assert(o905 == offsetof(::clientdata_s, vuser4), "offsetof clientdata_s.vuser4");
     static_assert(std::is_same_v<t900, map_t<decltype(::clientdata_s::vuser4)>>, "type clientdata_s.vuser4");
-    static_assert(s36 == sizeof(::entity_state_s), "sizeof entity_state_s");
+    static_assert(s71 == sizeof(::entity_state_s), "sizeof entity_state_s");
     static_assert(o906 == offsetof(::entity_state_s, entityType), "offsetof entity_state_s.entityType");
     static_assert(std::is_same_v<t901, map_t<decltype(::entity_state_s::entityType)>>, "type entity_state_s.entityType");
     static_assert(o907 == offsetof(::entity_state_s, number), "offsetof entity_state_s.number");
@@ -7800,7 +7915,7 @@ namespace goldsrc_equivalence
     static_assert(std::is_same_v<t961, map_t<decltype(::entity_state_s::vuser3)>>, "type entity_state_s.vuser3");
     static_assert(o967 == offsetof(::entity_state_s, vuser4), "offsetof entity_state_s.vuser4");
     static_assert(std::is_same_v<t962, map_t<decltype(::entity_state_s::vuser4)>>, "type entity_state_s.vuser4");
-    static_assert(s37 == sizeof(::latchedvars_t), "sizeof latchedvars_t");
+    static_assert(s72 == sizeof(::latchedvars_t), "sizeof latchedvars_t");
     static_assert(o968 == offsetof(::latchedvars_t, prevanimtime), "offsetof latchedvars_t.prevanimtime");
     static_assert(std::is_same_v<t963, map_t<decltype(::latchedvars_t::prevanimtime)>>, "type latchedvars_t.prevanimtime");
     static_assert(o969 == offsetof(::latchedvars_t, sequencetime), "offsetof latchedvars_t.sequencetime");
@@ -7819,21 +7934,21 @@ namespace goldsrc_equivalence
     static_assert(std::is_same_v<t970, map_t<decltype(::latchedvars_t::prevcontroller)>>, "type latchedvars_t.prevcontroller");
     static_assert(o976 == offsetof(::latchedvars_t, prevblending), "offsetof latchedvars_t.prevblending");
     static_assert(std::is_same_v<t971, map_t<decltype(::latchedvars_t::prevblending)>>, "type latchedvars_t.prevblending");
-    static_assert(s38 == sizeof(::mouth_t), "sizeof mouth_t");
+    static_assert(s73 == sizeof(::mouth_t), "sizeof mouth_t");
     static_assert(o977 == offsetof(::mouth_t, mouthopen), "offsetof mouth_t.mouthopen");
     static_assert(std::is_same_v<t972, map_t<decltype(::mouth_t::mouthopen)>>, "type mouth_t.mouthopen");
     static_assert(o978 == offsetof(::mouth_t, sndcount), "offsetof mouth_t.sndcount");
     static_assert(std::is_same_v<t973, map_t<decltype(::mouth_t::sndcount)>>, "type mouth_t.sndcount");
     static_assert(o979 == offsetof(::mouth_t, sndavg), "offsetof mouth_t.sndavg");
     static_assert(std::is_same_v<t974, map_t<decltype(::mouth_t::sndavg)>>, "type mouth_t.sndavg");
-    static_assert(s39 == sizeof(::position_history_t), "sizeof position_history_t");
+    static_assert(s74 == sizeof(::position_history_t), "sizeof position_history_t");
     static_assert(o980 == offsetof(::position_history_t, animtime), "offsetof position_history_t.animtime");
     static_assert(std::is_same_v<t975, map_t<decltype(::position_history_t::animtime)>>, "type position_history_t.animtime");
     static_assert(o981 == offsetof(::position_history_t, origin), "offsetof position_history_t.origin");
     static_assert(std::is_same_v<t976, map_t<decltype(::position_history_t::origin)>>, "type position_history_t.origin");
     static_assert(o982 == offsetof(::position_history_t, angles), "offsetof position_history_t.angles");
     static_assert(std::is_same_v<t977, map_t<decltype(::position_history_t::angles)>>, "type position_history_t.angles");
-    static_assert(s40 == sizeof(::weapon_data_s), "sizeof weapon_data_s");
+    static_assert(s75 == sizeof(::weapon_data_s), "sizeof weapon_data_s");
     static_assert(o983 == offsetof(::weapon_data_s, m_iId), "offsetof weapon_data_s.m_iId");
     static_assert(std::is_same_v<t978, map_t<decltype(::weapon_data_s::m_iId)>>, "type weapon_data_s.m_iId");
     static_assert(o984 == offsetof(::weapon_data_s, m_iClip), "offsetof weapon_data_s.m_iClip");
@@ -7884,7 +7999,7 @@ namespace goldsrc_equivalence
     static_assert(std::is_same_v<t998, map_t<decltype(::weapon_data_s::fuser3)>>, "type weapon_data_s.fuser3");
     static_assert(o1004 == offsetof(::weapon_data_s, fuser4), "offsetof weapon_data_s.fuser4");
     static_assert(std::is_same_v<t999, map_t<decltype(::weapon_data_s::fuser4)>>, "type weapon_data_s.fuser4");
-    static_assert(s41 == sizeof(::cl_entity_s), "sizeof cl_entity_s");
+    static_assert(s76 == sizeof(::cl_entity_s), "sizeof cl_entity_s");
     static_assert(o1005 == offsetof(::cl_entity_s, index), "offsetof cl_entity_s.index");
     static_assert(std::is_same_v<t1000, map_t<decltype(::cl_entity_s::index)>>, "type cl_entity_s.index");
     static_assert(o1006 == offsetof(::cl_entity_s, player), "offsetof cl_entity_s.player");
@@ -7925,14 +8040,14 @@ namespace goldsrc_equivalence
     static_assert(std::is_same_v<t1018, map_t<decltype(::cl_entity_s::visframe)>>, "type cl_entity_s.visframe");
     static_assert(o1024 == offsetof(::cl_entity_s, cvFloorColor), "offsetof cl_entity_s.cvFloorColor");
     static_assert(std::is_same_v<t1019, map_t<decltype(::cl_entity_s::cvFloorColor)>>, "type cl_entity_s.cvFloorColor");
-    static_assert(s42 == sizeof(::local_state_s), "sizeof local_state_s");
+    static_assert(s77 == sizeof(::local_state_s), "sizeof local_state_s");
     static_assert(o1025 == offsetof(::local_state_s, playerstate), "offsetof local_state_s.playerstate");
     static_assert(std::is_same_v<t1020, map_t<decltype(::local_state_s::playerstate)>>, "type local_state_s.playerstate");
     static_assert(o1026 == offsetof(::local_state_s, client), "offsetof local_state_s.client");
     static_assert(std::is_same_v<t1021, map_t<decltype(::local_state_s::client)>>, "type local_state_s.client");
     static_assert(o1027 == offsetof(::local_state_s, weapondata), "offsetof local_state_s.weapondata");
     static_assert(std::is_same_v<t1022, map_t<decltype(::local_state_s::weapondata)>>, "type local_state_s.weapondata");
-    static_assert(s43 == sizeof(::event_api_s), "sizeof event_api_s");
+    static_assert(s78 == sizeof(::event_api_s), "sizeof event_api_s");
     static_assert(o1028 == offsetof(::event_api_s, version), "offsetof event_api_s.version");
     static_assert(std::is_same_v<t1023, map_t<decltype(::event_api_s::version)>>, "type event_api_s.version");
     static_assert(o1029 == offsetof(::event_api_s, EV_PlaySound), "offsetof event_api_s.EV_PlaySound");
@@ -7983,7 +8098,7 @@ namespace goldsrc_equivalence
     static_assert(std::is_same_v<t1043, map_t<decltype(::event_api_s::EV_StopAllSounds)>>, "type event_api_s.EV_StopAllSounds");
     static_assert(o1049 == offsetof(::event_api_s, EV_KillEvents), "offsetof event_api_s.EV_KillEvents");
     static_assert(std::is_same_v<t1044, map_t<decltype(::event_api_s::EV_KillEvents)>>, "type event_api_s.EV_KillEvents");
-    static_assert(s44 == sizeof(::event_args_s), "sizeof event_args_s");
+    static_assert(s79 == sizeof(::event_args_s), "sizeof event_args_s");
     static_assert(o1050 == offsetof(::event_args_s, flags), "offsetof event_args_s.flags");
     static_assert(std::is_same_v<t1045, map_t<decltype(::event_args_s::flags)>>, "type event_args_s.flags");
     static_assert(o1051 == offsetof(::event_args_s, entindex), "offsetof event_args_s.entindex");
@@ -8008,7 +8123,7 @@ namespace goldsrc_equivalence
     static_assert(std::is_same_v<t1055, map_t<decltype(::event_args_s::bparam1)>>, "type event_args_s.bparam1");
     static_assert(o1061 == offsetof(::event_args_s, bparam2), "offsetof event_args_s.bparam2");
     static_assert(std::is_same_v<t1056, map_t<decltype(::event_args_s::bparam2)>>, "type event_args_s.bparam2");
-    static_assert(s45 == sizeof(::dmodel_s), "sizeof dmodel_s");
+    static_assert(s80 == sizeof(::dmodel_s), "sizeof dmodel_s");
     static_assert(o1062 == offsetof(::dmodel_s, mins), "offsetof dmodel_s.mins");
     static_assert(std::is_same_v<t1057, map_t<decltype(::dmodel_s::mins)>>, "type dmodel_s.mins");
     static_assert(o1063 == offsetof(::dmodel_s, maxs), "offsetof dmodel_s.maxs");
@@ -8023,20 +8138,20 @@ namespace goldsrc_equivalence
     static_assert(std::is_same_v<t1062, map_t<decltype(::dmodel_s::firstface)>>, "type dmodel_s.firstface");
     static_assert(o1068 == offsetof(::dmodel_s, numfaces), "offsetof dmodel_s.numfaces");
     static_assert(std::is_same_v<t1063, map_t<decltype(::dmodel_s::numfaces)>>, "type dmodel_s.numfaces");
-    static_assert(s46 == sizeof(::dspriteframe_s), "sizeof dspriteframe_s");
+    static_assert(s81 == sizeof(::dspriteframe_s), "sizeof dspriteframe_s");
     static_assert(o1069 == offsetof(::dspriteframe_s, origin), "offsetof dspriteframe_s.origin");
     static_assert(std::is_same_v<t1064, map_t<decltype(::dspriteframe_s::origin)>>, "type dspriteframe_s.origin");
     static_assert(o1070 == offsetof(::dspriteframe_s, width), "offsetof dspriteframe_s.width");
     static_assert(std::is_same_v<t1065, map_t<decltype(::dspriteframe_s::width)>>, "type dspriteframe_s.width");
     static_assert(o1071 == offsetof(::dspriteframe_s, height), "offsetof dspriteframe_s.height");
     static_assert(std::is_same_v<t1066, map_t<decltype(::dspriteframe_s::height)>>, "type dspriteframe_s.height");
-    static_assert(s47 == sizeof(::dspritegroup_s), "sizeof dspritegroup_s");
+    static_assert(s82 == sizeof(::dspritegroup_s), "sizeof dspritegroup_s");
     static_assert(o1072 == offsetof(::dspritegroup_s, numframes), "offsetof dspritegroup_s.numframes");
     static_assert(std::is_same_v<t1067, map_t<decltype(::dspritegroup_s::numframes)>>, "type dspritegroup_s.numframes");
-    static_assert(s48 == sizeof(::dspriteinterval_s), "sizeof dspriteinterval_s");
+    static_assert(s83 == sizeof(::dspriteinterval_s), "sizeof dspriteinterval_s");
     static_assert(o1073 == offsetof(::dspriteinterval_s, interval), "offsetof dspriteinterval_s.interval");
     static_assert(std::is_same_v<t1068, map_t<decltype(::dspriteinterval_s::interval)>>, "type dspriteinterval_s.interval");
-    static_assert(s49 == sizeof(::dsprite_s), "sizeof dsprite_s");
+    static_assert(s84 == sizeof(::dsprite_s), "sizeof dsprite_s");
     static_assert(o1074 == offsetof(::dsprite_s, ident), "offsetof dsprite_s.ident");
     static_assert(std::is_same_v<t1069, map_t<decltype(::dsprite_s::ident)>>, "type dsprite_s.ident");
     static_assert(o1075 == offsetof(::dsprite_s, version), "offsetof dsprite_s.version");
@@ -8057,18 +8172,18 @@ namespace goldsrc_equivalence
     static_assert(std::is_same_v<t1077, map_t<decltype(::dsprite_s::beamlength)>>, "type dsprite_s.beamlength");
     static_assert(o1083 == offsetof(::dsprite_s, synctype), "offsetof dsprite_s.synctype");
     static_assert(std::is_same_v<t1078, map_t<decltype(::dsprite_s::synctype)>>, "type dsprite_s.synctype");
-    static_assert(s50 == sizeof(::dspriteframetype_s), "sizeof dspriteframetype_s");
+    static_assert(s85 == sizeof(::dspriteframetype_s), "sizeof dspriteframetype_s");
     static_assert(o1084 == offsetof(::dspriteframetype_s, type), "offsetof dspriteframetype_s.type");
     static_assert(std::is_same_v<t1079, map_t<decltype(::dspriteframetype_s::type)>>, "type dspriteframetype_s.type");
-    static_assert(s51 == sizeof(::mstudioanim_t), "sizeof mstudioanim_t");
+    static_assert(s86 == sizeof(::mstudioanim_t), "sizeof mstudioanim_t");
     static_assert(o1085 == offsetof(::mstudioanim_t, offset), "offsetof mstudioanim_t.offset");
     static_assert(std::is_same_v<t1080, map_t<decltype(::mstudioanim_t::offset)>>, "type mstudioanim_t.offset");
-    static_assert(s52 == sizeof(::mstudioanimvalue_t), "sizeof mstudioanimvalue_t");
+    static_assert(s87 == sizeof(::mstudioanimvalue_t), "sizeof mstudioanimvalue_t");
     static_assert(o1086 == offsetof(::mstudioanimvalue_t, num), "offsetof mstudioanimvalue_t.num");
     // mstudioanimvalue_t.num: type comparison skipped - an unnamed record has no name to compare by
     static_assert(o1087 == offsetof(::mstudioanimvalue_t, value), "offsetof mstudioanimvalue_t.value");
     static_assert(std::is_same_v<t1081, map_t<decltype(::mstudioanimvalue_t::value)>>, "type mstudioanimvalue_t.value");
-    static_assert(s53 == sizeof(::mstudioattachment_t), "sizeof mstudioattachment_t");
+    static_assert(s88 == sizeof(::mstudioattachment_t), "sizeof mstudioattachment_t");
     static_assert(o1088 == offsetof(::mstudioattachment_t, name), "offsetof mstudioattachment_t.name");
     static_assert(std::is_same_v<t1082, map_t<decltype(::mstudioattachment_t::name)>>, "type mstudioattachment_t.name");
     static_assert(o1089 == offsetof(::mstudioattachment_t, type), "offsetof mstudioattachment_t.type");
@@ -8079,7 +8194,7 @@ namespace goldsrc_equivalence
     static_assert(std::is_same_v<t1085, map_t<decltype(::mstudioattachment_t::org)>>, "type mstudioattachment_t.org");
     static_assert(o1092 == offsetof(::mstudioattachment_t, vectors), "offsetof mstudioattachment_t.vectors");
     static_assert(std::is_same_v<t1086, map_t<decltype(::mstudioattachment_t::vectors)>>, "type mstudioattachment_t.vectors");
-    static_assert(s54 == sizeof(::mstudiobodyparts_t), "sizeof mstudiobodyparts_t");
+    static_assert(s89 == sizeof(::mstudiobodyparts_t), "sizeof mstudiobodyparts_t");
     static_assert(o1093 == offsetof(::mstudiobodyparts_t, name), "offsetof mstudiobodyparts_t.name");
     static_assert(std::is_same_v<t1087, map_t<decltype(::mstudiobodyparts_t::name)>>, "type mstudiobodyparts_t.name");
     static_assert(o1094 == offsetof(::mstudiobodyparts_t, nummodels), "offsetof mstudiobodyparts_t.nummodels");
@@ -8088,7 +8203,7 @@ namespace goldsrc_equivalence
     static_assert(std::is_same_v<t1089, map_t<decltype(::mstudiobodyparts_t::base)>>, "type mstudiobodyparts_t.base");
     static_assert(o1096 == offsetof(::mstudiobodyparts_t, modelindex), "offsetof mstudiobodyparts_t.modelindex");
     static_assert(std::is_same_v<t1090, map_t<decltype(::mstudiobodyparts_t::modelindex)>>, "type mstudiobodyparts_t.modelindex");
-    static_assert(s55 == sizeof(::mstudiobone_t), "sizeof mstudiobone_t");
+    static_assert(s90 == sizeof(::mstudiobone_t), "sizeof mstudiobone_t");
     static_assert(o1097 == offsetof(::mstudiobone_t, name), "offsetof mstudiobone_t.name");
     static_assert(std::is_same_v<t1091, map_t<decltype(::mstudiobone_t::name)>>, "type mstudiobone_t.name");
     static_assert(o1098 == offsetof(::mstudiobone_t, parent), "offsetof mstudiobone_t.parent");
@@ -8101,7 +8216,7 @@ namespace goldsrc_equivalence
     static_assert(std::is_same_v<t1095, map_t<decltype(::mstudiobone_t::value)>>, "type mstudiobone_t.value");
     static_assert(o1102 == offsetof(::mstudiobone_t, scale), "offsetof mstudiobone_t.scale");
     static_assert(std::is_same_v<t1096, map_t<decltype(::mstudiobone_t::scale)>>, "type mstudiobone_t.scale");
-    static_assert(s56 == sizeof(::mstudioevent_s), "sizeof mstudioevent_s");
+    static_assert(s91 == sizeof(::mstudioevent_s), "sizeof mstudioevent_s");
     static_assert(o1103 == offsetof(::mstudioevent_s, frame), "offsetof mstudioevent_s.frame");
     static_assert(std::is_same_v<t1097, map_t<decltype(::mstudioevent_s::frame)>>, "type mstudioevent_s.frame");
     static_assert(o1104 == offsetof(::mstudioevent_s, event), "offsetof mstudioevent_s.event");
@@ -8110,7 +8225,7 @@ namespace goldsrc_equivalence
     static_assert(std::is_same_v<t1099, map_t<decltype(::mstudioevent_s::type)>>, "type mstudioevent_s.type");
     static_assert(o1106 == offsetof(::mstudioevent_s, options), "offsetof mstudioevent_s.options");
     static_assert(std::is_same_v<t1100, map_t<decltype(::mstudioevent_s::options)>>, "type mstudioevent_s.options");
-    static_assert(s57 == sizeof(::mstudioseqdesc_t), "sizeof mstudioseqdesc_t");
+    static_assert(s92 == sizeof(::mstudioseqdesc_t), "sizeof mstudioseqdesc_t");
     static_assert(o1107 == offsetof(::mstudioseqdesc_t, label), "offsetof mstudioseqdesc_t.label");
     static_assert(std::is_same_v<t1101, map_t<decltype(::mstudioseqdesc_t::label)>>, "type mstudioseqdesc_t.label");
     static_assert(o1108 == offsetof(::mstudioseqdesc_t, fps), "offsetof mstudioseqdesc_t.fps");
@@ -8170,7 +8285,7 @@ namespace goldsrc_equivalence
     static_assert(std::is_same_v<t1127, map_t<decltype(::mstudioseqdesc_t::nodeflags)>>, "type mstudioseqdesc_t.nodeflags");
     static_assert(o1134 == offsetof(::mstudioseqdesc_t, nextseq), "offsetof mstudioseqdesc_t.nextseq");
     static_assert(std::is_same_v<t1128, map_t<decltype(::mstudioseqdesc_t::nextseq)>>, "type mstudioseqdesc_t.nextseq");
-    static_assert(s58 == sizeof(::mstudiotexture_t), "sizeof mstudiotexture_t");
+    static_assert(s93 == sizeof(::mstudiotexture_t), "sizeof mstudiotexture_t");
     static_assert(o1135 == offsetof(::mstudiotexture_t, name), "offsetof mstudiotexture_t.name");
     static_assert(std::is_same_v<t1129, map_t<decltype(::mstudiotexture_t::name)>>, "type mstudiotexture_t.name");
     static_assert(o1136 == offsetof(::mstudiotexture_t, flags), "offsetof mstudiotexture_t.flags");
@@ -8181,7 +8296,7 @@ namespace goldsrc_equivalence
     static_assert(std::is_same_v<t1132, map_t<decltype(::mstudiotexture_t::height)>>, "type mstudiotexture_t.height");
     static_assert(o1139 == offsetof(::mstudiotexture_t, index), "offsetof mstudiotexture_t.index");
     static_assert(std::is_same_v<t1133, map_t<decltype(::mstudiotexture_t::index)>>, "type mstudiotexture_t.index");
-    static_assert(s59 == sizeof(::studiohdr_t), "sizeof studiohdr_t");
+    static_assert(s94 == sizeof(::studiohdr_t), "sizeof studiohdr_t");
     static_assert(o1140 == offsetof(::studiohdr_t, id), "offsetof studiohdr_t.id");
     static_assert(std::is_same_v<t1134, map_t<decltype(::studiohdr_t::id)>>, "type studiohdr_t.id");
     static_assert(o1141 == offsetof(::studiohdr_t, version), "offsetof studiohdr_t.version");
@@ -8254,7 +8369,16 @@ namespace goldsrc_equivalence
     static_assert(std::is_same_v<t1168, map_t<decltype(::studiohdr_t::numtransitions)>>, "type studiohdr_t.numtransitions");
     static_assert(o1175 == offsetof(::studiohdr_t, transitionindex), "offsetof studiohdr_t.transitionindex");
     static_assert(std::is_same_v<t1169, map_t<decltype(::studiohdr_t::transitionindex)>>, "type studiohdr_t.transitionindex");
-    static_assert(s60 == sizeof(::movevars_s), "sizeof movevars_s");
+    // lumpinfo_s: comparisons skipped - declared in our NextClient sources, which this test does not include; the golden test checks its
+    // layout against the facts
+
+    // qpic_t: comparisons skipped - declared in our NextClient sources, which this test does not include; the golden test checks its layout
+    // against the facts
+
+    // wadinfo_t: comparisons skipped - declared in our NextClient sources, which this test does not include; the golden test checks its
+    // layout against the facts
+
+    static_assert(s95 == sizeof(::movevars_s), "sizeof movevars_s");
     static_assert(o1176 == offsetof(::movevars_s, gravity), "offsetof movevars_s.gravity");
     static_assert(std::is_same_v<t1170, map_t<decltype(::movevars_s::gravity)>>, "type movevars_s.gravity");
     static_assert(o1177 == offsetof(::movevars_s, stopspeed), "offsetof movevars_s.stopspeed");
@@ -8307,7 +8431,7 @@ namespace goldsrc_equivalence
     static_assert(std::is_same_v<t1194, map_t<decltype(::movevars_s::skyvec_y)>>, "type movevars_s.skyvec_y");
     static_assert(o1201 == offsetof(::movevars_s, skyvec_z), "offsetof movevars_s.skyvec_z");
     static_assert(std::is_same_v<t1195, map_t<decltype(::movevars_s::skyvec_z)>>, "type movevars_s.skyvec_z");
-    static_assert(s61 == sizeof(::physent_s), "sizeof physent_s");
+    static_assert(s96 == sizeof(::physent_s), "sizeof physent_s");
     static_assert(o1202 == offsetof(::physent_s, name), "offsetof physent_s.name");
     static_assert(std::is_same_v<t1196, map_t<decltype(::physent_s::name)>>, "type physent_s.name");
     static_assert(o1203 == offsetof(::physent_s, player), "offsetof physent_s.player");
@@ -8374,12 +8498,12 @@ namespace goldsrc_equivalence
     static_assert(std::is_same_v<t1227, map_t<decltype(::physent_s::vuser3)>>, "type physent_s.vuser3");
     static_assert(o1234 == offsetof(::physent_s, vuser4), "offsetof physent_s.vuser4");
     static_assert(std::is_same_v<t1228, map_t<decltype(::physent_s::vuser4)>>, "type physent_s.vuser4");
-    static_assert(s62 == sizeof(::pmplane_t), "sizeof pmplane_t");
+    static_assert(s97 == sizeof(::pmplane_t), "sizeof pmplane_t");
     static_assert(o1235 == offsetof(::pmplane_t, normal), "offsetof pmplane_t.normal");
     static_assert(std::is_same_v<t1229, map_t<decltype(::pmplane_t::normal)>>, "type pmplane_t.normal");
     static_assert(o1236 == offsetof(::pmplane_t, dist), "offsetof pmplane_t.dist");
     static_assert(std::is_same_v<t1230, map_t<decltype(::pmplane_t::dist)>>, "type pmplane_t.dist");
-    static_assert(s63 == sizeof(::pmtrace_s), "sizeof pmtrace_s");
+    static_assert(s98 == sizeof(::pmtrace_s), "sizeof pmtrace_s");
     static_assert(o1237 == offsetof(::pmtrace_s, allsolid), "offsetof pmtrace_s.allsolid");
     static_assert(std::is_same_v<t1231, map_t<decltype(::pmtrace_s::allsolid)>>, "type pmtrace_s.allsolid");
     static_assert(o1238 == offsetof(::pmtrace_s, startsolid), "offsetof pmtrace_s.startsolid");
@@ -8400,7 +8524,7 @@ namespace goldsrc_equivalence
     static_assert(std::is_same_v<t1239, map_t<decltype(::pmtrace_s::deltavelocity)>>, "type pmtrace_s.deltavelocity");
     static_assert(o1246 == offsetof(::pmtrace_s, hitgroup), "offsetof pmtrace_s.hitgroup");
     static_assert(std::is_same_v<t1240, map_t<decltype(::pmtrace_s::hitgroup)>>, "type pmtrace_s.hitgroup");
-    static_assert(s64 == sizeof(::playermove_s), "sizeof playermove_s");
+    static_assert(s99 == sizeof(::playermove_s), "sizeof playermove_s");
     static_assert(o1247 == offsetof(::playermove_s, player_index), "offsetof playermove_s.player_index");
     static_assert(std::is_same_v<t1241, map_t<decltype(::playermove_s::player_index)>>, "type playermove_s.player_index");
     static_assert(o1248 == offsetof(::playermove_s, server), "offsetof playermove_s.server");
@@ -8598,7 +8722,7 @@ namespace goldsrc_equivalence
     );
     static_assert(o1343 == offsetof(::playermove_s, PM_TraceLineEx), "offsetof playermove_s.PM_TraceLineEx");
     static_assert(std::is_same_v<t1337, map_t<decltype(::playermove_s::PM_TraceLineEx)>>, "type playermove_s.PM_TraceLineEx");
-    static_assert(s65 == sizeof(::enginefuncs_s), "sizeof enginefuncs_s");
+    static_assert(s100 == sizeof(::enginefuncs_s), "sizeof enginefuncs_s");
     static_assert(o1344 == offsetof(::enginefuncs_s, pfnPrecacheModel), "offsetof enginefuncs_s.pfnPrecacheModel");
     static_assert(std::is_same_v<t1338, map_t<decltype(::enginefuncs_s::pfnPrecacheModel)>>, "type enginefuncs_s.pfnPrecacheModel");
     static_assert(o1345 == offsetof(::enginefuncs_s, pfnPrecacheSound), "offsetof enginefuncs_s.pfnPrecacheSound");
@@ -9002,7 +9126,7 @@ namespace goldsrc_equivalence
     );
     static_assert(o1501 == offsetof(::enginefuncs_s, pfnEngCheckParm), "offsetof enginefuncs_s.pfnEngCheckParm");
     static_assert(std::is_same_v<t1495, map_t<decltype(::enginefuncs_s::pfnEngCheckParm)>>, "type enginefuncs_s.pfnEngCheckParm");
-    static_assert(s66 == sizeof(::engine_studio_api_s), "sizeof engine_studio_api_s");
+    static_assert(s101 == sizeof(::engine_studio_api_s), "sizeof engine_studio_api_s");
     static_assert(o1502 == offsetof(::engine_studio_api_s, Mem_Calloc), "offsetof engine_studio_api_s.Mem_Calloc");
     static_assert(std::is_same_v<t1496, map_t<decltype(::engine_studio_api_s::Mem_Calloc)>>, "type engine_studio_api_s.Mem_Calloc");
     static_assert(o1503 == offsetof(::engine_studio_api_s, Cache_Check), "offsetof engine_studio_api_s.Cache_Check");
@@ -9197,7 +9321,7 @@ namespace goldsrc_equivalence
         std::is_same_v<t1541, map_t<decltype(::engine_studio_api_s::StudioRenderShadow)>>,
         "type engine_studio_api_s.StudioRenderShadow"
     );
-    static_assert(s67 == sizeof(::r_studio_interface_s), "sizeof r_studio_interface_s");
+    static_assert(s102 == sizeof(::r_studio_interface_s), "sizeof r_studio_interface_s");
     static_assert(o1548 == offsetof(::r_studio_interface_s, version), "offsetof r_studio_interface_s.version");
     static_assert(std::is_same_v<t1542, map_t<decltype(::r_studio_interface_s::version)>>, "type r_studio_interface_s.version");
     static_assert(o1549 == offsetof(::r_studio_interface_s, StudioDrawModel), "offsetof r_studio_interface_s.StudioDrawModel");
@@ -9210,7 +9334,7 @@ namespace goldsrc_equivalence
         std::is_same_v<t1544, map_t<decltype(::r_studio_interface_s::StudioDrawPlayer)>>,
         "type r_studio_interface_s.StudioDrawPlayer"
     );
-    static_assert(s68 == sizeof(::triangleapi_s), "sizeof triangleapi_s");
+    static_assert(s103 == sizeof(::triangleapi_s), "sizeof triangleapi_s");
     static_assert(o1551 == offsetof(::triangleapi_s, version), "offsetof triangleapi_s.version");
     static_assert(std::is_same_v<t1545, map_t<decltype(::triangleapi_s::version)>>, "type triangleapi_s.version");
     static_assert(o1552 == offsetof(::triangleapi_s, RenderMode), "offsetof triangleapi_s.RenderMode");
@@ -9251,17 +9375,17 @@ namespace goldsrc_equivalence
     static_assert(std::is_same_v<t1563, map_t<decltype(::triangleapi_s::Color4fRendermode)>>, "type triangleapi_s.Color4fRendermode");
     static_assert(o1570 == offsetof(::triangleapi_s, FogParams), "offsetof triangleapi_s.FogParams");
     static_assert(std::is_same_v<t1564, map_t<decltype(::triangleapi_s::FogParams)>>, "type triangleapi_s.FogParams");
-    static_assert(s69 == sizeof(::cache_user_s), "sizeof cache_user_s");
+    static_assert(s104 == sizeof(::cache_user_s), "sizeof cache_user_s");
     static_assert(o1571 == offsetof(::cache_user_s, data), "offsetof cache_user_s.data");
     static_assert(std::is_same_v<t1565, map_t<decltype(::cache_user_s::data)>>, "type cache_user_s.data");
-    static_assert(s70 == sizeof(::color24), "sizeof color24");
+    static_assert(s105 == sizeof(::color24), "sizeof color24");
     static_assert(o1572 == offsetof(::color24, r), "offsetof color24.r");
     static_assert(std::is_same_v<t1566, map_t<decltype(::color24::r)>>, "type color24.r");
     static_assert(o1573 == offsetof(::color24, g), "offsetof color24.g");
     static_assert(std::is_same_v<t1567, map_t<decltype(::color24::g)>>, "type color24.g");
     static_assert(o1574 == offsetof(::color24, b), "offsetof color24.b");
     static_assert(std::is_same_v<t1568, map_t<decltype(::color24::b)>>, "type color24.b");
-    static_assert(s71 == sizeof(::colorVec), "sizeof colorVec");
+    static_assert(s106 == sizeof(::colorVec), "sizeof colorVec");
     static_assert(o1575 == offsetof(::colorVec, r), "offsetof colorVec.r");
     static_assert(std::is_same_v<t1569, map_t<decltype(::colorVec::r)>>, "type colorVec.r");
     static_assert(o1576 == offsetof(::colorVec, g), "offsetof colorVec.g");
@@ -9270,7 +9394,7 @@ namespace goldsrc_equivalence
     static_assert(std::is_same_v<t1571, map_t<decltype(::colorVec::b)>>, "type colorVec.b");
     static_assert(o1578 == offsetof(::colorVec, a), "offsetof colorVec.a");
     static_assert(std::is_same_v<t1572, map_t<decltype(::colorVec::a)>>, "type colorVec.a");
-    static_assert(s72 == sizeof(::vrect_t), "sizeof vrect_t");
+    static_assert(s107 == sizeof(::vrect_t), "sizeof vrect_t");
     static_assert(o1579 == offsetof(::vrect_t, x), "offsetof vrect_t.x");
     static_assert(std::is_same_v<t1573, map_t<decltype(::vrect_t::x)>>, "type vrect_t.x");
     static_assert(o1580 == offsetof(::vrect_t, y), "offsetof vrect_t.y");
@@ -9281,7 +9405,7 @@ namespace goldsrc_equivalence
     static_assert(std::is_same_v<t1576, map_t<decltype(::vrect_t::height)>>, "type vrect_t.height");
     static_assert(o1583 == offsetof(::vrect_t, pnext), "offsetof vrect_t.pnext");
     static_assert(std::is_same_v<t1577, map_t<decltype(::vrect_t::pnext)>>, "type vrect_t.pnext");
-    static_assert(s73 == sizeof(::rect_s), "sizeof rect_s");
+    static_assert(s108 == sizeof(::rect_s), "sizeof rect_s");
     static_assert(o1584 == offsetof(::rect_s, left), "offsetof rect_s.left");
     static_assert(std::is_same_v<t1578, map_t<decltype(::rect_s::left)>>, "type rect_s.left");
     static_assert(o1585 == offsetof(::rect_s, right), "offsetof rect_s.right");
@@ -9290,12 +9414,12 @@ namespace goldsrc_equivalence
     static_assert(std::is_same_v<t1580, map_t<decltype(::rect_s::top)>>, "type rect_s.top");
     static_assert(o1587 == offsetof(::rect_s, bottom), "offsetof rect_s.bottom");
     static_assert(std::is_same_v<t1581, map_t<decltype(::rect_s::bottom)>>, "type rect_s.bottom");
-    static_assert(s74 == sizeof(::kbutton_s), "sizeof kbutton_s");
+    static_assert(s109 == sizeof(::kbutton_s), "sizeof kbutton_s");
     static_assert(o1588 == offsetof(::kbutton_s, down), "offsetof kbutton_s.down");
     static_assert(std::is_same_v<t1582, map_t<decltype(::kbutton_s::down)>>, "type kbutton_s.down");
     static_assert(o1589 == offsetof(::kbutton_s, state), "offsetof kbutton_s.state");
     static_assert(std::is_same_v<t1583, map_t<decltype(::kbutton_s::state)>>, "type kbutton_s.state");
-    static_assert(s75 == sizeof(::usercmd_s), "sizeof usercmd_s");
+    static_assert(s110 == sizeof(::usercmd_s), "sizeof usercmd_s");
     static_assert(o1590 == offsetof(::usercmd_s, lerp_msec), "offsetof usercmd_s.lerp_msec");
     static_assert(std::is_same_v<t1584, map_t<decltype(::usercmd_s::lerp_msec)>>, "type usercmd_s.lerp_msec");
     static_assert(o1591 == offsetof(::usercmd_s, msec), "offsetof usercmd_s.msec");
@@ -9320,7 +9444,7 @@ namespace goldsrc_equivalence
     static_assert(std::is_same_v<t1594, map_t<decltype(::usercmd_s::impact_index)>>, "type usercmd_s.impact_index");
     static_assert(o1601 == offsetof(::usercmd_s, impact_position), "offsetof usercmd_s.impact_position");
     static_assert(std::is_same_v<t1595, map_t<decltype(::usercmd_s::impact_position)>>, "type usercmd_s.impact_position");
-    static_assert(s76 == sizeof(::ref_params_s), "sizeof ref_params_s");
+    static_assert(s111 == sizeof(::ref_params_s), "sizeof ref_params_s");
     static_assert(o1602 == offsetof(::ref_params_s, vieworg), "offsetof ref_params_s.vieworg");
     static_assert(std::is_same_v<t1596, map_t<decltype(::ref_params_s::vieworg)>>, "type ref_params_s.vieworg");
     static_assert(o1603 == offsetof(::ref_params_s, viewangles), "offsetof ref_params_s.viewangles");
@@ -9387,7 +9511,7 @@ namespace goldsrc_equivalence
     static_assert(std::is_same_v<t1627, map_t<decltype(::ref_params_s::nextView)>>, "type ref_params_s.nextView");
     static_assert(o1634 == offsetof(::ref_params_s, onlyClientDraw), "offsetof ref_params_s.onlyClientDraw");
     static_assert(std::is_same_v<t1628, map_t<decltype(::ref_params_s::onlyClientDraw)>>, "type ref_params_s.onlyClientDraw");
-    static_assert(s77 == sizeof(::refdef_s), "sizeof refdef_s");
+    static_assert(s112 == sizeof(::refdef_s), "sizeof refdef_s");
     static_assert(o1635 == offsetof(::refdef_s, vrect), "offsetof refdef_s.vrect");
     static_assert(std::is_same_v<t1629, map_t<decltype(::refdef_s::vrect)>>, "type refdef_s.vrect");
     static_assert(o1636 == offsetof(::refdef_s, aliasvrect), "offsetof refdef_s.aliasvrect");
@@ -9436,7 +9560,7 @@ namespace goldsrc_equivalence
     static_assert(std::is_same_v<t1651, map_t<decltype(::refdef_s::ambientlight)>>, "type refdef_s.ambientlight");
     static_assert(o1658 == offsetof(::refdef_s, onlyClientDraws), "offsetof refdef_s.onlyClientDraws");
     static_assert(std::is_same_v<t1652, map_t<decltype(::refdef_s::onlyClientDraws)>>, "type refdef_s.onlyClientDraws");
-    static_assert(s78 == sizeof(::screenfade_s), "sizeof screenfade_s");
+    static_assert(s113 == sizeof(::screenfade_s), "sizeof screenfade_s");
     static_assert(o1659 == offsetof(::screenfade_s, fadeSpeed), "offsetof screenfade_s.fadeSpeed");
     static_assert(std::is_same_v<t1653, map_t<decltype(::screenfade_s::fadeSpeed)>>, "type screenfade_s.fadeSpeed");
     static_assert(o1660 == offsetof(::screenfade_s, fadeEnd), "offsetof screenfade_s.fadeEnd");
@@ -9455,7 +9579,7 @@ namespace goldsrc_equivalence
     static_assert(std::is_same_v<t1660, map_t<decltype(::screenfade_s::fadealpha)>>, "type screenfade_s.fadealpha");
     static_assert(o1667 == offsetof(::screenfade_s, fadeFlags), "offsetof screenfade_s.fadeFlags");
     static_assert(std::is_same_v<t1661, map_t<decltype(::screenfade_s::fadeFlags)>>, "type screenfade_s.fadeFlags");
-    static_assert(s79 == sizeof(::IVoiceTweak_s), "sizeof IVoiceTweak_s");
+    static_assert(s114 == sizeof(::IVoiceTweak_s), "sizeof IVoiceTweak_s");
     static_assert(o1668 == offsetof(::IVoiceTweak_s, StartVoiceTweakMode), "offsetof IVoiceTweak_s.StartVoiceTweakMode");
     static_assert(std::is_same_v<t1662, map_t<decltype(::IVoiceTweak_s::StartVoiceTweakMode)>>, "type IVoiceTweak_s.StartVoiceTweakMode");
     static_assert(o1669 == offsetof(::IVoiceTweak_s, EndVoiceTweakMode), "offsetof IVoiceTweak_s.EndVoiceTweakMode");
@@ -9629,1461 +9753,1471 @@ namespace goldsrc_equivalence
     static_assert(std::is_same_v<std::remove_const_t<decltype(c78)>, decltype(RGB_REDISH)>, "type RGB_REDISH");
     static_assert(c79 == RGB_YELLOWISH, "value RGB_YELLOWISH");
     static_assert(std::is_same_v<std::remove_const_t<decltype(c79)>, decltype(RGB_YELLOWISH)>, "type RGB_YELLOWISH");
-    static_assert(c80 == INSET_OFF, "value INSET_OFF");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c80)>, decltype(INSET_OFF)>, "type INSET_OFF");
-    static_assert(c81 == INSET_CHASE_FREE, "value INSET_CHASE_FREE");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c81)>, decltype(INSET_CHASE_FREE)>, "type INSET_CHASE_FREE");
-    static_assert(c82 == INSET_IN_EYE, "value INSET_IN_EYE");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c82)>, decltype(INSET_IN_EYE)>, "type INSET_IN_EYE");
-    static_assert(c83 == INSET_MAP_FREE, "value INSET_MAP_FREE");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c83)>, decltype(INSET_MAP_FREE)>, "type INSET_MAP_FREE");
-    static_assert(c84 == INSET_MAP_CHASE, "value INSET_MAP_CHASE");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c84)>, decltype(INSET_MAP_CHASE)>, "type INSET_MAP_CHASE");
-    static_assert(c85 == WEAPON_IS_ONTARGET, "value WEAPON_IS_ONTARGET");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c85)>, decltype(WEAPON_IS_ONTARGET)>, "type WEAPON_IS_ONTARGET");
-    static_assert(c86 == FCVAR_ARCHIVE, "value FCVAR_ARCHIVE");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c86)>, decltype(FCVAR_ARCHIVE)>, "type FCVAR_ARCHIVE");
-    static_assert(c87 == FCVAR_USERINFO, "value FCVAR_USERINFO");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c87)>, decltype(FCVAR_USERINFO)>, "type FCVAR_USERINFO");
-    static_assert(c88 == FCVAR_SERVER, "value FCVAR_SERVER");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c88)>, decltype(FCVAR_SERVER)>, "type FCVAR_SERVER");
-    static_assert(c89 == FCVAR_EXTDLL, "value FCVAR_EXTDLL");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c89)>, decltype(FCVAR_EXTDLL)>, "type FCVAR_EXTDLL");
-    static_assert(c90 == FCVAR_CLIENTDLL, "value FCVAR_CLIENTDLL");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c90)>, decltype(FCVAR_CLIENTDLL)>, "type FCVAR_CLIENTDLL");
-    static_assert(c91 == FCVAR_PROTECTED, "value FCVAR_PROTECTED");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c91)>, decltype(FCVAR_PROTECTED)>, "type FCVAR_PROTECTED");
-    static_assert(c92 == FCVAR_SPONLY, "value FCVAR_SPONLY");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c92)>, decltype(FCVAR_SPONLY)>, "type FCVAR_SPONLY");
-    static_assert(c93 == FCVAR_PRINTABLEONLY, "value FCVAR_PRINTABLEONLY");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c93)>, decltype(FCVAR_PRINTABLEONLY)>, "type FCVAR_PRINTABLEONLY");
-    static_assert(c94 == FCVAR_UNLOGGED, "value FCVAR_UNLOGGED");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c94)>, decltype(FCVAR_UNLOGGED)>, "type FCVAR_UNLOGGED");
-    static_assert(c95 == FCVAR_NOEXTRAWHITEPACE, "value FCVAR_NOEXTRAWHITEPACE");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c95)>, decltype(FCVAR_NOEXTRAWHITEPACE)>, "type FCVAR_NOEXTRAWHITEPACE");
-    static_assert(c96 == FCVAR_PRIVILEGED, "value FCVAR_PRIVILEGED");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c96)>, decltype(FCVAR_PRIVILEGED)>, "type FCVAR_PRIVILEGED");
-    static_assert(c97 == FCVAR_FILTERABLE, "value FCVAR_FILTERABLE");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c97)>, decltype(FCVAR_FILTERABLE)>, "type FCVAR_FILTERABLE");
-    static_assert(c98 == FCVAR_ISEXECUTED, "value FCVAR_ISEXECUTED");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c98)>, decltype(FCVAR_ISEXECUTED)>, "type FCVAR_ISEXECUTED");
-    static_assert(c99 == FCVAR_ISPATH, "value FCVAR_ISPATH");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c99)>, decltype(FCVAR_ISPATH)>, "type FCVAR_ISPATH");
-    static_assert(c100 == FCVAR_CHEAT, "value FCVAR_CHEAT");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c100)>, decltype(FCVAR_CHEAT)>, "type FCVAR_CHEAT");
-    static_assert(c101 == COM_MAX_CMD_LINE, "value COM_MAX_CMD_LINE");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c101)>, decltype(COM_MAX_CMD_LINE)>, "type COM_MAX_CMD_LINE");
-    static_assert(c102 == NUM_SAFE_ARGVS, "value NUM_SAFE_ARGVS");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c102)>, decltype(NUM_SAFE_ARGVS)>, "type NUM_SAFE_ARGVS");
-    static_assert(c103 == IDPOLYHEADER, "value IDPOLYHEADER");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c103)>, decltype(IDPOLYHEADER)>, "type IDPOLYHEADER");
-    static_assert(c104 == MAX_KNOWN_MODELS, "value MAX_KNOWN_MODELS");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c104)>, decltype(MAX_KNOWN_MODELS)>, "type MAX_KNOWN_MODELS");
-    static_assert(c105 == SURF_PLANEBACK, "value SURF_PLANEBACK");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c105)>, decltype(SURF_PLANEBACK)>, "type SURF_PLANEBACK");
-    static_assert(c106 == SURF_DRAWSKY, "value SURF_DRAWSKY");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c106)>, decltype(SURF_DRAWSKY)>, "type SURF_DRAWSKY");
-    static_assert(c107 == SURF_DRAWSPRITE, "value SURF_DRAWSPRITE");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c107)>, decltype(SURF_DRAWSPRITE)>, "type SURF_DRAWSPRITE");
-    static_assert(c108 == SURF_DRAWTURB, "value SURF_DRAWTURB");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c108)>, decltype(SURF_DRAWTURB)>, "type SURF_DRAWTURB");
-    static_assert(c109 == SURF_DRAWTILED, "value SURF_DRAWTILED");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c109)>, decltype(SURF_DRAWTILED)>, "type SURF_DRAWTILED");
-    static_assert(c110 == SURF_DRAWBACKGROUND, "value SURF_DRAWBACKGROUND");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c110)>, decltype(SURF_DRAWBACKGROUND)>, "type SURF_DRAWBACKGROUND");
-    static_assert(c111 == SURF_UNDERWATER, "value SURF_UNDERWATER");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c111)>, decltype(SURF_UNDERWATER)>, "type SURF_UNDERWATER");
-    static_assert(c112 == MAX_MODEL_NAME, "value MAX_MODEL_NAME");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c112)>, decltype(MAX_MODEL_NAME)>, "type MAX_MODEL_NAME");
-    static_assert(c113 == SIZEBUF_CHECK_OVERFLOW, "value SIZEBUF_CHECK_OVERFLOW");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c113)>, decltype(SIZEBUF_CHECK_OVERFLOW)>, "type SIZEBUF_CHECK_OVERFLOW");
-    static_assert(c114 == SIZEBUF_ALLOW_OVERFLOW, "value SIZEBUF_ALLOW_OVERFLOW");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c114)>, decltype(SIZEBUF_ALLOW_OVERFLOW)>, "type SIZEBUF_ALLOW_OVERFLOW");
-    static_assert(c115 == SIZEBUF_OVERFLOWED, "value SIZEBUF_OVERFLOWED");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c115)>, decltype(SIZEBUF_OVERFLOWED)>, "type SIZEBUF_OVERFLOWED");
-    static_assert(c116 == FCUST_FROMHPAK, "value FCUST_FROMHPAK");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c116)>, decltype(FCUST_FROMHPAK)>, "type FCUST_FROMHPAK");
-    static_assert(c117 == FCUST_WIPEDATA, "value FCUST_WIPEDATA");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c117)>, decltype(FCUST_WIPEDATA)>, "type FCUST_WIPEDATA");
-    static_assert(c118 == FCUST_IGNOREINIT, "value FCUST_IGNOREINIT");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c118)>, decltype(FCUST_IGNOREINIT)>, "type FCUST_IGNOREINIT");
-    static_assert(c119 == MAX_RESOURCE_LIST, "value MAX_RESOURCE_LIST");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c119)>, decltype(MAX_RESOURCE_LIST)>, "type MAX_RESOURCE_LIST");
-    static_assert(c120 == RES_FATALIFMISSING, "value RES_FATALIFMISSING");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c120)>, decltype(RES_FATALIFMISSING)>, "type RES_FATALIFMISSING");
-    static_assert(c121 == RES_WASMISSING, "value RES_WASMISSING");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c121)>, decltype(RES_WASMISSING)>, "type RES_WASMISSING");
-    static_assert(c122 == RES_CUSTOM, "value RES_CUSTOM");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c122)>, decltype(RES_CUSTOM)>, "type RES_CUSTOM");
-    static_assert(c123 == RES_REQUESTED, "value RES_REQUESTED");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c123)>, decltype(RES_REQUESTED)>, "type RES_REQUESTED");
-    static_assert(c124 == RES_PRECACHED, "value RES_PRECACHED");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c124)>, decltype(RES_PRECACHED)>, "type RES_PRECACHED");
-    static_assert(c125 == RES_ALWAYS, "value RES_ALWAYS");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c125)>, decltype(RES_ALWAYS)>, "type RES_ALWAYS");
-    static_assert(c126 == RES_UNK_6, "value RES_UNK_6");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c126)>, decltype(RES_UNK_6)>, "type RES_UNK_6");
-    static_assert(c127 == RES_CHECKFILE, "value RES_CHECKFILE");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c127)>, decltype(RES_CHECKFILE)>, "type RES_CHECKFILE");
-    static_assert(c128 == CHAN_AUTO, "value CHAN_AUTO");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c128)>, decltype(CHAN_AUTO)>, "type CHAN_AUTO");
-    static_assert(c129 == CHAN_WEAPON, "value CHAN_WEAPON");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c129)>, decltype(CHAN_WEAPON)>, "type CHAN_WEAPON");
-    static_assert(c130 == CHAN_VOICE, "value CHAN_VOICE");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c130)>, decltype(CHAN_VOICE)>, "type CHAN_VOICE");
-    static_assert(c131 == CHAN_ITEM, "value CHAN_ITEM");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c131)>, decltype(CHAN_ITEM)>, "type CHAN_ITEM");
-    static_assert(c132 == CHAN_BODY, "value CHAN_BODY");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c132)>, decltype(CHAN_BODY)>, "type CHAN_BODY");
-    static_assert(c133 == CHAN_STREAM, "value CHAN_STREAM");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c133)>, decltype(CHAN_STREAM)>, "type CHAN_STREAM");
-    static_assert(c134 == CHAN_STATIC, "value CHAN_STATIC");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c134)>, decltype(CHAN_STATIC)>, "type CHAN_STATIC");
-    static_assert(c135 == CHAN_NETWORKVOICE_BASE, "value CHAN_NETWORKVOICE_BASE");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c135)>, decltype(CHAN_NETWORKVOICE_BASE)>, "type CHAN_NETWORKVOICE_BASE");
-    static_assert(c136 == CHAN_NETWORKVOICE_END, "value CHAN_NETWORKVOICE_END");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c136)>, decltype(CHAN_NETWORKVOICE_END)>, "type CHAN_NETWORKVOICE_END");
-    static_assert(c137 == CHAN_BOT, "value CHAN_BOT");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c137)>, decltype(CHAN_BOT)>, "type CHAN_BOT");
-    static_assert(std::string_view(c138) == std::string_view(OFF_SVC_MESSAGES_P), "value OFF_SVC_MESSAGES_P");
-    static_assert(c139 == EF_BRIGHTFIELD, "value EF_BRIGHTFIELD");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c139)>, decltype(EF_BRIGHTFIELD)>, "type EF_BRIGHTFIELD");
-    static_assert(c140 == EF_MUZZLEFLASH, "value EF_MUZZLEFLASH");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c140)>, decltype(EF_MUZZLEFLASH)>, "type EF_MUZZLEFLASH");
-    static_assert(c141 == EF_BRIGHTLIGHT, "value EF_BRIGHTLIGHT");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c141)>, decltype(EF_BRIGHTLIGHT)>, "type EF_BRIGHTLIGHT");
-    static_assert(c142 == EF_DIMLIGHT, "value EF_DIMLIGHT");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c142)>, decltype(EF_DIMLIGHT)>, "type EF_DIMLIGHT");
-    static_assert(c143 == EF_INVLIGHT, "value EF_INVLIGHT");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c143)>, decltype(EF_INVLIGHT)>, "type EF_INVLIGHT");
-    static_assert(c144 == EF_NOINTERP, "value EF_NOINTERP");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c144)>, decltype(EF_NOINTERP)>, "type EF_NOINTERP");
-    static_assert(c145 == EF_LIGHT, "value EF_LIGHT");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c145)>, decltype(EF_LIGHT)>, "type EF_LIGHT");
-    static_assert(c146 == EF_NODRAW, "value EF_NODRAW");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c146)>, decltype(EF_NODRAW)>, "type EF_NODRAW");
-    static_assert(c147 == EF_NIGHTVISION, "value EF_NIGHTVISION");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c147)>, decltype(EF_NIGHTVISION)>, "type EF_NIGHTVISION");
-    static_assert(c148 == EF_SNIPERLASER, "value EF_SNIPERLASER");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c148)>, decltype(EF_SNIPERLASER)>, "type EF_SNIPERLASER");
-    static_assert(c149 == EF_FIBERCAMERA, "value EF_FIBERCAMERA");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c149)>, decltype(EF_FIBERCAMERA)>, "type EF_FIBERCAMERA");
-    static_assert(c150 == FL_DORMANT, "value FL_DORMANT");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c150)>, decltype(FL_DORMANT)>, "type FL_DORMANT");
-    static_assert(c151 == FL_FLY, "value FL_FLY");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c151)>, decltype(FL_FLY)>, "type FL_FLY");
-    static_assert(c152 == FL_SWIM, "value FL_SWIM");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c152)>, decltype(FL_SWIM)>, "type FL_SWIM");
-    static_assert(c153 == FL_CONVEYOR, "value FL_CONVEYOR");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c153)>, decltype(FL_CONVEYOR)>, "type FL_CONVEYOR");
-    static_assert(c154 == FL_CLIENT, "value FL_CLIENT");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c154)>, decltype(FL_CLIENT)>, "type FL_CLIENT");
-    static_assert(c155 == FL_INWATER, "value FL_INWATER");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c155)>, decltype(FL_INWATER)>, "type FL_INWATER");
-    static_assert(c156 == FL_MONSTER, "value FL_MONSTER");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c156)>, decltype(FL_MONSTER)>, "type FL_MONSTER");
-    static_assert(c157 == FL_GODMODE, "value FL_GODMODE");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c157)>, decltype(FL_GODMODE)>, "type FL_GODMODE");
-    static_assert(c158 == FL_NOTARGET, "value FL_NOTARGET");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c158)>, decltype(FL_NOTARGET)>, "type FL_NOTARGET");
-    static_assert(c159 == FL_SKIPLOCALHOST, "value FL_SKIPLOCALHOST");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c159)>, decltype(FL_SKIPLOCALHOST)>, "type FL_SKIPLOCALHOST");
-    static_assert(c160 == FL_ONGROUND, "value FL_ONGROUND");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c160)>, decltype(FL_ONGROUND)>, "type FL_ONGROUND");
-    static_assert(c161 == FL_PARTIALGROUND, "value FL_PARTIALGROUND");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c161)>, decltype(FL_PARTIALGROUND)>, "type FL_PARTIALGROUND");
-    static_assert(c162 == FL_WATERJUMP, "value FL_WATERJUMP");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c162)>, decltype(FL_WATERJUMP)>, "type FL_WATERJUMP");
-    static_assert(c163 == FL_FROZEN, "value FL_FROZEN");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c163)>, decltype(FL_FROZEN)>, "type FL_FROZEN");
-    static_assert(c164 == FL_FAKECLIENT, "value FL_FAKECLIENT");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c164)>, decltype(FL_FAKECLIENT)>, "type FL_FAKECLIENT");
-    static_assert(c165 == FL_DUCKING, "value FL_DUCKING");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c165)>, decltype(FL_DUCKING)>, "type FL_DUCKING");
-    static_assert(c166 == FL_FLOAT, "value FL_FLOAT");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c166)>, decltype(FL_FLOAT)>, "type FL_FLOAT");
-    static_assert(c167 == FL_GRAPHED, "value FL_GRAPHED");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c167)>, decltype(FL_GRAPHED)>, "type FL_GRAPHED");
-    static_assert(c168 == FL_IMMUNE_WATER, "value FL_IMMUNE_WATER");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c168)>, decltype(FL_IMMUNE_WATER)>, "type FL_IMMUNE_WATER");
-    static_assert(c169 == FL_IMMUNE_SLIME, "value FL_IMMUNE_SLIME");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c169)>, decltype(FL_IMMUNE_SLIME)>, "type FL_IMMUNE_SLIME");
-    static_assert(c170 == FL_IMMUNE_LAVA, "value FL_IMMUNE_LAVA");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c170)>, decltype(FL_IMMUNE_LAVA)>, "type FL_IMMUNE_LAVA");
-    static_assert(c171 == FL_PROXY, "value FL_PROXY");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c171)>, decltype(FL_PROXY)>, "type FL_PROXY");
-    static_assert(c172 == FL_ALWAYSTHINK, "value FL_ALWAYSTHINK");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c172)>, decltype(FL_ALWAYSTHINK)>, "type FL_ALWAYSTHINK");
-    static_assert(c173 == FL_BASEVELOCITY, "value FL_BASEVELOCITY");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c173)>, decltype(FL_BASEVELOCITY)>, "type FL_BASEVELOCITY");
-    static_assert(c174 == FL_MONSTERCLIP, "value FL_MONSTERCLIP");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c174)>, decltype(FL_MONSTERCLIP)>, "type FL_MONSTERCLIP");
-    static_assert(c175 == FL_ONTRAIN, "value FL_ONTRAIN");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c175)>, decltype(FL_ONTRAIN)>, "type FL_ONTRAIN");
-    static_assert(c176 == FL_WORLDBRUSH, "value FL_WORLDBRUSH");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c176)>, decltype(FL_WORLDBRUSH)>, "type FL_WORLDBRUSH");
-    static_assert(c177 == FL_SPECTATOR, "value FL_SPECTATOR");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c177)>, decltype(FL_SPECTATOR)>, "type FL_SPECTATOR");
-    static_assert(c178 == FL_CUSTOMENTITY, "value FL_CUSTOMENTITY");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c178)>, decltype(FL_CUSTOMENTITY)>, "type FL_CUSTOMENTITY");
-    static_assert(c179 == FL_KILLME, "value FL_KILLME");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c179)>, decltype(FL_KILLME)>, "type FL_KILLME");
-    static_assert(c180 == HISTORY_MASK, "value HISTORY_MASK");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c180)>, decltype(HISTORY_MASK)>, "type HISTORY_MASK");
-    static_assert(c181 == HISTORY_MAX, "value HISTORY_MAX");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c181)>, decltype(HISTORY_MAX)>, "type HISTORY_MAX");
-    static_assert(c182 == MOVETYPE_NONE, "value MOVETYPE_NONE");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c182)>, decltype(MOVETYPE_NONE)>, "type MOVETYPE_NONE");
-    static_assert(c183 == MOVETYPE_WALK, "value MOVETYPE_WALK");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c183)>, decltype(MOVETYPE_WALK)>, "type MOVETYPE_WALK");
-    static_assert(c184 == MOVETYPE_STEP, "value MOVETYPE_STEP");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c184)>, decltype(MOVETYPE_STEP)>, "type MOVETYPE_STEP");
-    static_assert(c185 == MOVETYPE_FLY, "value MOVETYPE_FLY");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c185)>, decltype(MOVETYPE_FLY)>, "type MOVETYPE_FLY");
-    static_assert(c186 == MOVETYPE_TOSS, "value MOVETYPE_TOSS");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c186)>, decltype(MOVETYPE_TOSS)>, "type MOVETYPE_TOSS");
-    static_assert(c187 == MOVETYPE_PUSH, "value MOVETYPE_PUSH");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c187)>, decltype(MOVETYPE_PUSH)>, "type MOVETYPE_PUSH");
-    static_assert(c188 == MOVETYPE_NOCLIP, "value MOVETYPE_NOCLIP");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c188)>, decltype(MOVETYPE_NOCLIP)>, "type MOVETYPE_NOCLIP");
-    static_assert(c189 == MOVETYPE_FLYMISSILE, "value MOVETYPE_FLYMISSILE");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c189)>, decltype(MOVETYPE_FLYMISSILE)>, "type MOVETYPE_FLYMISSILE");
-    static_assert(c190 == MOVETYPE_BOUNCE, "value MOVETYPE_BOUNCE");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c190)>, decltype(MOVETYPE_BOUNCE)>, "type MOVETYPE_BOUNCE");
-    static_assert(c191 == MOVETYPE_BOUNCEMISSILE, "value MOVETYPE_BOUNCEMISSILE");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c191)>, decltype(MOVETYPE_BOUNCEMISSILE)>, "type MOVETYPE_BOUNCEMISSILE");
-    static_assert(c192 == MOVETYPE_FOLLOW, "value MOVETYPE_FOLLOW");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c192)>, decltype(MOVETYPE_FOLLOW)>, "type MOVETYPE_FOLLOW");
-    static_assert(c193 == MOVETYPE_PUSHSTEP, "value MOVETYPE_PUSHSTEP");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c193)>, decltype(MOVETYPE_PUSHSTEP)>, "type MOVETYPE_PUSHSTEP");
-    static_assert(c194 == HLBSP_VERSION, "value HLBSP_VERSION");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c194)>, decltype(HLBSP_VERSION)>, "type HLBSP_VERSION");
-    static_assert(c195 == Q1BSP_VERSION, "value Q1BSP_VERSION");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c195)>, decltype(Q1BSP_VERSION)>, "type Q1BSP_VERSION");
-    static_assert(c196 == IDSPRITEHEADER, "value IDSPRITEHEADER");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c196)>, decltype(IDSPRITEHEADER)>, "type IDSPRITEHEADER");
-    static_assert(c197 == SPRITE_VERSION, "value SPRITE_VERSION");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c197)>, decltype(SPRITE_VERSION)>, "type SPRITE_VERSION");
-    static_assert(c198 == MAXSTUDIOSKINS, "value MAXSTUDIOSKINS");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c198)>, decltype(MAXSTUDIOSKINS)>, "type MAXSTUDIOSKINS");
-    static_assert(c199 == STUDIO_HAS_NORMALS, "value STUDIO_HAS_NORMALS");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c199)>, decltype(STUDIO_HAS_NORMALS)>, "type STUDIO_HAS_NORMALS");
-    static_assert(c200 == STUDIO_LOOPING, "value STUDIO_LOOPING");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c200)>, decltype(STUDIO_LOOPING)>, "type STUDIO_LOOPING");
-    static_assert(c201 == STUDIO_NF_FLATSHADE, "value STUDIO_NF_FLATSHADE");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c201)>, decltype(STUDIO_NF_FLATSHADE)>, "type STUDIO_NF_FLATSHADE");
-    static_assert(c202 == STUDIO_X, "value STUDIO_X");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c202)>, decltype(STUDIO_X)>, "type STUDIO_X");
-    static_assert(c203 == STUDIO_HAS_VERTICES, "value STUDIO_HAS_VERTICES");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c203)>, decltype(STUDIO_HAS_VERTICES)>, "type STUDIO_HAS_VERTICES");
-    static_assert(c204 == STUDIO_NF_CHROME, "value STUDIO_NF_CHROME");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c204)>, decltype(STUDIO_NF_CHROME)>, "type STUDIO_NF_CHROME");
-    static_assert(c205 == STUDIO_Y, "value STUDIO_Y");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c205)>, decltype(STUDIO_Y)>, "type STUDIO_Y");
-    static_assert(c206 == STUDIO_HAS_BBOX, "value STUDIO_HAS_BBOX");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c206)>, decltype(STUDIO_HAS_BBOX)>, "type STUDIO_HAS_BBOX");
-    static_assert(c207 == STUDIO_NF_FULLBRIGHT, "value STUDIO_NF_FULLBRIGHT");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c207)>, decltype(STUDIO_NF_FULLBRIGHT)>, "type STUDIO_NF_FULLBRIGHT");
-    static_assert(c208 == STUDIO_Z, "value STUDIO_Z");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c208)>, decltype(STUDIO_Z)>, "type STUDIO_Z");
-    static_assert(c209 == STUDIO_HAS_CHROME, "value STUDIO_HAS_CHROME");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c209)>, decltype(STUDIO_HAS_CHROME)>, "type STUDIO_HAS_CHROME");
-    static_assert(c210 == STUDIO_NF_NOMIPS, "value STUDIO_NF_NOMIPS");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c210)>, decltype(STUDIO_NF_NOMIPS)>, "type STUDIO_NF_NOMIPS");
-    static_assert(c211 == STUDIO_XR, "value STUDIO_XR");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c211)>, decltype(STUDIO_XR)>, "type STUDIO_XR");
-    static_assert(c212 == STUDIO_NF_ALPHA, "value STUDIO_NF_ALPHA");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c212)>, decltype(STUDIO_NF_ALPHA)>, "type STUDIO_NF_ALPHA");
-    static_assert(c213 == STUDIO_YR, "value STUDIO_YR");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c213)>, decltype(STUDIO_YR)>, "type STUDIO_YR");
-    static_assert(c214 == STUDIO_NF_ADDITIVE, "value STUDIO_NF_ADDITIVE");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c214)>, decltype(STUDIO_NF_ADDITIVE)>, "type STUDIO_NF_ADDITIVE");
-    static_assert(c215 == STUDIO_ZR, "value STUDIO_ZR");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c215)>, decltype(STUDIO_ZR)>, "type STUDIO_ZR");
-    static_assert(c216 == STUDIO_LX, "value STUDIO_LX");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c216)>, decltype(STUDIO_LX)>, "type STUDIO_LX");
-    static_assert(c217 == STUDIO_NF_MASKED, "value STUDIO_NF_MASKED");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c217)>, decltype(STUDIO_NF_MASKED)>, "type STUDIO_NF_MASKED");
-    static_assert(c218 == STUDIO_LY, "value STUDIO_LY");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c218)>, decltype(STUDIO_LY)>, "type STUDIO_LY");
-    static_assert(c219 == STUDIO_DYNAMIC_LIGHT, "value STUDIO_DYNAMIC_LIGHT");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c219)>, decltype(STUDIO_DYNAMIC_LIGHT)>, "type STUDIO_DYNAMIC_LIGHT");
-    static_assert(c220 == STUDIO_LZ, "value STUDIO_LZ");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c220)>, decltype(STUDIO_LZ)>, "type STUDIO_LZ");
-    static_assert(c221 == STUDIO_AX, "value STUDIO_AX");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c221)>, decltype(STUDIO_AX)>, "type STUDIO_AX");
-    static_assert(c222 == STUDIO_TRACE_HITBOX, "value STUDIO_TRACE_HITBOX");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c222)>, decltype(STUDIO_TRACE_HITBOX)>, "type STUDIO_TRACE_HITBOX");
-    static_assert(c223 == STUDIO_AY, "value STUDIO_AY");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c223)>, decltype(STUDIO_AY)>, "type STUDIO_AY");
-    static_assert(c224 == STUDIO_AZ, "value STUDIO_AZ");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c224)>, decltype(STUDIO_AZ)>, "type STUDIO_AZ");
-    static_assert(c225 == STUDIO_AXR, "value STUDIO_AXR");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c225)>, decltype(STUDIO_AXR)>, "type STUDIO_AXR");
-    static_assert(c226 == STUDIO_AYR, "value STUDIO_AYR");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c226)>, decltype(STUDIO_AYR)>, "type STUDIO_AYR");
-    static_assert(c227 == STUDIO_AZR, "value STUDIO_AZR");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c227)>, decltype(STUDIO_AZR)>, "type STUDIO_AZR");
-    static_assert(c228 == STUDIO_TYPES, "value STUDIO_TYPES");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c228)>, decltype(STUDIO_TYPES)>, "type STUDIO_TYPES");
-    static_assert(c229 == STUDIO_RLOOP, "value STUDIO_RLOOP");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c229)>, decltype(STUDIO_RLOOP)>, "type STUDIO_RLOOP");
-    static_assert(c230 == STUDIO_CACHE_SIZE, "value STUDIO_CACHE_SIZE");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c230)>, decltype(STUDIO_CACHE_SIZE)>, "type STUDIO_CACHE_SIZE");
-    static_assert(c231 == STUDIO_MOUTH, "value STUDIO_MOUTH");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c231)>, decltype(STUDIO_MOUTH)>, "type STUDIO_MOUTH");
-    static_assert(c232 == STUDIO_NUM_HULLS, "value STUDIO_NUM_HULLS");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c232)>, decltype(STUDIO_NUM_HULLS)>, "type STUDIO_NUM_HULLS");
-    static_assert(c233 == STUDIO_NUM_PLANES, "value STUDIO_NUM_PLANES");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c233)>, decltype(STUDIO_NUM_PLANES)>, "type STUDIO_NUM_PLANES");
-    static_assert(c234 == STUDIO_TO_RAD, "value STUDIO_TO_RAD");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c234)>, decltype(STUDIO_TO_RAD)>, "type STUDIO_TO_RAD");
-    static_assert(c235 == DRC_CMD_NONE, "value DRC_CMD_NONE");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c235)>, decltype(DRC_CMD_NONE)>, "type DRC_CMD_NONE");
-    static_assert(c236 == DRC_CMD_START, "value DRC_CMD_START");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c236)>, decltype(DRC_CMD_START)>, "type DRC_CMD_START");
-    static_assert(c237 == DRC_CMD_EVENT, "value DRC_CMD_EVENT");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c237)>, decltype(DRC_CMD_EVENT)>, "type DRC_CMD_EVENT");
-    static_assert(c238 == DRC_CMD_MODE, "value DRC_CMD_MODE");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c238)>, decltype(DRC_CMD_MODE)>, "type DRC_CMD_MODE");
-    static_assert(c239 == DRC_CMD_CAMERA, "value DRC_CMD_CAMERA");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c239)>, decltype(DRC_CMD_CAMERA)>, "type DRC_CMD_CAMERA");
-    static_assert(c240 == DRC_CMD_TIMESCALE, "value DRC_CMD_TIMESCALE");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c240)>, decltype(DRC_CMD_TIMESCALE)>, "type DRC_CMD_TIMESCALE");
-    static_assert(c241 == DRC_CMD_MESSAGE, "value DRC_CMD_MESSAGE");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c241)>, decltype(DRC_CMD_MESSAGE)>, "type DRC_CMD_MESSAGE");
-    static_assert(c242 == DRC_CMD_SOUND, "value DRC_CMD_SOUND");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c242)>, decltype(DRC_CMD_SOUND)>, "type DRC_CMD_SOUND");
-    static_assert(c243 == DRC_CMD_STATUS, "value DRC_CMD_STATUS");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c243)>, decltype(DRC_CMD_STATUS)>, "type DRC_CMD_STATUS");
-    static_assert(c244 == DRC_CMD_BANNER, "value DRC_CMD_BANNER");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c244)>, decltype(DRC_CMD_BANNER)>, "type DRC_CMD_BANNER");
-    static_assert(c245 == DRC_CMD_STUFFTEXT, "value DRC_CMD_STUFFTEXT");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c245)>, decltype(DRC_CMD_STUFFTEXT)>, "type DRC_CMD_STUFFTEXT");
-    static_assert(c246 == DRC_CMD_CHASE, "value DRC_CMD_CHASE");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c246)>, decltype(DRC_CMD_CHASE)>, "type DRC_CMD_CHASE");
-    static_assert(c247 == DRC_CMD_INEYE, "value DRC_CMD_INEYE");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c247)>, decltype(DRC_CMD_INEYE)>, "type DRC_CMD_INEYE");
-    static_assert(c248 == DRC_CMD_MAP, "value DRC_CMD_MAP");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c248)>, decltype(DRC_CMD_MAP)>, "type DRC_CMD_MAP");
-    static_assert(c249 == DRC_CMD_CAMPATH, "value DRC_CMD_CAMPATH");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c249)>, decltype(DRC_CMD_CAMPATH)>, "type DRC_CMD_CAMPATH");
-    static_assert(c250 == DRC_CMD_LAST, "value DRC_CMD_LAST");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c250)>, decltype(DRC_CMD_LAST)>, "type DRC_CMD_LAST");
-    static_assert(c251 == DRC_CMD_WAYPOINTS, "value DRC_CMD_WAYPOINTS");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c251)>, decltype(DRC_CMD_WAYPOINTS)>, "type DRC_CMD_WAYPOINTS");
-    static_assert(c252 == DRC_FLAG_STARTPATH, "value DRC_FLAG_STARTPATH");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c252)>, decltype(DRC_FLAG_STARTPATH)>, "type DRC_FLAG_STARTPATH");
-    static_assert(c253 == DRC_FLAG_SLOWSTART, "value DRC_FLAG_SLOWSTART");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c253)>, decltype(DRC_FLAG_SLOWSTART)>, "type DRC_FLAG_SLOWSTART");
-    static_assert(c254 == DRC_FLAG_SLOWEND, "value DRC_FLAG_SLOWEND");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c254)>, decltype(DRC_FLAG_SLOWEND)>, "type DRC_FLAG_SLOWEND");
-    static_assert(c255 == DRC_FLAG_PRIO_MASK, "value DRC_FLAG_PRIO_MASK");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c255)>, decltype(DRC_FLAG_PRIO_MASK)>, "type DRC_FLAG_PRIO_MASK");
-    static_assert(c256 == DRC_FLAG_SIDE, "value DRC_FLAG_SIDE");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c256)>, decltype(DRC_FLAG_SIDE)>, "type DRC_FLAG_SIDE");
-    static_assert(c257 == DRC_FLAG_DRAMATIC, "value DRC_FLAG_DRAMATIC");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c257)>, decltype(DRC_FLAG_DRAMATIC)>, "type DRC_FLAG_DRAMATIC");
-    static_assert(c258 == DRC_FLAG_SLOWMOTION, "value DRC_FLAG_SLOWMOTION");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c258)>, decltype(DRC_FLAG_SLOWMOTION)>, "type DRC_FLAG_SLOWMOTION");
-    static_assert(c259 == DRC_FLAG_FACEPLAYER, "value DRC_FLAG_FACEPLAYER");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c259)>, decltype(DRC_FLAG_FACEPLAYER)>, "type DRC_FLAG_FACEPLAYER");
-    static_assert(c260 == DRC_FLAG_INTRO, "value DRC_FLAG_INTRO");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c260)>, decltype(DRC_FLAG_INTRO)>, "type DRC_FLAG_INTRO");
-    static_assert(c261 == DRC_FLAG_FINAL, "value DRC_FLAG_FINAL");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c261)>, decltype(DRC_FLAG_FINAL)>, "type DRC_FLAG_FINAL");
-    static_assert(c262 == DRC_FLAG_NO_RANDOM, "value DRC_FLAG_NO_RANDOM");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c262)>, decltype(DRC_FLAG_NO_RANDOM)>, "type DRC_FLAG_NO_RANDOM");
-    static_assert(c263 == HLTV_ACTIVE, "value HLTV_ACTIVE");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c263)>, decltype(HLTV_ACTIVE)>, "type HLTV_ACTIVE");
-    static_assert(c264 == HLTV_STATUS, "value HLTV_STATUS");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c264)>, decltype(HLTV_STATUS)>, "type HLTV_STATUS");
-    static_assert(c265 == HLTV_LISTEN, "value HLTV_LISTEN");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c265)>, decltype(HLTV_LISTEN)>, "type HLTV_LISTEN");
-    static_assert(c266 == TYPE_CLIENT, "value TYPE_CLIENT");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c266)>, decltype(TYPE_CLIENT)>, "type TYPE_CLIENT");
-    static_assert(c267 == TYPE_PROXY, "value TYPE_PROXY");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c267)>, decltype(TYPE_PROXY)>, "type TYPE_PROXY");
-    static_assert(c268 == TYPE_DIRECTOR, "value TYPE_DIRECTOR");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c268)>, decltype(TYPE_DIRECTOR)>, "type TYPE_DIRECTOR");
-    static_assert(c269 == TYPE_COMMENTATOR, "value TYPE_COMMENTATOR");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c269)>, decltype(TYPE_COMMENTATOR)>, "type TYPE_COMMENTATOR");
-    static_assert(c270 == TYPE_DEMO, "value TYPE_DEMO");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c270)>, decltype(TYPE_DEMO)>, "type TYPE_DEMO");
-    static_assert(c271 == K_TAB, "value K_TAB");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c271)>, decltype(K_TAB)>, "type K_TAB");
-    static_assert(c272 == K_ENTER, "value K_ENTER");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c272)>, decltype(K_ENTER)>, "type K_ENTER");
-    static_assert(c273 == K_ESCAPE, "value K_ESCAPE");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c273)>, decltype(K_ESCAPE)>, "type K_ESCAPE");
-    static_assert(c274 == K_SPACE, "value K_SPACE");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c274)>, decltype(K_SPACE)>, "type K_SPACE");
-    static_assert(c275 == K_BACKSPACE, "value K_BACKSPACE");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c275)>, decltype(K_BACKSPACE)>, "type K_BACKSPACE");
-    static_assert(c276 == K_UPARROW, "value K_UPARROW");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c276)>, decltype(K_UPARROW)>, "type K_UPARROW");
-    static_assert(c277 == K_DOWNARROW, "value K_DOWNARROW");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c277)>, decltype(K_DOWNARROW)>, "type K_DOWNARROW");
-    static_assert(c278 == K_LEFTARROW, "value K_LEFTARROW");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c278)>, decltype(K_LEFTARROW)>, "type K_LEFTARROW");
-    static_assert(c279 == K_RIGHTARROW, "value K_RIGHTARROW");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c279)>, decltype(K_RIGHTARROW)>, "type K_RIGHTARROW");
-    static_assert(c280 == K_ALT, "value K_ALT");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c280)>, decltype(K_ALT)>, "type K_ALT");
-    static_assert(c281 == K_CTRL, "value K_CTRL");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c281)>, decltype(K_CTRL)>, "type K_CTRL");
-    static_assert(c282 == K_SHIFT, "value K_SHIFT");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c282)>, decltype(K_SHIFT)>, "type K_SHIFT");
-    static_assert(c283 == K_F1, "value K_F1");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c283)>, decltype(K_F1)>, "type K_F1");
-    static_assert(c284 == K_F2, "value K_F2");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c284)>, decltype(K_F2)>, "type K_F2");
-    static_assert(c285 == K_F3, "value K_F3");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c285)>, decltype(K_F3)>, "type K_F3");
-    static_assert(c286 == K_F4, "value K_F4");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c286)>, decltype(K_F4)>, "type K_F4");
-    static_assert(c287 == K_F5, "value K_F5");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c287)>, decltype(K_F5)>, "type K_F5");
-    static_assert(c288 == K_F6, "value K_F6");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c288)>, decltype(K_F6)>, "type K_F6");
-    static_assert(c289 == K_F7, "value K_F7");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c289)>, decltype(K_F7)>, "type K_F7");
-    static_assert(c290 == K_F8, "value K_F8");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c290)>, decltype(K_F8)>, "type K_F8");
-    static_assert(c291 == K_F9, "value K_F9");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c291)>, decltype(K_F9)>, "type K_F9");
-    static_assert(c292 == K_F10, "value K_F10");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c292)>, decltype(K_F10)>, "type K_F10");
-    static_assert(c293 == K_F11, "value K_F11");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c293)>, decltype(K_F11)>, "type K_F11");
-    static_assert(c294 == K_F12, "value K_F12");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c294)>, decltype(K_F12)>, "type K_F12");
-    static_assert(c295 == K_INS, "value K_INS");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c295)>, decltype(K_INS)>, "type K_INS");
-    static_assert(c296 == K_DEL, "value K_DEL");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c296)>, decltype(K_DEL)>, "type K_DEL");
-    static_assert(c297 == K_PGDN, "value K_PGDN");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c297)>, decltype(K_PGDN)>, "type K_PGDN");
-    static_assert(c298 == K_PGUP, "value K_PGUP");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c298)>, decltype(K_PGUP)>, "type K_PGUP");
-    static_assert(c299 == K_HOME, "value K_HOME");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c299)>, decltype(K_HOME)>, "type K_HOME");
-    static_assert(c300 == K_END, "value K_END");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c300)>, decltype(K_END)>, "type K_END");
-    static_assert(c301 == K_KP_HOME, "value K_KP_HOME");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c301)>, decltype(K_KP_HOME)>, "type K_KP_HOME");
-    static_assert(c302 == K_KP_UPARROW, "value K_KP_UPARROW");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c302)>, decltype(K_KP_UPARROW)>, "type K_KP_UPARROW");
-    static_assert(c303 == K_KP_PGUP, "value K_KP_PGUP");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c303)>, decltype(K_KP_PGUP)>, "type K_KP_PGUP");
-    static_assert(c304 == K_KP_LEFTARROW, "value K_KP_LEFTARROW");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c304)>, decltype(K_KP_LEFTARROW)>, "type K_KP_LEFTARROW");
-    static_assert(c305 == K_KP_5, "value K_KP_5");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c305)>, decltype(K_KP_5)>, "type K_KP_5");
-    static_assert(c306 == K_KP_RIGHTARROW, "value K_KP_RIGHTARROW");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c306)>, decltype(K_KP_RIGHTARROW)>, "type K_KP_RIGHTARROW");
-    static_assert(c307 == K_KP_END, "value K_KP_END");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c307)>, decltype(K_KP_END)>, "type K_KP_END");
-    static_assert(c308 == K_KP_DOWNARROW, "value K_KP_DOWNARROW");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c308)>, decltype(K_KP_DOWNARROW)>, "type K_KP_DOWNARROW");
-    static_assert(c309 == K_KP_PGDN, "value K_KP_PGDN");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c309)>, decltype(K_KP_PGDN)>, "type K_KP_PGDN");
-    static_assert(c310 == K_KP_ENTER, "value K_KP_ENTER");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c310)>, decltype(K_KP_ENTER)>, "type K_KP_ENTER");
-    static_assert(c311 == K_KP_INS, "value K_KP_INS");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c311)>, decltype(K_KP_INS)>, "type K_KP_INS");
-    static_assert(c312 == K_KP_DEL, "value K_KP_DEL");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c312)>, decltype(K_KP_DEL)>, "type K_KP_DEL");
-    static_assert(c313 == K_KP_SLASH, "value K_KP_SLASH");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c313)>, decltype(K_KP_SLASH)>, "type K_KP_SLASH");
-    static_assert(c314 == K_KP_MINUS, "value K_KP_MINUS");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c314)>, decltype(K_KP_MINUS)>, "type K_KP_MINUS");
-    static_assert(c315 == K_KP_PLUS, "value K_KP_PLUS");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c315)>, decltype(K_KP_PLUS)>, "type K_KP_PLUS");
-    static_assert(c316 == K_CAPSLOCK, "value K_CAPSLOCK");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c316)>, decltype(K_CAPSLOCK)>, "type K_CAPSLOCK");
-    static_assert(c317 == K_JOY1, "value K_JOY1");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c317)>, decltype(K_JOY1)>, "type K_JOY1");
-    static_assert(c318 == K_JOY2, "value K_JOY2");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c318)>, decltype(K_JOY2)>, "type K_JOY2");
-    static_assert(c319 == K_JOY3, "value K_JOY3");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c319)>, decltype(K_JOY3)>, "type K_JOY3");
-    static_assert(c320 == K_JOY4, "value K_JOY4");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c320)>, decltype(K_JOY4)>, "type K_JOY4");
-    static_assert(c321 == K_AUX1, "value K_AUX1");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c321)>, decltype(K_AUX1)>, "type K_AUX1");
-    static_assert(c322 == K_AUX2, "value K_AUX2");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c322)>, decltype(K_AUX2)>, "type K_AUX2");
-    static_assert(c323 == K_AUX3, "value K_AUX3");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c323)>, decltype(K_AUX3)>, "type K_AUX3");
-    static_assert(c324 == K_AUX4, "value K_AUX4");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c324)>, decltype(K_AUX4)>, "type K_AUX4");
-    static_assert(c325 == K_AUX5, "value K_AUX5");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c325)>, decltype(K_AUX5)>, "type K_AUX5");
-    static_assert(c326 == K_AUX6, "value K_AUX6");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c326)>, decltype(K_AUX6)>, "type K_AUX6");
-    static_assert(c327 == K_AUX7, "value K_AUX7");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c327)>, decltype(K_AUX7)>, "type K_AUX7");
-    static_assert(c328 == K_AUX8, "value K_AUX8");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c328)>, decltype(K_AUX8)>, "type K_AUX8");
-    static_assert(c329 == K_AUX9, "value K_AUX9");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c329)>, decltype(K_AUX9)>, "type K_AUX9");
-    static_assert(c330 == K_AUX10, "value K_AUX10");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c330)>, decltype(K_AUX10)>, "type K_AUX10");
-    static_assert(c331 == K_AUX11, "value K_AUX11");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c331)>, decltype(K_AUX11)>, "type K_AUX11");
-    static_assert(c332 == K_AUX12, "value K_AUX12");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c332)>, decltype(K_AUX12)>, "type K_AUX12");
-    static_assert(c333 == K_AUX13, "value K_AUX13");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c333)>, decltype(K_AUX13)>, "type K_AUX13");
-    static_assert(c334 == K_AUX14, "value K_AUX14");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c334)>, decltype(K_AUX14)>, "type K_AUX14");
-    static_assert(c335 == K_AUX15, "value K_AUX15");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c335)>, decltype(K_AUX15)>, "type K_AUX15");
-    static_assert(c336 == K_AUX16, "value K_AUX16");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c336)>, decltype(K_AUX16)>, "type K_AUX16");
-    static_assert(c337 == K_AUX17, "value K_AUX17");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c337)>, decltype(K_AUX17)>, "type K_AUX17");
-    static_assert(c338 == K_AUX18, "value K_AUX18");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c338)>, decltype(K_AUX18)>, "type K_AUX18");
-    static_assert(c339 == K_AUX19, "value K_AUX19");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c339)>, decltype(K_AUX19)>, "type K_AUX19");
-    static_assert(c340 == K_AUX20, "value K_AUX20");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c340)>, decltype(K_AUX20)>, "type K_AUX20");
-    static_assert(c341 == K_AUX21, "value K_AUX21");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c341)>, decltype(K_AUX21)>, "type K_AUX21");
-    static_assert(c342 == K_AUX22, "value K_AUX22");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c342)>, decltype(K_AUX22)>, "type K_AUX22");
-    static_assert(c343 == K_AUX23, "value K_AUX23");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c343)>, decltype(K_AUX23)>, "type K_AUX23");
-    static_assert(c344 == K_AUX24, "value K_AUX24");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c344)>, decltype(K_AUX24)>, "type K_AUX24");
-    static_assert(c345 == K_AUX25, "value K_AUX25");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c345)>, decltype(K_AUX25)>, "type K_AUX25");
-    static_assert(c346 == K_AUX26, "value K_AUX26");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c346)>, decltype(K_AUX26)>, "type K_AUX26");
-    static_assert(c347 == K_AUX27, "value K_AUX27");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c347)>, decltype(K_AUX27)>, "type K_AUX27");
-    static_assert(c348 == K_AUX28, "value K_AUX28");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c348)>, decltype(K_AUX28)>, "type K_AUX28");
-    static_assert(c349 == K_AUX29, "value K_AUX29");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c349)>, decltype(K_AUX29)>, "type K_AUX29");
-    static_assert(c350 == K_AUX30, "value K_AUX30");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c350)>, decltype(K_AUX30)>, "type K_AUX30");
-    static_assert(c351 == K_AUX31, "value K_AUX31");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c351)>, decltype(K_AUX31)>, "type K_AUX31");
-    static_assert(c352 == K_AUX32, "value K_AUX32");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c352)>, decltype(K_AUX32)>, "type K_AUX32");
-    static_assert(c353 == K_MWHEELDOWN, "value K_MWHEELDOWN");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c353)>, decltype(K_MWHEELDOWN)>, "type K_MWHEELDOWN");
-    static_assert(c354 == K_MWHEELUP, "value K_MWHEELUP");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c354)>, decltype(K_MWHEELUP)>, "type K_MWHEELUP");
-    static_assert(c355 == K_MOUSE1, "value K_MOUSE1");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c355)>, decltype(K_MOUSE1)>, "type K_MOUSE1");
-    static_assert(c356 == K_MOUSE2, "value K_MOUSE2");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c356)>, decltype(K_MOUSE2)>, "type K_MOUSE2");
-    static_assert(c357 == K_MOUSE3, "value K_MOUSE3");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c357)>, decltype(K_MOUSE3)>, "type K_MOUSE3");
-    static_assert(c358 == K_MOUSE4, "value K_MOUSE4");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c358)>, decltype(K_MOUSE4)>, "type K_MOUSE4");
-    static_assert(c359 == K_MOUSE5, "value K_MOUSE5");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c359)>, decltype(K_MOUSE5)>, "type K_MOUSE5");
-    static_assert(c360 == K_PAUSE, "value K_PAUSE");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c360)>, decltype(K_PAUSE)>, "type K_PAUSE");
-    static_assert(c361 == MAX_LIGHTSTYLE_INDEX_BITS, "value MAX_LIGHTSTYLE_INDEX_BITS");
+    static_assert(c80 == ::MAX_SPRITE_NAME_LENGTH, "value MAX_SPRITE_NAME_LENGTH");
     static_assert(
-        std::is_same_v<std::remove_const_t<decltype(c361)>, decltype(MAX_LIGHTSTYLE_INDEX_BITS)>,
+        std::is_same_v<std::remove_const_t<decltype(c80)>, std::remove_const_t<decltype(::MAX_SPRITE_NAME_LENGTH)>>,
+        "type MAX_SPRITE_NAME_LENGTH"
+    );
+    static_assert(c81 == INSET_OFF, "value INSET_OFF");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c81)>, decltype(INSET_OFF)>, "type INSET_OFF");
+    static_assert(c82 == INSET_CHASE_FREE, "value INSET_CHASE_FREE");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c82)>, decltype(INSET_CHASE_FREE)>, "type INSET_CHASE_FREE");
+    static_assert(c83 == INSET_IN_EYE, "value INSET_IN_EYE");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c83)>, decltype(INSET_IN_EYE)>, "type INSET_IN_EYE");
+    static_assert(c84 == INSET_MAP_FREE, "value INSET_MAP_FREE");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c84)>, decltype(INSET_MAP_FREE)>, "type INSET_MAP_FREE");
+    static_assert(c85 == INSET_MAP_CHASE, "value INSET_MAP_CHASE");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c85)>, decltype(INSET_MAP_CHASE)>, "type INSET_MAP_CHASE");
+    static_assert(c86 == WEAPON_IS_ONTARGET, "value WEAPON_IS_ONTARGET");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c86)>, decltype(WEAPON_IS_ONTARGET)>, "type WEAPON_IS_ONTARGET");
+    static_assert(c87 == FCVAR_ARCHIVE, "value FCVAR_ARCHIVE");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c87)>, decltype(FCVAR_ARCHIVE)>, "type FCVAR_ARCHIVE");
+    static_assert(c88 == FCVAR_USERINFO, "value FCVAR_USERINFO");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c88)>, decltype(FCVAR_USERINFO)>, "type FCVAR_USERINFO");
+    static_assert(c89 == FCVAR_SERVER, "value FCVAR_SERVER");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c89)>, decltype(FCVAR_SERVER)>, "type FCVAR_SERVER");
+    static_assert(c90 == FCVAR_EXTDLL, "value FCVAR_EXTDLL");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c90)>, decltype(FCVAR_EXTDLL)>, "type FCVAR_EXTDLL");
+    static_assert(c91 == FCVAR_CLIENTDLL, "value FCVAR_CLIENTDLL");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c91)>, decltype(FCVAR_CLIENTDLL)>, "type FCVAR_CLIENTDLL");
+    static_assert(c92 == FCVAR_PROTECTED, "value FCVAR_PROTECTED");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c92)>, decltype(FCVAR_PROTECTED)>, "type FCVAR_PROTECTED");
+    static_assert(c93 == FCVAR_SPONLY, "value FCVAR_SPONLY");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c93)>, decltype(FCVAR_SPONLY)>, "type FCVAR_SPONLY");
+    static_assert(c94 == FCVAR_PRINTABLEONLY, "value FCVAR_PRINTABLEONLY");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c94)>, decltype(FCVAR_PRINTABLEONLY)>, "type FCVAR_PRINTABLEONLY");
+    static_assert(c95 == FCVAR_UNLOGGED, "value FCVAR_UNLOGGED");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c95)>, decltype(FCVAR_UNLOGGED)>, "type FCVAR_UNLOGGED");
+    static_assert(c96 == FCVAR_NOEXTRAWHITEPACE, "value FCVAR_NOEXTRAWHITEPACE");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c96)>, decltype(FCVAR_NOEXTRAWHITEPACE)>, "type FCVAR_NOEXTRAWHITEPACE");
+    static_assert(c97 == FCVAR_PRIVILEGED, "value FCVAR_PRIVILEGED");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c97)>, decltype(FCVAR_PRIVILEGED)>, "type FCVAR_PRIVILEGED");
+    static_assert(c98 == FCVAR_FILTERABLE, "value FCVAR_FILTERABLE");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c98)>, decltype(FCVAR_FILTERABLE)>, "type FCVAR_FILTERABLE");
+    static_assert(c99 == FCVAR_ISEXECUTED, "value FCVAR_ISEXECUTED");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c99)>, decltype(FCVAR_ISEXECUTED)>, "type FCVAR_ISEXECUTED");
+    static_assert(c100 == FCVAR_ISPATH, "value FCVAR_ISPATH");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c100)>, decltype(FCVAR_ISPATH)>, "type FCVAR_ISPATH");
+    static_assert(c101 == FCVAR_CHEAT, "value FCVAR_CHEAT");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c101)>, decltype(FCVAR_CHEAT)>, "type FCVAR_CHEAT");
+    static_assert(c102 == COM_MAX_CMD_LINE, "value COM_MAX_CMD_LINE");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c102)>, decltype(COM_MAX_CMD_LINE)>, "type COM_MAX_CMD_LINE");
+    static_assert(c103 == NUM_SAFE_ARGVS, "value NUM_SAFE_ARGVS");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c103)>, decltype(NUM_SAFE_ARGVS)>, "type NUM_SAFE_ARGVS");
+    static_assert(c104 == IDPOLYHEADER, "value IDPOLYHEADER");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c104)>, decltype(IDPOLYHEADER)>, "type IDPOLYHEADER");
+    static_assert(c105 == MAX_KNOWN_MODELS, "value MAX_KNOWN_MODELS");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c105)>, decltype(MAX_KNOWN_MODELS)>, "type MAX_KNOWN_MODELS");
+    static_assert(c106 == SURF_PLANEBACK, "value SURF_PLANEBACK");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c106)>, decltype(SURF_PLANEBACK)>, "type SURF_PLANEBACK");
+    static_assert(c107 == SURF_DRAWSKY, "value SURF_DRAWSKY");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c107)>, decltype(SURF_DRAWSKY)>, "type SURF_DRAWSKY");
+    static_assert(c108 == SURF_DRAWSPRITE, "value SURF_DRAWSPRITE");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c108)>, decltype(SURF_DRAWSPRITE)>, "type SURF_DRAWSPRITE");
+    static_assert(c109 == SURF_DRAWTURB, "value SURF_DRAWTURB");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c109)>, decltype(SURF_DRAWTURB)>, "type SURF_DRAWTURB");
+    static_assert(c110 == SURF_DRAWTILED, "value SURF_DRAWTILED");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c110)>, decltype(SURF_DRAWTILED)>, "type SURF_DRAWTILED");
+    static_assert(c111 == SURF_DRAWBACKGROUND, "value SURF_DRAWBACKGROUND");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c111)>, decltype(SURF_DRAWBACKGROUND)>, "type SURF_DRAWBACKGROUND");
+    static_assert(c112 == SURF_UNDERWATER, "value SURF_UNDERWATER");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c112)>, decltype(SURF_UNDERWATER)>, "type SURF_UNDERWATER");
+    static_assert(c113 == MAX_MODEL_NAME, "value MAX_MODEL_NAME");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c113)>, decltype(MAX_MODEL_NAME)>, "type MAX_MODEL_NAME");
+    static_assert(c114 == SIZEBUF_CHECK_OVERFLOW, "value SIZEBUF_CHECK_OVERFLOW");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c114)>, decltype(SIZEBUF_CHECK_OVERFLOW)>, "type SIZEBUF_CHECK_OVERFLOW");
+    static_assert(c115 == SIZEBUF_ALLOW_OVERFLOW, "value SIZEBUF_ALLOW_OVERFLOW");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c115)>, decltype(SIZEBUF_ALLOW_OVERFLOW)>, "type SIZEBUF_ALLOW_OVERFLOW");
+    static_assert(c116 == SIZEBUF_OVERFLOWED, "value SIZEBUF_OVERFLOWED");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c116)>, decltype(SIZEBUF_OVERFLOWED)>, "type SIZEBUF_OVERFLOWED");
+    static_assert(c117 == FCUST_FROMHPAK, "value FCUST_FROMHPAK");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c117)>, decltype(FCUST_FROMHPAK)>, "type FCUST_FROMHPAK");
+    static_assert(c118 == FCUST_WIPEDATA, "value FCUST_WIPEDATA");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c118)>, decltype(FCUST_WIPEDATA)>, "type FCUST_WIPEDATA");
+    static_assert(c119 == FCUST_IGNOREINIT, "value FCUST_IGNOREINIT");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c119)>, decltype(FCUST_IGNOREINIT)>, "type FCUST_IGNOREINIT");
+    static_assert(c120 == MAX_RESOURCE_LIST, "value MAX_RESOURCE_LIST");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c120)>, decltype(MAX_RESOURCE_LIST)>, "type MAX_RESOURCE_LIST");
+    static_assert(c121 == RES_FATALIFMISSING, "value RES_FATALIFMISSING");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c121)>, decltype(RES_FATALIFMISSING)>, "type RES_FATALIFMISSING");
+    static_assert(c122 == RES_WASMISSING, "value RES_WASMISSING");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c122)>, decltype(RES_WASMISSING)>, "type RES_WASMISSING");
+    static_assert(c123 == RES_CUSTOM, "value RES_CUSTOM");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c123)>, decltype(RES_CUSTOM)>, "type RES_CUSTOM");
+    static_assert(c124 == RES_REQUESTED, "value RES_REQUESTED");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c124)>, decltype(RES_REQUESTED)>, "type RES_REQUESTED");
+    static_assert(c125 == RES_PRECACHED, "value RES_PRECACHED");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c125)>, decltype(RES_PRECACHED)>, "type RES_PRECACHED");
+    static_assert(c126 == RES_ALWAYS, "value RES_ALWAYS");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c126)>, decltype(RES_ALWAYS)>, "type RES_ALWAYS");
+    static_assert(c127 == RES_UNK_6, "value RES_UNK_6");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c127)>, decltype(RES_UNK_6)>, "type RES_UNK_6");
+    static_assert(c128 == RES_CHECKFILE, "value RES_CHECKFILE");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c128)>, decltype(RES_CHECKFILE)>, "type RES_CHECKFILE");
+    static_assert(c129 == CHAN_AUTO, "value CHAN_AUTO");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c129)>, decltype(CHAN_AUTO)>, "type CHAN_AUTO");
+    static_assert(c130 == CHAN_WEAPON, "value CHAN_WEAPON");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c130)>, decltype(CHAN_WEAPON)>, "type CHAN_WEAPON");
+    static_assert(c131 == CHAN_VOICE, "value CHAN_VOICE");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c131)>, decltype(CHAN_VOICE)>, "type CHAN_VOICE");
+    static_assert(c132 == CHAN_ITEM, "value CHAN_ITEM");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c132)>, decltype(CHAN_ITEM)>, "type CHAN_ITEM");
+    static_assert(c133 == CHAN_BODY, "value CHAN_BODY");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c133)>, decltype(CHAN_BODY)>, "type CHAN_BODY");
+    static_assert(c134 == CHAN_STREAM, "value CHAN_STREAM");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c134)>, decltype(CHAN_STREAM)>, "type CHAN_STREAM");
+    static_assert(c135 == CHAN_STATIC, "value CHAN_STATIC");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c135)>, decltype(CHAN_STATIC)>, "type CHAN_STATIC");
+    static_assert(c136 == CHAN_NETWORKVOICE_BASE, "value CHAN_NETWORKVOICE_BASE");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c136)>, decltype(CHAN_NETWORKVOICE_BASE)>, "type CHAN_NETWORKVOICE_BASE");
+    static_assert(c137 == CHAN_NETWORKVOICE_END, "value CHAN_NETWORKVOICE_END");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c137)>, decltype(CHAN_NETWORKVOICE_END)>, "type CHAN_NETWORKVOICE_END");
+    static_assert(c138 == CHAN_BOT, "value CHAN_BOT");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c138)>, decltype(CHAN_BOT)>, "type CHAN_BOT");
+    static_assert(c139 == ::CVOXFILESENTENCEMAX, "value CVOXFILESENTENCEMAX");
+    static_assert(
+        std::is_same_v<std::remove_const_t<decltype(c139)>, std::remove_const_t<decltype(::CVOXFILESENTENCEMAX)>>,
+        "type CVOXFILESENTENCEMAX"
+    );
+    static_assert(std::string_view(c140) == std::string_view(OFF_SVC_MESSAGES_P), "value OFF_SVC_MESSAGES_P");
+    static_assert(c141 == EF_BRIGHTFIELD, "value EF_BRIGHTFIELD");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c141)>, decltype(EF_BRIGHTFIELD)>, "type EF_BRIGHTFIELD");
+    static_assert(c142 == EF_MUZZLEFLASH, "value EF_MUZZLEFLASH");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c142)>, decltype(EF_MUZZLEFLASH)>, "type EF_MUZZLEFLASH");
+    static_assert(c143 == EF_BRIGHTLIGHT, "value EF_BRIGHTLIGHT");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c143)>, decltype(EF_BRIGHTLIGHT)>, "type EF_BRIGHTLIGHT");
+    static_assert(c144 == EF_DIMLIGHT, "value EF_DIMLIGHT");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c144)>, decltype(EF_DIMLIGHT)>, "type EF_DIMLIGHT");
+    static_assert(c145 == EF_INVLIGHT, "value EF_INVLIGHT");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c145)>, decltype(EF_INVLIGHT)>, "type EF_INVLIGHT");
+    static_assert(c146 == EF_NOINTERP, "value EF_NOINTERP");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c146)>, decltype(EF_NOINTERP)>, "type EF_NOINTERP");
+    static_assert(c147 == EF_LIGHT, "value EF_LIGHT");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c147)>, decltype(EF_LIGHT)>, "type EF_LIGHT");
+    static_assert(c148 == EF_NODRAW, "value EF_NODRAW");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c148)>, decltype(EF_NODRAW)>, "type EF_NODRAW");
+    static_assert(c149 == EF_NIGHTVISION, "value EF_NIGHTVISION");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c149)>, decltype(EF_NIGHTVISION)>, "type EF_NIGHTVISION");
+    static_assert(c150 == EF_SNIPERLASER, "value EF_SNIPERLASER");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c150)>, decltype(EF_SNIPERLASER)>, "type EF_SNIPERLASER");
+    static_assert(c151 == EF_FIBERCAMERA, "value EF_FIBERCAMERA");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c151)>, decltype(EF_FIBERCAMERA)>, "type EF_FIBERCAMERA");
+    static_assert(c152 == FL_DORMANT, "value FL_DORMANT");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c152)>, decltype(FL_DORMANT)>, "type FL_DORMANT");
+    static_assert(c153 == FL_FLY, "value FL_FLY");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c153)>, decltype(FL_FLY)>, "type FL_FLY");
+    static_assert(c154 == FL_SWIM, "value FL_SWIM");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c154)>, decltype(FL_SWIM)>, "type FL_SWIM");
+    static_assert(c155 == FL_CONVEYOR, "value FL_CONVEYOR");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c155)>, decltype(FL_CONVEYOR)>, "type FL_CONVEYOR");
+    static_assert(c156 == FL_CLIENT, "value FL_CLIENT");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c156)>, decltype(FL_CLIENT)>, "type FL_CLIENT");
+    static_assert(c157 == FL_INWATER, "value FL_INWATER");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c157)>, decltype(FL_INWATER)>, "type FL_INWATER");
+    static_assert(c158 == FL_MONSTER, "value FL_MONSTER");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c158)>, decltype(FL_MONSTER)>, "type FL_MONSTER");
+    static_assert(c159 == FL_GODMODE, "value FL_GODMODE");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c159)>, decltype(FL_GODMODE)>, "type FL_GODMODE");
+    static_assert(c160 == FL_NOTARGET, "value FL_NOTARGET");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c160)>, decltype(FL_NOTARGET)>, "type FL_NOTARGET");
+    static_assert(c161 == FL_SKIPLOCALHOST, "value FL_SKIPLOCALHOST");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c161)>, decltype(FL_SKIPLOCALHOST)>, "type FL_SKIPLOCALHOST");
+    static_assert(c162 == FL_ONGROUND, "value FL_ONGROUND");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c162)>, decltype(FL_ONGROUND)>, "type FL_ONGROUND");
+    static_assert(c163 == FL_PARTIALGROUND, "value FL_PARTIALGROUND");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c163)>, decltype(FL_PARTIALGROUND)>, "type FL_PARTIALGROUND");
+    static_assert(c164 == FL_WATERJUMP, "value FL_WATERJUMP");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c164)>, decltype(FL_WATERJUMP)>, "type FL_WATERJUMP");
+    static_assert(c165 == FL_FROZEN, "value FL_FROZEN");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c165)>, decltype(FL_FROZEN)>, "type FL_FROZEN");
+    static_assert(c166 == FL_FAKECLIENT, "value FL_FAKECLIENT");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c166)>, decltype(FL_FAKECLIENT)>, "type FL_FAKECLIENT");
+    static_assert(c167 == FL_DUCKING, "value FL_DUCKING");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c167)>, decltype(FL_DUCKING)>, "type FL_DUCKING");
+    static_assert(c168 == FL_FLOAT, "value FL_FLOAT");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c168)>, decltype(FL_FLOAT)>, "type FL_FLOAT");
+    static_assert(c169 == FL_GRAPHED, "value FL_GRAPHED");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c169)>, decltype(FL_GRAPHED)>, "type FL_GRAPHED");
+    static_assert(c170 == FL_IMMUNE_WATER, "value FL_IMMUNE_WATER");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c170)>, decltype(FL_IMMUNE_WATER)>, "type FL_IMMUNE_WATER");
+    static_assert(c171 == FL_IMMUNE_SLIME, "value FL_IMMUNE_SLIME");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c171)>, decltype(FL_IMMUNE_SLIME)>, "type FL_IMMUNE_SLIME");
+    static_assert(c172 == FL_IMMUNE_LAVA, "value FL_IMMUNE_LAVA");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c172)>, decltype(FL_IMMUNE_LAVA)>, "type FL_IMMUNE_LAVA");
+    static_assert(c173 == FL_PROXY, "value FL_PROXY");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c173)>, decltype(FL_PROXY)>, "type FL_PROXY");
+    static_assert(c174 == FL_ALWAYSTHINK, "value FL_ALWAYSTHINK");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c174)>, decltype(FL_ALWAYSTHINK)>, "type FL_ALWAYSTHINK");
+    static_assert(c175 == FL_BASEVELOCITY, "value FL_BASEVELOCITY");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c175)>, decltype(FL_BASEVELOCITY)>, "type FL_BASEVELOCITY");
+    static_assert(c176 == FL_MONSTERCLIP, "value FL_MONSTERCLIP");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c176)>, decltype(FL_MONSTERCLIP)>, "type FL_MONSTERCLIP");
+    static_assert(c177 == FL_ONTRAIN, "value FL_ONTRAIN");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c177)>, decltype(FL_ONTRAIN)>, "type FL_ONTRAIN");
+    static_assert(c178 == FL_WORLDBRUSH, "value FL_WORLDBRUSH");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c178)>, decltype(FL_WORLDBRUSH)>, "type FL_WORLDBRUSH");
+    static_assert(c179 == FL_SPECTATOR, "value FL_SPECTATOR");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c179)>, decltype(FL_SPECTATOR)>, "type FL_SPECTATOR");
+    static_assert(c180 == FL_CUSTOMENTITY, "value FL_CUSTOMENTITY");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c180)>, decltype(FL_CUSTOMENTITY)>, "type FL_CUSTOMENTITY");
+    static_assert(c181 == FL_KILLME, "value FL_KILLME");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c181)>, decltype(FL_KILLME)>, "type FL_KILLME");
+    static_assert(c182 == HISTORY_MASK, "value HISTORY_MASK");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c182)>, decltype(HISTORY_MASK)>, "type HISTORY_MASK");
+    static_assert(c183 == HISTORY_MAX, "value HISTORY_MAX");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c183)>, decltype(HISTORY_MAX)>, "type HISTORY_MAX");
+    static_assert(c184 == MOVETYPE_NONE, "value MOVETYPE_NONE");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c184)>, decltype(MOVETYPE_NONE)>, "type MOVETYPE_NONE");
+    static_assert(c185 == MOVETYPE_WALK, "value MOVETYPE_WALK");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c185)>, decltype(MOVETYPE_WALK)>, "type MOVETYPE_WALK");
+    static_assert(c186 == MOVETYPE_STEP, "value MOVETYPE_STEP");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c186)>, decltype(MOVETYPE_STEP)>, "type MOVETYPE_STEP");
+    static_assert(c187 == MOVETYPE_FLY, "value MOVETYPE_FLY");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c187)>, decltype(MOVETYPE_FLY)>, "type MOVETYPE_FLY");
+    static_assert(c188 == MOVETYPE_TOSS, "value MOVETYPE_TOSS");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c188)>, decltype(MOVETYPE_TOSS)>, "type MOVETYPE_TOSS");
+    static_assert(c189 == MOVETYPE_PUSH, "value MOVETYPE_PUSH");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c189)>, decltype(MOVETYPE_PUSH)>, "type MOVETYPE_PUSH");
+    static_assert(c190 == MOVETYPE_NOCLIP, "value MOVETYPE_NOCLIP");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c190)>, decltype(MOVETYPE_NOCLIP)>, "type MOVETYPE_NOCLIP");
+    static_assert(c191 == MOVETYPE_FLYMISSILE, "value MOVETYPE_FLYMISSILE");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c191)>, decltype(MOVETYPE_FLYMISSILE)>, "type MOVETYPE_FLYMISSILE");
+    static_assert(c192 == MOVETYPE_BOUNCE, "value MOVETYPE_BOUNCE");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c192)>, decltype(MOVETYPE_BOUNCE)>, "type MOVETYPE_BOUNCE");
+    static_assert(c193 == MOVETYPE_BOUNCEMISSILE, "value MOVETYPE_BOUNCEMISSILE");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c193)>, decltype(MOVETYPE_BOUNCEMISSILE)>, "type MOVETYPE_BOUNCEMISSILE");
+    static_assert(c194 == MOVETYPE_FOLLOW, "value MOVETYPE_FOLLOW");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c194)>, decltype(MOVETYPE_FOLLOW)>, "type MOVETYPE_FOLLOW");
+    static_assert(c195 == MOVETYPE_PUSHSTEP, "value MOVETYPE_PUSHSTEP");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c195)>, decltype(MOVETYPE_PUSHSTEP)>, "type MOVETYPE_PUSHSTEP");
+    static_assert(c196 == HLBSP_VERSION, "value HLBSP_VERSION");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c196)>, decltype(HLBSP_VERSION)>, "type HLBSP_VERSION");
+    static_assert(c197 == Q1BSP_VERSION, "value Q1BSP_VERSION");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c197)>, decltype(Q1BSP_VERSION)>, "type Q1BSP_VERSION");
+    static_assert(c198 == IDSPRITEHEADER, "value IDSPRITEHEADER");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c198)>, decltype(IDSPRITEHEADER)>, "type IDSPRITEHEADER");
+    static_assert(c199 == SPRITE_VERSION, "value SPRITE_VERSION");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c199)>, decltype(SPRITE_VERSION)>, "type SPRITE_VERSION");
+    static_assert(c200 == MAXSTUDIOSKINS, "value MAXSTUDIOSKINS");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c200)>, decltype(MAXSTUDIOSKINS)>, "type MAXSTUDIOSKINS");
+    static_assert(c201 == STUDIO_HAS_NORMALS, "value STUDIO_HAS_NORMALS");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c201)>, decltype(STUDIO_HAS_NORMALS)>, "type STUDIO_HAS_NORMALS");
+    static_assert(c202 == STUDIO_LOOPING, "value STUDIO_LOOPING");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c202)>, decltype(STUDIO_LOOPING)>, "type STUDIO_LOOPING");
+    static_assert(c203 == STUDIO_NF_FLATSHADE, "value STUDIO_NF_FLATSHADE");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c203)>, decltype(STUDIO_NF_FLATSHADE)>, "type STUDIO_NF_FLATSHADE");
+    static_assert(c204 == STUDIO_X, "value STUDIO_X");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c204)>, decltype(STUDIO_X)>, "type STUDIO_X");
+    static_assert(c205 == STUDIO_HAS_VERTICES, "value STUDIO_HAS_VERTICES");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c205)>, decltype(STUDIO_HAS_VERTICES)>, "type STUDIO_HAS_VERTICES");
+    static_assert(c206 == STUDIO_NF_CHROME, "value STUDIO_NF_CHROME");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c206)>, decltype(STUDIO_NF_CHROME)>, "type STUDIO_NF_CHROME");
+    static_assert(c207 == STUDIO_Y, "value STUDIO_Y");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c207)>, decltype(STUDIO_Y)>, "type STUDIO_Y");
+    static_assert(c208 == STUDIO_HAS_BBOX, "value STUDIO_HAS_BBOX");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c208)>, decltype(STUDIO_HAS_BBOX)>, "type STUDIO_HAS_BBOX");
+    static_assert(c209 == STUDIO_NF_FULLBRIGHT, "value STUDIO_NF_FULLBRIGHT");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c209)>, decltype(STUDIO_NF_FULLBRIGHT)>, "type STUDIO_NF_FULLBRIGHT");
+    static_assert(c210 == STUDIO_Z, "value STUDIO_Z");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c210)>, decltype(STUDIO_Z)>, "type STUDIO_Z");
+    static_assert(c211 == STUDIO_HAS_CHROME, "value STUDIO_HAS_CHROME");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c211)>, decltype(STUDIO_HAS_CHROME)>, "type STUDIO_HAS_CHROME");
+    static_assert(c212 == STUDIO_NF_NOMIPS, "value STUDIO_NF_NOMIPS");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c212)>, decltype(STUDIO_NF_NOMIPS)>, "type STUDIO_NF_NOMIPS");
+    static_assert(c213 == STUDIO_XR, "value STUDIO_XR");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c213)>, decltype(STUDIO_XR)>, "type STUDIO_XR");
+    static_assert(c214 == STUDIO_NF_ALPHA, "value STUDIO_NF_ALPHA");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c214)>, decltype(STUDIO_NF_ALPHA)>, "type STUDIO_NF_ALPHA");
+    static_assert(c215 == STUDIO_YR, "value STUDIO_YR");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c215)>, decltype(STUDIO_YR)>, "type STUDIO_YR");
+    static_assert(c216 == STUDIO_NF_ADDITIVE, "value STUDIO_NF_ADDITIVE");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c216)>, decltype(STUDIO_NF_ADDITIVE)>, "type STUDIO_NF_ADDITIVE");
+    static_assert(c217 == STUDIO_ZR, "value STUDIO_ZR");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c217)>, decltype(STUDIO_ZR)>, "type STUDIO_ZR");
+    static_assert(c218 == STUDIO_LX, "value STUDIO_LX");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c218)>, decltype(STUDIO_LX)>, "type STUDIO_LX");
+    static_assert(c219 == STUDIO_NF_MASKED, "value STUDIO_NF_MASKED");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c219)>, decltype(STUDIO_NF_MASKED)>, "type STUDIO_NF_MASKED");
+    static_assert(c220 == STUDIO_LY, "value STUDIO_LY");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c220)>, decltype(STUDIO_LY)>, "type STUDIO_LY");
+    static_assert(c221 == STUDIO_DYNAMIC_LIGHT, "value STUDIO_DYNAMIC_LIGHT");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c221)>, decltype(STUDIO_DYNAMIC_LIGHT)>, "type STUDIO_DYNAMIC_LIGHT");
+    static_assert(c222 == STUDIO_LZ, "value STUDIO_LZ");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c222)>, decltype(STUDIO_LZ)>, "type STUDIO_LZ");
+    static_assert(c223 == STUDIO_AX, "value STUDIO_AX");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c223)>, decltype(STUDIO_AX)>, "type STUDIO_AX");
+    static_assert(c224 == STUDIO_TRACE_HITBOX, "value STUDIO_TRACE_HITBOX");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c224)>, decltype(STUDIO_TRACE_HITBOX)>, "type STUDIO_TRACE_HITBOX");
+    static_assert(c225 == STUDIO_AY, "value STUDIO_AY");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c225)>, decltype(STUDIO_AY)>, "type STUDIO_AY");
+    static_assert(c226 == STUDIO_AZ, "value STUDIO_AZ");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c226)>, decltype(STUDIO_AZ)>, "type STUDIO_AZ");
+    static_assert(c227 == STUDIO_AXR, "value STUDIO_AXR");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c227)>, decltype(STUDIO_AXR)>, "type STUDIO_AXR");
+    static_assert(c228 == STUDIO_AYR, "value STUDIO_AYR");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c228)>, decltype(STUDIO_AYR)>, "type STUDIO_AYR");
+    static_assert(c229 == STUDIO_AZR, "value STUDIO_AZR");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c229)>, decltype(STUDIO_AZR)>, "type STUDIO_AZR");
+    static_assert(c230 == STUDIO_TYPES, "value STUDIO_TYPES");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c230)>, decltype(STUDIO_TYPES)>, "type STUDIO_TYPES");
+    static_assert(c231 == STUDIO_RLOOP, "value STUDIO_RLOOP");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c231)>, decltype(STUDIO_RLOOP)>, "type STUDIO_RLOOP");
+    static_assert(c232 == STUDIO_CACHE_SIZE, "value STUDIO_CACHE_SIZE");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c232)>, decltype(STUDIO_CACHE_SIZE)>, "type STUDIO_CACHE_SIZE");
+    static_assert(c233 == STUDIO_MOUTH, "value STUDIO_MOUTH");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c233)>, decltype(STUDIO_MOUTH)>, "type STUDIO_MOUTH");
+    static_assert(c234 == STUDIO_NUM_HULLS, "value STUDIO_NUM_HULLS");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c234)>, decltype(STUDIO_NUM_HULLS)>, "type STUDIO_NUM_HULLS");
+    static_assert(c235 == STUDIO_NUM_PLANES, "value STUDIO_NUM_PLANES");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c235)>, decltype(STUDIO_NUM_PLANES)>, "type STUDIO_NUM_PLANES");
+    static_assert(c236 == STUDIO_TO_RAD, "value STUDIO_TO_RAD");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c236)>, decltype(STUDIO_TO_RAD)>, "type STUDIO_TO_RAD");
+    static_assert(c237 == DRC_CMD_NONE, "value DRC_CMD_NONE");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c237)>, decltype(DRC_CMD_NONE)>, "type DRC_CMD_NONE");
+    static_assert(c238 == DRC_CMD_START, "value DRC_CMD_START");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c238)>, decltype(DRC_CMD_START)>, "type DRC_CMD_START");
+    static_assert(c239 == DRC_CMD_EVENT, "value DRC_CMD_EVENT");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c239)>, decltype(DRC_CMD_EVENT)>, "type DRC_CMD_EVENT");
+    static_assert(c240 == DRC_CMD_MODE, "value DRC_CMD_MODE");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c240)>, decltype(DRC_CMD_MODE)>, "type DRC_CMD_MODE");
+    static_assert(c241 == DRC_CMD_CAMERA, "value DRC_CMD_CAMERA");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c241)>, decltype(DRC_CMD_CAMERA)>, "type DRC_CMD_CAMERA");
+    static_assert(c242 == DRC_CMD_TIMESCALE, "value DRC_CMD_TIMESCALE");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c242)>, decltype(DRC_CMD_TIMESCALE)>, "type DRC_CMD_TIMESCALE");
+    static_assert(c243 == DRC_CMD_MESSAGE, "value DRC_CMD_MESSAGE");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c243)>, decltype(DRC_CMD_MESSAGE)>, "type DRC_CMD_MESSAGE");
+    static_assert(c244 == DRC_CMD_SOUND, "value DRC_CMD_SOUND");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c244)>, decltype(DRC_CMD_SOUND)>, "type DRC_CMD_SOUND");
+    static_assert(c245 == DRC_CMD_STATUS, "value DRC_CMD_STATUS");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c245)>, decltype(DRC_CMD_STATUS)>, "type DRC_CMD_STATUS");
+    static_assert(c246 == DRC_CMD_BANNER, "value DRC_CMD_BANNER");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c246)>, decltype(DRC_CMD_BANNER)>, "type DRC_CMD_BANNER");
+    static_assert(c247 == DRC_CMD_STUFFTEXT, "value DRC_CMD_STUFFTEXT");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c247)>, decltype(DRC_CMD_STUFFTEXT)>, "type DRC_CMD_STUFFTEXT");
+    static_assert(c248 == DRC_CMD_CHASE, "value DRC_CMD_CHASE");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c248)>, decltype(DRC_CMD_CHASE)>, "type DRC_CMD_CHASE");
+    static_assert(c249 == DRC_CMD_INEYE, "value DRC_CMD_INEYE");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c249)>, decltype(DRC_CMD_INEYE)>, "type DRC_CMD_INEYE");
+    static_assert(c250 == DRC_CMD_MAP, "value DRC_CMD_MAP");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c250)>, decltype(DRC_CMD_MAP)>, "type DRC_CMD_MAP");
+    static_assert(c251 == DRC_CMD_CAMPATH, "value DRC_CMD_CAMPATH");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c251)>, decltype(DRC_CMD_CAMPATH)>, "type DRC_CMD_CAMPATH");
+    static_assert(c252 == DRC_CMD_LAST, "value DRC_CMD_LAST");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c252)>, decltype(DRC_CMD_LAST)>, "type DRC_CMD_LAST");
+    static_assert(c253 == DRC_CMD_WAYPOINTS, "value DRC_CMD_WAYPOINTS");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c253)>, decltype(DRC_CMD_WAYPOINTS)>, "type DRC_CMD_WAYPOINTS");
+    static_assert(c254 == DRC_FLAG_STARTPATH, "value DRC_FLAG_STARTPATH");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c254)>, decltype(DRC_FLAG_STARTPATH)>, "type DRC_FLAG_STARTPATH");
+    static_assert(c255 == DRC_FLAG_SLOWSTART, "value DRC_FLAG_SLOWSTART");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c255)>, decltype(DRC_FLAG_SLOWSTART)>, "type DRC_FLAG_SLOWSTART");
+    static_assert(c256 == DRC_FLAG_SLOWEND, "value DRC_FLAG_SLOWEND");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c256)>, decltype(DRC_FLAG_SLOWEND)>, "type DRC_FLAG_SLOWEND");
+    static_assert(c257 == DRC_FLAG_PRIO_MASK, "value DRC_FLAG_PRIO_MASK");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c257)>, decltype(DRC_FLAG_PRIO_MASK)>, "type DRC_FLAG_PRIO_MASK");
+    static_assert(c258 == DRC_FLAG_SIDE, "value DRC_FLAG_SIDE");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c258)>, decltype(DRC_FLAG_SIDE)>, "type DRC_FLAG_SIDE");
+    static_assert(c259 == DRC_FLAG_DRAMATIC, "value DRC_FLAG_DRAMATIC");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c259)>, decltype(DRC_FLAG_DRAMATIC)>, "type DRC_FLAG_DRAMATIC");
+    static_assert(c260 == DRC_FLAG_SLOWMOTION, "value DRC_FLAG_SLOWMOTION");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c260)>, decltype(DRC_FLAG_SLOWMOTION)>, "type DRC_FLAG_SLOWMOTION");
+    static_assert(c261 == DRC_FLAG_FACEPLAYER, "value DRC_FLAG_FACEPLAYER");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c261)>, decltype(DRC_FLAG_FACEPLAYER)>, "type DRC_FLAG_FACEPLAYER");
+    static_assert(c262 == DRC_FLAG_INTRO, "value DRC_FLAG_INTRO");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c262)>, decltype(DRC_FLAG_INTRO)>, "type DRC_FLAG_INTRO");
+    static_assert(c263 == DRC_FLAG_FINAL, "value DRC_FLAG_FINAL");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c263)>, decltype(DRC_FLAG_FINAL)>, "type DRC_FLAG_FINAL");
+    static_assert(c264 == DRC_FLAG_NO_RANDOM, "value DRC_FLAG_NO_RANDOM");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c264)>, decltype(DRC_FLAG_NO_RANDOM)>, "type DRC_FLAG_NO_RANDOM");
+    static_assert(c265 == HLTV_ACTIVE, "value HLTV_ACTIVE");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c265)>, decltype(HLTV_ACTIVE)>, "type HLTV_ACTIVE");
+    static_assert(c266 == HLTV_STATUS, "value HLTV_STATUS");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c266)>, decltype(HLTV_STATUS)>, "type HLTV_STATUS");
+    static_assert(c267 == HLTV_LISTEN, "value HLTV_LISTEN");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c267)>, decltype(HLTV_LISTEN)>, "type HLTV_LISTEN");
+    static_assert(c268 == TYPE_CLIENT, "value TYPE_CLIENT");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c268)>, decltype(TYPE_CLIENT)>, "type TYPE_CLIENT");
+    static_assert(c269 == TYPE_PROXY, "value TYPE_PROXY");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c269)>, decltype(TYPE_PROXY)>, "type TYPE_PROXY");
+    static_assert(c270 == TYPE_DIRECTOR, "value TYPE_DIRECTOR");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c270)>, decltype(TYPE_DIRECTOR)>, "type TYPE_DIRECTOR");
+    static_assert(c271 == TYPE_COMMENTATOR, "value TYPE_COMMENTATOR");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c271)>, decltype(TYPE_COMMENTATOR)>, "type TYPE_COMMENTATOR");
+    static_assert(c272 == TYPE_DEMO, "value TYPE_DEMO");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c272)>, decltype(TYPE_DEMO)>, "type TYPE_DEMO");
+    static_assert(c273 == K_TAB, "value K_TAB");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c273)>, decltype(K_TAB)>, "type K_TAB");
+    static_assert(c274 == K_ENTER, "value K_ENTER");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c274)>, decltype(K_ENTER)>, "type K_ENTER");
+    static_assert(c275 == K_ESCAPE, "value K_ESCAPE");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c275)>, decltype(K_ESCAPE)>, "type K_ESCAPE");
+    static_assert(c276 == K_SPACE, "value K_SPACE");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c276)>, decltype(K_SPACE)>, "type K_SPACE");
+    static_assert(c277 == K_BACKSPACE, "value K_BACKSPACE");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c277)>, decltype(K_BACKSPACE)>, "type K_BACKSPACE");
+    static_assert(c278 == K_UPARROW, "value K_UPARROW");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c278)>, decltype(K_UPARROW)>, "type K_UPARROW");
+    static_assert(c279 == K_DOWNARROW, "value K_DOWNARROW");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c279)>, decltype(K_DOWNARROW)>, "type K_DOWNARROW");
+    static_assert(c280 == K_LEFTARROW, "value K_LEFTARROW");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c280)>, decltype(K_LEFTARROW)>, "type K_LEFTARROW");
+    static_assert(c281 == K_RIGHTARROW, "value K_RIGHTARROW");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c281)>, decltype(K_RIGHTARROW)>, "type K_RIGHTARROW");
+    static_assert(c282 == K_ALT, "value K_ALT");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c282)>, decltype(K_ALT)>, "type K_ALT");
+    static_assert(c283 == K_CTRL, "value K_CTRL");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c283)>, decltype(K_CTRL)>, "type K_CTRL");
+    static_assert(c284 == K_SHIFT, "value K_SHIFT");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c284)>, decltype(K_SHIFT)>, "type K_SHIFT");
+    static_assert(c285 == K_F1, "value K_F1");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c285)>, decltype(K_F1)>, "type K_F1");
+    static_assert(c286 == K_F2, "value K_F2");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c286)>, decltype(K_F2)>, "type K_F2");
+    static_assert(c287 == K_F3, "value K_F3");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c287)>, decltype(K_F3)>, "type K_F3");
+    static_assert(c288 == K_F4, "value K_F4");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c288)>, decltype(K_F4)>, "type K_F4");
+    static_assert(c289 == K_F5, "value K_F5");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c289)>, decltype(K_F5)>, "type K_F5");
+    static_assert(c290 == K_F6, "value K_F6");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c290)>, decltype(K_F6)>, "type K_F6");
+    static_assert(c291 == K_F7, "value K_F7");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c291)>, decltype(K_F7)>, "type K_F7");
+    static_assert(c292 == K_F8, "value K_F8");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c292)>, decltype(K_F8)>, "type K_F8");
+    static_assert(c293 == K_F9, "value K_F9");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c293)>, decltype(K_F9)>, "type K_F9");
+    static_assert(c294 == K_F10, "value K_F10");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c294)>, decltype(K_F10)>, "type K_F10");
+    static_assert(c295 == K_F11, "value K_F11");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c295)>, decltype(K_F11)>, "type K_F11");
+    static_assert(c296 == K_F12, "value K_F12");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c296)>, decltype(K_F12)>, "type K_F12");
+    static_assert(c297 == K_INS, "value K_INS");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c297)>, decltype(K_INS)>, "type K_INS");
+    static_assert(c298 == K_DEL, "value K_DEL");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c298)>, decltype(K_DEL)>, "type K_DEL");
+    static_assert(c299 == K_PGDN, "value K_PGDN");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c299)>, decltype(K_PGDN)>, "type K_PGDN");
+    static_assert(c300 == K_PGUP, "value K_PGUP");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c300)>, decltype(K_PGUP)>, "type K_PGUP");
+    static_assert(c301 == K_HOME, "value K_HOME");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c301)>, decltype(K_HOME)>, "type K_HOME");
+    static_assert(c302 == K_END, "value K_END");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c302)>, decltype(K_END)>, "type K_END");
+    static_assert(c303 == K_KP_HOME, "value K_KP_HOME");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c303)>, decltype(K_KP_HOME)>, "type K_KP_HOME");
+    static_assert(c304 == K_KP_UPARROW, "value K_KP_UPARROW");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c304)>, decltype(K_KP_UPARROW)>, "type K_KP_UPARROW");
+    static_assert(c305 == K_KP_PGUP, "value K_KP_PGUP");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c305)>, decltype(K_KP_PGUP)>, "type K_KP_PGUP");
+    static_assert(c306 == K_KP_LEFTARROW, "value K_KP_LEFTARROW");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c306)>, decltype(K_KP_LEFTARROW)>, "type K_KP_LEFTARROW");
+    static_assert(c307 == K_KP_5, "value K_KP_5");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c307)>, decltype(K_KP_5)>, "type K_KP_5");
+    static_assert(c308 == K_KP_RIGHTARROW, "value K_KP_RIGHTARROW");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c308)>, decltype(K_KP_RIGHTARROW)>, "type K_KP_RIGHTARROW");
+    static_assert(c309 == K_KP_END, "value K_KP_END");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c309)>, decltype(K_KP_END)>, "type K_KP_END");
+    static_assert(c310 == K_KP_DOWNARROW, "value K_KP_DOWNARROW");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c310)>, decltype(K_KP_DOWNARROW)>, "type K_KP_DOWNARROW");
+    static_assert(c311 == K_KP_PGDN, "value K_KP_PGDN");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c311)>, decltype(K_KP_PGDN)>, "type K_KP_PGDN");
+    static_assert(c312 == K_KP_ENTER, "value K_KP_ENTER");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c312)>, decltype(K_KP_ENTER)>, "type K_KP_ENTER");
+    static_assert(c313 == K_KP_INS, "value K_KP_INS");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c313)>, decltype(K_KP_INS)>, "type K_KP_INS");
+    static_assert(c314 == K_KP_DEL, "value K_KP_DEL");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c314)>, decltype(K_KP_DEL)>, "type K_KP_DEL");
+    static_assert(c315 == K_KP_SLASH, "value K_KP_SLASH");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c315)>, decltype(K_KP_SLASH)>, "type K_KP_SLASH");
+    static_assert(c316 == K_KP_MINUS, "value K_KP_MINUS");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c316)>, decltype(K_KP_MINUS)>, "type K_KP_MINUS");
+    static_assert(c317 == K_KP_PLUS, "value K_KP_PLUS");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c317)>, decltype(K_KP_PLUS)>, "type K_KP_PLUS");
+    static_assert(c318 == K_CAPSLOCK, "value K_CAPSLOCK");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c318)>, decltype(K_CAPSLOCK)>, "type K_CAPSLOCK");
+    static_assert(c319 == K_JOY1, "value K_JOY1");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c319)>, decltype(K_JOY1)>, "type K_JOY1");
+    static_assert(c320 == K_JOY2, "value K_JOY2");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c320)>, decltype(K_JOY2)>, "type K_JOY2");
+    static_assert(c321 == K_JOY3, "value K_JOY3");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c321)>, decltype(K_JOY3)>, "type K_JOY3");
+    static_assert(c322 == K_JOY4, "value K_JOY4");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c322)>, decltype(K_JOY4)>, "type K_JOY4");
+    static_assert(c323 == K_AUX1, "value K_AUX1");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c323)>, decltype(K_AUX1)>, "type K_AUX1");
+    static_assert(c324 == K_AUX2, "value K_AUX2");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c324)>, decltype(K_AUX2)>, "type K_AUX2");
+    static_assert(c325 == K_AUX3, "value K_AUX3");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c325)>, decltype(K_AUX3)>, "type K_AUX3");
+    static_assert(c326 == K_AUX4, "value K_AUX4");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c326)>, decltype(K_AUX4)>, "type K_AUX4");
+    static_assert(c327 == K_AUX5, "value K_AUX5");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c327)>, decltype(K_AUX5)>, "type K_AUX5");
+    static_assert(c328 == K_AUX6, "value K_AUX6");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c328)>, decltype(K_AUX6)>, "type K_AUX6");
+    static_assert(c329 == K_AUX7, "value K_AUX7");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c329)>, decltype(K_AUX7)>, "type K_AUX7");
+    static_assert(c330 == K_AUX8, "value K_AUX8");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c330)>, decltype(K_AUX8)>, "type K_AUX8");
+    static_assert(c331 == K_AUX9, "value K_AUX9");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c331)>, decltype(K_AUX9)>, "type K_AUX9");
+    static_assert(c332 == K_AUX10, "value K_AUX10");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c332)>, decltype(K_AUX10)>, "type K_AUX10");
+    static_assert(c333 == K_AUX11, "value K_AUX11");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c333)>, decltype(K_AUX11)>, "type K_AUX11");
+    static_assert(c334 == K_AUX12, "value K_AUX12");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c334)>, decltype(K_AUX12)>, "type K_AUX12");
+    static_assert(c335 == K_AUX13, "value K_AUX13");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c335)>, decltype(K_AUX13)>, "type K_AUX13");
+    static_assert(c336 == K_AUX14, "value K_AUX14");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c336)>, decltype(K_AUX14)>, "type K_AUX14");
+    static_assert(c337 == K_AUX15, "value K_AUX15");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c337)>, decltype(K_AUX15)>, "type K_AUX15");
+    static_assert(c338 == K_AUX16, "value K_AUX16");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c338)>, decltype(K_AUX16)>, "type K_AUX16");
+    static_assert(c339 == K_AUX17, "value K_AUX17");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c339)>, decltype(K_AUX17)>, "type K_AUX17");
+    static_assert(c340 == K_AUX18, "value K_AUX18");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c340)>, decltype(K_AUX18)>, "type K_AUX18");
+    static_assert(c341 == K_AUX19, "value K_AUX19");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c341)>, decltype(K_AUX19)>, "type K_AUX19");
+    static_assert(c342 == K_AUX20, "value K_AUX20");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c342)>, decltype(K_AUX20)>, "type K_AUX20");
+    static_assert(c343 == K_AUX21, "value K_AUX21");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c343)>, decltype(K_AUX21)>, "type K_AUX21");
+    static_assert(c344 == K_AUX22, "value K_AUX22");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c344)>, decltype(K_AUX22)>, "type K_AUX22");
+    static_assert(c345 == K_AUX23, "value K_AUX23");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c345)>, decltype(K_AUX23)>, "type K_AUX23");
+    static_assert(c346 == K_AUX24, "value K_AUX24");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c346)>, decltype(K_AUX24)>, "type K_AUX24");
+    static_assert(c347 == K_AUX25, "value K_AUX25");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c347)>, decltype(K_AUX25)>, "type K_AUX25");
+    static_assert(c348 == K_AUX26, "value K_AUX26");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c348)>, decltype(K_AUX26)>, "type K_AUX26");
+    static_assert(c349 == K_AUX27, "value K_AUX27");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c349)>, decltype(K_AUX27)>, "type K_AUX27");
+    static_assert(c350 == K_AUX28, "value K_AUX28");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c350)>, decltype(K_AUX28)>, "type K_AUX28");
+    static_assert(c351 == K_AUX29, "value K_AUX29");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c351)>, decltype(K_AUX29)>, "type K_AUX29");
+    static_assert(c352 == K_AUX30, "value K_AUX30");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c352)>, decltype(K_AUX30)>, "type K_AUX30");
+    static_assert(c353 == K_AUX31, "value K_AUX31");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c353)>, decltype(K_AUX31)>, "type K_AUX31");
+    static_assert(c354 == K_AUX32, "value K_AUX32");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c354)>, decltype(K_AUX32)>, "type K_AUX32");
+    static_assert(c355 == K_MWHEELDOWN, "value K_MWHEELDOWN");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c355)>, decltype(K_MWHEELDOWN)>, "type K_MWHEELDOWN");
+    static_assert(c356 == K_MWHEELUP, "value K_MWHEELUP");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c356)>, decltype(K_MWHEELUP)>, "type K_MWHEELUP");
+    static_assert(c357 == K_MOUSE1, "value K_MOUSE1");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c357)>, decltype(K_MOUSE1)>, "type K_MOUSE1");
+    static_assert(c358 == K_MOUSE2, "value K_MOUSE2");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c358)>, decltype(K_MOUSE2)>, "type K_MOUSE2");
+    static_assert(c359 == K_MOUSE3, "value K_MOUSE3");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c359)>, decltype(K_MOUSE3)>, "type K_MOUSE3");
+    static_assert(c360 == K_MOUSE4, "value K_MOUSE4");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c360)>, decltype(K_MOUSE4)>, "type K_MOUSE4");
+    static_assert(c361 == K_MOUSE5, "value K_MOUSE5");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c361)>, decltype(K_MOUSE5)>, "type K_MOUSE5");
+    static_assert(c362 == K_PAUSE, "value K_PAUSE");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c362)>, decltype(K_PAUSE)>, "type K_PAUSE");
+    static_assert(c363 == MAX_LIGHTSTYLE_INDEX_BITS, "value MAX_LIGHTSTYLE_INDEX_BITS");
+    static_assert(
+        std::is_same_v<std::remove_const_t<decltype(c363)>, decltype(MAX_LIGHTSTYLE_INDEX_BITS)>,
         "type MAX_LIGHTSTYLE_INDEX_BITS"
     );
-    static_assert(c362 == MAX_DECAL_INDEX_BITS, "value MAX_DECAL_INDEX_BITS");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c362)>, decltype(MAX_DECAL_INDEX_BITS)>, "type MAX_DECAL_INDEX_BITS");
-    static_assert(c363 == MAX_GENERIC_INDEX_BITS, "value MAX_GENERIC_INDEX_BITS");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c363)>, decltype(MAX_GENERIC_INDEX_BITS)>, "type MAX_GENERIC_INDEX_BITS");
-    static_assert(c364 == MAX_MODEL_INDEX_BITS, "value MAX_MODEL_INDEX_BITS");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c364)>, decltype(MAX_MODEL_INDEX_BITS)>, "type MAX_MODEL_INDEX_BITS");
-    static_assert(c365 == MAX_SOUND_INDEX_BITS, "value MAX_SOUND_INDEX_BITS");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c365)>, decltype(MAX_SOUND_INDEX_BITS)>, "type MAX_SOUND_INDEX_BITS");
-    static_assert(c366 == MAX_NUM_ARGVS, "value MAX_NUM_ARGVS");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c366)>, decltype(MAX_NUM_ARGVS)>, "type MAX_NUM_ARGVS");
-    static_assert(c367 == MAX_LIGHTSTYLES, "value MAX_LIGHTSTYLES");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c367)>, decltype(MAX_LIGHTSTYLES)>, "type MAX_LIGHTSTYLES");
-    static_assert(c368 == MAX_QPATH, "value MAX_QPATH");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c368)>, decltype(MAX_QPATH)>, "type MAX_QPATH");
-    static_assert(c369 == MAX_EVENTS, "value MAX_EVENTS");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c369)>, decltype(MAX_EVENTS)>, "type MAX_EVENTS");
-    static_assert(c370 == MAX_PACKET_ENTITIES, "value MAX_PACKET_ENTITIES");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c370)>, decltype(MAX_PACKET_ENTITIES)>, "type MAX_PACKET_ENTITIES");
-    static_assert(c371 == MAX_OSPATH, "value MAX_OSPATH");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c371)>, decltype(MAX_OSPATH)>, "type MAX_OSPATH");
-    static_assert(c372 == MAX_BASE_DECALS, "value MAX_BASE_DECALS");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c372)>, decltype(MAX_BASE_DECALS)>, "type MAX_BASE_DECALS");
-    static_assert(c373 == MAX_GENERIC, "value MAX_GENERIC");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c373)>, decltype(MAX_GENERIC)>, "type MAX_GENERIC");
-    static_assert(c374 == MAX_MODELS, "value MAX_MODELS");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c374)>, decltype(MAX_MODELS)>, "type MAX_MODELS");
-    static_assert(c375 == MAX_SOUNDS, "value MAX_SOUNDS");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c375)>, decltype(MAX_SOUNDS)>, "type MAX_SOUNDS");
-    static_assert(c376 == MAX_SOUNDS_HASHLOOKUP_SIZE, "value MAX_SOUNDS_HASHLOOKUP_SIZE");
+    static_assert(c364 == MAX_DECAL_INDEX_BITS, "value MAX_DECAL_INDEX_BITS");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c364)>, decltype(MAX_DECAL_INDEX_BITS)>, "type MAX_DECAL_INDEX_BITS");
+    static_assert(c365 == MAX_GENERIC_INDEX_BITS, "value MAX_GENERIC_INDEX_BITS");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c365)>, decltype(MAX_GENERIC_INDEX_BITS)>, "type MAX_GENERIC_INDEX_BITS");
+    static_assert(c366 == MAX_MODEL_INDEX_BITS, "value MAX_MODEL_INDEX_BITS");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c366)>, decltype(MAX_MODEL_INDEX_BITS)>, "type MAX_MODEL_INDEX_BITS");
+    static_assert(c367 == MAX_SOUND_INDEX_BITS, "value MAX_SOUND_INDEX_BITS");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c367)>, decltype(MAX_SOUND_INDEX_BITS)>, "type MAX_SOUND_INDEX_BITS");
+    static_assert(c368 == MAX_NUM_ARGVS, "value MAX_NUM_ARGVS");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c368)>, decltype(MAX_NUM_ARGVS)>, "type MAX_NUM_ARGVS");
+    static_assert(c369 == MAX_LIGHTSTYLES, "value MAX_LIGHTSTYLES");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c369)>, decltype(MAX_LIGHTSTYLES)>, "type MAX_LIGHTSTYLES");
+    static_assert(c370 == MAX_QPATH, "value MAX_QPATH");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c370)>, decltype(MAX_QPATH)>, "type MAX_QPATH");
+    static_assert(c371 == MAX_EVENTS, "value MAX_EVENTS");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c371)>, decltype(MAX_EVENTS)>, "type MAX_EVENTS");
+    static_assert(c372 == MAX_PACKET_ENTITIES, "value MAX_PACKET_ENTITIES");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c372)>, decltype(MAX_PACKET_ENTITIES)>, "type MAX_PACKET_ENTITIES");
+    static_assert(c373 == MAX_OSPATH, "value MAX_OSPATH");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c373)>, decltype(MAX_OSPATH)>, "type MAX_OSPATH");
+    static_assert(c374 == MAX_BASE_DECALS, "value MAX_BASE_DECALS");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c374)>, decltype(MAX_BASE_DECALS)>, "type MAX_BASE_DECALS");
+    static_assert(c375 == MAX_GENERIC, "value MAX_GENERIC");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c375)>, decltype(MAX_GENERIC)>, "type MAX_GENERIC");
+    static_assert(c376 == MAX_MODELS, "value MAX_MODELS");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c376)>, decltype(MAX_MODELS)>, "type MAX_MODELS");
+    static_assert(c377 == MAX_SOUNDS, "value MAX_SOUNDS");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c377)>, decltype(MAX_SOUNDS)>, "type MAX_SOUNDS");
+    static_assert(c378 == MAX_SOUNDS_HASHLOOKUP_SIZE, "value MAX_SOUNDS_HASHLOOKUP_SIZE");
     static_assert(
-        std::is_same_v<std::remove_const_t<decltype(c376)>, decltype(MAX_SOUNDS_HASHLOOKUP_SIZE)>,
+        std::is_same_v<std::remove_const_t<decltype(c378)>, decltype(MAX_SOUNDS_HASHLOOKUP_SIZE)>,
         "type MAX_SOUNDS_HASHLOOKUP_SIZE"
     );
-    static_assert(c377 == MAX_CLIENTS, "value MAX_CLIENTS");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c377)>, decltype(MAX_CLIENTS)>, "type MAX_CLIENTS");
-    static_assert(c378 == PM_NORMAL, "value PM_NORMAL");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c378)>, decltype(PM_NORMAL)>, "type PM_NORMAL");
-    static_assert(c379 == PM_TRACELINE_PHYSENTSONLY, "value PM_TRACELINE_PHYSENTSONLY");
+    static_assert(c379 == MAX_CLIENTS, "value MAX_CLIENTS");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c379)>, decltype(MAX_CLIENTS)>, "type MAX_CLIENTS");
+    static_assert(c380 == PM_NORMAL, "value PM_NORMAL");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c380)>, decltype(PM_NORMAL)>, "type PM_NORMAL");
+    static_assert(c381 == PM_TRACELINE_PHYSENTSONLY, "value PM_TRACELINE_PHYSENTSONLY");
     static_assert(
-        std::is_same_v<std::remove_const_t<decltype(c379)>, decltype(PM_TRACELINE_PHYSENTSONLY)>,
+        std::is_same_v<std::remove_const_t<decltype(c381)>, decltype(PM_TRACELINE_PHYSENTSONLY)>,
         "type PM_TRACELINE_PHYSENTSONLY"
     );
-    static_assert(c380 == PM_STUDIO_IGNORE, "value PM_STUDIO_IGNORE");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c380)>, decltype(PM_STUDIO_IGNORE)>, "type PM_STUDIO_IGNORE");
-    static_assert(c381 == PM_TRACELINE_ANYVISIBLE, "value PM_TRACELINE_ANYVISIBLE");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c381)>, decltype(PM_TRACELINE_ANYVISIBLE)>, "type PM_TRACELINE_ANYVISIBLE");
-    static_assert(c382 == PM_STUDIO_BOX, "value PM_STUDIO_BOX");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c382)>, decltype(PM_STUDIO_BOX)>, "type PM_STUDIO_BOX");
-    static_assert(c383 == PM_GLASS_IGNORE, "value PM_GLASS_IGNORE");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c383)>, decltype(PM_GLASS_IGNORE)>, "type PM_GLASS_IGNORE");
-    static_assert(c384 == PM_WORLD_ONLY, "value PM_WORLD_ONLY");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c384)>, decltype(PM_WORLD_ONLY)>, "type PM_WORLD_ONLY");
-    static_assert(c385 == PM_CHECKSTUCK_MINTIME, "value PM_CHECKSTUCK_MINTIME");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c385)>, decltype(PM_CHECKSTUCK_MINTIME)>, "type PM_CHECKSTUCK_MINTIME");
-    static_assert(c386 == PM_DEAD_VIEWHEIGHT, "value PM_DEAD_VIEWHEIGHT");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c386)>, decltype(PM_DEAD_VIEWHEIGHT)>, "type PM_DEAD_VIEWHEIGHT");
-    static_assert(c387 == PM_PLAYER_FALL_PUNCH_THRESHHOLD, "value PM_PLAYER_FALL_PUNCH_THRESHHOLD");
+    static_assert(c382 == PM_STUDIO_IGNORE, "value PM_STUDIO_IGNORE");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c382)>, decltype(PM_STUDIO_IGNORE)>, "type PM_STUDIO_IGNORE");
+    static_assert(c383 == PM_TRACELINE_ANYVISIBLE, "value PM_TRACELINE_ANYVISIBLE");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c383)>, decltype(PM_TRACELINE_ANYVISIBLE)>, "type PM_TRACELINE_ANYVISIBLE");
+    static_assert(c384 == PM_STUDIO_BOX, "value PM_STUDIO_BOX");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c384)>, decltype(PM_STUDIO_BOX)>, "type PM_STUDIO_BOX");
+    static_assert(c385 == PM_GLASS_IGNORE, "value PM_GLASS_IGNORE");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c385)>, decltype(PM_GLASS_IGNORE)>, "type PM_GLASS_IGNORE");
+    static_assert(c386 == PM_WORLD_ONLY, "value PM_WORLD_ONLY");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c386)>, decltype(PM_WORLD_ONLY)>, "type PM_WORLD_ONLY");
+    static_assert(c387 == PM_CHECKSTUCK_MINTIME, "value PM_CHECKSTUCK_MINTIME");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c387)>, decltype(PM_CHECKSTUCK_MINTIME)>, "type PM_CHECKSTUCK_MINTIME");
+    static_assert(c388 == PM_DEAD_VIEWHEIGHT, "value PM_DEAD_VIEWHEIGHT");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c388)>, decltype(PM_DEAD_VIEWHEIGHT)>, "type PM_DEAD_VIEWHEIGHT");
+    static_assert(c389 == PM_PLAYER_FALL_PUNCH_THRESHHOLD, "value PM_PLAYER_FALL_PUNCH_THRESHHOLD");
     static_assert(
-        std::is_same_v<std::remove_const_t<decltype(c387)>, decltype(PM_PLAYER_FALL_PUNCH_THRESHHOLD)>,
+        std::is_same_v<std::remove_const_t<decltype(c389)>, decltype(PM_PLAYER_FALL_PUNCH_THRESHHOLD)>,
         "type PM_PLAYER_FALL_PUNCH_THRESHHOLD"
     );
-    static_assert(c388 == PM_PLAYER_MIN_BOUNCE_SPEED, "value PM_PLAYER_MIN_BOUNCE_SPEED");
+    static_assert(c390 == PM_PLAYER_MIN_BOUNCE_SPEED, "value PM_PLAYER_MIN_BOUNCE_SPEED");
     static_assert(
-        std::is_same_v<std::remove_const_t<decltype(c388)>, decltype(PM_PLAYER_MIN_BOUNCE_SPEED)>,
+        std::is_same_v<std::remove_const_t<decltype(c390)>, decltype(PM_PLAYER_MIN_BOUNCE_SPEED)>,
         "type PM_PLAYER_MIN_BOUNCE_SPEED"
     );
-    static_assert(c389 == PM_PLAYER_MAX_SAFE_FALL_SPEED, "value PM_PLAYER_MAX_SAFE_FALL_SPEED");
+    static_assert(c391 == PM_PLAYER_MAX_SAFE_FALL_SPEED, "value PM_PLAYER_MAX_SAFE_FALL_SPEED");
     static_assert(
-        std::is_same_v<std::remove_const_t<decltype(c389)>, decltype(PM_PLAYER_MAX_SAFE_FALL_SPEED)>,
+        std::is_same_v<std::remove_const_t<decltype(c391)>, decltype(PM_PLAYER_MAX_SAFE_FALL_SPEED)>,
         "type PM_PLAYER_MAX_SAFE_FALL_SPEED"
     );
-    static_assert(c390 == PM_VEC_HULL_MIN, "value PM_VEC_HULL_MIN");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c390)>, decltype(PM_VEC_HULL_MIN)>, "type PM_VEC_HULL_MIN");
-    static_assert(c391 == PM_VEC_DUCK_HULL_MIN, "value PM_VEC_DUCK_HULL_MIN");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c391)>, decltype(PM_VEC_DUCK_HULL_MIN)>, "type PM_VEC_DUCK_HULL_MIN");
-    static_assert(c392 == PM_VEC_DUCK_VIEW, "value PM_VEC_DUCK_VIEW");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c392)>, decltype(PM_VEC_DUCK_VIEW)>, "type PM_VEC_DUCK_VIEW");
-    static_assert(c393 == PM_VEC_VIEW, "value PM_VEC_VIEW");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c393)>, decltype(PM_VEC_VIEW)>, "type PM_VEC_VIEW");
-    static_assert(c394 == SVC_BAD, "value SVC_BAD");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c394)>, decltype(SVC_BAD)>, "type SVC_BAD");
-    static_assert(c395 == SVC_NOP, "value SVC_NOP");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c395)>, decltype(SVC_NOP)>, "type SVC_NOP");
-    static_assert(c396 == SVC_DISCONNECT, "value SVC_DISCONNECT");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c396)>, decltype(SVC_DISCONNECT)>, "type SVC_DISCONNECT");
-    static_assert(c397 == SVC_EVENT, "value SVC_EVENT");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c397)>, decltype(SVC_EVENT)>, "type SVC_EVENT");
-    static_assert(c398 == SVC_VERSION, "value SVC_VERSION");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c398)>, decltype(SVC_VERSION)>, "type SVC_VERSION");
-    static_assert(c399 == SVC_SETVIEW, "value SVC_SETVIEW");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c399)>, decltype(SVC_SETVIEW)>, "type SVC_SETVIEW");
-    static_assert(c400 == SVC_SOUND, "value SVC_SOUND");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c400)>, decltype(SVC_SOUND)>, "type SVC_SOUND");
-    static_assert(c401 == SVC_TIME, "value SVC_TIME");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c401)>, decltype(SVC_TIME)>, "type SVC_TIME");
-    static_assert(c402 == SVC_PRINT, "value SVC_PRINT");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c402)>, decltype(SVC_PRINT)>, "type SVC_PRINT");
-    static_assert(c403 == SVC_STUFFTEXT, "value SVC_STUFFTEXT");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c403)>, decltype(SVC_STUFFTEXT)>, "type SVC_STUFFTEXT");
-    static_assert(c404 == SVC_SETANGLE, "value SVC_SETANGLE");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c404)>, decltype(SVC_SETANGLE)>, "type SVC_SETANGLE");
-    static_assert(c405 == SVC_SERVERINFO, "value SVC_SERVERINFO");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c405)>, decltype(SVC_SERVERINFO)>, "type SVC_SERVERINFO");
-    static_assert(c406 == SVC_LIGHTSTYLE, "value SVC_LIGHTSTYLE");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c406)>, decltype(SVC_LIGHTSTYLE)>, "type SVC_LIGHTSTYLE");
-    static_assert(c407 == SVC_UPDATEUSERINFO, "value SVC_UPDATEUSERINFO");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c407)>, decltype(SVC_UPDATEUSERINFO)>, "type SVC_UPDATEUSERINFO");
-    static_assert(c408 == SVC_DELTADESCRIPTION, "value SVC_DELTADESCRIPTION");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c408)>, decltype(SVC_DELTADESCRIPTION)>, "type SVC_DELTADESCRIPTION");
-    static_assert(c409 == SVC_CLIENTDATA, "value SVC_CLIENTDATA");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c409)>, decltype(SVC_CLIENTDATA)>, "type SVC_CLIENTDATA");
-    static_assert(c410 == SVC_STOPSOUND, "value SVC_STOPSOUND");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c410)>, decltype(SVC_STOPSOUND)>, "type SVC_STOPSOUND");
-    static_assert(c411 == SVC_PINGS, "value SVC_PINGS");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c411)>, decltype(SVC_PINGS)>, "type SVC_PINGS");
-    static_assert(c412 == SVC_PARTICLE, "value SVC_PARTICLE");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c412)>, decltype(SVC_PARTICLE)>, "type SVC_PARTICLE");
-    static_assert(c413 == SVC_DAMAGE, "value SVC_DAMAGE");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c413)>, decltype(SVC_DAMAGE)>, "type SVC_DAMAGE");
-    static_assert(c414 == SVC_SPAWNSTATIC, "value SVC_SPAWNSTATIC");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c414)>, decltype(SVC_SPAWNSTATIC)>, "type SVC_SPAWNSTATIC");
-    static_assert(c415 == SVC_EVENT_RELIABLE, "value SVC_EVENT_RELIABLE");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c415)>, decltype(SVC_EVENT_RELIABLE)>, "type SVC_EVENT_RELIABLE");
-    static_assert(c416 == SVC_SPAWNBASELINE, "value SVC_SPAWNBASELINE");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c416)>, decltype(SVC_SPAWNBASELINE)>, "type SVC_SPAWNBASELINE");
-    static_assert(c417 == SVC_TEMPENTITY, "value SVC_TEMPENTITY");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c417)>, decltype(SVC_TEMPENTITY)>, "type SVC_TEMPENTITY");
-    static_assert(c418 == SVC_SETPAUSE, "value SVC_SETPAUSE");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c418)>, decltype(SVC_SETPAUSE)>, "type SVC_SETPAUSE");
-    static_assert(c419 == SVC_SIGNONNUM, "value SVC_SIGNONNUM");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c419)>, decltype(SVC_SIGNONNUM)>, "type SVC_SIGNONNUM");
-    static_assert(c420 == SVC_CENTERPRINT, "value SVC_CENTERPRINT");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c420)>, decltype(SVC_CENTERPRINT)>, "type SVC_CENTERPRINT");
-    static_assert(c421 == SVC_KILLEDMONSTER, "value SVC_KILLEDMONSTER");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c421)>, decltype(SVC_KILLEDMONSTER)>, "type SVC_KILLEDMONSTER");
-    static_assert(c422 == SVC_FOUNDSECRET, "value SVC_FOUNDSECRET");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c422)>, decltype(SVC_FOUNDSECRET)>, "type SVC_FOUNDSECRET");
-    static_assert(c423 == SVC_SPAWNSTATICSOUND, "value SVC_SPAWNSTATICSOUND");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c423)>, decltype(SVC_SPAWNSTATICSOUND)>, "type SVC_SPAWNSTATICSOUND");
-    static_assert(c424 == SVC_INTERMISSION, "value SVC_INTERMISSION");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c424)>, decltype(SVC_INTERMISSION)>, "type SVC_INTERMISSION");
-    static_assert(c425 == SVC_FINALE, "value SVC_FINALE");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c425)>, decltype(SVC_FINALE)>, "type SVC_FINALE");
-    static_assert(c426 == SVC_CDTRACK, "value SVC_CDTRACK");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c426)>, decltype(SVC_CDTRACK)>, "type SVC_CDTRACK");
-    static_assert(c427 == SVC_RESTORE, "value SVC_RESTORE");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c427)>, decltype(SVC_RESTORE)>, "type SVC_RESTORE");
-    static_assert(c428 == SVC_CUTSCENE, "value SVC_CUTSCENE");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c428)>, decltype(SVC_CUTSCENE)>, "type SVC_CUTSCENE");
-    static_assert(c429 == SVC_WEAPONANIM, "value SVC_WEAPONANIM");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c429)>, decltype(SVC_WEAPONANIM)>, "type SVC_WEAPONANIM");
-    static_assert(c430 == SVC_DECALNAME, "value SVC_DECALNAME");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c430)>, decltype(SVC_DECALNAME)>, "type SVC_DECALNAME");
-    static_assert(c431 == SVC_ROOMTYPE, "value SVC_ROOMTYPE");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c431)>, decltype(SVC_ROOMTYPE)>, "type SVC_ROOMTYPE");
-    static_assert(c432 == SVC_ADDANGLE, "value SVC_ADDANGLE");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c432)>, decltype(SVC_ADDANGLE)>, "type SVC_ADDANGLE");
-    static_assert(c433 == SVC_NEWUSERMSG, "value SVC_NEWUSERMSG");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c433)>, decltype(SVC_NEWUSERMSG)>, "type SVC_NEWUSERMSG");
-    static_assert(c434 == SVC_PACKETENTITIES, "value SVC_PACKETENTITIES");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c434)>, decltype(SVC_PACKETENTITIES)>, "type SVC_PACKETENTITIES");
-    static_assert(c435 == SVC_DELTAPACKETENTITIES, "value SVC_DELTAPACKETENTITIES");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c435)>, decltype(SVC_DELTAPACKETENTITIES)>, "type SVC_DELTAPACKETENTITIES");
-    static_assert(c436 == SVC_CHOKE, "value SVC_CHOKE");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c436)>, decltype(SVC_CHOKE)>, "type SVC_CHOKE");
-    static_assert(c437 == SVC_RESOURCELIST, "value SVC_RESOURCELIST");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c437)>, decltype(SVC_RESOURCELIST)>, "type SVC_RESOURCELIST");
-    static_assert(c438 == SVC_NEWMOVEVARS, "value SVC_NEWMOVEVARS");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c438)>, decltype(SVC_NEWMOVEVARS)>, "type SVC_NEWMOVEVARS");
-    static_assert(c439 == SVC_RESOURCEREQUEST, "value SVC_RESOURCEREQUEST");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c439)>, decltype(SVC_RESOURCEREQUEST)>, "type SVC_RESOURCEREQUEST");
-    static_assert(c440 == SVC_CUSTOMIZATION, "value SVC_CUSTOMIZATION");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c440)>, decltype(SVC_CUSTOMIZATION)>, "type SVC_CUSTOMIZATION");
-    static_assert(c441 == SVC_CROSSHAIRANGLE, "value SVC_CROSSHAIRANGLE");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c441)>, decltype(SVC_CROSSHAIRANGLE)>, "type SVC_CROSSHAIRANGLE");
-    static_assert(c442 == SVC_SOUNDFADE, "value SVC_SOUNDFADE");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c442)>, decltype(SVC_SOUNDFADE)>, "type SVC_SOUNDFADE");
-    static_assert(c443 == SVC_FILETXFERFAILED, "value SVC_FILETXFERFAILED");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c443)>, decltype(SVC_FILETXFERFAILED)>, "type SVC_FILETXFERFAILED");
-    static_assert(c444 == SVC_HLTV, "value SVC_HLTV");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c444)>, decltype(SVC_HLTV)>, "type SVC_HLTV");
-    static_assert(c445 == SVC_DIRECTOR, "value SVC_DIRECTOR");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c445)>, decltype(SVC_DIRECTOR)>, "type SVC_DIRECTOR");
-    static_assert(c446 == SVC_VOICEINIT, "value SVC_VOICEINIT");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c446)>, decltype(SVC_VOICEINIT)>, "type SVC_VOICEINIT");
-    static_assert(c447 == SVC_VOICEDATA, "value SVC_VOICEDATA");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c447)>, decltype(SVC_VOICEDATA)>, "type SVC_VOICEDATA");
-    static_assert(c448 == SVC_SENDEXTRAINFO, "value SVC_SENDEXTRAINFO");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c448)>, decltype(SVC_SENDEXTRAINFO)>, "type SVC_SENDEXTRAINFO");
-    static_assert(c449 == SVC_TIMESCALE, "value SVC_TIMESCALE");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c449)>, decltype(SVC_TIMESCALE)>, "type SVC_TIMESCALE");
-    static_assert(c450 == SVC_RESOURCELOCATION, "value SVC_RESOURCELOCATION");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c450)>, decltype(SVC_RESOURCELOCATION)>, "type SVC_RESOURCELOCATION");
-    static_assert(c451 == SVC_SENDCVARVALUE, "value SVC_SENDCVARVALUE");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c451)>, decltype(SVC_SENDCVARVALUE)>, "type SVC_SENDCVARVALUE");
-    static_assert(c452 == SVC_SENDCVARVALUE2, "value SVC_SENDCVARVALUE2");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c452)>, decltype(SVC_SENDCVARVALUE2)>, "type SVC_SENDCVARVALUE2");
-    static_assert(c453 == STUDIO_RENDER, "value STUDIO_RENDER");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c453)>, decltype(STUDIO_RENDER)>, "type STUDIO_RENDER");
-    static_assert(c454 == STUDIO_EVENTS, "value STUDIO_EVENTS");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c454)>, decltype(STUDIO_EVENTS)>, "type STUDIO_EVENTS");
-    static_assert(c455 == TRI_TRIANGLES, "value TRI_TRIANGLES");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c455)>, decltype(TRI_TRIANGLES)>, "type TRI_TRIANGLES");
-    static_assert(c456 == TRI_API_VERSION, "value TRI_API_VERSION");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c456)>, decltype(TRI_API_VERSION)>, "type TRI_API_VERSION");
-    static_assert(c457 == TRI_TRIANGLE_FAN, "value TRI_TRIANGLE_FAN");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c457)>, decltype(TRI_TRIANGLE_FAN)>, "type TRI_TRIANGLE_FAN");
-    static_assert(c458 == TRI_QUADS, "value TRI_QUADS");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c458)>, decltype(TRI_QUADS)>, "type TRI_QUADS");
-    static_assert(c459 == TRI_POLYGON, "value TRI_POLYGON");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c459)>, decltype(TRI_POLYGON)>, "type TRI_POLYGON");
-    static_assert(c460 == TRI_LINES, "value TRI_LINES");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c460)>, decltype(TRI_LINES)>, "type TRI_LINES");
-    static_assert(c461 == TRI_TRIANGLE_STRIP, "value TRI_TRIANGLE_STRIP");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c461)>, decltype(TRI_TRIANGLE_STRIP)>, "type TRI_TRIANGLE_STRIP");
-    static_assert(c462 == TRI_QUAD_STRIP, "value TRI_QUAD_STRIP");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c462)>, decltype(TRI_QUAD_STRIP)>, "type TRI_QUAD_STRIP");
-    static_assert(static_cast<long long>(c463) == static_cast<long long>(::MAX_PLAYERS), "value ::MAX_PLAYERS");
+    static_assert(c392 == PM_VEC_HULL_MIN, "value PM_VEC_HULL_MIN");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c392)>, decltype(PM_VEC_HULL_MIN)>, "type PM_VEC_HULL_MIN");
+    static_assert(c393 == PM_VEC_DUCK_HULL_MIN, "value PM_VEC_DUCK_HULL_MIN");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c393)>, decltype(PM_VEC_DUCK_HULL_MIN)>, "type PM_VEC_DUCK_HULL_MIN");
+    static_assert(c394 == PM_VEC_DUCK_VIEW, "value PM_VEC_DUCK_VIEW");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c394)>, decltype(PM_VEC_DUCK_VIEW)>, "type PM_VEC_DUCK_VIEW");
+    static_assert(c395 == PM_VEC_VIEW, "value PM_VEC_VIEW");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c395)>, decltype(PM_VEC_VIEW)>, "type PM_VEC_VIEW");
+    static_assert(c396 == SVC_BAD, "value SVC_BAD");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c396)>, decltype(SVC_BAD)>, "type SVC_BAD");
+    static_assert(c397 == SVC_NOP, "value SVC_NOP");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c397)>, decltype(SVC_NOP)>, "type SVC_NOP");
+    static_assert(c398 == SVC_DISCONNECT, "value SVC_DISCONNECT");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c398)>, decltype(SVC_DISCONNECT)>, "type SVC_DISCONNECT");
+    static_assert(c399 == SVC_EVENT, "value SVC_EVENT");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c399)>, decltype(SVC_EVENT)>, "type SVC_EVENT");
+    static_assert(c400 == SVC_VERSION, "value SVC_VERSION");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c400)>, decltype(SVC_VERSION)>, "type SVC_VERSION");
+    static_assert(c401 == SVC_SETVIEW, "value SVC_SETVIEW");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c401)>, decltype(SVC_SETVIEW)>, "type SVC_SETVIEW");
+    static_assert(c402 == SVC_SOUND, "value SVC_SOUND");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c402)>, decltype(SVC_SOUND)>, "type SVC_SOUND");
+    static_assert(c403 == SVC_TIME, "value SVC_TIME");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c403)>, decltype(SVC_TIME)>, "type SVC_TIME");
+    static_assert(c404 == SVC_PRINT, "value SVC_PRINT");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c404)>, decltype(SVC_PRINT)>, "type SVC_PRINT");
+    static_assert(c405 == SVC_STUFFTEXT, "value SVC_STUFFTEXT");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c405)>, decltype(SVC_STUFFTEXT)>, "type SVC_STUFFTEXT");
+    static_assert(c406 == SVC_SETANGLE, "value SVC_SETANGLE");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c406)>, decltype(SVC_SETANGLE)>, "type SVC_SETANGLE");
+    static_assert(c407 == SVC_SERVERINFO, "value SVC_SERVERINFO");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c407)>, decltype(SVC_SERVERINFO)>, "type SVC_SERVERINFO");
+    static_assert(c408 == SVC_LIGHTSTYLE, "value SVC_LIGHTSTYLE");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c408)>, decltype(SVC_LIGHTSTYLE)>, "type SVC_LIGHTSTYLE");
+    static_assert(c409 == SVC_UPDATEUSERINFO, "value SVC_UPDATEUSERINFO");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c409)>, decltype(SVC_UPDATEUSERINFO)>, "type SVC_UPDATEUSERINFO");
+    static_assert(c410 == SVC_DELTADESCRIPTION, "value SVC_DELTADESCRIPTION");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c410)>, decltype(SVC_DELTADESCRIPTION)>, "type SVC_DELTADESCRIPTION");
+    static_assert(c411 == SVC_CLIENTDATA, "value SVC_CLIENTDATA");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c411)>, decltype(SVC_CLIENTDATA)>, "type SVC_CLIENTDATA");
+    static_assert(c412 == SVC_STOPSOUND, "value SVC_STOPSOUND");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c412)>, decltype(SVC_STOPSOUND)>, "type SVC_STOPSOUND");
+    static_assert(c413 == SVC_PINGS, "value SVC_PINGS");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c413)>, decltype(SVC_PINGS)>, "type SVC_PINGS");
+    static_assert(c414 == SVC_PARTICLE, "value SVC_PARTICLE");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c414)>, decltype(SVC_PARTICLE)>, "type SVC_PARTICLE");
+    static_assert(c415 == SVC_DAMAGE, "value SVC_DAMAGE");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c415)>, decltype(SVC_DAMAGE)>, "type SVC_DAMAGE");
+    static_assert(c416 == SVC_SPAWNSTATIC, "value SVC_SPAWNSTATIC");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c416)>, decltype(SVC_SPAWNSTATIC)>, "type SVC_SPAWNSTATIC");
+    static_assert(c417 == SVC_EVENT_RELIABLE, "value SVC_EVENT_RELIABLE");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c417)>, decltype(SVC_EVENT_RELIABLE)>, "type SVC_EVENT_RELIABLE");
+    static_assert(c418 == SVC_SPAWNBASELINE, "value SVC_SPAWNBASELINE");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c418)>, decltype(SVC_SPAWNBASELINE)>, "type SVC_SPAWNBASELINE");
+    static_assert(c419 == SVC_TEMPENTITY, "value SVC_TEMPENTITY");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c419)>, decltype(SVC_TEMPENTITY)>, "type SVC_TEMPENTITY");
+    static_assert(c420 == SVC_SETPAUSE, "value SVC_SETPAUSE");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c420)>, decltype(SVC_SETPAUSE)>, "type SVC_SETPAUSE");
+    static_assert(c421 == SVC_SIGNONNUM, "value SVC_SIGNONNUM");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c421)>, decltype(SVC_SIGNONNUM)>, "type SVC_SIGNONNUM");
+    static_assert(c422 == SVC_CENTERPRINT, "value SVC_CENTERPRINT");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c422)>, decltype(SVC_CENTERPRINT)>, "type SVC_CENTERPRINT");
+    static_assert(c423 == SVC_KILLEDMONSTER, "value SVC_KILLEDMONSTER");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c423)>, decltype(SVC_KILLEDMONSTER)>, "type SVC_KILLEDMONSTER");
+    static_assert(c424 == SVC_FOUNDSECRET, "value SVC_FOUNDSECRET");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c424)>, decltype(SVC_FOUNDSECRET)>, "type SVC_FOUNDSECRET");
+    static_assert(c425 == SVC_SPAWNSTATICSOUND, "value SVC_SPAWNSTATICSOUND");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c425)>, decltype(SVC_SPAWNSTATICSOUND)>, "type SVC_SPAWNSTATICSOUND");
+    static_assert(c426 == SVC_INTERMISSION, "value SVC_INTERMISSION");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c426)>, decltype(SVC_INTERMISSION)>, "type SVC_INTERMISSION");
+    static_assert(c427 == SVC_FINALE, "value SVC_FINALE");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c427)>, decltype(SVC_FINALE)>, "type SVC_FINALE");
+    static_assert(c428 == SVC_CDTRACK, "value SVC_CDTRACK");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c428)>, decltype(SVC_CDTRACK)>, "type SVC_CDTRACK");
+    static_assert(c429 == SVC_RESTORE, "value SVC_RESTORE");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c429)>, decltype(SVC_RESTORE)>, "type SVC_RESTORE");
+    static_assert(c430 == SVC_CUTSCENE, "value SVC_CUTSCENE");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c430)>, decltype(SVC_CUTSCENE)>, "type SVC_CUTSCENE");
+    static_assert(c431 == SVC_WEAPONANIM, "value SVC_WEAPONANIM");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c431)>, decltype(SVC_WEAPONANIM)>, "type SVC_WEAPONANIM");
+    static_assert(c432 == SVC_DECALNAME, "value SVC_DECALNAME");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c432)>, decltype(SVC_DECALNAME)>, "type SVC_DECALNAME");
+    static_assert(c433 == SVC_ROOMTYPE, "value SVC_ROOMTYPE");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c433)>, decltype(SVC_ROOMTYPE)>, "type SVC_ROOMTYPE");
+    static_assert(c434 == SVC_ADDANGLE, "value SVC_ADDANGLE");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c434)>, decltype(SVC_ADDANGLE)>, "type SVC_ADDANGLE");
+    static_assert(c435 == SVC_NEWUSERMSG, "value SVC_NEWUSERMSG");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c435)>, decltype(SVC_NEWUSERMSG)>, "type SVC_NEWUSERMSG");
+    static_assert(c436 == SVC_PACKETENTITIES, "value SVC_PACKETENTITIES");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c436)>, decltype(SVC_PACKETENTITIES)>, "type SVC_PACKETENTITIES");
+    static_assert(c437 == SVC_DELTAPACKETENTITIES, "value SVC_DELTAPACKETENTITIES");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c437)>, decltype(SVC_DELTAPACKETENTITIES)>, "type SVC_DELTAPACKETENTITIES");
+    static_assert(c438 == SVC_CHOKE, "value SVC_CHOKE");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c438)>, decltype(SVC_CHOKE)>, "type SVC_CHOKE");
+    static_assert(c439 == SVC_RESOURCELIST, "value SVC_RESOURCELIST");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c439)>, decltype(SVC_RESOURCELIST)>, "type SVC_RESOURCELIST");
+    static_assert(c440 == SVC_NEWMOVEVARS, "value SVC_NEWMOVEVARS");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c440)>, decltype(SVC_NEWMOVEVARS)>, "type SVC_NEWMOVEVARS");
+    static_assert(c441 == SVC_RESOURCEREQUEST, "value SVC_RESOURCEREQUEST");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c441)>, decltype(SVC_RESOURCEREQUEST)>, "type SVC_RESOURCEREQUEST");
+    static_assert(c442 == SVC_CUSTOMIZATION, "value SVC_CUSTOMIZATION");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c442)>, decltype(SVC_CUSTOMIZATION)>, "type SVC_CUSTOMIZATION");
+    static_assert(c443 == SVC_CROSSHAIRANGLE, "value SVC_CROSSHAIRANGLE");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c443)>, decltype(SVC_CROSSHAIRANGLE)>, "type SVC_CROSSHAIRANGLE");
+    static_assert(c444 == SVC_SOUNDFADE, "value SVC_SOUNDFADE");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c444)>, decltype(SVC_SOUNDFADE)>, "type SVC_SOUNDFADE");
+    static_assert(c445 == SVC_FILETXFERFAILED, "value SVC_FILETXFERFAILED");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c445)>, decltype(SVC_FILETXFERFAILED)>, "type SVC_FILETXFERFAILED");
+    static_assert(c446 == SVC_HLTV, "value SVC_HLTV");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c446)>, decltype(SVC_HLTV)>, "type SVC_HLTV");
+    static_assert(c447 == SVC_DIRECTOR, "value SVC_DIRECTOR");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c447)>, decltype(SVC_DIRECTOR)>, "type SVC_DIRECTOR");
+    static_assert(c448 == SVC_VOICEINIT, "value SVC_VOICEINIT");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c448)>, decltype(SVC_VOICEINIT)>, "type SVC_VOICEINIT");
+    static_assert(c449 == SVC_VOICEDATA, "value SVC_VOICEDATA");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c449)>, decltype(SVC_VOICEDATA)>, "type SVC_VOICEDATA");
+    static_assert(c450 == SVC_SENDEXTRAINFO, "value SVC_SENDEXTRAINFO");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c450)>, decltype(SVC_SENDEXTRAINFO)>, "type SVC_SENDEXTRAINFO");
+    static_assert(c451 == SVC_TIMESCALE, "value SVC_TIMESCALE");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c451)>, decltype(SVC_TIMESCALE)>, "type SVC_TIMESCALE");
+    static_assert(c452 == SVC_RESOURCELOCATION, "value SVC_RESOURCELOCATION");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c452)>, decltype(SVC_RESOURCELOCATION)>, "type SVC_RESOURCELOCATION");
+    static_assert(c453 == SVC_SENDCVARVALUE, "value SVC_SENDCVARVALUE");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c453)>, decltype(SVC_SENDCVARVALUE)>, "type SVC_SENDCVARVALUE");
+    static_assert(c454 == SVC_SENDCVARVALUE2, "value SVC_SENDCVARVALUE2");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c454)>, decltype(SVC_SENDCVARVALUE2)>, "type SVC_SENDCVARVALUE2");
+    static_assert(c455 == STUDIO_RENDER, "value STUDIO_RENDER");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c455)>, decltype(STUDIO_RENDER)>, "type STUDIO_RENDER");
+    static_assert(c456 == STUDIO_EVENTS, "value STUDIO_EVENTS");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c456)>, decltype(STUDIO_EVENTS)>, "type STUDIO_EVENTS");
+    static_assert(c457 == TRI_TRIANGLES, "value TRI_TRIANGLES");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c457)>, decltype(TRI_TRIANGLES)>, "type TRI_TRIANGLES");
+    static_assert(c458 == TRI_API_VERSION, "value TRI_API_VERSION");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c458)>, decltype(TRI_API_VERSION)>, "type TRI_API_VERSION");
+    static_assert(c459 == TRI_TRIANGLE_FAN, "value TRI_TRIANGLE_FAN");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c459)>, decltype(TRI_TRIANGLE_FAN)>, "type TRI_TRIANGLE_FAN");
+    static_assert(c460 == TRI_QUADS, "value TRI_QUADS");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c460)>, decltype(TRI_QUADS)>, "type TRI_QUADS");
+    static_assert(c461 == TRI_POLYGON, "value TRI_POLYGON");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c461)>, decltype(TRI_POLYGON)>, "type TRI_POLYGON");
+    static_assert(c462 == TRI_LINES, "value TRI_LINES");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c462)>, decltype(TRI_LINES)>, "type TRI_LINES");
+    static_assert(c463 == TRI_TRIANGLE_STRIP, "value TRI_TRIANGLE_STRIP");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c463)>, decltype(TRI_TRIANGLE_STRIP)>, "type TRI_TRIANGLE_STRIP");
+    static_assert(c464 == TRI_QUAD_STRIP, "value TRI_QUAD_STRIP");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c464)>, decltype(TRI_QUAD_STRIP)>, "type TRI_QUAD_STRIP");
+    static_assert(static_cast<long long>(c465) == static_cast<long long>(::MAX_PLAYERS), "value ::MAX_PLAYERS");
     static_assert(
-        std::is_same_v<std::underlying_type_t<decltype(c463)>, std::underlying_type_t<decltype(::MAX_PLAYERS)>>,
+        std::is_same_v<std::underlying_type_t<decltype(c465)>, std::underlying_type_t<decltype(::MAX_PLAYERS)>>,
         "type ::MAX_PLAYERS"
     );
-    static_assert(static_cast<long long>(c464) == static_cast<long long>(::MAX_TEAMS), "value ::MAX_TEAMS");
+    static_assert(static_cast<long long>(c466) == static_cast<long long>(::MAX_TEAMS), "value ::MAX_TEAMS");
     static_assert(
-        std::is_same_v<std::underlying_type_t<decltype(c464)>, std::underlying_type_t<decltype(::MAX_TEAMS)>>,
+        std::is_same_v<std::underlying_type_t<decltype(c466)>, std::underlying_type_t<decltype(::MAX_TEAMS)>>,
         "type ::MAX_TEAMS"
     );
-    static_assert(static_cast<long long>(c465) == static_cast<long long>(::MAX_TEAM_NAME), "value ::MAX_TEAM_NAME");
+    static_assert(static_cast<long long>(c467) == static_cast<long long>(::MAX_TEAM_NAME), "value ::MAX_TEAM_NAME");
     static_assert(
-        std::is_same_v<std::underlying_type_t<decltype(c465)>, std::underlying_type_t<decltype(::MAX_TEAM_NAME)>>,
+        std::is_same_v<std::underlying_type_t<decltype(c467)>, std::underlying_type_t<decltype(::MAX_TEAM_NAME)>>,
         "type ::MAX_TEAM_NAME"
     );
-    static_assert(static_cast<long long>(c466) == static_cast<long long>(::MAX_LOCATION_NAME), "value ::MAX_LOCATION_NAME");
+    static_assert(static_cast<long long>(c468) == static_cast<long long>(::MAX_LOCATION_NAME), "value ::MAX_LOCATION_NAME");
     static_assert(
-        std::is_same_v<std::underlying_type_t<decltype(c466)>, std::underlying_type_t<decltype(::MAX_LOCATION_NAME)>>,
+        std::is_same_v<std::underlying_type_t<decltype(c468)>, std::underlying_type_t<decltype(::MAX_LOCATION_NAME)>>,
         "type ::MAX_LOCATION_NAME"
     );
-    static_assert(static_cast<long long>(c467) == static_cast<long long>(::MAX_HOSTAGES), "value ::MAX_HOSTAGES");
+    static_assert(static_cast<long long>(c469) == static_cast<long long>(::MAX_HOSTAGES), "value ::MAX_HOSTAGES");
     static_assert(
-        std::is_same_v<std::underlying_type_t<decltype(c467)>, std::underlying_type_t<decltype(::MAX_HOSTAGES)>>,
+        std::is_same_v<std::underlying_type_t<decltype(c469)>, std::underlying_type_t<decltype(::MAX_HOSTAGES)>>,
         "type ::MAX_HOSTAGES"
     );
-    static_assert(static_cast<long long>(c468) == static_cast<long long>(::WEAPON_NONE), "value ::WEAPON_NONE");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c468)>, map_t<decltype(::WEAPON_NONE)>>, "type ::WEAPON_NONE");
-    static_assert(static_cast<long long>(c469) == static_cast<long long>(::WEAPON_P228), "value ::WEAPON_P228");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c469)>, map_t<decltype(::WEAPON_P228)>>, "type ::WEAPON_P228");
-    static_assert(static_cast<long long>(c470) == static_cast<long long>(::WEAPON_GLOCK), "value ::WEAPON_GLOCK");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c470)>, map_t<decltype(::WEAPON_GLOCK)>>, "type ::WEAPON_GLOCK");
-    static_assert(static_cast<long long>(c471) == static_cast<long long>(::WEAPON_SCOUT), "value ::WEAPON_SCOUT");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c471)>, map_t<decltype(::WEAPON_SCOUT)>>, "type ::WEAPON_SCOUT");
-    static_assert(static_cast<long long>(c472) == static_cast<long long>(::WEAPON_HEGRENADE), "value ::WEAPON_HEGRENADE");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c472)>, map_t<decltype(::WEAPON_HEGRENADE)>>, "type ::WEAPON_HEGRENADE");
-    static_assert(static_cast<long long>(c473) == static_cast<long long>(::WEAPON_XM1014), "value ::WEAPON_XM1014");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c473)>, map_t<decltype(::WEAPON_XM1014)>>, "type ::WEAPON_XM1014");
-    static_assert(static_cast<long long>(c474) == static_cast<long long>(::WEAPON_C4), "value ::WEAPON_C4");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c474)>, map_t<decltype(::WEAPON_C4)>>, "type ::WEAPON_C4");
-    static_assert(static_cast<long long>(c475) == static_cast<long long>(::WEAPON_MAC10), "value ::WEAPON_MAC10");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c475)>, map_t<decltype(::WEAPON_MAC10)>>, "type ::WEAPON_MAC10");
-    static_assert(static_cast<long long>(c476) == static_cast<long long>(::WEAPON_AUG), "value ::WEAPON_AUG");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c476)>, map_t<decltype(::WEAPON_AUG)>>, "type ::WEAPON_AUG");
-    static_assert(static_cast<long long>(c477) == static_cast<long long>(::WEAPON_SMOKEGRENADE), "value ::WEAPON_SMOKEGRENADE");
+    static_assert(static_cast<long long>(c470) == static_cast<long long>(::WEAPON_NONE), "value ::WEAPON_NONE");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c470)>, map_t<decltype(::WEAPON_NONE)>>, "type ::WEAPON_NONE");
+    static_assert(static_cast<long long>(c471) == static_cast<long long>(::WEAPON_P228), "value ::WEAPON_P228");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c471)>, map_t<decltype(::WEAPON_P228)>>, "type ::WEAPON_P228");
+    static_assert(static_cast<long long>(c472) == static_cast<long long>(::WEAPON_GLOCK), "value ::WEAPON_GLOCK");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c472)>, map_t<decltype(::WEAPON_GLOCK)>>, "type ::WEAPON_GLOCK");
+    static_assert(static_cast<long long>(c473) == static_cast<long long>(::WEAPON_SCOUT), "value ::WEAPON_SCOUT");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c473)>, map_t<decltype(::WEAPON_SCOUT)>>, "type ::WEAPON_SCOUT");
+    static_assert(static_cast<long long>(c474) == static_cast<long long>(::WEAPON_HEGRENADE), "value ::WEAPON_HEGRENADE");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c474)>, map_t<decltype(::WEAPON_HEGRENADE)>>, "type ::WEAPON_HEGRENADE");
+    static_assert(static_cast<long long>(c475) == static_cast<long long>(::WEAPON_XM1014), "value ::WEAPON_XM1014");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c475)>, map_t<decltype(::WEAPON_XM1014)>>, "type ::WEAPON_XM1014");
+    static_assert(static_cast<long long>(c476) == static_cast<long long>(::WEAPON_C4), "value ::WEAPON_C4");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c476)>, map_t<decltype(::WEAPON_C4)>>, "type ::WEAPON_C4");
+    static_assert(static_cast<long long>(c477) == static_cast<long long>(::WEAPON_MAC10), "value ::WEAPON_MAC10");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c477)>, map_t<decltype(::WEAPON_MAC10)>>, "type ::WEAPON_MAC10");
+    static_assert(static_cast<long long>(c478) == static_cast<long long>(::WEAPON_AUG), "value ::WEAPON_AUG");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c478)>, map_t<decltype(::WEAPON_AUG)>>, "type ::WEAPON_AUG");
+    static_assert(static_cast<long long>(c479) == static_cast<long long>(::WEAPON_SMOKEGRENADE), "value ::WEAPON_SMOKEGRENADE");
     static_assert(
-        std::is_same_v<std::remove_const_t<decltype(c477)>, map_t<decltype(::WEAPON_SMOKEGRENADE)>>,
+        std::is_same_v<std::remove_const_t<decltype(c479)>, map_t<decltype(::WEAPON_SMOKEGRENADE)>>,
         "type ::WEAPON_SMOKEGRENADE"
     );
-    static_assert(static_cast<long long>(c478) == static_cast<long long>(::WEAPON_ELITE), "value ::WEAPON_ELITE");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c478)>, map_t<decltype(::WEAPON_ELITE)>>, "type ::WEAPON_ELITE");
-    static_assert(static_cast<long long>(c479) == static_cast<long long>(::WEAPON_FIVESEVEN), "value ::WEAPON_FIVESEVEN");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c479)>, map_t<decltype(::WEAPON_FIVESEVEN)>>, "type ::WEAPON_FIVESEVEN");
-    static_assert(static_cast<long long>(c480) == static_cast<long long>(::WEAPON_UMP45), "value ::WEAPON_UMP45");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c480)>, map_t<decltype(::WEAPON_UMP45)>>, "type ::WEAPON_UMP45");
-    static_assert(static_cast<long long>(c481) == static_cast<long long>(::WEAPON_SG550), "value ::WEAPON_SG550");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c481)>, map_t<decltype(::WEAPON_SG550)>>, "type ::WEAPON_SG550");
-    static_assert(static_cast<long long>(c482) == static_cast<long long>(::WEAPON_GALIL), "value ::WEAPON_GALIL");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c482)>, map_t<decltype(::WEAPON_GALIL)>>, "type ::WEAPON_GALIL");
-    static_assert(static_cast<long long>(c483) == static_cast<long long>(::WEAPON_FAMAS), "value ::WEAPON_FAMAS");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c483)>, map_t<decltype(::WEAPON_FAMAS)>>, "type ::WEAPON_FAMAS");
-    static_assert(static_cast<long long>(c484) == static_cast<long long>(::WEAPON_USP), "value ::WEAPON_USP");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c484)>, map_t<decltype(::WEAPON_USP)>>, "type ::WEAPON_USP");
-    static_assert(static_cast<long long>(c485) == static_cast<long long>(::WEAPON_GLOCK18), "value ::WEAPON_GLOCK18");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c485)>, map_t<decltype(::WEAPON_GLOCK18)>>, "type ::WEAPON_GLOCK18");
-    static_assert(static_cast<long long>(c486) == static_cast<long long>(::WEAPON_AWP), "value ::WEAPON_AWP");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c486)>, map_t<decltype(::WEAPON_AWP)>>, "type ::WEAPON_AWP");
-    static_assert(static_cast<long long>(c487) == static_cast<long long>(::WEAPON_MP5N), "value ::WEAPON_MP5N");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c487)>, map_t<decltype(::WEAPON_MP5N)>>, "type ::WEAPON_MP5N");
-    static_assert(static_cast<long long>(c488) == static_cast<long long>(::WEAPON_M249), "value ::WEAPON_M249");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c488)>, map_t<decltype(::WEAPON_M249)>>, "type ::WEAPON_M249");
-    static_assert(static_cast<long long>(c489) == static_cast<long long>(::WEAPON_M3), "value ::WEAPON_M3");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c489)>, map_t<decltype(::WEAPON_M3)>>, "type ::WEAPON_M3");
-    static_assert(static_cast<long long>(c490) == static_cast<long long>(::WEAPON_M4A1), "value ::WEAPON_M4A1");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c490)>, map_t<decltype(::WEAPON_M4A1)>>, "type ::WEAPON_M4A1");
-    static_assert(static_cast<long long>(c491) == static_cast<long long>(::WEAPON_TMP), "value ::WEAPON_TMP");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c491)>, map_t<decltype(::WEAPON_TMP)>>, "type ::WEAPON_TMP");
-    static_assert(static_cast<long long>(c492) == static_cast<long long>(::WEAPON_G3SG1), "value ::WEAPON_G3SG1");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c492)>, map_t<decltype(::WEAPON_G3SG1)>>, "type ::WEAPON_G3SG1");
-    static_assert(static_cast<long long>(c493) == static_cast<long long>(::WEAPON_FLASHBANG), "value ::WEAPON_FLASHBANG");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c493)>, map_t<decltype(::WEAPON_FLASHBANG)>>, "type ::WEAPON_FLASHBANG");
-    static_assert(static_cast<long long>(c494) == static_cast<long long>(::WEAPON_DEAGLE), "value ::WEAPON_DEAGLE");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c494)>, map_t<decltype(::WEAPON_DEAGLE)>>, "type ::WEAPON_DEAGLE");
-    static_assert(static_cast<long long>(c495) == static_cast<long long>(::WEAPON_SG552), "value ::WEAPON_SG552");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c495)>, map_t<decltype(::WEAPON_SG552)>>, "type ::WEAPON_SG552");
-    static_assert(static_cast<long long>(c496) == static_cast<long long>(::WEAPON_AK47), "value ::WEAPON_AK47");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c496)>, map_t<decltype(::WEAPON_AK47)>>, "type ::WEAPON_AK47");
-    static_assert(static_cast<long long>(c497) == static_cast<long long>(::WEAPON_KNIFE), "value ::WEAPON_KNIFE");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c497)>, map_t<decltype(::WEAPON_KNIFE)>>, "type ::WEAPON_KNIFE");
-    static_assert(static_cast<long long>(c498) == static_cast<long long>(::WEAPON_P90), "value ::WEAPON_P90");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c498)>, map_t<decltype(::WEAPON_P90)>>, "type ::WEAPON_P90");
-    static_assert(static_cast<long long>(c499) == static_cast<long long>(::WEAPON_SHIELDGUN), "value ::WEAPON_SHIELDGUN");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c499)>, map_t<decltype(::WEAPON_SHIELDGUN)>>, "type ::WEAPON_SHIELDGUN");
-    static_assert(static_cast<long long>(c500) == static_cast<long long>(::WPNSTATE_USP_SILENCED), "value ::WPNSTATE_USP_SILENCED");
+    static_assert(static_cast<long long>(c480) == static_cast<long long>(::WEAPON_ELITE), "value ::WEAPON_ELITE");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c480)>, map_t<decltype(::WEAPON_ELITE)>>, "type ::WEAPON_ELITE");
+    static_assert(static_cast<long long>(c481) == static_cast<long long>(::WEAPON_FIVESEVEN), "value ::WEAPON_FIVESEVEN");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c481)>, map_t<decltype(::WEAPON_FIVESEVEN)>>, "type ::WEAPON_FIVESEVEN");
+    static_assert(static_cast<long long>(c482) == static_cast<long long>(::WEAPON_UMP45), "value ::WEAPON_UMP45");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c482)>, map_t<decltype(::WEAPON_UMP45)>>, "type ::WEAPON_UMP45");
+    static_assert(static_cast<long long>(c483) == static_cast<long long>(::WEAPON_SG550), "value ::WEAPON_SG550");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c483)>, map_t<decltype(::WEAPON_SG550)>>, "type ::WEAPON_SG550");
+    static_assert(static_cast<long long>(c484) == static_cast<long long>(::WEAPON_GALIL), "value ::WEAPON_GALIL");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c484)>, map_t<decltype(::WEAPON_GALIL)>>, "type ::WEAPON_GALIL");
+    static_assert(static_cast<long long>(c485) == static_cast<long long>(::WEAPON_FAMAS), "value ::WEAPON_FAMAS");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c485)>, map_t<decltype(::WEAPON_FAMAS)>>, "type ::WEAPON_FAMAS");
+    static_assert(static_cast<long long>(c486) == static_cast<long long>(::WEAPON_USP), "value ::WEAPON_USP");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c486)>, map_t<decltype(::WEAPON_USP)>>, "type ::WEAPON_USP");
+    static_assert(static_cast<long long>(c487) == static_cast<long long>(::WEAPON_GLOCK18), "value ::WEAPON_GLOCK18");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c487)>, map_t<decltype(::WEAPON_GLOCK18)>>, "type ::WEAPON_GLOCK18");
+    static_assert(static_cast<long long>(c488) == static_cast<long long>(::WEAPON_AWP), "value ::WEAPON_AWP");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c488)>, map_t<decltype(::WEAPON_AWP)>>, "type ::WEAPON_AWP");
+    static_assert(static_cast<long long>(c489) == static_cast<long long>(::WEAPON_MP5N), "value ::WEAPON_MP5N");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c489)>, map_t<decltype(::WEAPON_MP5N)>>, "type ::WEAPON_MP5N");
+    static_assert(static_cast<long long>(c490) == static_cast<long long>(::WEAPON_M249), "value ::WEAPON_M249");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c490)>, map_t<decltype(::WEAPON_M249)>>, "type ::WEAPON_M249");
+    static_assert(static_cast<long long>(c491) == static_cast<long long>(::WEAPON_M3), "value ::WEAPON_M3");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c491)>, map_t<decltype(::WEAPON_M3)>>, "type ::WEAPON_M3");
+    static_assert(static_cast<long long>(c492) == static_cast<long long>(::WEAPON_M4A1), "value ::WEAPON_M4A1");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c492)>, map_t<decltype(::WEAPON_M4A1)>>, "type ::WEAPON_M4A1");
+    static_assert(static_cast<long long>(c493) == static_cast<long long>(::WEAPON_TMP), "value ::WEAPON_TMP");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c493)>, map_t<decltype(::WEAPON_TMP)>>, "type ::WEAPON_TMP");
+    static_assert(static_cast<long long>(c494) == static_cast<long long>(::WEAPON_G3SG1), "value ::WEAPON_G3SG1");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c494)>, map_t<decltype(::WEAPON_G3SG1)>>, "type ::WEAPON_G3SG1");
+    static_assert(static_cast<long long>(c495) == static_cast<long long>(::WEAPON_FLASHBANG), "value ::WEAPON_FLASHBANG");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c495)>, map_t<decltype(::WEAPON_FLASHBANG)>>, "type ::WEAPON_FLASHBANG");
+    static_assert(static_cast<long long>(c496) == static_cast<long long>(::WEAPON_DEAGLE), "value ::WEAPON_DEAGLE");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c496)>, map_t<decltype(::WEAPON_DEAGLE)>>, "type ::WEAPON_DEAGLE");
+    static_assert(static_cast<long long>(c497) == static_cast<long long>(::WEAPON_SG552), "value ::WEAPON_SG552");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c497)>, map_t<decltype(::WEAPON_SG552)>>, "type ::WEAPON_SG552");
+    static_assert(static_cast<long long>(c498) == static_cast<long long>(::WEAPON_AK47), "value ::WEAPON_AK47");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c498)>, map_t<decltype(::WEAPON_AK47)>>, "type ::WEAPON_AK47");
+    static_assert(static_cast<long long>(c499) == static_cast<long long>(::WEAPON_KNIFE), "value ::WEAPON_KNIFE");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c499)>, map_t<decltype(::WEAPON_KNIFE)>>, "type ::WEAPON_KNIFE");
+    static_assert(static_cast<long long>(c500) == static_cast<long long>(::WEAPON_P90), "value ::WEAPON_P90");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c500)>, map_t<decltype(::WEAPON_P90)>>, "type ::WEAPON_P90");
+    static_assert(static_cast<long long>(c501) == static_cast<long long>(::WEAPON_SHIELDGUN), "value ::WEAPON_SHIELDGUN");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c501)>, map_t<decltype(::WEAPON_SHIELDGUN)>>, "type ::WEAPON_SHIELDGUN");
+    static_assert(static_cast<long long>(c502) == static_cast<long long>(::WPNSTATE_USP_SILENCED), "value ::WPNSTATE_USP_SILENCED");
     static_assert(
-        std::is_same_v<std::remove_const_t<decltype(c500)>, map_t<decltype(::WPNSTATE_USP_SILENCED)>>,
+        std::is_same_v<std::remove_const_t<decltype(c502)>, map_t<decltype(::WPNSTATE_USP_SILENCED)>>,
         "type ::WPNSTATE_USP_SILENCED"
     );
     static_assert(
-        static_cast<long long>(c501) == static_cast<long long>(::WPNSTATE_GLOCK18_BURST_MODE),
+        static_cast<long long>(c503) == static_cast<long long>(::WPNSTATE_GLOCK18_BURST_MODE),
         "value ::WPNSTATE_GLOCK18_BURST_MODE"
     );
     static_assert(
-        std::is_same_v<std::remove_const_t<decltype(c501)>, map_t<decltype(::WPNSTATE_GLOCK18_BURST_MODE)>>,
+        std::is_same_v<std::remove_const_t<decltype(c503)>, map_t<decltype(::WPNSTATE_GLOCK18_BURST_MODE)>>,
         "type ::WPNSTATE_GLOCK18_BURST_MODE"
     );
-    static_assert(static_cast<long long>(c502) == static_cast<long long>(::WPNSTATE_M4A1_SILENCED), "value ::WPNSTATE_M4A1_SILENCED");
+    static_assert(static_cast<long long>(c504) == static_cast<long long>(::WPNSTATE_M4A1_SILENCED), "value ::WPNSTATE_M4A1_SILENCED");
     static_assert(
-        std::is_same_v<std::remove_const_t<decltype(c502)>, map_t<decltype(::WPNSTATE_M4A1_SILENCED)>>,
+        std::is_same_v<std::remove_const_t<decltype(c504)>, map_t<decltype(::WPNSTATE_M4A1_SILENCED)>>,
         "type ::WPNSTATE_M4A1_SILENCED"
     );
-    static_assert(static_cast<long long>(c503) == static_cast<long long>(::WPNSTATE_ELITE_LEFT), "value ::WPNSTATE_ELITE_LEFT");
+    static_assert(static_cast<long long>(c505) == static_cast<long long>(::WPNSTATE_ELITE_LEFT), "value ::WPNSTATE_ELITE_LEFT");
     static_assert(
-        std::is_same_v<std::remove_const_t<decltype(c503)>, map_t<decltype(::WPNSTATE_ELITE_LEFT)>>,
+        std::is_same_v<std::remove_const_t<decltype(c505)>, map_t<decltype(::WPNSTATE_ELITE_LEFT)>>,
         "type ::WPNSTATE_ELITE_LEFT"
     );
-    static_assert(static_cast<long long>(c504) == static_cast<long long>(::WPNSTATE_FAMAS_BURST_MODE), "value ::WPNSTATE_FAMAS_BURST_MODE");
+    static_assert(static_cast<long long>(c506) == static_cast<long long>(::WPNSTATE_FAMAS_BURST_MODE), "value ::WPNSTATE_FAMAS_BURST_MODE");
     static_assert(
-        std::is_same_v<std::remove_const_t<decltype(c504)>, map_t<decltype(::WPNSTATE_FAMAS_BURST_MODE)>>,
+        std::is_same_v<std::remove_const_t<decltype(c506)>, map_t<decltype(::WPNSTATE_FAMAS_BURST_MODE)>>,
         "type ::WPNSTATE_FAMAS_BURST_MODE"
     );
-    static_assert(static_cast<long long>(c505) == static_cast<long long>(::WPNSTATE_SHIELD_DRAWN), "value ::WPNSTATE_SHIELD_DRAWN");
+    static_assert(static_cast<long long>(c507) == static_cast<long long>(::WPNSTATE_SHIELD_DRAWN), "value ::WPNSTATE_SHIELD_DRAWN");
     static_assert(
-        std::is_same_v<std::remove_const_t<decltype(c505)>, map_t<decltype(::WPNSTATE_SHIELD_DRAWN)>>,
+        std::is_same_v<std::remove_const_t<decltype(c507)>, map_t<decltype(::WPNSTATE_SHIELD_DRAWN)>>,
         "type ::WPNSTATE_SHIELD_DRAWN"
     );
-    static_assert(static_cast<long long>(c506) == static_cast<long long>(::ELITE_IDLE), "value ::ELITE_IDLE");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c506)>, map_t<decltype(::ELITE_IDLE)>>, "type ::ELITE_IDLE");
-    static_assert(static_cast<long long>(c507) == static_cast<long long>(::ELITE_IDLE_LEFTEMPTY), "value ::ELITE_IDLE_LEFTEMPTY");
+    static_assert(static_cast<long long>(c508) == static_cast<long long>(::ELITE_IDLE), "value ::ELITE_IDLE");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c508)>, map_t<decltype(::ELITE_IDLE)>>, "type ::ELITE_IDLE");
+    static_assert(static_cast<long long>(c509) == static_cast<long long>(::ELITE_IDLE_LEFTEMPTY), "value ::ELITE_IDLE_LEFTEMPTY");
     static_assert(
-        std::is_same_v<std::remove_const_t<decltype(c507)>, map_t<decltype(::ELITE_IDLE_LEFTEMPTY)>>,
+        std::is_same_v<std::remove_const_t<decltype(c509)>, map_t<decltype(::ELITE_IDLE_LEFTEMPTY)>>,
         "type ::ELITE_IDLE_LEFTEMPTY"
     );
-    static_assert(static_cast<long long>(c508) == static_cast<long long>(::ELITE_SHOOTLEFT1), "value ::ELITE_SHOOTLEFT1");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c508)>, map_t<decltype(::ELITE_SHOOTLEFT1)>>, "type ::ELITE_SHOOTLEFT1");
-    static_assert(static_cast<long long>(c509) == static_cast<long long>(::ELITE_SHOOTLEFT2), "value ::ELITE_SHOOTLEFT2");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c509)>, map_t<decltype(::ELITE_SHOOTLEFT2)>>, "type ::ELITE_SHOOTLEFT2");
-    static_assert(static_cast<long long>(c510) == static_cast<long long>(::ELITE_SHOOTLEFT3), "value ::ELITE_SHOOTLEFT3");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c510)>, map_t<decltype(::ELITE_SHOOTLEFT3)>>, "type ::ELITE_SHOOTLEFT3");
-    static_assert(static_cast<long long>(c511) == static_cast<long long>(::ELITE_SHOOTLEFT4), "value ::ELITE_SHOOTLEFT4");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c511)>, map_t<decltype(::ELITE_SHOOTLEFT4)>>, "type ::ELITE_SHOOTLEFT4");
-    static_assert(static_cast<long long>(c512) == static_cast<long long>(::ELITE_SHOOTLEFT5), "value ::ELITE_SHOOTLEFT5");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c512)>, map_t<decltype(::ELITE_SHOOTLEFT5)>>, "type ::ELITE_SHOOTLEFT5");
-    static_assert(static_cast<long long>(c513) == static_cast<long long>(::ELITE_SHOOTLEFTLAST), "value ::ELITE_SHOOTLEFTLAST");
+    static_assert(static_cast<long long>(c510) == static_cast<long long>(::ELITE_SHOOTLEFT1), "value ::ELITE_SHOOTLEFT1");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c510)>, map_t<decltype(::ELITE_SHOOTLEFT1)>>, "type ::ELITE_SHOOTLEFT1");
+    static_assert(static_cast<long long>(c511) == static_cast<long long>(::ELITE_SHOOTLEFT2), "value ::ELITE_SHOOTLEFT2");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c511)>, map_t<decltype(::ELITE_SHOOTLEFT2)>>, "type ::ELITE_SHOOTLEFT2");
+    static_assert(static_cast<long long>(c512) == static_cast<long long>(::ELITE_SHOOTLEFT3), "value ::ELITE_SHOOTLEFT3");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c512)>, map_t<decltype(::ELITE_SHOOTLEFT3)>>, "type ::ELITE_SHOOTLEFT3");
+    static_assert(static_cast<long long>(c513) == static_cast<long long>(::ELITE_SHOOTLEFT4), "value ::ELITE_SHOOTLEFT4");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c513)>, map_t<decltype(::ELITE_SHOOTLEFT4)>>, "type ::ELITE_SHOOTLEFT4");
+    static_assert(static_cast<long long>(c514) == static_cast<long long>(::ELITE_SHOOTLEFT5), "value ::ELITE_SHOOTLEFT5");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c514)>, map_t<decltype(::ELITE_SHOOTLEFT5)>>, "type ::ELITE_SHOOTLEFT5");
+    static_assert(static_cast<long long>(c515) == static_cast<long long>(::ELITE_SHOOTLEFTLAST), "value ::ELITE_SHOOTLEFTLAST");
     static_assert(
-        std::is_same_v<std::remove_const_t<decltype(c513)>, map_t<decltype(::ELITE_SHOOTLEFTLAST)>>,
+        std::is_same_v<std::remove_const_t<decltype(c515)>, map_t<decltype(::ELITE_SHOOTLEFTLAST)>>,
         "type ::ELITE_SHOOTLEFTLAST"
     );
-    static_assert(static_cast<long long>(c514) == static_cast<long long>(::ELITE_SHOOTRIGHT1), "value ::ELITE_SHOOTRIGHT1");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c514)>, map_t<decltype(::ELITE_SHOOTRIGHT1)>>, "type ::ELITE_SHOOTRIGHT1");
-    static_assert(static_cast<long long>(c515) == static_cast<long long>(::ELITE_SHOOTRIGHT2), "value ::ELITE_SHOOTRIGHT2");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c515)>, map_t<decltype(::ELITE_SHOOTRIGHT2)>>, "type ::ELITE_SHOOTRIGHT2");
-    static_assert(static_cast<long long>(c516) == static_cast<long long>(::ELITE_SHOOTRIGHT3), "value ::ELITE_SHOOTRIGHT3");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c516)>, map_t<decltype(::ELITE_SHOOTRIGHT3)>>, "type ::ELITE_SHOOTRIGHT3");
-    static_assert(static_cast<long long>(c517) == static_cast<long long>(::ELITE_SHOOTRIGHT4), "value ::ELITE_SHOOTRIGHT4");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c517)>, map_t<decltype(::ELITE_SHOOTRIGHT4)>>, "type ::ELITE_SHOOTRIGHT4");
-    static_assert(static_cast<long long>(c518) == static_cast<long long>(::ELITE_SHOOTRIGHT5), "value ::ELITE_SHOOTRIGHT5");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c518)>, map_t<decltype(::ELITE_SHOOTRIGHT5)>>, "type ::ELITE_SHOOTRIGHT5");
-    static_assert(static_cast<long long>(c519) == static_cast<long long>(::ELITE_SHOOTRIGHTLAST), "value ::ELITE_SHOOTRIGHTLAST");
+    static_assert(static_cast<long long>(c516) == static_cast<long long>(::ELITE_SHOOTRIGHT1), "value ::ELITE_SHOOTRIGHT1");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c516)>, map_t<decltype(::ELITE_SHOOTRIGHT1)>>, "type ::ELITE_SHOOTRIGHT1");
+    static_assert(static_cast<long long>(c517) == static_cast<long long>(::ELITE_SHOOTRIGHT2), "value ::ELITE_SHOOTRIGHT2");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c517)>, map_t<decltype(::ELITE_SHOOTRIGHT2)>>, "type ::ELITE_SHOOTRIGHT2");
+    static_assert(static_cast<long long>(c518) == static_cast<long long>(::ELITE_SHOOTRIGHT3), "value ::ELITE_SHOOTRIGHT3");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c518)>, map_t<decltype(::ELITE_SHOOTRIGHT3)>>, "type ::ELITE_SHOOTRIGHT3");
+    static_assert(static_cast<long long>(c519) == static_cast<long long>(::ELITE_SHOOTRIGHT4), "value ::ELITE_SHOOTRIGHT4");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c519)>, map_t<decltype(::ELITE_SHOOTRIGHT4)>>, "type ::ELITE_SHOOTRIGHT4");
+    static_assert(static_cast<long long>(c520) == static_cast<long long>(::ELITE_SHOOTRIGHT5), "value ::ELITE_SHOOTRIGHT5");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c520)>, map_t<decltype(::ELITE_SHOOTRIGHT5)>>, "type ::ELITE_SHOOTRIGHT5");
+    static_assert(static_cast<long long>(c521) == static_cast<long long>(::ELITE_SHOOTRIGHTLAST), "value ::ELITE_SHOOTRIGHTLAST");
     static_assert(
-        std::is_same_v<std::remove_const_t<decltype(c519)>, map_t<decltype(::ELITE_SHOOTRIGHTLAST)>>,
+        std::is_same_v<std::remove_const_t<decltype(c521)>, map_t<decltype(::ELITE_SHOOTRIGHTLAST)>>,
         "type ::ELITE_SHOOTRIGHTLAST"
     );
-    static_assert(static_cast<long long>(c520) == static_cast<long long>(::ELITE_RELOAD), "value ::ELITE_RELOAD");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c520)>, map_t<decltype(::ELITE_RELOAD)>>, "type ::ELITE_RELOAD");
-    static_assert(static_cast<long long>(c521) == static_cast<long long>(::ELITE_DRAW), "value ::ELITE_DRAW");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c521)>, map_t<decltype(::ELITE_DRAW)>>, "type ::ELITE_DRAW");
-    static_assert(static_cast<long long>(c522) == static_cast<long long>(::GLOCK18_IDLE1), "value ::GLOCK18_IDLE1");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c522)>, map_t<decltype(::GLOCK18_IDLE1)>>, "type ::GLOCK18_IDLE1");
-    static_assert(static_cast<long long>(c523) == static_cast<long long>(::GLOCK18_IDLE2), "value ::GLOCK18_IDLE2");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c523)>, map_t<decltype(::GLOCK18_IDLE2)>>, "type ::GLOCK18_IDLE2");
-    static_assert(static_cast<long long>(c524) == static_cast<long long>(::GLOCK18_IDLE3), "value ::GLOCK18_IDLE3");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c524)>, map_t<decltype(::GLOCK18_IDLE3)>>, "type ::GLOCK18_IDLE3");
-    static_assert(static_cast<long long>(c525) == static_cast<long long>(::GLOCK18_SHOOT), "value ::GLOCK18_SHOOT");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c525)>, map_t<decltype(::GLOCK18_SHOOT)>>, "type ::GLOCK18_SHOOT");
-    static_assert(static_cast<long long>(c526) == static_cast<long long>(::GLOCK18_SHOOT2), "value ::GLOCK18_SHOOT2");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c526)>, map_t<decltype(::GLOCK18_SHOOT2)>>, "type ::GLOCK18_SHOOT2");
-    static_assert(static_cast<long long>(c527) == static_cast<long long>(::GLOCK18_SHOOT3), "value ::GLOCK18_SHOOT3");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c527)>, map_t<decltype(::GLOCK18_SHOOT3)>>, "type ::GLOCK18_SHOOT3");
-    static_assert(static_cast<long long>(c528) == static_cast<long long>(::GLOCK18_SHOOT_EMPTY), "value ::GLOCK18_SHOOT_EMPTY");
+    static_assert(static_cast<long long>(c522) == static_cast<long long>(::ELITE_RELOAD), "value ::ELITE_RELOAD");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c522)>, map_t<decltype(::ELITE_RELOAD)>>, "type ::ELITE_RELOAD");
+    static_assert(static_cast<long long>(c523) == static_cast<long long>(::ELITE_DRAW), "value ::ELITE_DRAW");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c523)>, map_t<decltype(::ELITE_DRAW)>>, "type ::ELITE_DRAW");
+    static_assert(static_cast<long long>(c524) == static_cast<long long>(::GLOCK18_IDLE1), "value ::GLOCK18_IDLE1");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c524)>, map_t<decltype(::GLOCK18_IDLE1)>>, "type ::GLOCK18_IDLE1");
+    static_assert(static_cast<long long>(c525) == static_cast<long long>(::GLOCK18_IDLE2), "value ::GLOCK18_IDLE2");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c525)>, map_t<decltype(::GLOCK18_IDLE2)>>, "type ::GLOCK18_IDLE2");
+    static_assert(static_cast<long long>(c526) == static_cast<long long>(::GLOCK18_IDLE3), "value ::GLOCK18_IDLE3");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c526)>, map_t<decltype(::GLOCK18_IDLE3)>>, "type ::GLOCK18_IDLE3");
+    static_assert(static_cast<long long>(c527) == static_cast<long long>(::GLOCK18_SHOOT), "value ::GLOCK18_SHOOT");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c527)>, map_t<decltype(::GLOCK18_SHOOT)>>, "type ::GLOCK18_SHOOT");
+    static_assert(static_cast<long long>(c528) == static_cast<long long>(::GLOCK18_SHOOT2), "value ::GLOCK18_SHOOT2");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c528)>, map_t<decltype(::GLOCK18_SHOOT2)>>, "type ::GLOCK18_SHOOT2");
+    static_assert(static_cast<long long>(c529) == static_cast<long long>(::GLOCK18_SHOOT3), "value ::GLOCK18_SHOOT3");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c529)>, map_t<decltype(::GLOCK18_SHOOT3)>>, "type ::GLOCK18_SHOOT3");
+    static_assert(static_cast<long long>(c530) == static_cast<long long>(::GLOCK18_SHOOT_EMPTY), "value ::GLOCK18_SHOOT_EMPTY");
     static_assert(
-        std::is_same_v<std::remove_const_t<decltype(c528)>, map_t<decltype(::GLOCK18_SHOOT_EMPTY)>>,
+        std::is_same_v<std::remove_const_t<decltype(c530)>, map_t<decltype(::GLOCK18_SHOOT_EMPTY)>>,
         "type ::GLOCK18_SHOOT_EMPTY"
     );
-    static_assert(static_cast<long long>(c529) == static_cast<long long>(::GLOCK18_RELOAD), "value ::GLOCK18_RELOAD");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c529)>, map_t<decltype(::GLOCK18_RELOAD)>>, "type ::GLOCK18_RELOAD");
-    static_assert(static_cast<long long>(c530) == static_cast<long long>(::GLOCK18_DRAW), "value ::GLOCK18_DRAW");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c530)>, map_t<decltype(::GLOCK18_DRAW)>>, "type ::GLOCK18_DRAW");
-    static_assert(static_cast<long long>(c531) == static_cast<long long>(::GLOCK18_HOLSTER), "value ::GLOCK18_HOLSTER");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c531)>, map_t<decltype(::GLOCK18_HOLSTER)>>, "type ::GLOCK18_HOLSTER");
-    static_assert(static_cast<long long>(c532) == static_cast<long long>(::GLOCK18_ADD_SILENCER), "value ::GLOCK18_ADD_SILENCER");
+    static_assert(static_cast<long long>(c531) == static_cast<long long>(::GLOCK18_RELOAD), "value ::GLOCK18_RELOAD");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c531)>, map_t<decltype(::GLOCK18_RELOAD)>>, "type ::GLOCK18_RELOAD");
+    static_assert(static_cast<long long>(c532) == static_cast<long long>(::GLOCK18_DRAW), "value ::GLOCK18_DRAW");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c532)>, map_t<decltype(::GLOCK18_DRAW)>>, "type ::GLOCK18_DRAW");
+    static_assert(static_cast<long long>(c533) == static_cast<long long>(::GLOCK18_HOLSTER), "value ::GLOCK18_HOLSTER");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c533)>, map_t<decltype(::GLOCK18_HOLSTER)>>, "type ::GLOCK18_HOLSTER");
+    static_assert(static_cast<long long>(c534) == static_cast<long long>(::GLOCK18_ADD_SILENCER), "value ::GLOCK18_ADD_SILENCER");
     static_assert(
-        std::is_same_v<std::remove_const_t<decltype(c532)>, map_t<decltype(::GLOCK18_ADD_SILENCER)>>,
+        std::is_same_v<std::remove_const_t<decltype(c534)>, map_t<decltype(::GLOCK18_ADD_SILENCER)>>,
         "type ::GLOCK18_ADD_SILENCER"
     );
-    static_assert(static_cast<long long>(c533) == static_cast<long long>(::GLOCK18_DRAW2), "value ::GLOCK18_DRAW2");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c533)>, map_t<decltype(::GLOCK18_DRAW2)>>, "type ::GLOCK18_DRAW2");
-    static_assert(static_cast<long long>(c534) == static_cast<long long>(::GLOCK18_RELOAD2), "value ::GLOCK18_RELOAD2");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c534)>, map_t<decltype(::GLOCK18_RELOAD2)>>, "type ::GLOCK18_RELOAD2");
-    static_assert(static_cast<long long>(c535) == static_cast<long long>(::M4A1_IDLE), "value ::M4A1_IDLE");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c535)>, map_t<decltype(::M4A1_IDLE)>>, "type ::M4A1_IDLE");
-    static_assert(static_cast<long long>(c536) == static_cast<long long>(::M4A1_SHOOT1), "value ::M4A1_SHOOT1");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c536)>, map_t<decltype(::M4A1_SHOOT1)>>, "type ::M4A1_SHOOT1");
-    static_assert(static_cast<long long>(c537) == static_cast<long long>(::M4A1_SHOOT2), "value ::M4A1_SHOOT2");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c537)>, map_t<decltype(::M4A1_SHOOT2)>>, "type ::M4A1_SHOOT2");
-    static_assert(static_cast<long long>(c538) == static_cast<long long>(::M4A1_SHOOT3), "value ::M4A1_SHOOT3");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c538)>, map_t<decltype(::M4A1_SHOOT3)>>, "type ::M4A1_SHOOT3");
-    static_assert(static_cast<long long>(c539) == static_cast<long long>(::M4A1_RELOAD), "value ::M4A1_RELOAD");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c539)>, map_t<decltype(::M4A1_RELOAD)>>, "type ::M4A1_RELOAD");
-    static_assert(static_cast<long long>(c540) == static_cast<long long>(::M4A1_DRAW), "value ::M4A1_DRAW");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c540)>, map_t<decltype(::M4A1_DRAW)>>, "type ::M4A1_DRAW");
-    static_assert(static_cast<long long>(c541) == static_cast<long long>(::M4A1_ATTACH_SILENCER), "value ::M4A1_ATTACH_SILENCER");
+    static_assert(static_cast<long long>(c535) == static_cast<long long>(::GLOCK18_DRAW2), "value ::GLOCK18_DRAW2");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c535)>, map_t<decltype(::GLOCK18_DRAW2)>>, "type ::GLOCK18_DRAW2");
+    static_assert(static_cast<long long>(c536) == static_cast<long long>(::GLOCK18_RELOAD2), "value ::GLOCK18_RELOAD2");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c536)>, map_t<decltype(::GLOCK18_RELOAD2)>>, "type ::GLOCK18_RELOAD2");
+    static_assert(static_cast<long long>(c537) == static_cast<long long>(::M4A1_IDLE), "value ::M4A1_IDLE");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c537)>, map_t<decltype(::M4A1_IDLE)>>, "type ::M4A1_IDLE");
+    static_assert(static_cast<long long>(c538) == static_cast<long long>(::M4A1_SHOOT1), "value ::M4A1_SHOOT1");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c538)>, map_t<decltype(::M4A1_SHOOT1)>>, "type ::M4A1_SHOOT1");
+    static_assert(static_cast<long long>(c539) == static_cast<long long>(::M4A1_SHOOT2), "value ::M4A1_SHOOT2");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c539)>, map_t<decltype(::M4A1_SHOOT2)>>, "type ::M4A1_SHOOT2");
+    static_assert(static_cast<long long>(c540) == static_cast<long long>(::M4A1_SHOOT3), "value ::M4A1_SHOOT3");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c540)>, map_t<decltype(::M4A1_SHOOT3)>>, "type ::M4A1_SHOOT3");
+    static_assert(static_cast<long long>(c541) == static_cast<long long>(::M4A1_RELOAD), "value ::M4A1_RELOAD");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c541)>, map_t<decltype(::M4A1_RELOAD)>>, "type ::M4A1_RELOAD");
+    static_assert(static_cast<long long>(c542) == static_cast<long long>(::M4A1_DRAW), "value ::M4A1_DRAW");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c542)>, map_t<decltype(::M4A1_DRAW)>>, "type ::M4A1_DRAW");
+    static_assert(static_cast<long long>(c543) == static_cast<long long>(::M4A1_ATTACH_SILENCER), "value ::M4A1_ATTACH_SILENCER");
     static_assert(
-        std::is_same_v<std::remove_const_t<decltype(c541)>, map_t<decltype(::M4A1_ATTACH_SILENCER)>>,
+        std::is_same_v<std::remove_const_t<decltype(c543)>, map_t<decltype(::M4A1_ATTACH_SILENCER)>>,
         "type ::M4A1_ATTACH_SILENCER"
     );
-    static_assert(static_cast<long long>(c542) == static_cast<long long>(::M4A1_UNSIL_IDLE), "value ::M4A1_UNSIL_IDLE");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c542)>, map_t<decltype(::M4A1_UNSIL_IDLE)>>, "type ::M4A1_UNSIL_IDLE");
-    static_assert(static_cast<long long>(c543) == static_cast<long long>(::M4A1_UNSIL_SHOOT1), "value ::M4A1_UNSIL_SHOOT1");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c543)>, map_t<decltype(::M4A1_UNSIL_SHOOT1)>>, "type ::M4A1_UNSIL_SHOOT1");
-    static_assert(static_cast<long long>(c544) == static_cast<long long>(::M4A1_UNSIL_SHOOT2), "value ::M4A1_UNSIL_SHOOT2");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c544)>, map_t<decltype(::M4A1_UNSIL_SHOOT2)>>, "type ::M4A1_UNSIL_SHOOT2");
-    static_assert(static_cast<long long>(c545) == static_cast<long long>(::M4A1_UNSIL_SHOOT3), "value ::M4A1_UNSIL_SHOOT3");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c545)>, map_t<decltype(::M4A1_UNSIL_SHOOT3)>>, "type ::M4A1_UNSIL_SHOOT3");
-    static_assert(static_cast<long long>(c546) == static_cast<long long>(::M4A1_UNSIL_RELOAD), "value ::M4A1_UNSIL_RELOAD");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c546)>, map_t<decltype(::M4A1_UNSIL_RELOAD)>>, "type ::M4A1_UNSIL_RELOAD");
-    static_assert(static_cast<long long>(c547) == static_cast<long long>(::M4A1_UNSIL_DRAW), "value ::M4A1_UNSIL_DRAW");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c547)>, map_t<decltype(::M4A1_UNSIL_DRAW)>>, "type ::M4A1_UNSIL_DRAW");
-    static_assert(static_cast<long long>(c548) == static_cast<long long>(::M4A1_DETACH_SILENCER), "value ::M4A1_DETACH_SILENCER");
+    static_assert(static_cast<long long>(c544) == static_cast<long long>(::M4A1_UNSIL_IDLE), "value ::M4A1_UNSIL_IDLE");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c544)>, map_t<decltype(::M4A1_UNSIL_IDLE)>>, "type ::M4A1_UNSIL_IDLE");
+    static_assert(static_cast<long long>(c545) == static_cast<long long>(::M4A1_UNSIL_SHOOT1), "value ::M4A1_UNSIL_SHOOT1");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c545)>, map_t<decltype(::M4A1_UNSIL_SHOOT1)>>, "type ::M4A1_UNSIL_SHOOT1");
+    static_assert(static_cast<long long>(c546) == static_cast<long long>(::M4A1_UNSIL_SHOOT2), "value ::M4A1_UNSIL_SHOOT2");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c546)>, map_t<decltype(::M4A1_UNSIL_SHOOT2)>>, "type ::M4A1_UNSIL_SHOOT2");
+    static_assert(static_cast<long long>(c547) == static_cast<long long>(::M4A1_UNSIL_SHOOT3), "value ::M4A1_UNSIL_SHOOT3");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c547)>, map_t<decltype(::M4A1_UNSIL_SHOOT3)>>, "type ::M4A1_UNSIL_SHOOT3");
+    static_assert(static_cast<long long>(c548) == static_cast<long long>(::M4A1_UNSIL_RELOAD), "value ::M4A1_UNSIL_RELOAD");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c548)>, map_t<decltype(::M4A1_UNSIL_RELOAD)>>, "type ::M4A1_UNSIL_RELOAD");
+    static_assert(static_cast<long long>(c549) == static_cast<long long>(::M4A1_UNSIL_DRAW), "value ::M4A1_UNSIL_DRAW");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c549)>, map_t<decltype(::M4A1_UNSIL_DRAW)>>, "type ::M4A1_UNSIL_DRAW");
+    static_assert(static_cast<long long>(c550) == static_cast<long long>(::M4A1_DETACH_SILENCER), "value ::M4A1_DETACH_SILENCER");
     static_assert(
-        std::is_same_v<std::remove_const_t<decltype(c548)>, map_t<decltype(::M4A1_DETACH_SILENCER)>>,
+        std::is_same_v<std::remove_const_t<decltype(c550)>, map_t<decltype(::M4A1_DETACH_SILENCER)>>,
         "type ::M4A1_DETACH_SILENCER"
     );
-    static_assert(static_cast<long long>(c549) == static_cast<long long>(::USP_IDLE), "value ::USP_IDLE");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c549)>, map_t<decltype(::USP_IDLE)>>, "type ::USP_IDLE");
-    static_assert(static_cast<long long>(c550) == static_cast<long long>(::USP_SHOOT1), "value ::USP_SHOOT1");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c550)>, map_t<decltype(::USP_SHOOT1)>>, "type ::USP_SHOOT1");
-    static_assert(static_cast<long long>(c551) == static_cast<long long>(::USP_SHOOT2), "value ::USP_SHOOT2");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c551)>, map_t<decltype(::USP_SHOOT2)>>, "type ::USP_SHOOT2");
-    static_assert(static_cast<long long>(c552) == static_cast<long long>(::USP_SHOOT3), "value ::USP_SHOOT3");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c552)>, map_t<decltype(::USP_SHOOT3)>>, "type ::USP_SHOOT3");
-    static_assert(static_cast<long long>(c553) == static_cast<long long>(::USP_SHOOT_EMPTY), "value ::USP_SHOOT_EMPTY");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c553)>, map_t<decltype(::USP_SHOOT_EMPTY)>>, "type ::USP_SHOOT_EMPTY");
-    static_assert(static_cast<long long>(c554) == static_cast<long long>(::USP_RELOAD), "value ::USP_RELOAD");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c554)>, map_t<decltype(::USP_RELOAD)>>, "type ::USP_RELOAD");
-    static_assert(static_cast<long long>(c555) == static_cast<long long>(::USP_DRAW), "value ::USP_DRAW");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c555)>, map_t<decltype(::USP_DRAW)>>, "type ::USP_DRAW");
-    static_assert(static_cast<long long>(c556) == static_cast<long long>(::USP_ATTACH_SILENCER), "value ::USP_ATTACH_SILENCER");
+    static_assert(static_cast<long long>(c551) == static_cast<long long>(::USP_IDLE), "value ::USP_IDLE");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c551)>, map_t<decltype(::USP_IDLE)>>, "type ::USP_IDLE");
+    static_assert(static_cast<long long>(c552) == static_cast<long long>(::USP_SHOOT1), "value ::USP_SHOOT1");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c552)>, map_t<decltype(::USP_SHOOT1)>>, "type ::USP_SHOOT1");
+    static_assert(static_cast<long long>(c553) == static_cast<long long>(::USP_SHOOT2), "value ::USP_SHOOT2");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c553)>, map_t<decltype(::USP_SHOOT2)>>, "type ::USP_SHOOT2");
+    static_assert(static_cast<long long>(c554) == static_cast<long long>(::USP_SHOOT3), "value ::USP_SHOOT3");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c554)>, map_t<decltype(::USP_SHOOT3)>>, "type ::USP_SHOOT3");
+    static_assert(static_cast<long long>(c555) == static_cast<long long>(::USP_SHOOT_EMPTY), "value ::USP_SHOOT_EMPTY");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c555)>, map_t<decltype(::USP_SHOOT_EMPTY)>>, "type ::USP_SHOOT_EMPTY");
+    static_assert(static_cast<long long>(c556) == static_cast<long long>(::USP_RELOAD), "value ::USP_RELOAD");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c556)>, map_t<decltype(::USP_RELOAD)>>, "type ::USP_RELOAD");
+    static_assert(static_cast<long long>(c557) == static_cast<long long>(::USP_DRAW), "value ::USP_DRAW");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c557)>, map_t<decltype(::USP_DRAW)>>, "type ::USP_DRAW");
+    static_assert(static_cast<long long>(c558) == static_cast<long long>(::USP_ATTACH_SILENCER), "value ::USP_ATTACH_SILENCER");
     static_assert(
-        std::is_same_v<std::remove_const_t<decltype(c556)>, map_t<decltype(::USP_ATTACH_SILENCER)>>,
+        std::is_same_v<std::remove_const_t<decltype(c558)>, map_t<decltype(::USP_ATTACH_SILENCER)>>,
         "type ::USP_ATTACH_SILENCER"
     );
-    static_assert(static_cast<long long>(c557) == static_cast<long long>(::USP_UNSIL_IDLE), "value ::USP_UNSIL_IDLE");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c557)>, map_t<decltype(::USP_UNSIL_IDLE)>>, "type ::USP_UNSIL_IDLE");
-    static_assert(static_cast<long long>(c558) == static_cast<long long>(::USP_UNSIL_SHOOT1), "value ::USP_UNSIL_SHOOT1");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c558)>, map_t<decltype(::USP_UNSIL_SHOOT1)>>, "type ::USP_UNSIL_SHOOT1");
-    static_assert(static_cast<long long>(c559) == static_cast<long long>(::USP_UNSIL_SHOOT2), "value ::USP_UNSIL_SHOOT2");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c559)>, map_t<decltype(::USP_UNSIL_SHOOT2)>>, "type ::USP_UNSIL_SHOOT2");
-    static_assert(static_cast<long long>(c560) == static_cast<long long>(::USP_UNSIL_SHOOT3), "value ::USP_UNSIL_SHOOT3");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c560)>, map_t<decltype(::USP_UNSIL_SHOOT3)>>, "type ::USP_UNSIL_SHOOT3");
-    static_assert(static_cast<long long>(c561) == static_cast<long long>(::USP_UNSIL_SHOOT_EMPTY), "value ::USP_UNSIL_SHOOT_EMPTY");
+    static_assert(static_cast<long long>(c559) == static_cast<long long>(::USP_UNSIL_IDLE), "value ::USP_UNSIL_IDLE");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c559)>, map_t<decltype(::USP_UNSIL_IDLE)>>, "type ::USP_UNSIL_IDLE");
+    static_assert(static_cast<long long>(c560) == static_cast<long long>(::USP_UNSIL_SHOOT1), "value ::USP_UNSIL_SHOOT1");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c560)>, map_t<decltype(::USP_UNSIL_SHOOT1)>>, "type ::USP_UNSIL_SHOOT1");
+    static_assert(static_cast<long long>(c561) == static_cast<long long>(::USP_UNSIL_SHOOT2), "value ::USP_UNSIL_SHOOT2");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c561)>, map_t<decltype(::USP_UNSIL_SHOOT2)>>, "type ::USP_UNSIL_SHOOT2");
+    static_assert(static_cast<long long>(c562) == static_cast<long long>(::USP_UNSIL_SHOOT3), "value ::USP_UNSIL_SHOOT3");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c562)>, map_t<decltype(::USP_UNSIL_SHOOT3)>>, "type ::USP_UNSIL_SHOOT3");
+    static_assert(static_cast<long long>(c563) == static_cast<long long>(::USP_UNSIL_SHOOT_EMPTY), "value ::USP_UNSIL_SHOOT_EMPTY");
     static_assert(
-        std::is_same_v<std::remove_const_t<decltype(c561)>, map_t<decltype(::USP_UNSIL_SHOOT_EMPTY)>>,
+        std::is_same_v<std::remove_const_t<decltype(c563)>, map_t<decltype(::USP_UNSIL_SHOOT_EMPTY)>>,
         "type ::USP_UNSIL_SHOOT_EMPTY"
     );
-    static_assert(static_cast<long long>(c562) == static_cast<long long>(::USP_UNSIL_RELOAD), "value ::USP_UNSIL_RELOAD");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c562)>, map_t<decltype(::USP_UNSIL_RELOAD)>>, "type ::USP_UNSIL_RELOAD");
-    static_assert(static_cast<long long>(c563) == static_cast<long long>(::USP_UNSIL_DRAW), "value ::USP_UNSIL_DRAW");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c563)>, map_t<decltype(::USP_UNSIL_DRAW)>>, "type ::USP_UNSIL_DRAW");
-    static_assert(static_cast<long long>(c564) == static_cast<long long>(::USP_DETACH_SILENCER), "value ::USP_DETACH_SILENCER");
+    static_assert(static_cast<long long>(c564) == static_cast<long long>(::USP_UNSIL_RELOAD), "value ::USP_UNSIL_RELOAD");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c564)>, map_t<decltype(::USP_UNSIL_RELOAD)>>, "type ::USP_UNSIL_RELOAD");
+    static_assert(static_cast<long long>(c565) == static_cast<long long>(::USP_UNSIL_DRAW), "value ::USP_UNSIL_DRAW");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c565)>, map_t<decltype(::USP_UNSIL_DRAW)>>, "type ::USP_UNSIL_DRAW");
+    static_assert(static_cast<long long>(c566) == static_cast<long long>(::USP_DETACH_SILENCER), "value ::USP_DETACH_SILENCER");
     static_assert(
-        std::is_same_v<std::remove_const_t<decltype(c564)>, map_t<decltype(::USP_DETACH_SILENCER)>>,
+        std::is_same_v<std::remove_const_t<decltype(c566)>, map_t<decltype(::USP_DETACH_SILENCER)>>,
         "type ::USP_DETACH_SILENCER"
     );
-    static_assert(static_cast<long long>(c565) == static_cast<long long>(::CAREER_NONE), "value ::CAREER_NONE");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c565)>, map_t<decltype(::CAREER_NONE)>>, "type ::CAREER_NONE");
-    static_assert(static_cast<long long>(c566) == static_cast<long long>(::CAREER_LOADING), "value ::CAREER_LOADING");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c566)>, map_t<decltype(::CAREER_LOADING)>>, "type ::CAREER_LOADING");
-    static_assert(static_cast<long long>(c567) == static_cast<long long>(::CAREER_PLAYING), "value ::CAREER_PLAYING");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c567)>, map_t<decltype(::CAREER_PLAYING)>>, "type ::CAREER_PLAYING");
-    static_assert(static_cast<long long>(c568) == static_cast<long long>(::ca_dedicated), "value ::ca_dedicated");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c568)>, map_t<decltype(::ca_dedicated)>>, "type ::ca_dedicated");
-    static_assert(static_cast<long long>(c569) == static_cast<long long>(::ca_disconnected), "value ::ca_disconnected");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c569)>, map_t<decltype(::ca_disconnected)>>, "type ::ca_disconnected");
-    static_assert(static_cast<long long>(c570) == static_cast<long long>(::ca_connecting), "value ::ca_connecting");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c570)>, map_t<decltype(::ca_connecting)>>, "type ::ca_connecting");
-    static_assert(static_cast<long long>(c571) == static_cast<long long>(::ca_connected), "value ::ca_connected");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c571)>, map_t<decltype(::ca_connected)>>, "type ::ca_connected");
-    static_assert(static_cast<long long>(c572) == static_cast<long long>(::ca_uninitialized), "value ::ca_uninitialized");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c572)>, map_t<decltype(::ca_uninitialized)>>, "type ::ca_uninitialized");
-    static_assert(static_cast<long long>(c573) == static_cast<long long>(::ca_active), "value ::ca_active");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c573)>, map_t<decltype(::ca_active)>>, "type ::ca_active");
-    static_assert(static_cast<long long>(c574) == static_cast<long long>(::src_client), "value ::src_client");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c574)>, map_t<decltype(::src_client)>>, "type ::src_client");
-    static_assert(static_cast<long long>(c575) == static_cast<long long>(::src_command), "value ::src_command");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c575)>, map_t<decltype(::src_command)>>, "type ::src_command");
-    static_assert(static_cast<long long>(c576) == static_cast<long long>(::mod_bad), "value ::mod_bad");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c576)>, map_t<decltype(::mod_bad)>>, "type ::mod_bad");
-    static_assert(static_cast<long long>(c577) == static_cast<long long>(::mod_brush), "value ::mod_brush");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c577)>, map_t<decltype(::mod_brush)>>, "type ::mod_brush");
-    static_assert(static_cast<long long>(c578) == static_cast<long long>(::mod_sprite), "value ::mod_sprite");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c578)>, map_t<decltype(::mod_sprite)>>, "type ::mod_sprite");
-    static_assert(static_cast<long long>(c579) == static_cast<long long>(::mod_alias), "value ::mod_alias");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c579)>, map_t<decltype(::mod_alias)>>, "type ::mod_alias");
-    static_assert(static_cast<long long>(c580) == static_cast<long long>(::mod_studio), "value ::mod_studio");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c580)>, map_t<decltype(::mod_studio)>>, "type ::mod_studio");
-    static_assert(static_cast<long long>(c581) == static_cast<long long>(::clc_bad), "value ::clc_bad");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c581)>, map_t<decltype(::clc_bad)>>, "type ::clc_bad");
-    static_assert(static_cast<long long>(c582) == static_cast<long long>(::clc_nop), "value ::clc_nop");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c582)>, map_t<decltype(::clc_nop)>>, "type ::clc_nop");
-    static_assert(static_cast<long long>(c583) == static_cast<long long>(::clc_move), "value ::clc_move");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c583)>, map_t<decltype(::clc_move)>>, "type ::clc_move");
-    static_assert(static_cast<long long>(c584) == static_cast<long long>(::clc_stringcmd), "value ::clc_stringcmd");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c584)>, map_t<decltype(::clc_stringcmd)>>, "type ::clc_stringcmd");
-    static_assert(static_cast<long long>(c585) == static_cast<long long>(::clc_delta), "value ::clc_delta");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c585)>, map_t<decltype(::clc_delta)>>, "type ::clc_delta");
-    static_assert(static_cast<long long>(c586) == static_cast<long long>(::clc_resourcelist), "value ::clc_resourcelist");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c586)>, map_t<decltype(::clc_resourcelist)>>, "type ::clc_resourcelist");
-    static_assert(static_cast<long long>(c587) == static_cast<long long>(::clc_tmove), "value ::clc_tmove");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c587)>, map_t<decltype(::clc_tmove)>>, "type ::clc_tmove");
-    static_assert(static_cast<long long>(c588) == static_cast<long long>(::clc_fileconsistency), "value ::clc_fileconsistency");
+    static_assert(static_cast<long long>(c567) == static_cast<long long>(::CAREER_NONE), "value ::CAREER_NONE");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c567)>, map_t<decltype(::CAREER_NONE)>>, "type ::CAREER_NONE");
+    static_assert(static_cast<long long>(c568) == static_cast<long long>(::CAREER_LOADING), "value ::CAREER_LOADING");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c568)>, map_t<decltype(::CAREER_LOADING)>>, "type ::CAREER_LOADING");
+    static_assert(static_cast<long long>(c569) == static_cast<long long>(::CAREER_PLAYING), "value ::CAREER_PLAYING");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c569)>, map_t<decltype(::CAREER_PLAYING)>>, "type ::CAREER_PLAYING");
+    static_assert(static_cast<long long>(c570) == static_cast<long long>(::ca_dedicated), "value ::ca_dedicated");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c570)>, map_t<decltype(::ca_dedicated)>>, "type ::ca_dedicated");
+    static_assert(static_cast<long long>(c571) == static_cast<long long>(::ca_disconnected), "value ::ca_disconnected");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c571)>, map_t<decltype(::ca_disconnected)>>, "type ::ca_disconnected");
+    static_assert(static_cast<long long>(c572) == static_cast<long long>(::ca_connecting), "value ::ca_connecting");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c572)>, map_t<decltype(::ca_connecting)>>, "type ::ca_connecting");
+    static_assert(static_cast<long long>(c573) == static_cast<long long>(::ca_connected), "value ::ca_connected");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c573)>, map_t<decltype(::ca_connected)>>, "type ::ca_connected");
+    static_assert(static_cast<long long>(c574) == static_cast<long long>(::ca_uninitialized), "value ::ca_uninitialized");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c574)>, map_t<decltype(::ca_uninitialized)>>, "type ::ca_uninitialized");
+    static_assert(static_cast<long long>(c575) == static_cast<long long>(::ca_active), "value ::ca_active");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c575)>, map_t<decltype(::ca_active)>>, "type ::ca_active");
+    static_assert(static_cast<long long>(c576) == static_cast<long long>(::src_client), "value ::src_client");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c576)>, map_t<decltype(::src_client)>>, "type ::src_client");
+    static_assert(static_cast<long long>(c577) == static_cast<long long>(::src_command), "value ::src_command");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c577)>, map_t<decltype(::src_command)>>, "type ::src_command");
+    static_assert(static_cast<long long>(c578) == static_cast<long long>(::mod_bad), "value ::mod_bad");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c578)>, map_t<decltype(::mod_bad)>>, "type ::mod_bad");
+    static_assert(static_cast<long long>(c579) == static_cast<long long>(::mod_brush), "value ::mod_brush");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c579)>, map_t<decltype(::mod_brush)>>, "type ::mod_brush");
+    static_assert(static_cast<long long>(c580) == static_cast<long long>(::mod_sprite), "value ::mod_sprite");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c580)>, map_t<decltype(::mod_sprite)>>, "type ::mod_sprite");
+    static_assert(static_cast<long long>(c581) == static_cast<long long>(::mod_alias), "value ::mod_alias");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c581)>, map_t<decltype(::mod_alias)>>, "type ::mod_alias");
+    static_assert(static_cast<long long>(c582) == static_cast<long long>(::mod_studio), "value ::mod_studio");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c582)>, map_t<decltype(::mod_studio)>>, "type ::mod_studio");
+    static_assert(static_cast<long long>(c583) == static_cast<long long>(::clc_bad), "value ::clc_bad");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c583)>, map_t<decltype(::clc_bad)>>, "type ::clc_bad");
+    static_assert(static_cast<long long>(c584) == static_cast<long long>(::clc_nop), "value ::clc_nop");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c584)>, map_t<decltype(::clc_nop)>>, "type ::clc_nop");
+    static_assert(static_cast<long long>(c585) == static_cast<long long>(::clc_move), "value ::clc_move");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c585)>, map_t<decltype(::clc_move)>>, "type ::clc_move");
+    static_assert(static_cast<long long>(c586) == static_cast<long long>(::clc_stringcmd), "value ::clc_stringcmd");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c586)>, map_t<decltype(::clc_stringcmd)>>, "type ::clc_stringcmd");
+    static_assert(static_cast<long long>(c587) == static_cast<long long>(::clc_delta), "value ::clc_delta");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c587)>, map_t<decltype(::clc_delta)>>, "type ::clc_delta");
+    static_assert(static_cast<long long>(c588) == static_cast<long long>(::clc_resourcelist), "value ::clc_resourcelist");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c588)>, map_t<decltype(::clc_resourcelist)>>, "type ::clc_resourcelist");
+    static_assert(static_cast<long long>(c589) == static_cast<long long>(::clc_tmove), "value ::clc_tmove");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c589)>, map_t<decltype(::clc_tmove)>>, "type ::clc_tmove");
+    static_assert(static_cast<long long>(c590) == static_cast<long long>(::clc_fileconsistency), "value ::clc_fileconsistency");
     static_assert(
-        std::is_same_v<std::remove_const_t<decltype(c588)>, map_t<decltype(::clc_fileconsistency)>>,
+        std::is_same_v<std::remove_const_t<decltype(c590)>, map_t<decltype(::clc_fileconsistency)>>,
         "type ::clc_fileconsistency"
     );
-    static_assert(static_cast<long long>(c589) == static_cast<long long>(::clc_voicedata), "value ::clc_voicedata");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c589)>, map_t<decltype(::clc_voicedata)>>, "type ::clc_voicedata");
-    static_assert(static_cast<long long>(c590) == static_cast<long long>(::clc_hltv), "value ::clc_hltv");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c590)>, map_t<decltype(::clc_hltv)>>, "type ::clc_hltv");
-    static_assert(static_cast<long long>(c591) == static_cast<long long>(::clc_cvarvalue), "value ::clc_cvarvalue");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c591)>, map_t<decltype(::clc_cvarvalue)>>, "type ::clc_cvarvalue");
-    static_assert(static_cast<long long>(c592) == static_cast<long long>(::clc_cvarvalue2), "value ::clc_cvarvalue2");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c592)>, map_t<decltype(::clc_cvarvalue2)>>, "type ::clc_cvarvalue2");
-    static_assert(static_cast<long long>(c593) == static_cast<long long>(::clc_endoflist), "value ::clc_endoflist");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c593)>, map_t<decltype(::clc_endoflist)>>, "type ::clc_endoflist");
-    static_assert(static_cast<long long>(c594) == static_cast<long long>(::NA_UNUSED), "value ::NA_UNUSED");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c594)>, map_t<decltype(::NA_UNUSED)>>, "type ::NA_UNUSED");
-    static_assert(static_cast<long long>(c595) == static_cast<long long>(::NA_LOOPBACK), "value ::NA_LOOPBACK");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c595)>, map_t<decltype(::NA_LOOPBACK)>>, "type ::NA_LOOPBACK");
-    static_assert(static_cast<long long>(c596) == static_cast<long long>(::NA_BROADCAST), "value ::NA_BROADCAST");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c596)>, map_t<decltype(::NA_BROADCAST)>>, "type ::NA_BROADCAST");
-    static_assert(static_cast<long long>(c597) == static_cast<long long>(::NA_IP), "value ::NA_IP");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c597)>, map_t<decltype(::NA_IP)>>, "type ::NA_IP");
-    static_assert(static_cast<long long>(c598) == static_cast<long long>(::NA_IPX), "value ::NA_IPX");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c598)>, map_t<decltype(::NA_IPX)>>, "type ::NA_IPX");
-    static_assert(static_cast<long long>(c599) == static_cast<long long>(::NA_BROADCAST_IPX), "value ::NA_BROADCAST_IPX");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c599)>, map_t<decltype(::NA_BROADCAST_IPX)>>, "type ::NA_BROADCAST_IPX");
-    static_assert(static_cast<long long>(c600) == static_cast<long long>(::NS_CLIENT), "value ::NS_CLIENT");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c600)>, map_t<decltype(::NS_CLIENT)>>, "type ::NS_CLIENT");
-    static_assert(static_cast<long long>(c601) == static_cast<long long>(::NS_SERVER), "value ::NS_SERVER");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c601)>, map_t<decltype(::NS_SERVER)>>, "type ::NS_SERVER");
-    static_assert(static_cast<long long>(c602) == static_cast<long long>(::NS_MULTICAST), "value ::NS_MULTICAST");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c602)>, map_t<decltype(::NS_MULTICAST)>>, "type ::NS_MULTICAST");
-    static_assert(static_cast<long long>(c603) == static_cast<long long>(::NS_MAX), "value ::NS_MAX");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c603)>, map_t<decltype(::NS_MAX)>>, "type ::NS_MAX");
-    static_assert(static_cast<long long>(c604) == static_cast<long long>(::FRAG_NORMAL_STREAM), "value ::FRAG_NORMAL_STREAM");
+    static_assert(static_cast<long long>(c591) == static_cast<long long>(::clc_voicedata), "value ::clc_voicedata");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c591)>, map_t<decltype(::clc_voicedata)>>, "type ::clc_voicedata");
+    static_assert(static_cast<long long>(c592) == static_cast<long long>(::clc_hltv), "value ::clc_hltv");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c592)>, map_t<decltype(::clc_hltv)>>, "type ::clc_hltv");
+    static_assert(static_cast<long long>(c593) == static_cast<long long>(::clc_cvarvalue), "value ::clc_cvarvalue");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c593)>, map_t<decltype(::clc_cvarvalue)>>, "type ::clc_cvarvalue");
+    static_assert(static_cast<long long>(c594) == static_cast<long long>(::clc_cvarvalue2), "value ::clc_cvarvalue2");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c594)>, map_t<decltype(::clc_cvarvalue2)>>, "type ::clc_cvarvalue2");
+    static_assert(static_cast<long long>(c595) == static_cast<long long>(::clc_endoflist), "value ::clc_endoflist");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c595)>, map_t<decltype(::clc_endoflist)>>, "type ::clc_endoflist");
+    static_assert(static_cast<long long>(c596) == static_cast<long long>(::NA_UNUSED), "value ::NA_UNUSED");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c596)>, map_t<decltype(::NA_UNUSED)>>, "type ::NA_UNUSED");
+    static_assert(static_cast<long long>(c597) == static_cast<long long>(::NA_LOOPBACK), "value ::NA_LOOPBACK");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c597)>, map_t<decltype(::NA_LOOPBACK)>>, "type ::NA_LOOPBACK");
+    static_assert(static_cast<long long>(c598) == static_cast<long long>(::NA_BROADCAST), "value ::NA_BROADCAST");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c598)>, map_t<decltype(::NA_BROADCAST)>>, "type ::NA_BROADCAST");
+    static_assert(static_cast<long long>(c599) == static_cast<long long>(::NA_IP), "value ::NA_IP");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c599)>, map_t<decltype(::NA_IP)>>, "type ::NA_IP");
+    static_assert(static_cast<long long>(c600) == static_cast<long long>(::NA_IPX), "value ::NA_IPX");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c600)>, map_t<decltype(::NA_IPX)>>, "type ::NA_IPX");
+    static_assert(static_cast<long long>(c601) == static_cast<long long>(::NA_BROADCAST_IPX), "value ::NA_BROADCAST_IPX");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c601)>, map_t<decltype(::NA_BROADCAST_IPX)>>, "type ::NA_BROADCAST_IPX");
+    static_assert(static_cast<long long>(c602) == static_cast<long long>(::NS_CLIENT), "value ::NS_CLIENT");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c602)>, map_t<decltype(::NS_CLIENT)>>, "type ::NS_CLIENT");
+    static_assert(static_cast<long long>(c603) == static_cast<long long>(::NS_SERVER), "value ::NS_SERVER");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c603)>, map_t<decltype(::NS_SERVER)>>, "type ::NS_SERVER");
+    static_assert(static_cast<long long>(c604) == static_cast<long long>(::NS_MULTICAST), "value ::NS_MULTICAST");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c604)>, map_t<decltype(::NS_MULTICAST)>>, "type ::NS_MULTICAST");
+    static_assert(static_cast<long long>(c605) == static_cast<long long>(::NS_MAX), "value ::NS_MAX");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c605)>, map_t<decltype(::NS_MAX)>>, "type ::NS_MAX");
+    static_assert(static_cast<long long>(c606) == static_cast<long long>(::FRAG_NORMAL_STREAM), "value ::FRAG_NORMAL_STREAM");
     static_assert(
-        std::is_same_v<std::underlying_type_t<decltype(c604)>, std::underlying_type_t<decltype(::FRAG_NORMAL_STREAM)>>,
+        std::is_same_v<std::underlying_type_t<decltype(c606)>, std::underlying_type_t<decltype(::FRAG_NORMAL_STREAM)>>,
         "type ::FRAG_NORMAL_STREAM"
     );
-    static_assert(static_cast<long long>(c605) == static_cast<long long>(::FRAG_FILE_STREAM), "value ::FRAG_FILE_STREAM");
+    static_assert(static_cast<long long>(c607) == static_cast<long long>(::FRAG_FILE_STREAM), "value ::FRAG_FILE_STREAM");
     static_assert(
-        std::is_same_v<std::underlying_type_t<decltype(c605)>, std::underlying_type_t<decltype(::FRAG_FILE_STREAM)>>,
+        std::is_same_v<std::underlying_type_t<decltype(c607)>, std::underlying_type_t<decltype(::FRAG_FILE_STREAM)>>,
         "type ::FRAG_FILE_STREAM"
     );
-    static_assert(static_cast<long long>(c606) == static_cast<long long>(::MAX_STREAMS), "value ::MAX_STREAMS");
+    static_assert(static_cast<long long>(c608) == static_cast<long long>(::MAX_STREAMS), "value ::MAX_STREAMS");
     static_assert(
-        std::is_same_v<std::underlying_type_t<decltype(c606)>, std::underlying_type_t<decltype(::MAX_STREAMS)>>,
+        std::is_same_v<std::underlying_type_t<decltype(c608)>, std::underlying_type_t<decltype(::MAX_STREAMS)>>,
         "type ::MAX_STREAMS"
     );
-    static_assert(static_cast<long long>(c607) == static_cast<long long>(::t_sound), "value ::t_sound");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c607)>, map_t<decltype(::t_sound)>>, "type ::t_sound");
-    static_assert(static_cast<long long>(c608) == static_cast<long long>(::t_skin), "value ::t_skin");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c608)>, map_t<decltype(::t_skin)>>, "type ::t_skin");
-    static_assert(static_cast<long long>(c609) == static_cast<long long>(::t_model), "value ::t_model");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c609)>, map_t<decltype(::t_model)>>, "type ::t_model");
-    static_assert(static_cast<long long>(c610) == static_cast<long long>(::t_decal), "value ::t_decal");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c610)>, map_t<decltype(::t_decal)>>, "type ::t_decal");
-    static_assert(static_cast<long long>(c611) == static_cast<long long>(::t_generic), "value ::t_generic");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c611)>, map_t<decltype(::t_generic)>>, "type ::t_generic");
-    static_assert(static_cast<long long>(c612) == static_cast<long long>(::t_eventscript), "value ::t_eventscript");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c612)>, map_t<decltype(::t_eventscript)>>, "type ::t_eventscript");
-    static_assert(static_cast<long long>(c613) == static_cast<long long>(::t_world), "value ::t_world");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c613)>, map_t<decltype(::t_world)>>, "type ::t_world");
-    static_assert(static_cast<long long>(c614) == static_cast<long long>(::rt_unk), "value ::rt_unk");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c614)>, map_t<decltype(::rt_unk)>>, "type ::rt_unk");
-    static_assert(static_cast<long long>(c615) == static_cast<long long>(::rt_max), "value ::rt_max");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c615)>, map_t<decltype(::rt_max)>>, "type ::rt_max");
-    static_assert(static_cast<long long>(c616) == static_cast<long long>(::nitroapi::VT_None), "value ::nitroapi::VT_None");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c616)>, map_t<decltype(::nitroapi::VT_None)>>, "type ::nitroapi::VT_None");
-    static_assert(static_cast<long long>(c617) == static_cast<long long>(::nitroapi::VT_Software), "value ::nitroapi::VT_Software");
+    static_assert(static_cast<long long>(c609) == static_cast<long long>(::t_sound), "value ::t_sound");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c609)>, map_t<decltype(::t_sound)>>, "type ::t_sound");
+    static_assert(static_cast<long long>(c610) == static_cast<long long>(::t_skin), "value ::t_skin");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c610)>, map_t<decltype(::t_skin)>>, "type ::t_skin");
+    static_assert(static_cast<long long>(c611) == static_cast<long long>(::t_model), "value ::t_model");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c611)>, map_t<decltype(::t_model)>>, "type ::t_model");
+    static_assert(static_cast<long long>(c612) == static_cast<long long>(::t_decal), "value ::t_decal");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c612)>, map_t<decltype(::t_decal)>>, "type ::t_decal");
+    static_assert(static_cast<long long>(c613) == static_cast<long long>(::t_generic), "value ::t_generic");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c613)>, map_t<decltype(::t_generic)>>, "type ::t_generic");
+    static_assert(static_cast<long long>(c614) == static_cast<long long>(::t_eventscript), "value ::t_eventscript");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c614)>, map_t<decltype(::t_eventscript)>>, "type ::t_eventscript");
+    static_assert(static_cast<long long>(c615) == static_cast<long long>(::t_world), "value ::t_world");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c615)>, map_t<decltype(::t_world)>>, "type ::t_world");
+    static_assert(static_cast<long long>(c616) == static_cast<long long>(::rt_unk), "value ::rt_unk");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c616)>, map_t<decltype(::rt_unk)>>, "type ::rt_unk");
+    static_assert(static_cast<long long>(c617) == static_cast<long long>(::rt_max), "value ::rt_max");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c617)>, map_t<decltype(::rt_max)>>, "type ::rt_max");
+    static_assert(static_cast<long long>(c618) == static_cast<long long>(::nitroapi::VT_None), "value ::nitroapi::VT_None");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c618)>, map_t<decltype(::nitroapi::VT_None)>>, "type ::nitroapi::VT_None");
+    static_assert(static_cast<long long>(c619) == static_cast<long long>(::nitroapi::VT_Software), "value ::nitroapi::VT_Software");
     static_assert(
-        std::is_same_v<std::remove_const_t<decltype(c617)>, map_t<decltype(::nitroapi::VT_Software)>>,
+        std::is_same_v<std::remove_const_t<decltype(c619)>, map_t<decltype(::nitroapi::VT_Software)>>,
         "type ::nitroapi::VT_Software"
     );
-    static_assert(static_cast<long long>(c618) == static_cast<long long>(::nitroapi::VT_OpenGL), "value ::nitroapi::VT_OpenGL");
+    static_assert(static_cast<long long>(c620) == static_cast<long long>(::nitroapi::VT_OpenGL), "value ::nitroapi::VT_OpenGL");
     static_assert(
-        std::is_same_v<std::remove_const_t<decltype(c618)>, map_t<decltype(::nitroapi::VT_OpenGL)>>,
+        std::is_same_v<std::remove_const_t<decltype(c620)>, map_t<decltype(::nitroapi::VT_OpenGL)>>,
         "type ::nitroapi::VT_OpenGL"
     );
-    static_assert(static_cast<long long>(c619) == static_cast<long long>(::nitroapi::VT_Direct3D), "value ::nitroapi::VT_Direct3D");
+    static_assert(static_cast<long long>(c621) == static_cast<long long>(::nitroapi::VT_Direct3D), "value ::nitroapi::VT_Direct3D");
     static_assert(
-        std::is_same_v<std::remove_const_t<decltype(c619)>, map_t<decltype(::nitroapi::VT_Direct3D)>>,
+        std::is_same_v<std::remove_const_t<decltype(c621)>, map_t<decltype(::nitroapi::VT_Direct3D)>>,
         "type ::nitroapi::VT_Direct3D"
     );
-    static_assert(static_cast<long long>(c620) == static_cast<long long>(::kRenderNormal), "value ::kRenderNormal");
+    static_assert(static_cast<long long>(c622) == static_cast<long long>(::kRenderNormal), "value ::kRenderNormal");
     static_assert(
-        std::is_same_v<std::underlying_type_t<decltype(c620)>, std::underlying_type_t<decltype(::kRenderNormal)>>,
+        std::is_same_v<std::underlying_type_t<decltype(c622)>, std::underlying_type_t<decltype(::kRenderNormal)>>,
         "type ::kRenderNormal"
     );
-    static_assert(static_cast<long long>(c621) == static_cast<long long>(::kRenderTransColor), "value ::kRenderTransColor");
+    static_assert(static_cast<long long>(c623) == static_cast<long long>(::kRenderTransColor), "value ::kRenderTransColor");
     static_assert(
-        std::is_same_v<std::underlying_type_t<decltype(c621)>, std::underlying_type_t<decltype(::kRenderTransColor)>>,
+        std::is_same_v<std::underlying_type_t<decltype(c623)>, std::underlying_type_t<decltype(::kRenderTransColor)>>,
         "type ::kRenderTransColor"
     );
-    static_assert(static_cast<long long>(c622) == static_cast<long long>(::kRenderTransTexture), "value ::kRenderTransTexture");
+    static_assert(static_cast<long long>(c624) == static_cast<long long>(::kRenderTransTexture), "value ::kRenderTransTexture");
     static_assert(
-        std::is_same_v<std::underlying_type_t<decltype(c622)>, std::underlying_type_t<decltype(::kRenderTransTexture)>>,
+        std::is_same_v<std::underlying_type_t<decltype(c624)>, std::underlying_type_t<decltype(::kRenderTransTexture)>>,
         "type ::kRenderTransTexture"
     );
-    static_assert(static_cast<long long>(c623) == static_cast<long long>(::kRenderGlow), "value ::kRenderGlow");
+    static_assert(static_cast<long long>(c625) == static_cast<long long>(::kRenderGlow), "value ::kRenderGlow");
     static_assert(
-        std::is_same_v<std::underlying_type_t<decltype(c623)>, std::underlying_type_t<decltype(::kRenderGlow)>>,
+        std::is_same_v<std::underlying_type_t<decltype(c625)>, std::underlying_type_t<decltype(::kRenderGlow)>>,
         "type ::kRenderGlow"
     );
-    static_assert(static_cast<long long>(c624) == static_cast<long long>(::kRenderTransAlpha), "value ::kRenderTransAlpha");
+    static_assert(static_cast<long long>(c626) == static_cast<long long>(::kRenderTransAlpha), "value ::kRenderTransAlpha");
     static_assert(
-        std::is_same_v<std::underlying_type_t<decltype(c624)>, std::underlying_type_t<decltype(::kRenderTransAlpha)>>,
+        std::is_same_v<std::underlying_type_t<decltype(c626)>, std::underlying_type_t<decltype(::kRenderTransAlpha)>>,
         "type ::kRenderTransAlpha"
     );
-    static_assert(static_cast<long long>(c625) == static_cast<long long>(::kRenderTransAdd), "value ::kRenderTransAdd");
+    static_assert(static_cast<long long>(c627) == static_cast<long long>(::kRenderTransAdd), "value ::kRenderTransAdd");
     static_assert(
-        std::is_same_v<std::underlying_type_t<decltype(c625)>, std::underlying_type_t<decltype(::kRenderTransAdd)>>,
+        std::is_same_v<std::underlying_type_t<decltype(c627)>, std::underlying_type_t<decltype(::kRenderTransAdd)>>,
         "type ::kRenderTransAdd"
     );
-    static_assert(static_cast<long long>(c626) == static_cast<long long>(::kRenderFxNone), "value ::kRenderFxNone");
+    static_assert(static_cast<long long>(c628) == static_cast<long long>(::kRenderFxNone), "value ::kRenderFxNone");
     static_assert(
-        std::is_same_v<std::underlying_type_t<decltype(c626)>, std::underlying_type_t<decltype(::kRenderFxNone)>>,
+        std::is_same_v<std::underlying_type_t<decltype(c628)>, std::underlying_type_t<decltype(::kRenderFxNone)>>,
         "type ::kRenderFxNone"
     );
-    static_assert(static_cast<long long>(c627) == static_cast<long long>(::kRenderFxPulseSlow), "value ::kRenderFxPulseSlow");
+    static_assert(static_cast<long long>(c629) == static_cast<long long>(::kRenderFxPulseSlow), "value ::kRenderFxPulseSlow");
     static_assert(
-        std::is_same_v<std::underlying_type_t<decltype(c627)>, std::underlying_type_t<decltype(::kRenderFxPulseSlow)>>,
+        std::is_same_v<std::underlying_type_t<decltype(c629)>, std::underlying_type_t<decltype(::kRenderFxPulseSlow)>>,
         "type ::kRenderFxPulseSlow"
     );
-    static_assert(static_cast<long long>(c628) == static_cast<long long>(::kRenderFxPulseFast), "value ::kRenderFxPulseFast");
+    static_assert(static_cast<long long>(c630) == static_cast<long long>(::kRenderFxPulseFast), "value ::kRenderFxPulseFast");
     static_assert(
-        std::is_same_v<std::underlying_type_t<decltype(c628)>, std::underlying_type_t<decltype(::kRenderFxPulseFast)>>,
+        std::is_same_v<std::underlying_type_t<decltype(c630)>, std::underlying_type_t<decltype(::kRenderFxPulseFast)>>,
         "type ::kRenderFxPulseFast"
     );
-    static_assert(static_cast<long long>(c629) == static_cast<long long>(::kRenderFxPulseSlowWide), "value ::kRenderFxPulseSlowWide");
+    static_assert(static_cast<long long>(c631) == static_cast<long long>(::kRenderFxPulseSlowWide), "value ::kRenderFxPulseSlowWide");
     static_assert(
-        std::is_same_v<std::underlying_type_t<decltype(c629)>, std::underlying_type_t<decltype(::kRenderFxPulseSlowWide)>>,
+        std::is_same_v<std::underlying_type_t<decltype(c631)>, std::underlying_type_t<decltype(::kRenderFxPulseSlowWide)>>,
         "type ::kRenderFxPulseSlowWide"
     );
-    static_assert(static_cast<long long>(c630) == static_cast<long long>(::kRenderFxPulseFastWide), "value ::kRenderFxPulseFastWide");
+    static_assert(static_cast<long long>(c632) == static_cast<long long>(::kRenderFxPulseFastWide), "value ::kRenderFxPulseFastWide");
     static_assert(
-        std::is_same_v<std::underlying_type_t<decltype(c630)>, std::underlying_type_t<decltype(::kRenderFxPulseFastWide)>>,
+        std::is_same_v<std::underlying_type_t<decltype(c632)>, std::underlying_type_t<decltype(::kRenderFxPulseFastWide)>>,
         "type ::kRenderFxPulseFastWide"
     );
-    static_assert(static_cast<long long>(c631) == static_cast<long long>(::kRenderFxFadeSlow), "value ::kRenderFxFadeSlow");
+    static_assert(static_cast<long long>(c633) == static_cast<long long>(::kRenderFxFadeSlow), "value ::kRenderFxFadeSlow");
     static_assert(
-        std::is_same_v<std::underlying_type_t<decltype(c631)>, std::underlying_type_t<decltype(::kRenderFxFadeSlow)>>,
+        std::is_same_v<std::underlying_type_t<decltype(c633)>, std::underlying_type_t<decltype(::kRenderFxFadeSlow)>>,
         "type ::kRenderFxFadeSlow"
     );
-    static_assert(static_cast<long long>(c632) == static_cast<long long>(::kRenderFxFadeFast), "value ::kRenderFxFadeFast");
+    static_assert(static_cast<long long>(c634) == static_cast<long long>(::kRenderFxFadeFast), "value ::kRenderFxFadeFast");
     static_assert(
-        std::is_same_v<std::underlying_type_t<decltype(c632)>, std::underlying_type_t<decltype(::kRenderFxFadeFast)>>,
+        std::is_same_v<std::underlying_type_t<decltype(c634)>, std::underlying_type_t<decltype(::kRenderFxFadeFast)>>,
         "type ::kRenderFxFadeFast"
     );
-    static_assert(static_cast<long long>(c633) == static_cast<long long>(::kRenderFxSolidSlow), "value ::kRenderFxSolidSlow");
+    static_assert(static_cast<long long>(c635) == static_cast<long long>(::kRenderFxSolidSlow), "value ::kRenderFxSolidSlow");
     static_assert(
-        std::is_same_v<std::underlying_type_t<decltype(c633)>, std::underlying_type_t<decltype(::kRenderFxSolidSlow)>>,
+        std::is_same_v<std::underlying_type_t<decltype(c635)>, std::underlying_type_t<decltype(::kRenderFxSolidSlow)>>,
         "type ::kRenderFxSolidSlow"
     );
-    static_assert(static_cast<long long>(c634) == static_cast<long long>(::kRenderFxSolidFast), "value ::kRenderFxSolidFast");
+    static_assert(static_cast<long long>(c636) == static_cast<long long>(::kRenderFxSolidFast), "value ::kRenderFxSolidFast");
     static_assert(
-        std::is_same_v<std::underlying_type_t<decltype(c634)>, std::underlying_type_t<decltype(::kRenderFxSolidFast)>>,
+        std::is_same_v<std::underlying_type_t<decltype(c636)>, std::underlying_type_t<decltype(::kRenderFxSolidFast)>>,
         "type ::kRenderFxSolidFast"
     );
-    static_assert(static_cast<long long>(c635) == static_cast<long long>(::kRenderFxStrobeSlow), "value ::kRenderFxStrobeSlow");
+    static_assert(static_cast<long long>(c637) == static_cast<long long>(::kRenderFxStrobeSlow), "value ::kRenderFxStrobeSlow");
     static_assert(
-        std::is_same_v<std::underlying_type_t<decltype(c635)>, std::underlying_type_t<decltype(::kRenderFxStrobeSlow)>>,
+        std::is_same_v<std::underlying_type_t<decltype(c637)>, std::underlying_type_t<decltype(::kRenderFxStrobeSlow)>>,
         "type ::kRenderFxStrobeSlow"
     );
-    static_assert(static_cast<long long>(c636) == static_cast<long long>(::kRenderFxStrobeFast), "value ::kRenderFxStrobeFast");
+    static_assert(static_cast<long long>(c638) == static_cast<long long>(::kRenderFxStrobeFast), "value ::kRenderFxStrobeFast");
     static_assert(
-        std::is_same_v<std::underlying_type_t<decltype(c636)>, std::underlying_type_t<decltype(::kRenderFxStrobeFast)>>,
+        std::is_same_v<std::underlying_type_t<decltype(c638)>, std::underlying_type_t<decltype(::kRenderFxStrobeFast)>>,
         "type ::kRenderFxStrobeFast"
     );
-    static_assert(static_cast<long long>(c637) == static_cast<long long>(::kRenderFxStrobeFaster), "value ::kRenderFxStrobeFaster");
+    static_assert(static_cast<long long>(c639) == static_cast<long long>(::kRenderFxStrobeFaster), "value ::kRenderFxStrobeFaster");
     static_assert(
-        std::is_same_v<std::underlying_type_t<decltype(c637)>, std::underlying_type_t<decltype(::kRenderFxStrobeFaster)>>,
+        std::is_same_v<std::underlying_type_t<decltype(c639)>, std::underlying_type_t<decltype(::kRenderFxStrobeFaster)>>,
         "type ::kRenderFxStrobeFaster"
     );
-    static_assert(static_cast<long long>(c638) == static_cast<long long>(::kRenderFxFlickerSlow), "value ::kRenderFxFlickerSlow");
+    static_assert(static_cast<long long>(c640) == static_cast<long long>(::kRenderFxFlickerSlow), "value ::kRenderFxFlickerSlow");
     static_assert(
-        std::is_same_v<std::underlying_type_t<decltype(c638)>, std::underlying_type_t<decltype(::kRenderFxFlickerSlow)>>,
+        std::is_same_v<std::underlying_type_t<decltype(c640)>, std::underlying_type_t<decltype(::kRenderFxFlickerSlow)>>,
         "type ::kRenderFxFlickerSlow"
     );
-    static_assert(static_cast<long long>(c639) == static_cast<long long>(::kRenderFxFlickerFast), "value ::kRenderFxFlickerFast");
+    static_assert(static_cast<long long>(c641) == static_cast<long long>(::kRenderFxFlickerFast), "value ::kRenderFxFlickerFast");
     static_assert(
-        std::is_same_v<std::underlying_type_t<decltype(c639)>, std::underlying_type_t<decltype(::kRenderFxFlickerFast)>>,
+        std::is_same_v<std::underlying_type_t<decltype(c641)>, std::underlying_type_t<decltype(::kRenderFxFlickerFast)>>,
         "type ::kRenderFxFlickerFast"
     );
-    static_assert(static_cast<long long>(c640) == static_cast<long long>(::kRenderFxNoDissipation), "value ::kRenderFxNoDissipation");
+    static_assert(static_cast<long long>(c642) == static_cast<long long>(::kRenderFxNoDissipation), "value ::kRenderFxNoDissipation");
     static_assert(
-        std::is_same_v<std::underlying_type_t<decltype(c640)>, std::underlying_type_t<decltype(::kRenderFxNoDissipation)>>,
+        std::is_same_v<std::underlying_type_t<decltype(c642)>, std::underlying_type_t<decltype(::kRenderFxNoDissipation)>>,
         "type ::kRenderFxNoDissipation"
     );
-    static_assert(static_cast<long long>(c641) == static_cast<long long>(::kRenderFxDistort), "value ::kRenderFxDistort");
+    static_assert(static_cast<long long>(c643) == static_cast<long long>(::kRenderFxDistort), "value ::kRenderFxDistort");
     static_assert(
-        std::is_same_v<std::underlying_type_t<decltype(c641)>, std::underlying_type_t<decltype(::kRenderFxDistort)>>,
+        std::is_same_v<std::underlying_type_t<decltype(c643)>, std::underlying_type_t<decltype(::kRenderFxDistort)>>,
         "type ::kRenderFxDistort"
     );
-    static_assert(static_cast<long long>(c642) == static_cast<long long>(::kRenderFxHologram), "value ::kRenderFxHologram");
+    static_assert(static_cast<long long>(c644) == static_cast<long long>(::kRenderFxHologram), "value ::kRenderFxHologram");
     static_assert(
-        std::is_same_v<std::underlying_type_t<decltype(c642)>, std::underlying_type_t<decltype(::kRenderFxHologram)>>,
+        std::is_same_v<std::underlying_type_t<decltype(c644)>, std::underlying_type_t<decltype(::kRenderFxHologram)>>,
         "type ::kRenderFxHologram"
     );
-    static_assert(static_cast<long long>(c643) == static_cast<long long>(::kRenderFxDeadPlayer), "value ::kRenderFxDeadPlayer");
+    static_assert(static_cast<long long>(c645) == static_cast<long long>(::kRenderFxDeadPlayer), "value ::kRenderFxDeadPlayer");
     static_assert(
-        std::is_same_v<std::underlying_type_t<decltype(c643)>, std::underlying_type_t<decltype(::kRenderFxDeadPlayer)>>,
+        std::is_same_v<std::underlying_type_t<decltype(c645)>, std::underlying_type_t<decltype(::kRenderFxDeadPlayer)>>,
         "type ::kRenderFxDeadPlayer"
     );
-    static_assert(static_cast<long long>(c644) == static_cast<long long>(::kRenderFxExplode), "value ::kRenderFxExplode");
+    static_assert(static_cast<long long>(c646) == static_cast<long long>(::kRenderFxExplode), "value ::kRenderFxExplode");
     static_assert(
-        std::is_same_v<std::underlying_type_t<decltype(c644)>, std::underlying_type_t<decltype(::kRenderFxExplode)>>,
+        std::is_same_v<std::underlying_type_t<decltype(c646)>, std::underlying_type_t<decltype(::kRenderFxExplode)>>,
         "type ::kRenderFxExplode"
     );
-    static_assert(static_cast<long long>(c645) == static_cast<long long>(::kRenderFxGlowShell), "value ::kRenderFxGlowShell");
+    static_assert(static_cast<long long>(c647) == static_cast<long long>(::kRenderFxGlowShell), "value ::kRenderFxGlowShell");
     static_assert(
-        std::is_same_v<std::underlying_type_t<decltype(c645)>, std::underlying_type_t<decltype(::kRenderFxGlowShell)>>,
+        std::is_same_v<std::underlying_type_t<decltype(c647)>, std::underlying_type_t<decltype(::kRenderFxGlowShell)>>,
         "type ::kRenderFxGlowShell"
     );
-    static_assert(static_cast<long long>(c646) == static_cast<long long>(::kRenderFxClampMinScale), "value ::kRenderFxClampMinScale");
+    static_assert(static_cast<long long>(c648) == static_cast<long long>(::kRenderFxClampMinScale), "value ::kRenderFxClampMinScale");
     static_assert(
-        std::is_same_v<std::underlying_type_t<decltype(c646)>, std::underlying_type_t<decltype(::kRenderFxClampMinScale)>>,
+        std::is_same_v<std::underlying_type_t<decltype(c648)>, std::underlying_type_t<decltype(::kRenderFxClampMinScale)>>,
         "type ::kRenderFxClampMinScale"
     );
-    static_assert(static_cast<long long>(c647) == static_cast<long long>(::kRenderFxLightMultiplier), "value ::kRenderFxLightMultiplier");
+    static_assert(static_cast<long long>(c649) == static_cast<long long>(::kRenderFxLightMultiplier), "value ::kRenderFxLightMultiplier");
     static_assert(
-        std::is_same_v<std::underlying_type_t<decltype(c647)>, std::underlying_type_t<decltype(::kRenderFxLightMultiplier)>>,
+        std::is_same_v<std::underlying_type_t<decltype(c649)>, std::underlying_type_t<decltype(::kRenderFxLightMultiplier)>>,
         "type ::kRenderFxLightMultiplier"
     );
-    static_assert(static_cast<long long>(c648) == static_cast<long long>(::SPR_SINGLE), "value ::SPR_SINGLE");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c648)>, map_t<decltype(::SPR_SINGLE)>>, "type ::SPR_SINGLE");
-    static_assert(static_cast<long long>(c649) == static_cast<long long>(::SPR_GROUP), "value ::SPR_GROUP");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c649)>, map_t<decltype(::SPR_GROUP)>>, "type ::SPR_GROUP");
-    static_assert(static_cast<long long>(c650) == static_cast<long long>(::SPR_ANGLED), "value ::SPR_ANGLED");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c650)>, map_t<decltype(::SPR_ANGLED)>>, "type ::SPR_ANGLED");
-    static_assert(static_cast<long long>(c651) == static_cast<long long>(::ST_SYNC), "value ::ST_SYNC");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c651)>, map_t<decltype(::ST_SYNC)>>, "type ::ST_SYNC");
-    static_assert(static_cast<long long>(c652) == static_cast<long long>(::ST_RAND), "value ::ST_RAND");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c652)>, map_t<decltype(::ST_RAND)>>, "type ::ST_RAND");
-    static_assert(static_cast<long long>(c653) == static_cast<long long>(::key_game), "value ::key_game");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c653)>, map_t<decltype(::key_game)>>, "type ::key_game");
-    static_assert(static_cast<long long>(c654) == static_cast<long long>(::key_message), "value ::key_message");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c654)>, map_t<decltype(::key_message)>>, "type ::key_message");
-    static_assert(static_cast<long long>(c655) == static_cast<long long>(::key_menu), "value ::key_menu");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c655)>, map_t<decltype(::key_menu)>>, "type ::key_menu");
-    static_assert(static_cast<long long>(c656) == static_cast<long long>(::at_notice), "value ::at_notice");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c656)>, map_t<decltype(::at_notice)>>, "type ::at_notice");
-    static_assert(static_cast<long long>(c657) == static_cast<long long>(::at_console), "value ::at_console");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c657)>, map_t<decltype(::at_console)>>, "type ::at_console");
-    static_assert(static_cast<long long>(c658) == static_cast<long long>(::at_aiconsole), "value ::at_aiconsole");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c658)>, map_t<decltype(::at_aiconsole)>>, "type ::at_aiconsole");
-    static_assert(static_cast<long long>(c659) == static_cast<long long>(::at_warning), "value ::at_warning");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c659)>, map_t<decltype(::at_warning)>>, "type ::at_warning");
-    static_assert(static_cast<long long>(c660) == static_cast<long long>(::at_error), "value ::at_error");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c660)>, map_t<decltype(::at_error)>>, "type ::at_error");
-    static_assert(static_cast<long long>(c661) == static_cast<long long>(::at_logged), "value ::at_logged");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c661)>, map_t<decltype(::at_logged)>>, "type ::at_logged");
-    static_assert(static_cast<long long>(c662) == static_cast<long long>(::force_exactfile), "value ::force_exactfile");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c662)>, map_t<decltype(::force_exactfile)>>, "type ::force_exactfile");
-    static_assert(static_cast<long long>(c663) == static_cast<long long>(::force_model_samebounds), "value ::force_model_samebounds");
+    static_assert(static_cast<long long>(c650) == static_cast<long long>(::SPR_SINGLE), "value ::SPR_SINGLE");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c650)>, map_t<decltype(::SPR_SINGLE)>>, "type ::SPR_SINGLE");
+    static_assert(static_cast<long long>(c651) == static_cast<long long>(::SPR_GROUP), "value ::SPR_GROUP");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c651)>, map_t<decltype(::SPR_GROUP)>>, "type ::SPR_GROUP");
+    static_assert(static_cast<long long>(c652) == static_cast<long long>(::SPR_ANGLED), "value ::SPR_ANGLED");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c652)>, map_t<decltype(::SPR_ANGLED)>>, "type ::SPR_ANGLED");
+    static_assert(static_cast<long long>(c653) == static_cast<long long>(::ST_SYNC), "value ::ST_SYNC");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c653)>, map_t<decltype(::ST_SYNC)>>, "type ::ST_SYNC");
+    static_assert(static_cast<long long>(c654) == static_cast<long long>(::ST_RAND), "value ::ST_RAND");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c654)>, map_t<decltype(::ST_RAND)>>, "type ::ST_RAND");
+    static_assert(static_cast<long long>(c655) == static_cast<long long>(::key_game), "value ::key_game");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c655)>, map_t<decltype(::key_game)>>, "type ::key_game");
+    static_assert(static_cast<long long>(c656) == static_cast<long long>(::key_message), "value ::key_message");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c656)>, map_t<decltype(::key_message)>>, "type ::key_message");
+    static_assert(static_cast<long long>(c657) == static_cast<long long>(::key_menu), "value ::key_menu");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c657)>, map_t<decltype(::key_menu)>>, "type ::key_menu");
+    static_assert(static_cast<long long>(c658) == static_cast<long long>(::at_notice), "value ::at_notice");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c658)>, map_t<decltype(::at_notice)>>, "type ::at_notice");
+    static_assert(static_cast<long long>(c659) == static_cast<long long>(::at_console), "value ::at_console");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c659)>, map_t<decltype(::at_console)>>, "type ::at_console");
+    static_assert(static_cast<long long>(c660) == static_cast<long long>(::at_aiconsole), "value ::at_aiconsole");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c660)>, map_t<decltype(::at_aiconsole)>>, "type ::at_aiconsole");
+    static_assert(static_cast<long long>(c661) == static_cast<long long>(::at_warning), "value ::at_warning");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c661)>, map_t<decltype(::at_warning)>>, "type ::at_warning");
+    static_assert(static_cast<long long>(c662) == static_cast<long long>(::at_error), "value ::at_error");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c662)>, map_t<decltype(::at_error)>>, "type ::at_error");
+    static_assert(static_cast<long long>(c663) == static_cast<long long>(::at_logged), "value ::at_logged");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c663)>, map_t<decltype(::at_logged)>>, "type ::at_logged");
+    static_assert(static_cast<long long>(c664) == static_cast<long long>(::force_exactfile), "value ::force_exactfile");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c664)>, map_t<decltype(::force_exactfile)>>, "type ::force_exactfile");
+    static_assert(static_cast<long long>(c665) == static_cast<long long>(::force_model_samebounds), "value ::force_model_samebounds");
     static_assert(
-        std::is_same_v<std::remove_const_t<decltype(c663)>, map_t<decltype(::force_model_samebounds)>>,
+        std::is_same_v<std::remove_const_t<decltype(c665)>, map_t<decltype(::force_model_samebounds)>>,
         "type ::force_model_samebounds"
     );
-    static_assert(static_cast<long long>(c664) == static_cast<long long>(::force_model_specifybounds), "value ::force_model_specifybounds");
+    static_assert(static_cast<long long>(c666) == static_cast<long long>(::force_model_specifybounds), "value ::force_model_specifybounds");
     static_assert(
-        std::is_same_v<std::remove_const_t<decltype(c664)>, map_t<decltype(::force_model_specifybounds)>>,
+        std::is_same_v<std::remove_const_t<decltype(c666)>, map_t<decltype(::force_model_specifybounds)>>,
         "type ::force_model_specifybounds"
     );
     static_assert(
-        static_cast<long long>(c665) == static_cast<long long>(::force_model_specifybounds_if_avail),
+        static_cast<long long>(c667) == static_cast<long long>(::force_model_specifybounds_if_avail),
         "value ::force_model_specifybounds_if_avail"
     );
     static_assert(
-        std::is_same_v<std::remove_const_t<decltype(c665)>, map_t<decltype(::force_model_specifybounds_if_avail)>>,
+        std::is_same_v<std::remove_const_t<decltype(c667)>, map_t<decltype(::force_model_specifybounds_if_avail)>>,
         "type ::force_model_specifybounds_if_avail"
     );
-    static_assert(static_cast<long long>(c666) == static_cast<long long>(::print_console), "value ::print_console");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c666)>, map_t<decltype(::print_console)>>, "type ::print_console");
-    static_assert(static_cast<long long>(c667) == static_cast<long long>(::print_center), "value ::print_center");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c667)>, map_t<decltype(::print_center)>>, "type ::print_center");
-    static_assert(static_cast<long long>(c668) == static_cast<long long>(::print_chat), "value ::print_chat");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c668)>, map_t<decltype(::print_chat)>>, "type ::print_chat");
-    static_assert(static_cast<long long>(c669) == static_cast<long long>(::TRI_FRONT), "value ::TRI_FRONT");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c669)>, map_t<decltype(::TRI_FRONT)>>, "type ::TRI_FRONT");
-    static_assert(static_cast<long long>(c670) == static_cast<long long>(::TRI_NONE), "value ::TRI_NONE");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c670)>, map_t<decltype(::TRI_NONE)>>, "type ::TRI_NONE");
-    static_assert(static_cast<long long>(c671) == static_cast<long long>(::MicrophoneVolume), "value ::MicrophoneVolume");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c671)>, map_t<decltype(::MicrophoneVolume)>>, "type ::MicrophoneVolume");
-    static_assert(static_cast<long long>(c672) == static_cast<long long>(::OtherSpeakerScale), "value ::OtherSpeakerScale");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c672)>, map_t<decltype(::OtherSpeakerScale)>>, "type ::OtherSpeakerScale");
-    static_assert(static_cast<long long>(c673) == static_cast<long long>(::MicBoost), "value ::MicBoost");
-    static_assert(std::is_same_v<std::remove_const_t<decltype(c673)>, map_t<decltype(::MicBoost)>>, "type ::MicBoost");
+    static_assert(static_cast<long long>(c668) == static_cast<long long>(::print_console), "value ::print_console");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c668)>, map_t<decltype(::print_console)>>, "type ::print_console");
+    static_assert(static_cast<long long>(c669) == static_cast<long long>(::print_center), "value ::print_center");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c669)>, map_t<decltype(::print_center)>>, "type ::print_center");
+    static_assert(static_cast<long long>(c670) == static_cast<long long>(::print_chat), "value ::print_chat");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c670)>, map_t<decltype(::print_chat)>>, "type ::print_chat");
+    static_assert(static_cast<long long>(c671) == static_cast<long long>(::TRI_FRONT), "value ::TRI_FRONT");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c671)>, map_t<decltype(::TRI_FRONT)>>, "type ::TRI_FRONT");
+    static_assert(static_cast<long long>(c672) == static_cast<long long>(::TRI_NONE), "value ::TRI_NONE");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c672)>, map_t<decltype(::TRI_NONE)>>, "type ::TRI_NONE");
+    static_assert(static_cast<long long>(c673) == static_cast<long long>(::MicrophoneVolume), "value ::MicrophoneVolume");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c673)>, map_t<decltype(::MicrophoneVolume)>>, "type ::MicrophoneVolume");
+    static_assert(static_cast<long long>(c674) == static_cast<long long>(::OtherSpeakerScale), "value ::OtherSpeakerScale");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c674)>, map_t<decltype(::OtherSpeakerScale)>>, "type ::OtherSpeakerScale");
+    static_assert(static_cast<long long>(c675) == static_cast<long long>(::MicBoost), "value ::MicBoost");
+    static_assert(std::is_same_v<std::remove_const_t<decltype(c675)>, map_t<decltype(::MicBoost)>>, "type ::MicBoost");
     struct p0 : ::CHudAmmoSecondary
     {
         static_assert(
-            static_cast<long long>(c674) == static_cast<long long>(MAX_SEC_AMMO_VALUES),
+            static_cast<long long>(c676) == static_cast<long long>(MAX_SEC_AMMO_VALUES),
             "value ::CHudAmmoSecondary::MAX_SEC_AMMO_VALUES"
         );
         static_assert(
-            std::is_same_v<std::underlying_type_t<decltype(c674)>, std::underlying_type_t<decltype(MAX_SEC_AMMO_VALUES)>>,
+            std::is_same_v<std::underlying_type_t<decltype(c676)>, std::underlying_type_t<decltype(MAX_SEC_AMMO_VALUES)>>,
             "type ::CHudAmmoSecondary::MAX_SEC_AMMO_VALUES"
         );
     };
     struct p1 : ::CHudMessage
     {
-        static_assert(static_cast<long long>(c675) == static_cast<long long>(MESSAGE_ARG_LEN), "value ::CHudMessage::MESSAGE_ARG_LEN");
+        static_assert(static_cast<long long>(c677) == static_cast<long long>(MESSAGE_ARG_LEN), "value ::CHudMessage::MESSAGE_ARG_LEN");
         static_assert(
-            std::is_same_v<std::underlying_type_t<decltype(c675)>, std::underlying_type_t<decltype(MESSAGE_ARG_LEN)>>,
+            std::is_same_v<std::underlying_type_t<decltype(c677)>, std::underlying_type_t<decltype(MESSAGE_ARG_LEN)>>,
             "type ::CHudMessage::MESSAGE_ARG_LEN"
         );
-        static_assert(static_cast<long long>(c676) == static_cast<long long>(MAX_MESSAGE_ARGS), "value ::CHudMessage::MAX_MESSAGE_ARGS");
+        static_assert(static_cast<long long>(c678) == static_cast<long long>(MAX_MESSAGE_ARGS), "value ::CHudMessage::MAX_MESSAGE_ARGS");
         static_assert(
-            std::is_same_v<std::underlying_type_t<decltype(c676)>, std::underlying_type_t<decltype(MAX_MESSAGE_ARGS)>>,
+            std::is_same_v<std::underlying_type_t<decltype(c678)>, std::underlying_type_t<decltype(MAX_MESSAGE_ARGS)>>,
             "type ::CHudMessage::MAX_MESSAGE_ARGS"
         );
     };
     struct p2 : ::CHudStatusBar
     {
         static_assert(
-            static_cast<long long>(c677) == static_cast<long long>(MAX_STATUSTEXT_LENGTH),
+            static_cast<long long>(c679) == static_cast<long long>(MAX_STATUSTEXT_LENGTH),
             "value ::CHudStatusBar::MAX_STATUSTEXT_LENGTH"
         );
         static_assert(
-            std::is_same_v<std::underlying_type_t<decltype(c677)>, std::underlying_type_t<decltype(MAX_STATUSTEXT_LENGTH)>>,
+            std::is_same_v<std::underlying_type_t<decltype(c679)>, std::underlying_type_t<decltype(MAX_STATUSTEXT_LENGTH)>>,
             "type ::CHudStatusBar::MAX_STATUSTEXT_LENGTH"
         );
         static_assert(
-            static_cast<long long>(c678) == static_cast<long long>(MAX_STATUSBAR_VALUES),
+            static_cast<long long>(c680) == static_cast<long long>(MAX_STATUSBAR_VALUES),
             "value ::CHudStatusBar::MAX_STATUSBAR_VALUES"
         );
         static_assert(
-            std::is_same_v<std::underlying_type_t<decltype(c678)>, std::underlying_type_t<decltype(MAX_STATUSBAR_VALUES)>>,
+            std::is_same_v<std::underlying_type_t<decltype(c680)>, std::underlying_type_t<decltype(MAX_STATUSBAR_VALUES)>>,
             "type ::CHudStatusBar::MAX_STATUSBAR_VALUES"
         );
         static_assert(
-            static_cast<long long>(c679) == static_cast<long long>(MAX_STATUSBAR_LINES),
+            static_cast<long long>(c681) == static_cast<long long>(MAX_STATUSBAR_LINES),
             "value ::CHudStatusBar::MAX_STATUSBAR_LINES"
         );
         static_assert(
-            std::is_same_v<std::underlying_type_t<decltype(c679)>, std::underlying_type_t<decltype(MAX_STATUSBAR_LINES)>>,
+            std::is_same_v<std::underlying_type_t<decltype(c681)>, std::underlying_type_t<decltype(MAX_STATUSBAR_LINES)>>,
             "type ::CHudStatusBar::MAX_STATUSBAR_LINES"
         );
     };
     struct p3 : ::CHudStatusIcons
     {
         static_assert(
-            static_cast<long long>(c680) == static_cast<long long>(MAX_ICONSPRITENAME_LENGTH),
+            static_cast<long long>(c682) == static_cast<long long>(MAX_ICONSPRITENAME_LENGTH),
             "value ::CHudStatusIcons::MAX_ICONSPRITENAME_LENGTH"
         );
         static_assert(
-            std::is_same_v<std::underlying_type_t<decltype(c680)>, std::underlying_type_t<decltype(MAX_ICONSPRITENAME_LENGTH)>>,
+            std::is_same_v<std::underlying_type_t<decltype(c682)>, std::underlying_type_t<decltype(MAX_ICONSPRITENAME_LENGTH)>>,
             "type ::CHudStatusIcons::MAX_ICONSPRITENAME_LENGTH"
         );
-        static_assert(static_cast<long long>(c681) == static_cast<long long>(MAX_ICONSPRITES), "value ::CHudStatusIcons::MAX_ICONSPRITES");
+        static_assert(static_cast<long long>(c683) == static_cast<long long>(MAX_ICONSPRITES), "value ::CHudStatusIcons::MAX_ICONSPRITES");
         static_assert(
-            std::is_same_v<std::underlying_type_t<decltype(c681)>, std::underlying_type_t<decltype(MAX_ICONSPRITES)>>,
+            std::is_same_v<std::underlying_type_t<decltype(c683)>, std::underlying_type_t<decltype(MAX_ICONSPRITES)>>,
             "type ::CHudStatusIcons::MAX_ICONSPRITES"
         );
     };
