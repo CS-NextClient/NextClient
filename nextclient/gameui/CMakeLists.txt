@@ -92,3 +92,7 @@ add_library(NextClient::gameui ALIAS gameui_export)
 target_include_directories(gameui_export INTERFACE
         include
 )
+
+if (NEXTCLIENT_BUILD_TESTS)
+    add_subdirectory(tests)
+endif ()

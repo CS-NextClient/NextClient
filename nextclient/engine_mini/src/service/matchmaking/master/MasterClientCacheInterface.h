@@ -8,5 +8,5 @@ class MasterClientCacheInterface : public MasterClientInterface
 public:
     virtual ~MasterClientCacheInterface() = default;
 
-    virtual void Save(const std::vector<netadr_t>& server_list) = 0;
+    virtual void Save(const std::vector<MasterServerEntry>& server_list) = 0;
 };

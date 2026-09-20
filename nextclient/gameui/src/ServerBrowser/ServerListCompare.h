@@ -20,5 +20,7 @@ int __cdecl MapCompare(ListPanel *pPanel, const ListPanelItem &p1, const ListPan
 int __cdecl GameCompare(ListPanel *pPanel, const ListPanelItem &p1, const ListPanelItem &p2);
 int __cdecl ServerNameCompare(ListPanel *pPanel, const ListPanelItem &p1, const ListPanelItem &p2);
 int __cdecl LastPlayedCompare(ListPanel *pPanel, const ListPanelItem &p1, const ListPanelItem &p2);
+int __cdecl CountryCompare(ListPanel* pPanel, const ListPanelItem& p1, const ListPanelItem& p2);
+int __cdecl GameModeCompare(ListPanel* pPanel, const ListPanelItem& p1, const ListPanelItem& p2);
 
 #endif

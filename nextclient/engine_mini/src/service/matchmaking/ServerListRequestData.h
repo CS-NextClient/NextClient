@@ -1,8 +1,16 @@
 #pragma once
 #include <vector>
 
+#include "service/matchmaking/master/MasterServerEntry.h"
+
 namespace service::matchmaking
 {
+    struct ServerListEntry
+    {
+        gameserveritem_t gameserver{};
+        MasterDetails master_details{};
+    };
+
     struct ServerListRequestData
     {
         HServerListRequest request_id{};
@@ -11,7 +19,7 @@ namespace service::matchmaking
         std::shared_ptr<taskcoro::CancellationToken> cancellation_token{};
         bool in_progress = true;
 
-        std::vector<gameserveritem_t> servers{};
+        std::vector<ServerListEntry> servers{};
 
         explicit ServerListRequestData() = default;
 

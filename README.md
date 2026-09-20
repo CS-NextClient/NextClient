@@ -116,6 +116,7 @@ The configuration file is located at the path `platform\config\MasterServer.vdf`
 Requirements:
  - The latest version of MSVC 2022 or later
  - CMake 3.21 or higher
+ - Git LFS, set up with `git lfs install` before cloning (in a clone made without it, run `git lfs pull`)
  - Ninja (optional)
 
 Run x86 Native Tools Command Prompt for VS

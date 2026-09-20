@@ -7,6 +7,14 @@ include(GoogleTest)
 add_executable(${TARGET_NAME}
         #CmdCheckerBindTests.cpp
         CmdCheckerTests.cpp
+        EngineMiniTestEnvironment.cpp
+        GameModeRulesTests.cpp
+        GeoIpCountryDatabaseTests.cpp
+        HttpMasterClientTests.cpp
+        HttpMasterResponseTests.cpp
+        MasterDetailsByAddressTests.cpp
+        MasterListCacheTests.cpp
+        ServerCountryTests.cpp
         WavefrontParserTests.cpp
         mocks/CmdCheckerConfigProviderMock.h
         mocks/LoggerMock.h
@@ -14,6 +22,7 @@ add_executable(${TARGET_NAME}
 
 target_compile_definitions(${TARGET_NAME} PRIVATE
         NEXTCLIENT_ASSETS_DIR="${NEXTCLIENT_ROOT}/assets"
+        NOMINMAX
 )
 
 target_link_libraries(${TARGET_NAME} PRIVATE

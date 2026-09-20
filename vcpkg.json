@@ -46,6 +46,9 @@
   }, {
     "name": "eastl",
     "version>=": "3.27.1"
+  }, {
+    "name": "libmaxminddb",
+    "version>=": "1.13.3"
   }],
   "overrides": [ {
     "name": "taocpp-json",

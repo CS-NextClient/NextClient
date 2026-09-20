@@ -1,4 +1,20 @@
 cmake_minimum_required(VERSION 3.21)
+
+# a clone made without Git LFS holds pointer files in place of the LFS objects, and BUILD_ALL would install them;
+# checked ahead of project(), whose toolchain file runs the whole vcpkg install. One file per pattern of .gitattributes
+string(HEX "version https://git-lfs" NEXTCLIENT_LFS_POINTER_HEAD)
+
+foreach (NEXTCLIENT_LFS_FILE
+        "assets/platform/servers/geoip_country.mmdb"
+        "assets/platform/servers/icon_country_column.tga"
+        "dep/optic/bin/OptickCore.dll")
+    file(READ "${CMAKE_CURRENT_SOURCE_DIR}/${NEXTCLIENT_LFS_FILE}" NEXTCLIENT_LFS_FILE_HEAD LIMIT 23 HEX)
+
+    if (NEXTCLIENT_LFS_FILE_HEAD STREQUAL NEXTCLIENT_LFS_POINTER_HEAD)
+        message(FATAL_ERROR "${NEXTCLIENT_LFS_FILE} is a Git LFS pointer file: install Git LFS and run 'git lfs pull'")
+    endif ()
+endforeach ()
+
 project(NextClient VERSION 2.5.3)
 
 set(NEXTCLIENT_ROOT ${CMAKE_CURRENT_SOURCE_DIR})

@@ -1,0 +1,51 @@
+{
+  "default_game_mode": "Public",
+  "rules": [
+    {"game_mode": "Special", "priority": 1, "keywords": ["multimod*", "multi mod", "мультимод*"]},
+
+    {"game_mode": "Zombie", "keywords": ["zombie plague", "zombieplague*", "zp", "biohazard*", "zombie escape", "zombieescape*", "zombie cso", "cso zombie", "zombie hero", "zombie scenario"]},
+    {"game_mode": "Zombie", "maps": ["bio", "ze"]},
+    {"game_mode": "Zombie", "priority": -1, "keywords": ["zombie*", "zombi*", "zumbi*", "зомби*", "zm"]},
+    {"game_mode": "Zombie", "priority": -1, "maps": ["zm", "zp", "zs", "zombie*"]},
+
+    {"game_mode": "Deathmatch", "keywords": ["ffa", "free for all", "пушки лазеры", "пушки лазери", "guns lasers", "only hs", "hs only", "onlyhs", "headshot only", "only headshot"]},
+    {"game_mode": "Deathmatch", "priority": -1, "keywords": ["csdm*", "deathmatch", "death match", "dm", "respawn", "десматч", "дезматч"]},
+
+    {"game_mode": "GunGame", "keywords": ["gungame*", "gun game", "гангейм", "ган гейм"]},
+    {"game_mode": "GunGame", "maps": ["gg"]},
+
+    {"game_mode": "Deathrun", "keywords": ["deathrun*", "death run", "дезран", "десран"]},
+    {"game_mode": "Deathrun", "maps": ["deathrun*"]},
+
+    {"game_mode": "HideAndSeek", "keywords": ["hns", "hide n seek", "hide and seek", "hidenseek*", "прятки"]},
+    {"game_mode": "HideAndSeek", "maps": ["hns"]},
+
+    {"game_mode": "JailBreak", "keywords": ["jailbreak*", "jail", "jb", "jbe", "джейл*", "джайл*", "побег", "тюрьм*", "тюремн*"]},
+    {"game_mode": "JailBreak", "maps": ["jail*", "jb"]},
+
+    {"game_mode": "Surf", "keywords": ["surf*", "серф"]},
+    {"game_mode": "Surf", "maps": ["surf*"]},
+
+    {"game_mode": "Kreedz", "keywords": ["kreedz*", "prokreedz*", "bhop*", "bunnyhop*", "bunny hop", "jumpmod*", "jump mod", "jump server", "jump training", "jump easy", "jump hard", "jump extreme"]},
+    {"game_mode": "Kreedz", "maps": ["kz*", "bkz", "xc", "cg", "bhop*", "bh"]},
+
+    {"game_mode": "Knife", "priority": -1, "keywords": ["35hp", "1hp", "knife arena"]},
+    {"game_mode": "Knife", "priority": -1, "keywords": ["knife*", "нож*"], "maps": ["35hp", "1hp", "ka", "knife*"]},
+    {"game_mode": "Awp", "priority": -1, "keywords": ["awp only", "only awp"]},
+    {"game_mode": "Awp", "priority": -1, "keywords": ["awp*"], "maps": ["awp*"]},
+    {"game_mode": "Aim", "priority": -1, "keywords": ["aim*"], "maps": ["aim*"]},
+
+    {"game_mode": "Warcraft", "keywords": ["warcraft*", "war3*", "wc3*", "uwc3*"]},
+
+    {"game_mode": "BaseBuilder", "keywords": ["basebuilder*", "base builder"]},
+    {"game_mode": "BaseBuilder", "maps": ["bb"]},
+
+    {"game_mode": "Mix", "keywords": ["mix", "automix", "cw", "pug", "aquecendo", "calentamiento", "live 1st", "live 2nd", "retake*"]},
+
+    {"game_mode": "Special", "keywords": ["roleplay*", "role play", "rp", "furien*", "superhero*", "super hero", "cod", "call of duty", "codmod*", "cod mod"]},
+    {"game_mode": "Special", "keywords": ["ctf", "capture the flag", "captura la bandera", "pega bandeira", "pegabandeira", "pega bandera", "bayrak kapmaca", "захват флага"]},
+    {"game_mode": "Special", "keywords": ["csgo mod", "cs go mod", "csgomod*", "paintball*", "soccerjam*", "soccer jam", "1v1", "1vs1", "multi arena", "arena multi", "ttt", "traidor", "scoutzknivez", "scoutz n knivez", "hvh"]},
+    {"game_mode": "Special", "maps": ["paintball*", "soccerjam*", "sj", "ar", "ttt"]},
+    {"game_mode": "Special", "priority": -1, "keywords": ["rpg", "рпг"]}
+  ]
+}

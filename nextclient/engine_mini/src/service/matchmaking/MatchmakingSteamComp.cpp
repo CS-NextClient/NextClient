@@ -1,12 +1,30 @@
 #include "MatchmakingSteamComp.h"
 
+#include "engine.h"
+
 #include <cassert>
+#include <ranges>
+
+#include <easylogging++.h>
 #include <optick.h>
 #include <strtools.h>
+
+#include "service/geoip/GeoIpLanguage.h"
+#include "service/matchmaking/ServerCountry.h"
 
 using namespace service::matchmaking;
 using namespace concurrencpp;
 using namespace taskcoro;
+
+namespace
+{
+    constexpr const char* kGeoIpDatabaseFile = "servers/geoip_country.mmdb";
+    constexpr const char* kGameModeRulesFile = "servers/game_mode_rules.json";
+
+    // the shipped copy only: the game and download directories come first in the search order
+    constexpr const char* kGameModeRulesPathId = "PLATFORM";
+    constexpr unsigned int kMaxGameModeRulesFileSize = 1024 * 1024;
+} // namespace
 
 MatchmakingSteamComp::MatchmakingSteamComp()
 {
@@ -170,7 +188,7 @@ gameserveritem_t* MatchmakingSteamComp::GetServerDetails(HServerListRequest requ
     }
 
     auto& request_data = std::get<ServerListRequestData>(request);
-    return &request_data.servers[server_id];
+    return &request_data.servers[server_id].gameserver;
 }
 
 void MatchmakingSteamComp::CancelQuery(HServerListRequest request_id)
@@ -233,7 +251,11 @@ void MatchmakingSteamComp::RefreshQuery(HServerListRequest request_id)
         ct->ThrowIfCancelled();
 
         auto& request_data = std::get<ServerListRequestData>(server_requests_[request_id]);
-        co_await RefreshServerList(request_id, request_data.servers, request_data.response_callback, ct);
+        std::vector<gameserveritem_t> gameservers = request_data.servers
+            | std::views::transform([](const ServerListEntry& entry) { return entry.gameserver; })
+            | std::ranges::to<std::vector>();
+
+        co_await RefreshServerList(request_id, gameservers, request_data.response_callback, ct);
     });
 }
 
@@ -298,7 +320,7 @@ void MatchmakingSteamComp::RefreshServer(HServerListRequest request_id, int serv
         shutdown_ct->ThrowIfCancelled();
         ct->ThrowIfCancelled();
 
-        servernetadr_t net_addr = std::get<ServerListRequestData>(server_requests_[request_id]).servers[server_id].m_NetAdr;
+        servernetadr_t net_addr = std::get<ServerListRequestData>(server_requests_[request_id]).servers[server_id].gameserver.m_NetAdr;
 
         gameserveritem_t gameserver = co_await matchmaking_service_->RefreshServer(net_addr.GetIP(), net_addr.GetQueryPort());
         shutdown_ct->ThrowIfCancelled();
@@ -313,8 +335,8 @@ void MatchmakingSteamComp::RefreshServer(HServerListRequest request_id, int serv
 
         if (gameserver.m_bHadSuccessfulResponse)
         {
-            gameserver.m_ulTimeLastPlayed = request_data.servers[server_id].m_ulTimeLastPlayed;
-            request_data.servers[server_id] = gameserver;
+            gameserver.m_ulTimeLastPlayed = request_data.servers[server_id].gameserver.m_ulTimeLastPlayed;
+            request_data.servers[server_id].gameserver = gameserver;
 
             OPTICK_EVENT("MatchmakingSteamComp::RefreshServer - response_callback->ServerResponded")
             request_data.response_callback->ServerResponded(request_id, server_id);
@@ -359,6 +381,10 @@ result<void> MatchmakingSteamComp::RequestServerList(
         [this, request_id, response_callback] (const MatchmakingService::ServerInfo& server_info)
         {
             ServerAnsweredHandler(request_id, response_callback, server_info);
+        },
+        [this] (const std::vector<MasterServerEntry>& entries)
+        {
+            master_details_by_address_.Rebuild(entries);
         }, ct);
 
     // server_requests_ and the response callback are main-thread confined
@@ -409,11 +435,17 @@ void MatchmakingSteamComp::ServerAnsweredHandler(
 
             for (size_t i = server_count; i < request_data.servers.size(); ++i)
             {
-                InitEmptyGameServerItem(request_data.servers[i], 0, 0);
+                InitEmptyGameServerItem(request_data.servers[i].gameserver, 0, 0);
             }
         }
 
-        request_data.servers[server_info.server_index] = server_info.gameserver;
+        ServerListEntry& entry = request_data.servers[server_info.server_index];
+        entry.gameserver = server_info.gameserver;
+
+        if (server_info.master_details.has_value())
+        {
+            entry.master_details = *server_info.master_details;
+        }
     }
 
     if (server_info.gameserver.m_bHadSuccessfulResponse)
@@ -442,4 +474,149 @@ void MatchmakingSteamComp::InitEmptyGameServerItem(gameserveritem_t& gameserver,
     V_strcpy_safe(gameserver.m_szGameDir, "cstrike");
     V_strcpy_safe(gameserver.m_szMap, "-");
     V_strcpy_safe(gameserver.m_szGameDescription, "-");
+}
+
+bool MatchmakingSteamComp::GetServerDetailsNext(HServerListRequest request_id, int server_index, ServerDetailsNext* out)
+{
+    *out = ServerDetailsNext{};
+
+    if (!server_requests_.contains(request_id))
+    {
+        return false;
+    }
+
+    auto& request = server_requests_[request_id];
+    const gameserveritem_t* gameserver;
+    const MasterDetails* master_details;
+
+    if (std::holds_alternative<ServerListRequestData>(request))
+    {
+        const ServerListRequestData& request_data = std::get<ServerListRequestData>(request);
+
+        if (server_index < 0 || server_index >= static_cast<int>(request_data.servers.size()))
+        {
+            return false;
+        }
+
+        const ServerListEntry& entry = request_data.servers[server_index];
+        gameserver = &entry.gameserver;
+        master_details = &entry.master_details;
+    }
+    else
+    {
+        const SteamServersListRequestData& request_data = std::get<SteamServersListRequestData>(request);
+        gameserver = SteamMatchmakingServers()->GetServerDetails(request_data.steam_request_id, server_index);
+
+        if (gameserver == nullptr)
+        {
+            return false;
+        }
+
+        master_details = master_details_by_address_.Find(gameserver->m_NetAdr.GetIP(), gameserver->m_NetAdr.GetConnectionPort());
+    }
+
+    FillGameMode(*gameserver, master_details != nullptr ? master_details->game_mode.c_str() : "", out);
+    FillCountry(gameserver->m_NetAdr.GetIP(), master_details != nullptr ? master_details->country_code.c_str() : "", out);
+
+    return true;
+}
+
+void MatchmakingSteamComp::FillGameMode(const gameserveritem_t& gameserver, const char* master_game_mode, ServerDetailsNext* out)
+{
+    if (master_game_mode[0])
+    {
+        V_strcpy_safe(out->game_mode, master_game_mode);
+        return;
+    }
+
+    if (EnsureGameModeRulesLoaded())
+    {
+        V_strcpy_safe(out->game_mode, game_mode_rules_.Detect(gameserver.m_szGameDescription, gameserver.GetName(), gameserver.m_szMap));
+    }
+}
+
+bool MatchmakingSteamComp::EnsureGameModeRulesLoaded()
+{
+    if (game_mode_rules_load_attempted_)
+    {
+        return game_mode_rules_.is_loaded();
+    }
+
+    game_mode_rules_load_attempted_ = true;
+
+    FileHandle_t file = g_pFileSystem->Open(kGameModeRulesFile, "rb", kGameModeRulesPathId);
+
+    if (!file)
+    {
+        LOG(WARNING) << "[MatchmakingSteamComp] Game mode rules " << kGameModeRulesFile
+                     << " not found, modes the master omits stay unknown";
+        return false;
+    }
+
+    unsigned int size = g_pFileSystem->Size(file);
+
+    if (size > kMaxGameModeRulesFileSize)
+    {
+        g_pFileSystem->Close(file);
+
+        LOG(ERROR) << "[MatchmakingSteamComp] Game mode rules " << kGameModeRulesFile << " are larger than " << kMaxGameModeRulesFileSize
+                   << " bytes, modes the master omits stay unknown";
+        return false;
+    }
+
+    std::string text(size, '\0');
+    int read = g_pFileSystem->Read(text.data(), static_cast<int>(text.size()), file);
+    g_pFileSystem->Close(file);
+
+    text.resize(read > 0 ? static_cast<size_t>(read) : 0);
+
+    if (!game_mode_rules_.Parse(text))
+    {
+        LOG(ERROR) << "[MatchmakingSteamComp] Game mode rules " << kGameModeRulesFile
+                   << " are malformed, modes the master omits stay unknown";
+        return false;
+    }
+
+    return true;
+}
+
+void MatchmakingSteamComp::FillCountry(uint32_t ip, const char* master_country_code, ServerDetailsNext* out)
+{
+    GeoIpCountry country;
+    bool resolved = EnsureGeoIpDatabaseOpened() && geoip_.ResolveCountry(ip, geoip_language_.c_str(), country);
+
+    if (resolved && country.name[0])
+    {
+        country_names_by_code_.emplace(country.code, country.name);
+    }
+
+    ServerCountry_Fill(master_country_code, resolved ? &country : nullptr, country_names_by_code_, out);
+}
+
+bool MatchmakingSteamComp::EnsureGeoIpDatabaseOpened()
+{
+    if (geoip_open_attempted_)
+    {
+        return geoip_.is_open();
+    }
+
+    geoip_open_attempted_ = true;
+
+    char path[MAX_PATH];
+
+    if (g_pFileSystem->GetLocalPath(kGeoIpDatabaseFile, path, sizeof(path)) == nullptr)
+    {
+        LOG(WARNING) << "[MatchmakingSteamComp] GeoIP database " << kGeoIpDatabaseFile << " not found, server countries stay unknown";
+        return false;
+    }
+
+    if (!geoip_.Open(path))
+    {
+        LOG(ERROR) << "[MatchmakingSteamComp] Failed to open GeoIP database " << path;
+        return false;
+    }
+
+    geoip_language_ = GeoIp_GetNamesLanguage(SteamApps()->GetCurrentGameLanguage());
+
+    return true;
 }

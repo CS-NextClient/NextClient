@@ -1,0 +1,251 @@
+// ISO 3166-1 alpha-2 code, then the country's names in its own languages, separated by semicolons
+AD Andorra
+AE الإمارات العربية المتحدة;الإمارات
+AF افغانستان
+AG Antigua and Barbuda
+AI Anguilla
+AL Shqipëria
+AM Հայաստան
+AO Angola
+AQ Antarctica
+AR Argentina
+AS American Samoa;Amerika Sāmoa
+AT Österreich
+AU Australia
+AW Aruba
+AX Åland
+AZ Azərbaycan
+BA Bosna i Hercegovina;Босна и Херцеговина
+BB Barbados
+BD বাংলাদেশ
+BE België;Belgique;Belgien
+BF Burkina Faso
+BG България
+BH البحرين
+BI Burundi;Uburundi
+BJ Bénin
+BL Saint-Barthélemy
+BM Bermuda
+BN Brunei Darussalam
+BO Bolivia
+BQ Caribisch Nederland
+BR Brasil
+BS Bahamas
+BT འབྲུག་ཡུལ
+BV Bouvetøya
+BW Botswana
+BY Беларусь;Белоруссия
+BZ Belize
+CA Canada
+CC Cocos (Keeling) Islands
+CD République démocratique du Congo
+CF République centrafricaine;Ködörösêse tî Bêafrîka
+CG République du Congo
+CH Schweiz;Suisse;Svizzera;Svizra
+CI Côte d'Ivoire
+CK Cook Islands;Kūki 'Āirani
+CL Chile
+CM Cameroun;Cameroon
+CN 中国
+CO Colombia
+CR Costa Rica
+CU Cuba
+CV Cabo Verde
+CW Curaçao;Kòrsou
+CX Christmas Island
+CY Κύπρος;Kıbrıs
+CZ Česko;Česká republika
+DE Deutschland
+DJ Djibouti;جيبوتي
+DK Danmark
+DM Dominica
+DO República Dominicana
+DZ الجزائر
+EC Ecuador
+EE Eesti
+EG مصر
+EH الصحراء الغربية
+ER ኤርትራ
+ES España
+ET ኢትዮጵያ
+FI Suomi;Finland
+FJ Fiji;Viti
+FK Falkland Islands
+FM Micronesia
+FO Føroyar
+FR France
+GA Gabon
+GB United Kingdom;Great Britain
+GD Grenada
+GE საქართველო
+GF Guyane
+GG Guernsey
+GH Ghana
+GI Gibraltar
+GL Kalaallit Nunaat;Grønland
+GM Gambia
+GN Guinée
+GP Guadeloupe
+GQ Guinea Ecuatorial;Guinée équatoriale
+GR Ελλάδα
+GS South Georgia and the South Sandwich Islands
+GT Guatemala
+GU Guam;Guåhån
+GW Guiné-Bissau
+GY Guyana
+HK 香港;Hong Kong
+HM Heard Island and McDonald Islands
+HN Honduras
+HR Hrvatska
+HT Haïti;Ayiti
+HU Magyarország
+ID Indonesia
+IE Éire;Ireland
+IL ישראל
+IM Isle of Man;Ellan Vannin
+IN भारत;India
+IO British Indian Ocean Territory
+IQ العراق
+IR ایران
+IS Ísland
+IT Italia
+JE Jersey
+JM Jamaica
+JO الأردن
+JP 日本
+KE Kenya
+KG Кыргызстан;Киргизия
+KH កម្ពុជា
+KI Kiribati
+KM Komori;Comores;جزر القمر
+KN Saint Kitts and Nevis
+KP 조선
+KR 대한민국;한국
+KW الكويت
+KY Cayman Islands
+KZ Қазақстан;Казахстан
+LA ລາວ
+LB لبنان
+LC Saint Lucia
+LI Liechtenstein
+LK ශ්‍රී ලංකාව;இலங்கை
+LR Liberia
+LS Lesotho
+LT Lietuva
+LU Lëtzebuerg;Luxembourg;Luxemburg
+LV Latvija
+LY ليبيا
+MA المغرب
+MC Monaco
+MD Moldova
+ME Crna Gora;Црна Гора
+MF Saint-Martin
+MG Madagasikara;Madagascar
+MH Marshall Islands
+MK Северна Македонија
+ML Mali
+MM မြန်မာ
+MN Монгол Улс
+MO 澳門;Macau
+MP Northern Mariana Islands
+MQ Martinique
+MR موريتانيا
+MS Montserrat
+MT Malta
+MU Mauritius;Maurice
+MV ދިވެހިރާއްޖެ
+MW Malawi
+MX México
+MY Malaysia
+MZ Moçambique
+NA Namibia
+NC Nouvelle-Calédonie
+NE Niger
+NF Norfolk Island
+NG Nigeria
+NI Nicaragua
+NL Nederland
+NO Norge;Noreg
+NP नेपाल
+NR Nauru
+NU Niuē
+NZ New Zealand;Aotearoa
+OM عمان
+PA Panamá
+PE Perú
+PF Polynésie française
+PG Papua New Guinea;Papua Niugini
+PH Pilipinas;Philippines
+PK پاکستان;Pakistan
+PL Polska
+PM Saint-Pierre-et-Miquelon
+PN Pitcairn Islands
+PR Puerto Rico
+PS فلسطين
+PT Portugal
+PW Palau;Belau
+PY Paraguay;Paraguái
+QA قطر
+RE La Réunion
+RO România
+RS Србија;Srbija
+RU Россия
+RW Rwanda
+SA السعودية
+SB Solomon Islands
+SC Seychelles;Sesel
+SD السودان
+SE Sverige
+SG Singapore;新加坡;Singapura;சிங்கப்பூர்
+SH Saint Helena
+SI Slovenija
+SJ Svalbard og Jan Mayen
+SK Slovensko
+SL Sierra Leone
+SM San Marino
+SN Sénégal
+SO Soomaaliya;الصومال
+SR Suriname
+SS South Sudan
+ST São Tomé e Príncipe
+SV El Salvador
+SX Sint Maarten
+SY سوريا
+SZ eSwatini
+TC Turks and Caicos Islands
+TD Tchad;تشاد
+TF Terres australes et antarctiques françaises
+TG Togo
+TH ประเทศไทย;ไทย
+TJ Тоҷикистон
+TK Tokelau
+TL Timor-Leste
+TM Türkmenistan
+TN تونس
+TO Tonga
+TR Türkiye
+TT Trinidad and Tobago
+TV Tuvalu
+TW 臺灣;台灣
+TZ Tanzania
+UA Україна
+UG Uganda
+UM United States Minor Outlying Islands
+US United States
+UY Uruguay
+UZ Oʻzbekiston;O'zbekiston;Ўзбекистон
+VA Città del Vaticano
+VC Saint Vincent and the Grenadines
+VE Venezuela
+VG British Virgin Islands
+VI United States Virgin Islands
+VN Việt Nam
+VU Vanuatu
+WF Wallis-et-Futuna
+WS Sāmoa
+XK Kosova;Косово
+YE اليمن
+YT Mayotte
+ZA South Africa;Suid-Afrika
+ZM Zambia
+ZW Zimbabwe

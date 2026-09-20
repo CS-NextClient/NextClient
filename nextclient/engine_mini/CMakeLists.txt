@@ -8,6 +8,7 @@ find_package(SDL2 REQUIRED)
 find_package(imageinfo CONFIG REQUIRED)
 find_package(EASTL CONFIG REQUIRED)
 find_package(unordered_dense CONFIG REQUIRED)
+find_package(maxminddb CONFIG REQUIRED)
 
 set(CMAKE_POLICY_DEFAULT_CMP0077 NEW)
 set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
@@ -63,6 +64,7 @@ target_link_libraries(${PROJECT_NAME} ${TARGET_LIBRARIES_SCOPE}
         stb::stb
         EASTL
         unordered_dense::unordered_dense
+        maxminddb::maxminddb
         crypt32
         advapi32
         wbemuuid
@@ -84,7 +86,11 @@ target_compile_definitions(${PROJECT_NAME} PRIVATE
         USE_OPTICK=$<BOOL:${USE_PROFILER}>
         _HAS_STATIC_RTTI=0 #disable rtti things in stl
         BREADCRUMBS_TAG="[${PROJECT_NAME}]"
-        #easyloggingpp options
+)
+
+# easyloggingpp options, public in a test build: the library's source is compiled into every target that links
+# it, and each copy has to see the same options
+target_compile_definitions(${PROJECT_NAME} ${TARGET_LIBRARIES_SCOPE}
         ELPP_THREAD_SAFE
         ELPP_WINSOCK2
         ELPP_DISABLE_DEFAULT_CRASH_HANDLING

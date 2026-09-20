@@ -2,10 +2,38 @@
 #include "serveritem.h"
 #include "ServerBrowserDialog.h"
 #include "BaseGamesPage.h"
+#include "ServerBrowser/ServerBrowserText.h"
+#include "ServerBrowser/ServerGameModeNames.h"
 #include <GameServerHelpers.h>
 
+#include <string>
+
+#include <nitro_utils/string_utils.h>
+
 #include <KeyValues.h>
+#include <vgui/ILocalize.h>
 #include <vgui_controls/ListPanel.h>
+
+namespace
+{
+    // The mode's list cell text as the list shows it, with a display name token resolved
+    std::wstring GetGameModeCellDisplayText(const char* mode)
+    {
+        const char* text = ServerGameMode_GetCellText(mode);
+
+        if (text[0] == '#')
+        {
+            const wchar_t* localized = g_pVGuiLocalize->Find(text);
+
+            if (localized != nullptr)
+            {
+                return localized;
+            }
+        }
+
+        return nitro_utils::utf8_to_wide(text);
+    }
+} // namespace
 
 int __cdecl ServerIdCompare(ListPanel *pPanel, const ListPanelItem &p1, const ListPanelItem &p2)
 {
@@ -172,4 +200,37 @@ int __cdecl LastPlayedCompare(ListPanel *pPanel, const ListPanelItem &p1, const 
         return 1;
 
     return 0;
+}
+
+int __cdecl CountryCompare(ListPanel* pPanel, const ListPanelItem& p1, const ListPanelItem& p2)
+{
+    CGameListPanel* game_list_panel = dynamic_cast<CGameListPanel*>(pPanel);
+
+    if (!game_list_panel)
+    {
+        return 0;
+    }
+
+    serveritem_t& s1 = game_list_panel->GetOuterGamesPage()->GetServer(p1.userData);
+    serveritem_t& s2 = game_list_panel->GetOuterGamesPage()->GetServer(p2.userData);
+
+    return ServerBrowserText_CompareUnknownLast(s1.next_details.country_code, s2.next_details.country_code);
+}
+
+int __cdecl GameModeCompare(ListPanel* pPanel, const ListPanelItem& p1, const ListPanelItem& p2)
+{
+    CGameListPanel* game_list_panel = dynamic_cast<CGameListPanel*>(pPanel);
+
+    if (!game_list_panel)
+    {
+        return 0;
+    }
+
+    serveritem_t& s1 = game_list_panel->GetOuterGamesPage()->GetServer(p1.userData);
+    serveritem_t& s2 = game_list_panel->GetOuterGamesPage()->GetServer(p2.userData);
+
+    std::wstring mode1 = GetGameModeCellDisplayText(s1.next_details.game_mode);
+    std::wstring mode2 = GetGameModeCellDisplayText(s2.next_details.game_mode);
+
+    return ServerBrowserText_CompareUnknownLast(mode1.c_str(), mode2.c_str());
 }

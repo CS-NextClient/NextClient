@@ -34,8 +34,8 @@ MasterServerQueryClient::MasterServerQueryClient(
     
 }
 
-result<std::vector<netadr_t>> MasterServerQueryClient::GetServerAddressesAsync(
-    std::function<void(const netadr_t&)> address_received_callback,
+result<std::vector<MasterServerEntry>> MasterServerQueryClient::GetServerListAsync(
+    std::function<void(const MasterServerEntry&)> entry_received_callback,
     std::shared_ptr<CancellationToken> cancellation_token
 )
 {
@@ -47,7 +47,7 @@ result<std::vector<netadr_t>> MasterServerQueryClient::GetServerAddressesAsync(
     if (sock == INVALID_SOCKET)
     {
         LOG(ERROR) << "[MasterServerQueryClient] Req: " << request_num << ". Socket failed with error INVALID_SOCKET: " << WSAGetLastError();
-        co_return std::vector<netadr_t>{};
+        co_return std::vector<MasterServerEntry>{};
     }
 
     auto exit_guard = ncl_utils::MakeScopeExit([&]
@@ -62,7 +62,7 @@ result<std::vector<netadr_t>> MasterServerQueryClient::GetServerAddressesAsync(
     try
     {
         LOG(DEBUG) << "[MasterServerQueryClient] Req: " << request_num << ". Start";
-        co_return co_await GetServerAddressesInternalAsync(sock, request_num, std::move(address_received_callback), std::move(cancellation_token));
+        co_return co_await GetServerListInternalAsync(sock, request_num, std::move(entry_received_callback), std::move(cancellation_token));
     }
     catch (const OperationCanceledException&)
     {
@@ -71,13 +71,13 @@ result<std::vector<netadr_t>> MasterServerQueryClient::GetServerAddressesAsync(
     }
 }
 
-result<std::vector<netadr_t>> MasterServerQueryClient::GetServerAddressesInternalAsync(
+result<std::vector<MasterServerEntry>> MasterServerQueryClient::GetServerListInternalAsync(
     SOCKET sock,
     uint32_t request_num,
-    std::function<void(const netadr_t&)> address_received_callback,
+    std::function<void(const MasterServerEntry&)> entry_received_callback,
     std::shared_ptr<CancellationToken> cancellation_token)
 {
-    std::vector<netadr_t> result_addresses{};
+    std::vector<MasterServerEntry> result_entries{};
     netadr_t first_server_address{};
 
     while (true)
@@ -127,18 +127,22 @@ result<std::vector<netadr_t>> MasterServerQueryClient::GetServerAddressesInterna
             break;
         }
 
-        std::ranges::move(addresses, std::back_inserter(result_addresses));
+        for (const netadr_t& address : addresses)
+        {
+            result_entries.push_back(MasterServerEntry{address});
+        }
+
         if (last_address == netadr_t{})
         {
             // cut 0.0.0.0 from the server list
             addresses.erase(addresses.end() - 1);
         }
 
-        if (address_received_callback)
+        if (entry_received_callback)
         {
-            for (auto& address : addresses)
+            for (const netadr_t& address : addresses)
             {
-                address_received_callback(address);
+                entry_received_callback(MasterServerEntry{address});
             }
         }
 
@@ -150,7 +154,7 @@ result<std::vector<netadr_t>> MasterServerQueryClient::GetServerAddressesInterna
         first_server_address = last_address;
     }
 
-    co_return result_addresses;
+    co_return result_entries;
 }
 
 result<result_promise<void>> MasterServerQueryClient::BeginSequentialRequest()

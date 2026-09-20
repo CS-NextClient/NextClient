@@ -116,6 +116,7 @@ NextClient это модификация для Counter-Strike 1.6, нацеле
 Требования:
  - Последняя версия MSVC 2022 или новее
  - CMake 3.21 или выше
+ - Git LFS, настроенный командой `git lfs install` до клонирования (в клоне, сделанном без него, выполните `git lfs pull`)
  - Ninja (необязательно)
 
 Запустите x86 Native Tools Command Prompt for VS

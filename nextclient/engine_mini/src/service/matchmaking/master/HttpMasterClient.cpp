@@ -1,14 +1,21 @@
 #include "HttpMasterClient.h"
 
-#include <optick.h>
 #include <utility>
 
-#include <nitro_utils/net_utils.h>
-#include <nitro_utils/string_utils.h>
+#include <cpr/status_codes.h>
+#include <easylogging++.h>
+#include <optick.h>
+
+#include "service/matchmaking/master/HttpMasterResponse.h"
 
 using namespace cpr;
 using namespace taskcoro;
 using namespace concurrencpp;
+
+namespace
+{
+    constexpr size_t kMaxResponseBytes = 8 * 1024 * 1024;
+} // namespace
 
 HttpMasterClient::HttpMasterClient(NextClientVersion client_version, std::string url) :
     url_(std::move(url))
@@ -20,8 +27,8 @@ HttpMasterClient::HttpMasterClient(NextClientVersion client_version, std::string
     // headers_["LaunchGameCount"] = std::to_string(user_info_->GetLaunchGameCount());
 }
 
-result<std::vector<netadr_t>> HttpMasterClient::GetServerAddressesAsync(
-    std::function<void(const netadr_t&)> address_received_callback,
+result<std::vector<MasterServerEntry>> HttpMasterClient::GetServerListAsync(
+    std::function<void(const MasterServerEntry&)> entry_received_callback,
     std::shared_ptr<CancellationToken> cancellation_token
 )
 {
@@ -36,7 +43,7 @@ result<std::vector<netadr_t>> HttpMasterClient::GetServerAddressesAsync(
         Session session;
         session.SetUrl(url_);
         session.SetHeader(header);
-        session.SetBody(Body("{\"method\": \"server_list\", \"data\": \"null\"}"));
+        session.SetBody(Body("{\"method\": \"server_list\", \"data\": {\"extended\": true}}"));
         session.SetConnectTimeout(kConnectTimeout);
         session.SetTimeout(kTimeout);
         session.SetProgressCallback(ProgressCallback([cancellation_token](cpr_pf_arg_t, cpr_pf_arg_t, cpr_pf_arg_t, cpr_pf_arg_t, intptr_t)
@@ -49,37 +56,69 @@ result<std::vector<netadr_t>> HttpMasterClient::GetServerAddressesAsync(
             return true;
         }));
 
-        return session.Get();
+        // the progress callback counts the bytes before content decoding, so the size limit is applied here
+        std::string body;
+        session.SetWriteCallback(WriteCallback([&body](std::string data, intptr_t)
+        {
+            body += data;
+
+            return body.size() <= kMaxResponseBytes;
+        }));
+
+        Response response = session.Get();
+        response.text = std::move(body);
+
+        return response;
     });
 
     cancellation_token->ThrowIfCancelled();
 
-    std::vector<netadr_t> addresses = ParseResponse(response.text);
+    std::optional<std::vector<MasterServerEntry>> server_list = HttpMasterClient_ReadServerList(response);
 
-    if (address_received_callback)
+    if (!server_list.has_value())
     {
-        for (const netadr_t& address : addresses)
+        co_return std::vector<MasterServerEntry>{};
+    }
+
+    if (entry_received_callback)
+    {
+        for (const MasterServerEntry& entry : *server_list)
         {
-            address_received_callback(address);
+            entry_received_callback(entry);
         }
     }
 
-    co_return addresses;
+    co_return std::move(*server_list);
 }
 
-std::vector<netadr_t> HttpMasterClient::ParseResponse(const std::string& data)
+std::optional<std::vector<MasterServerEntry>> HttpMasterClient_ReadServerList(const Response& response)
 {
     OPTICK_EVENT();
 
-    std::vector<netadr_t> result;
-
-    size_t last = 0, next;
-    while ((next = data.find('\n', last)) != std::string::npos)
+    if (response.error.code != cpr::ErrorCode::OK)
     {
-        result.emplace_back(data.substr(last, next - last).c_str());
-        last = next + 1;
+        LOG(WARNING) << "[HttpMasterClient] Server list request failed: " << response.error.message;
+        return std::nullopt;
     }
-    result.emplace_back(data.substr(last).c_str());
 
-    return result;
+    if (response.status_code != cpr::status::HTTP_OK)
+    {
+        LOG(WARNING) << "[HttpMasterClient] Server list request answered with HTTP status " << response.status_code;
+        return std::nullopt;
+    }
+
+    std::optional<std::vector<MasterServerEntry>> server_list = HttpMasterResponse_Parse(response.text);
+
+    if (!server_list.has_value())
+    {
+        LOG(WARNING) << "[HttpMasterClient] Server list response is in no known layout";
+        return std::nullopt;
+    }
+
+    if (server_list->empty())
+    {
+        server_list->emplace_back();
+    }
+
+    return server_list;
 }

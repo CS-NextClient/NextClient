@@ -723,7 +723,7 @@ public:
         return PROTECTOR_RemoveCmdLogger(logger);
     }
 
-    ISteamMatchmakingServers* GetSteamMatchmakingServers() override
+    MatchmakingServersInterface* GetSteamMatchmakingServers() override
     {
         return g_pMatchmakingServers.get();
     }

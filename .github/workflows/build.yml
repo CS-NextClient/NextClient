@@ -23,6 +23,7 @@ jobs:
         with:
           submodules: recursive
           fetch-depth: 0
+          lfs: true
 
       - name: Cache vcpkg packages
         uses: actions/cache@v4
@@ -57,3 +58,13 @@ jobs:
           name: NextClient-pdb-${{ github.sha }}
           path: out/pdb/Release/*.pdb
           if-no-files-found: error
+
+      # after the uploads: a test build writes its PDBs into out/pdb as well
+      - name: Configure tests
+        run: cmake --preset vs2022 -B build/vs2022-tests -DNEXTCLIENT_BUILD_TESTS=ON
+
+      - name: Build tests
+        run: cmake --build build/vs2022-tests --config Release --target engine_mini-tests gameui-tests view-tests crosshair-tests
+
+      - name: Run tests
+        run: ctest --test-dir build/vs2022-tests -C Release --output-on-failure

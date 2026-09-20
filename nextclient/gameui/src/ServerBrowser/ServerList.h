@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstdint>
 #include <unordered_map>
 #include <steam/steam_api.h>
 #include "serveritem.h"
@@ -13,6 +14,7 @@ class CServerList : public ISteamMatchmakingServerListResponse
 
     // key - server id
     std::unordered_map<int, serveritem_t> servers_;
+    uint32_t revision_{};
 
 public:
     explicit CServerList(IServerRefreshResponse* response_target);
@@ -29,6 +31,8 @@ public:
     bool IsServerExists(int iServer);
     serveritem_t &GetServer(int iServer);
     unsigned int ServerCount();
+    // Changes on every answer, failed answer and clear of the servers
+    [[nodiscard]] uint32_t get_revision() const;
     void StartRefreshServer(int iServer);
     void StartRefresh();
     void StopRefresh(IGameList::CancelQueryReason reason);
