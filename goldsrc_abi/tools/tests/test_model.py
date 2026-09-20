@@ -8,6 +8,9 @@ _serial = itertools.count(1)
 PUBLIC = "goldsrc/public.h"
 INTERNAL = "goldsrc/internal.h"
 CSTRIKE = "goldsrc/cstrike/hud.h"
+# A file of the fork that the migration carries over unchanged, which is what makes a keep of what it
+# declares silent.
+MOVED_INTERFACE = "dep/NclNitroApi/dep/ncl-hl1-source-sdk/public/HLTV/IDemoPlayer.h"
 
 
 def _key(file):
@@ -686,6 +689,25 @@ class ConstantTest(unittest.TestCase):
         self.assertIn("260", reported)
         self.assertIn("256", reported)
 
+    def test_a_twin_the_library_places_nothing_from_has_to_carry_the_placed_value(self):
+        """dlls/util.h and the engine message table define the SVC_ constants alike and the map excludes one
+        copy, whose uses the migration then answers by the name alone."""
+        placed, twin = "engine/structs.h", "dlls/util.h"
+        rules = {"names": [{"name": "SVC_SOUND", "file": placed, "header": PUBLIC}],
+                 "exclude": [{"name": "SVC_SOUND", "file": twin, "reason": "duplicates the message table"}]}
+        agreeing = facts(macros=[macro(placed, "SVC_SOUND", value=6, used=True),
+                                 macro(twin, "SVC_SOUND", value=6, used=True)])
+        _built, problems = model.build(agreeing, library(macros=rules))
+
+        self.assertEqual(problems, [])
+
+        differing = facts(macros=[macro(placed, "SVC_SOUND", value=6, used=True),
+                                  macro(twin, "SVC_SOUND", value=7, used=True)])
+        _built, problems = model.build(differing, library(macros=rules))
+        reported = problem(self, problems, "SVC_SOUND")
+        self.assertIn("6 in engine/structs.h", reported)
+        self.assertIn("7 in dlls/util.h", reported)
+
     def test_used_macro_without_a_placement_is_a_problem(self):
         source = "engine/cvardef.h"
         _, problems = model.build(facts(macros=[macro(source, "FCVAR_ARCHIVE", value=1, used=True)]), library())
@@ -1023,7 +1045,7 @@ class ConstantVariableTest(unittest.TestCase):
 
         self.assertEqual(built["ignored"]["variables"], ["cl"])
         self.assertEqual(built["renames"]["declarations"][cl["key"]],
-                         {"action": "keep", "reason": model.KEEP_FUNCTIONS_AND_VARIABLES})
+                         {"action": "keep", "reason": model.KEEP_FUNCTIONS_AND_VARIABLES, "silent": True})
 
     def test_placing_a_variable_without_a_constant_value_is_a_problem(self):
         cl = variable("engine/client.h", "cl", "client_state_t *")
@@ -1075,7 +1097,71 @@ class RenameTableTest(unittest.TestCase):
         self.assertEqual(renames["macros"][source + ":FCVAR_ARCHIVE"],
                          {"action": "qualify", "kind": "constant", "spelling": "goldsrc::FCVAR_ARCHIVE", "header": PUBLIC})
         self.assertEqual(renames["declarations"][cvar_set["key"]],
-                         {"action": "keep", "reason": model.KEEP_FUNCTIONS_AND_VARIABLES})
+                         {"action": "keep", "reason": model.KEEP_FUNCTIONS_AND_VARIABLES, "silent": True})
+
+    def test_by_name_carries_substituted_excluded_and_external_names_after_the_declared_ones(self):
+        """The three sources by_name falls back on for a declaration inside the scope that no fact of its own
+        backs, and their order. movevars_t is the substituted name of a record the library declares, so the
+        substitute is not stale although no fact carries that name."""
+        source = "pm_shared/pm_movevars.h"
+        movevars = record(source, "movevars_s", fields=[field("gravity", "float")], used_fields=["gravity"])
+        hud = record(source, "gamehud_t", fields=[field("initialized", "bool")], used=True)
+        built, problems = model.build(
+            facts(records=[movevars, hud],
+                  external={"IWorld": {"need": "by_pointer", "type": "class IWorld"},
+                            "int32": {"need": "by_value", "type": "int"},
+                            "movevars_s": {"need": "by_pointer", "type": "struct movevars_s"}}),
+            library(files={source: PUBLIC},
+                    rules=[{"name": "gamehud_t", "exclude": True, "reason": "a NitroApi type"}],
+                    substitutes={"movevars_t": {"type": "movevars_s", "reason": "the alias of the record above it"}}))
+
+        self.assertEqual(problems, [])
+        by_name = built["renames"]["by_name"]
+        declared = {"action": "qualify", "kind": "record", "spelling": "goldsrc::movevars_s", "header": PUBLIC}
+        self.assertEqual(by_name["movevars_s"], declared)
+        self.assertEqual(by_name["movevars_t"], declared)
+        self.assertEqual(by_name["gamehud_t"], {"action": "keep", "reason": "a NitroApi type"})
+        self.assertEqual(by_name["IWorld"], {"action": "keep", "reason": model.KEEP_EXTERNAL_NAME})
+        self.assertEqual(by_name["int32"],
+                         {"action": "replace", "kind": "alias", "spelling": "int32_t", "header": "cstdint"})
+
+    def test_a_keep_of_what_the_fork_carries_over_is_silent_and_any_other_keep_is_not(self):
+        """What makes a keep silent is the file the excluded fact is declared in, not the wording of the
+        rule's reason: the names such a file only forward-declares reach the table as external names, and
+        those stay for a person to look at."""
+        player = record(MOVED_INTERFACE, "IDemoPlayer", tag="class", fields=[field("world", "int")], used=True)
+        signals = enum(MOVED_INTERFACE, "DirectorSignal", [("DRC_ACTIVE", 0)], used_constants=["DRC_ACTIVE"])
+        hud = record("cl_dll/hud.h", "gamehud_t", fields=[field("initialized", "bool")], used=True)
+        cvar = record("engine/cvardef.h", "cvar_s", fields=[field("name", "char *")], used_fields=["name"])
+        built, problems = model.build(
+            facts(records=[player, hud, cvar], enums=[signals],
+                  external={"IWorld": {"need": "by_pointer", "type": "class IWorld"}}),
+            library(files={"engine/cvardef.h": PUBLIC},
+                    rules=[{"name": "IDemoPlayer", "exclude": True, "reason": "an interface the fork carries over"},
+                           {"key": signals["key"], "exclude": True, "reason": "the signal enum of that interface"},
+                           {"name": "gamehud_t", "exclude": True, "reason": "a NitroApi type"}]))
+
+        self.assertEqual(problems, [])
+        renames = built["renames"]["declarations"]
+        self.assertTrue(renames[player["key"]]["silent"])
+        self.assertTrue(renames[player["fields"][0]["key"]]["silent"])
+        self.assertTrue(renames[signals["constants"][0]["key"]]["silent"])
+        self.assertTrue(built["renames"]["by_name"]["IDemoPlayer"]["silent"])
+        self.assertNotIn("silent", renames[hud["key"]])
+        self.assertNotIn("silent", built["renames"]["by_name"]["IWorld"])
+
+    def test_a_substitute_naming_no_declaration_of_the_library_leaves_the_old_name_alone(self):
+        source = "common/quakedef.h"
+        flag = typedef(source, "BOOL", "int", used=True)
+        cvar = record(source, "cvar_s", fields=[field("saved", "BOOL")], used_fields=["saved"])
+        built, problems = model.build(
+            facts(records=[cvar], typedefs=[flag]),
+            library(files={source: PUBLIC}, substitutes={"BOOL": {"type": "int", "reason": "a Windows type"}}))
+
+        kept = {"action": "keep", "reason": "a Windows type"}
+        self.assertEqual(problems, [])
+        self.assertEqual(built["renames"]["declarations"][flag["key"]], kept)
+        self.assertEqual(built["renames"]["by_name"]["BOOL"], kept)
 
     def test_a_cstrike_record_takes_its_namespace_and_an_excluded_one_keeps_its_reason(self):
         source = "cl_dll/hud.h"

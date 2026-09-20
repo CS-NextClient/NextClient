@@ -4,12 +4,15 @@ The plan of a file consists of:
 - rewrites of the references usage.json records, each checked against the text at its coordinate;
 - rewrites of the engine macro constants our code uses, on the lines usage.json lists for them;
 - removal of the #include lines that resolve to declaration files and of the lines holding our forward
-  redeclarations of scope types;
+  redeclarations of scope types, except where the library keeps what the line reaches - the header of an
+  interface the fork carries over unchanged, and the redeclaration of a type nothing in the library
+  declares, both of which stay the only declaration the file has;
 - the headers the file then needs: the declaring header of everything it references; a reference resolved
   through a forward redeclaration needs only <goldsrc/fwd.h> where that redeclaration is the referencing
   file's own (the file whose forward-declaration line is being removed); the same reference reached from
   another file along the same redeclaration still needs the declaring header.
-Nothing is written while any file has a problem.
+Nothing is written while any file has a problem. A snapshot outlives the tree it was taken from, so a
+coordinate naming a line the file no longer has is one such problem rather than an error that stops the run.
 """
 import bisect
 import os
@@ -18,7 +21,7 @@ import subprocess
 from dataclasses import dataclass, field
 from xml.etree import ElementTree
 
-from goldsrc_tools import abi_scope, build_info, model, paths, sources
+from goldsrc_tools import abi_scope, build_info, paths, sources
 
 TAG_KEYWORDS = ("struct", "class", "union", "enum")
 MIGRATED_PREFIXES = ("goldsrc::cstrike::", "goldsrc::")
@@ -27,6 +30,9 @@ CONDITION_DIRECTIVES = ("if", "ifdef", "ifndef", "elif", "elifdef", "elifndef", 
 # References whose text never spells the declaration: a member access starts at its object, a template
 # substitution at the template.
 UNSPELLED_KINDS = ("MemberExpr", "SubstTemplateTypeParmTypeLoc")
+# Declarations a reference falls back to the rename table's by_name on: a forward tag declaration and an
+# alias, both of which the scope can carry without a fact of their own behind them.
+NAMED_KINDS = ("CXXRecordDecl", "RecordDecl", "EnumDecl", "TypedefDecl")
 HEADER_EXTENSIONS = (".h", ".hpp", ".hxx", ".inl")
 
 _IDENTIFIER = re.compile(r"[A-Za-z_]\w*")
@@ -43,6 +49,17 @@ class Inputs:
     renames: dict
     fwd_header: str
     module_include_dirs: dict
+    _macros_by_name: dict = None
+
+    def macro_named(self, name):
+        """The placed macro of that name, when exactly one bears it. A macro the replaced layer defines in
+        two headers is placed under one key only, and a use recorded against the other key reaches it here."""
+        if self._macros_by_name is None:
+            found = {}
+            for key, entry in self.renames["macros"].items():
+                found.setdefault(key.rsplit(":", 1)[-1], []).append(entry)
+            self._macros_by_name = {macro: entries[0] for macro, entries in found.items() if len(entries) == 1}
+        return self._macros_by_name.get(name)
 
 
 @dataclass
@@ -82,17 +99,27 @@ def _under(path, prefixes):
     return any(path == prefix or path.startswith(prefix.rstrip("/") + "/") for prefix in prefixes)
 
 
-def is_selected(path, prefixes, excludes=()):
-    return _under(path, prefixes) and not _under(path, excludes) and not abi_scope.is_declaration_file(path)
+def is_selected(path, prefixes, excludes=(), declarations=()):
+    return (_under(path, prefixes) and not _under(path, excludes)
+            and (path in declarations or not abi_scope.is_declaration_file(path)))
+
+
+def selected_declaration_files(prefixes, migrate_declarations):
+    """The files of the declaration scope this run migrates: those `prefixes` names by their own path. A
+    declaration file reached through a directory is never one of them - the directory says nothing about
+    that file, while its own path is the caller's answer for it."""
+    if not migrate_declarations:
+        return frozenset()
+    return frozenset(path for path in map(paths.posix, prefixes) if abi_scope.is_declaration_file(path))
 
 
 def rename_for(inputs, key):
-    """The rename of a declaration key; a forward tag declaration inside the scope goes by its name."""
+    """The rename of a declaration key; a declaration inside the scope that no fact backs goes by its name."""
     entry = inputs.renames["declarations"].get(key)
     if entry is not None:
         return entry
     declaration = inputs.usage["declarations"].get(key) or {}
-    if declaration.get("kind") in ("CXXRecordDecl", "RecordDecl", "EnumDecl"):
+    if declaration.get("kind") in NAMED_KINDS:
         return inputs.renames["by_name"].get(declaration.get("name"))
     return None
 
@@ -104,24 +131,27 @@ def read_source(path):
     return text.replace("\r\n", "\n"), "\r\n" if "\r\n" in text else "\n"
 
 
-def plan(inputs, prefixes, excludes=()):
+def plan(inputs, prefixes, excludes=(), migrate_declarations=False):
     grouped = {}
     resolver = sources.IncludeResolver()
+    declarations = selected_declaration_files(prefixes, migrate_declarations)
+    prefixes = [paths.posix(prefix) for prefix in prefixes]
+    excludes = [paths.posix(exclude) for exclude in excludes]
 
     def group(path):
         return grouped.setdefault(path, {"references": [], "redeclarations": [], "macros": []})
 
     for item in inputs.usage["references"]:
-        if is_selected(item["file"], prefixes, excludes):
+        if is_selected(item["file"], prefixes, excludes, declarations):
             group(item["file"])["references"].append(item)
 
     for entry in inputs.usage.get("redeclarations", {}).values():
-        if is_selected(entry["file"], prefixes, excludes):
+        if is_selected(entry["file"], prefixes, excludes, declarations):
             group(entry["file"])["redeclarations"].append(entry)
 
     for key, macro in inputs.usage["macros"].items():
         for use in macro["uses"]:
-            if is_selected(use["file"], prefixes, excludes):
+            if is_selected(use["file"], prefixes, excludes, declarations):
                 group(use["file"])["macros"].append((key, macro, use["line"]))
 
     # A file without references may still include old headers.
@@ -130,7 +160,7 @@ def plan(inputs, prefixes, excludes=()):
         found = sources.walk_sources(root) if os.path.isdir(root) else ([root] if os.path.isfile(root) else [])
         for full in found:
             relative = paths.relative(full, inputs.source_root)
-            if is_selected(relative, prefixes, excludes):
+            if is_selected(relative, prefixes, excludes, declarations):
                 group(relative)
     return {path: plan_file(inputs, resolver, path, **items) for path, items in sorted(grouped.items())}
 
@@ -167,8 +197,24 @@ def _declared_name(inputs, item):
     return (inputs.usage["declarations"].get(item["decl"]) or {}).get("name")
 
 
+def _line_at(plan, lines, number, what):
+    """The text of a 1-based line, or None with a problem recorded: a coordinate of the snapshot can name a
+    line that the file no longer has, which is what a file already migrated once looks like."""
+    if 1 <= number <= len(lines):
+        return lines[number - 1]
+    plan.problems.append("%s:%d: %s is past the end of the file, which has %d line(s)"
+                         % (plan.path, number, what, len(lines)))
+    return None
+
+
 def _plan_redeclaration(inputs, plan, lines, entry):
-    text = lines[entry["line"] - 1]
+    rename = rename_for(inputs, entry["decl"])
+    if rename is not None and rename["action"] == "keep":
+        return  # nothing in the library declares what the line redeclares, so the line is what declares it
+
+    text = _line_at(plan, lines, entry["line"], "the redeclaration of %s" % entry["name"])
+    if text is None:
+        return
     if not _FORWARD_LINE.match(text) or entry["name"] not in _IDENTIFIER.findall(text):
         plan.problems.append("%s:%d: the redeclaration of %s is not a declaration alone on its line"
                              % (plan.path, entry["line"], entry["name"]))
@@ -186,7 +232,7 @@ def _plan_reference(inputs, plan, lines, item):
         plan.problems.append("%s: no rename for %s" % (where, item["decl"]))
         return
     if entry["action"] == "keep":
-        if entry["reason"] != model.KEEP_FUNCTIONS_AND_VARIABLES:
+        if not entry.get("silent"):
             plan.manual.append("%s: %s kept (%s)" % (where, _declared_name(inputs, item), entry["reason"]))
         return
 
@@ -201,8 +247,10 @@ def _plan_reference(inputs, plan, lines, item):
     if entry["action"] == "member" or item["kind"] in UNSPELLED_KINDS:
         return
 
-    text = lines[item["line"] - 1]
     name = _declared_name(inputs, item)
+    text = _line_at(plan, lines, item["line"], "the reference to %s" % name)
+    if text is None:
+        return
     match = _IDENTIFIER.match(text, item["col"] - 1)
     if match is None or match.group(0) != name:
         if item["kind"] == "DeclRefExpr" and match is not None and text.startswith("::", match.end()):
@@ -237,7 +285,7 @@ def _widen(text, begin):
 
 def _plan_macro(inputs, plan, code, key, macro, line):
     where = "%s:%d" % (plan.path, line)
-    entry = inputs.renames["macros"].get(key)
+    entry = inputs.renames["macros"].get(key) or inputs.macro_named(macro["name"])
     if entry is None:
         if macro["file"].lower().endswith(HEADER_EXTENSIONS) and not macro["name"].startswith("__"):
             plan.manual.append("%s: macro %s of %s is not a library constant" % (where, macro["name"], macro["file"]))
@@ -251,7 +299,9 @@ def _plan_macro(inputs, plan, code, key, macro, line):
         plan.manual.append("%s: our code declares %s (%s); not rewritten" % (where, macro["name"], ", ".join(shadows)))
         return
 
-    text = code[line - 1]
+    text = _line_at(plan, code, line, "the use of %s" % macro["name"])
+    if text is None:
+        return
     directive = _DIRECTIVE.match(text)
     if directive is not None and directive.group(1) in CONDITION_DIRECTIVES:
         plan.problems.append("%s: %s in a #%s directive cannot become a constant" % (where, macro["name"], directive.group(1)))
@@ -278,7 +328,9 @@ def _plan_includes(inputs, resolver, plan, directives, full):
             continue
 
         relative = paths.relative(resolved, inputs.source_root)
-        if abi_scope.is_declaration_file(relative):
+        # The library declares nothing under the names of the interfaces the fork carries over, so their own
+        # header goes on being what declares them.
+        if abi_scope.is_declaration_file(relative) and not abi_scope.is_moved_hltv_interface(relative):
             plan.old_includes.append(number)
             plan.removed_includes.append(relative)
             plan.removed.add(number)
@@ -289,7 +341,9 @@ def _plan_includes(inputs, resolver, plan, directives, full):
 def _collapse_blank_lines(plan, lines):
     """A run of removed lines between two blank lines takes the second of them along; the run that holds
     the new include block's insertion point is left alone when there is a block to insert, since the block
-    takes the run's place there and still needs that blank line to separate it from what follows."""
+    takes the run's place there and still needs that blank line to separate it from what follows. The line
+    after the run has to be a real line of the file: splitting leaves an empty last element for a file that
+    ends with a newline, and a run reaching the last line of a file that does not has no line after it."""
     anchor = min(plan.old_includes) if plan.old_includes else None
     block = _include_block(plan, lines) if anchor is not None else []
     for start, end in _ranges(sorted(plan.removed)):
@@ -297,7 +351,7 @@ def _collapse_blank_lines(plan, lines):
             continue
         following = end + 1
         if (1 < start < len(lines) and not lines[start - 2].strip() and following not in plan.removed
-                and not lines[following - 1].strip() and following < len(lines)):
+                and following < len(lines) and not lines[following - 1].strip()):
             plan.removed.add(following)
 
 

@@ -1,6 +1,6 @@
 import re
 
-from goldsrc_tools import cxx_types, declarations
+from goldsrc_tools import abi_scope, cxx_types, declarations
 from goldsrc_tools import header_map as library_map
 
 ORDER = {"incomplete": 0, "prefix": 1, "complete": 2}
@@ -18,6 +18,9 @@ CONVENTIONS = ("cdecl", "stdcall", "fastcall", "thiscall", "vectorcall")
 
 # The reason a function or an unplaced variable of the replaced layer keeps its spelling.
 KEEP_FUNCTIONS_AND_VARIABLES = "the library declares no functions and no variables; the code that defines one declares it"
+
+# The reason a name the facts record as external keeps its spelling.
+KEEP_EXTERNAL_NAME = "the facts resolve the name outside the replaced layer, and the library declares nothing under it"
 
 _STRING_TYPES = ("const char *", "char *")
 
@@ -69,6 +72,12 @@ def _identity(declaration):
     """What a declaration is known by inside its header: the fact it comes from, or its own name for a
     constant, which several macro facts can merge into."""
     return declaration["old"].get("key") or "%s %s" % (declaration["kind"], declaration["name"])
+
+
+def _integer_rename(name):
+    """The rename of a stock integer alias: the fixed-width type stands in for it everywhere."""
+    new = INTEGER_ALIASES[name]
+    return {"action": "replace", "kind": "alias", "spelling": new, "header": STANDARD_HEADERS.get(new)}
 
 
 def _measurable(field):
@@ -147,6 +156,7 @@ class _Builder:
         self.old_names = {}
         self.alias_names = {}
         self.header_of = {}
+        self.file_of = {}
         self.excluded = set()
         self.exclusion_reasons = {}
         self.alias_of = {}
@@ -281,6 +291,7 @@ class _Builder:
         self._place_variables()
 
     def _place_fact(self, key, file):
+        self.file_of[key] = file
         names = self.old_names.get(key) or [None]
         rule = self.rules.find(key, names[0], file)
         member = self.owner.get(key) is not None
@@ -1139,11 +1150,20 @@ class _Builder:
 
     def _renames(self):
         """The new spelling and declaring header of each fact the library covers, by fact key; of each placed
-        macro, by "file:name"; of each record also by its old names, which forward declarations inside the
-        scope carry. An unnamed record has no spelling of its own, only its members are listed. A fact missing
-        from the table is one the library does not know."""
+        macro, by "file:name". An unnamed record has no spelling of its own, only its members are listed. A
+        fact missing from the table is one the library does not know.
+
+        `by_name` answers a name rather than a key, for the declarations inside the scope that no fact of
+        their own backs - a forward declaration, an alias the facts never reached. It carries the old names
+        of what the library declares, then the names the map substitutes, then the names the map excludes,
+        then the names the facts record as external; a name a declared fact already claims keeps its answer.
+
+        A keep carries `silent` where the declaration the code already spells stays in place whatever the
+        migration does: the definition of a function declares it, and a file the fork carries over unchanged
+        declares what it declares. A keep without it is one somebody has to look at."""
         declarations = {}
         by_name = {}
+        declared = {}
         for key in sorted(self.level):
             if key in self.excluded:
                 continue
@@ -1153,6 +1173,7 @@ class _Builder:
             if spelling is not None:
                 entry = {"action": "qualify", "kind": "record", "spelling": spelling, "header": header}
                 declarations[key] = entry
+                self._remember_declared(declared, key, entry)
                 for old in self.old_names.get(key, ()):
                     by_name.setdefault(old, entry)
 
@@ -1163,25 +1184,47 @@ class _Builder:
             header = self._declaring_header(key)
             spelling = self._spelled(key)
             if spelling is not None:
-                declarations[key] = {"action": "qualify", "kind": "enum", "spelling": spelling, "header": header}
+                entry = {"action": "qualify", "kind": "enum", "spelling": spelling, "header": header}
+                declarations[key] = entry
+                self._remember_declared(declared, key, entry)
             scope = self._constant_scope(key)
             for constant in self.enums[key]["constants"]:
                 declarations[constant["key"]] = {"action": "qualify", "kind": "constant",
                                                  "spelling": "%s::%s" % (scope, constant["name"]), "header": header}
         for key in sorted(self.declared_aliases):
-            declarations[key] = {"action": "qualify", "kind": "alias", "spelling": self._spelled(key),
-                                 "header": self._declaring_header(key)}
+            entry = {"action": "qualify", "kind": "alias", "spelling": self._spelled(key),
+                     "header": self._declaring_header(key)}
+            declarations[key] = entry
+            self._remember_declared(declared, key, entry)
         for key in sorted(self.reached_opaque_aliases):
             if self.header_of.get(key) is not None:
-                declarations[key] = {"action": "qualify", "kind": "record", "spelling": self._spelled(key),
-                                     "header": self.fwd["path"]}
+                entry = {"action": "qualify", "kind": "record", "spelling": self._spelled(key),
+                         "header": self.fwd["path"]}
+                declarations[key] = entry
+                self._remember_declared(declared, key, entry)
         for alias, target in sorted(self.alias_of.items()):
             if target in declarations:
                 declarations.setdefault(alias, declarations[target])
+        for name in sorted(self.substitutes):
+            entry = self._substitute_rename(name, declared)
+            if entry is None:
+                continue
+            # Answering the old name is a use of its own: the substitute may be the only thing naming a
+            # declaration our code still spells the replaced layer's way.
+            self.used_substitutes.add(name)
+            by_name.setdefault(name, entry)
         for key, reason in sorted(self.exclusion_reasons.items()):
-            declarations.setdefault(key, self._excluded_rename(key, reason))
+            entry = self._excluded_rename(key, reason, declared)
+            silent = abi_scope.is_moved_hltv_interface(self.file_of.get(key) or "")
+            if silent and entry["action"] == "keep":
+                entry["silent"] = True
+            declarations.setdefault(key, entry)
+            for old in self.old_names.get(key, ()):
+                by_name.setdefault(old, entry)
             # What belongs to an excluded record or enum stays with it.
             kept = {"action": "keep", "reason": reason}
+            if silent:
+                kept["silent"] = True
             record = self.records.get(key)
             if record is not None:
                 for member in record["fields"] + record["methods"]:
@@ -1190,6 +1233,9 @@ class _Builder:
             if enum is not None:
                 for constant in enum["constants"]:
                     declarations.setdefault(constant["key"], kept)
+        for name in sorted(self.external):
+            by_name.setdefault(name, _integer_rename(name) if name in INTEGER_ALIASES
+                               else {"action": "keep", "reason": KEEP_EXTERNAL_NAME})
 
         macros = {}
         for placed in self.placed_macros:
@@ -1201,7 +1247,8 @@ class _Builder:
                 macros["%s:%s" % (placed["macro"]["file"], placed["macro"]["name"])] = entry
         for group in ("functions", "variables"):
             for key in self.facts.get(group, {}):
-                declarations.setdefault(key, {"action": "keep", "reason": KEEP_FUNCTIONS_AND_VARIABLES})
+                declarations.setdefault(key, {"action": "keep", "reason": KEEP_FUNCTIONS_AND_VARIABLES,
+                                              "silent": True})
         return {"declarations": declarations, "macros": macros, "by_name": by_name}
 
     def _spelled(self, key):
@@ -1229,19 +1276,34 @@ class _Builder:
             return self._spelled(owner)
         return library_map.namespace(self.map, self.header_of[key])
 
-    def _excluded_rename(self, key, reason):
+    def _remember_declared(self, declared, key, entry):
+        """Indexes a declaration of the library by the name it carries inside its header's namespace, which
+        is the name a substitute of the map puts in place of an old one."""
+        name = self._qualify(key)
+        if name is not None:
+            declared.setdefault(name, entry)
+
+    def _substitute_rename(self, name, declared):
+        """How a substituted old name is written now: the opaque declaration the substitute names, or the
+        declaration of the library carrying that name, or None when the library declares neither - what the
+        substitute puts in place is then a type of its own, which the code spells for itself."""
+        target = self.substitutes[name].get("type") or name
+        if target in self.opaque:
+            namespace = self.opaque[target].get("namespace") or self.fwd["namespace"]
+            spelling = target if library_map.is_global(namespace) else "%s::%s" % (namespace, target)
+            return {"action": "qualify", "kind": "record", "spelling": spelling, "header": self.fwd["path"]}
+        return declared.get(target)
+
+    def _excluded_rename(self, key, reason, declared):
         for name in self.old_names.get(key, ()):
             if name in INTEGER_ALIASES:
-                return {"action": "replace", "kind": "alias", "spelling": INTEGER_ALIASES[name],
-                        "header": STANDARD_HEADERS.get(INTEGER_ALIASES[name])}
+                return _integer_rename(name)
             substitute = self.substitutes.get(name)
             if substitute is None:
                 continue
-            target = substitute.get("type") or name
-            if target in self.opaque:
-                namespace = self.opaque[target].get("namespace") or self.fwd["namespace"]
-                spelling = target if library_map.is_global(namespace) else "%s::%s" % (namespace, target)
-                return {"action": "qualify", "kind": "record", "spelling": spelling, "header": self.fwd["path"]}
+            entry = self._substitute_rename(name, declared)
+            if entry is not None:
+                return entry
             return {"action": "keep", "reason": substitute.get("reason") or reason}
         return {"action": "keep", "reason": reason}
 
@@ -1250,10 +1312,35 @@ class _Builder:
                               if item.get("used") and key not in self.placed_variables)
                 for group in ("functions", "variables")}
 
+    def _check_macro_twins(self):
+        """The replaced layer defines some macros in two headers at once, and the migration answers a use
+        recorded against a file the library placed nothing from by the macro's name alone. Values that
+        disagree would let that answer change the number, so a name the library places from one file and the
+        facts evaluate to something else in another is a problem. A definition the facts could not evaluate
+        carries no value to disagree with, and definitions the library places all of are merged into one
+        constant, which reports a disagreement of its own."""
+        placed = {"%s:%s" % (entry["macro"]["file"], entry["macro"]["name"])
+                  for entry in self.placed_macros if not entry.get("variable")}
+        twins = {}
+        for key, macro in sorted(self.facts.get("macros", {}).items()):
+            if macro["status"] == "constant":
+                twins.setdefault(macro["name"], []).append((key, macro))
+
+        for name, found in sorted(twins.items()):
+            values = {repr(macro["value"]) for _key, macro in found}
+            carried = [key in placed for key, _macro in found]
+            if len(values) == 1 or not any(carried) or all(carried):
+                continue
+            self.problems.append("macro %s is defined as %s and the library places only some of them: a use "
+                                 "recorded against a file it places nothing from would take the placed value"
+                                 % (name, ", ".join("%s in %s" % (macro["value"], macro["file"])
+                                                    for _key, macro in found)))
+
     def _map_problems(self):
         self._check_name_collisions()
         self._check_shadowed_substitutes()
         self._check_opaque_needs()
+        self._check_macro_twins()
         for entry in self.rules.stale() + self.macro_rules.stale() + self.families.stale():
             self.problems.append("stale %s %s" % (entry["kind"], entry["label"]))
         for entry, files in self.rules.spread() + self.macro_rules.spread():

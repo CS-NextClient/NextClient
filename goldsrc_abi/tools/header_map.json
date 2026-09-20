@@ -992,6 +992,14 @@
     "net_api_s": {
       "type": "net_api_t",
       "reason": "an engine type reached through a pointer only"
+    },
+    "movevars_t": {
+      "type": "movevars_s",
+      "reason": "pm_movevars.h's own alias of the record it declares above it, which the library declares under that tag name; public/HLTV/IWorld.h reaches it through a pointer only"
+    },
+    "UserMsg": {
+      "type": "UserMsg",
+      "reason": "usermsg.h's alias of the engine's user message record, which the library declares opaque under the same name from NitroApi's own copy of it; public/HLTV/IWorld.h reaches it through a pointer only"
     }
   },
   "opaque": {

@@ -20,6 +20,8 @@ def main(argv=None):
     parser.add_argument("--config", default="Release", help="configuration whose compile commands resolve includes")
     parser.add_argument("--paths", nargs="+", required=True, help="files or directories to migrate, relative to the source root")
     parser.add_argument("--exclude", nargs="+", default=[], help="path prefixes under --paths to leave alone, relative to the source root")
+    parser.add_argument("--migrate-declaration-files", action="store_true",
+                        help="also migrate the files of the declaration scope that --paths names by their own path")
     parser.add_argument("--clang-format", default=DEFAULT_CLANG_FORMAT, help='"none" leaves the formatting alone')
     parser.add_argument("--report", help="write the plan summary as JSON to this file")
     parser.add_argument("--dry-run", action="store_true", help="plan and report without writing")
@@ -52,7 +54,19 @@ def main(argv=None):
     inputs = migration.Inputs(source_root=source_root, usage=usage, renames=built["renames"],
                               fwd_header=built["fwd"]["path"],
                               module_include_dirs=migration.module_include_dirs(commands, source_root))
-    plans = migration.plan(inputs, args.paths, args.exclude)
+
+    if args.migrate_declaration_files:
+        # A declaration file is migrated only where --paths names it by its own path, so a typo or a bare
+        # directory silently leaves it out; the count and the names are what shows that here.
+        selected = sorted(migration.selected_declaration_files(args.paths, True))
+        print("declaration files to migrate: %d" % len(selected))
+        for path in selected:
+            print("  %s" % path)
+        if not selected:
+            print("warning: --migrate-declaration-files is set, but --paths names no file of the declaration "
+                  "scope by its own path; a directory holding one does not select it")
+
+    plans = migration.plan(inputs, args.paths, args.exclude, args.migrate_declaration_files)
     summary = migration.summarize(plans)
     if args.report:
         with open(args.report, "w", encoding="utf-8", newline="\n") as stream:

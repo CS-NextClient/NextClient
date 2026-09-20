@@ -187,6 +187,22 @@ class MacroScanTest(unittest.TestCase):
                 self.assertEqual(used[key]["name"], "SHARED_LIMIT")
                 self.assertEqual(used[key]["uses"], [{"file": "nextclient/client_mini/src/use.cpp", "line": 1}])
 
+    def test_a_macro_of_the_fork_declaration_scope_is_used_by_both_trees_and_defined_in_neither(self):
+        with tempfile.TemporaryDirectory() as root:
+            sdk = "dep/NclNitroApi/dep/ncl-hl1-source-sdk"
+            write(root, sdk + "/HLTV/common/hltv.h", "#define DRC_CMD_EVENT 1\n")
+            write(root, sdk + "/HLTV/common/DirectorCmd.cpp", "int x = DRC_CMD_EVENT;\n")
+            write(root, "nextclient/gameui/Demo.cpp", "int y = DRC_CMD_EVENT;\n")
+
+            macros = usage.engine_macros(root, excluded=set())
+            self.assertEqual(sorted(macros), [sdk + "/HLTV/common/hltv.h:DRC_CMD_EVENT"])
+
+            used = usage.scan_macro_uses(root, macros)
+            entry = used[sdk + "/HLTV/common/hltv.h:DRC_CMD_EVENT"]
+            self.assertEqual(entry["defined_in_ours"], [])
+            self.assertEqual(entry["uses"], [{"file": "nextclient/gameui/Demo.cpp", "line": 1},
+                                             {"file": sdk + "/HLTV/common/DirectorCmd.cpp", "line": 1}])
+
     def test_self_reference_inside_the_defining_stock_file_is_excluded_for_its_own_record(self):
         with tempfile.TemporaryDirectory() as root:
             sdk = "dep/NclNitroApi/dep/ncl-hl1-source-sdk"
@@ -208,12 +224,16 @@ class MissingDeclarationRootTest(unittest.TestCase):
 
     def test_a_root_disappears_from_the_list_once_it_exists_and_others_stay(self):
         with tempfile.TemporaryDirectory() as root:
-            wad = "nextclient/engine_mini/src/graphics/wad_format.h"
-            write(root, wad, "\n")
+            hltv = "dep/NclNitroApi/dep/ncl-hl1-source-sdk/HLTV/common/hltv.h"
+            write(root, hltv, "\n")
 
             missing = usage.missing_declaration_roots(root)
-            self.assertNotIn(wad, missing)
+            self.assertNotIn(hltv, missing)
             self.assertIn("dep/NclNitroApi/include/nitroapi/modules/engine/structs.h", missing)
+
+    def test_a_deleted_stock_file_of_ours_is_not_a_root(self):
+        with tempfile.TemporaryDirectory() as root:
+            self.assertNotIn("nextclient/engine_mini/src/graphics/wad_format.h", usage.missing_declaration_roots(root))
 
     def test_a_directory_root_counts_as_present_once_it_has_a_file(self):
         with tempfile.TemporaryDirectory() as root:

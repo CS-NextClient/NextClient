@@ -1,6 +1,6 @@
 import unittest
 
-from goldsrc_tools import cxx_types, emit
+from goldsrc_tools import abi_scope, cxx_types, emit
 
 PUBLIC = "goldsrc/cvar.h"
 
@@ -1039,6 +1039,13 @@ class EquivalenceOutsideTreeTest(unittest.TestCase):
         self.assertNotIn("offsetof(::lumpinfo_s", text)
         self.assertIn("// lumpinfo_s: comparisons skipped - declared in our NextClient sources", text)
         self.assertNotIn("nextclient/engine_mini/src/graphics/wad_format.h", emit.equivalence_files(model))
+
+    def test_a_deleted_stock_file_of_ours_stays_outside_the_tree_after_leaving_the_roots(self):
+        for path in abi_scope.DELETED_OUR_STOCK_FILES:
+            self.assertTrue(emit._outside_file(path), path)
+            self.assertNotIn(path, abi_scope.declaration_roots())
+        self.assertFalse(emit._outside_file("nextclient/engine_mini/src/graphics/gl_local.h"))
+        self.assertFalse(emit._outside_file(abi_scope.EXTERNAL_MACRO_FILES[0]))
 
 
 class EquivalenceFilesTest(unittest.TestCase):

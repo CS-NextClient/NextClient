@@ -258,6 +258,14 @@ def missing_declaration_roots(source_root):
             if not os.path.exists(os.path.join(source_root, *relative_root.split("/")))]
 
 
+def root_files(source_root, relative_root):
+    """The source files a root of abi_scope stands for: a directory's tree, or the file itself."""
+    root = os.path.join(source_root, *relative_root.split("/"))
+    if os.path.isdir(root):
+        return list(sources.walk_sources(root))
+    return [root] if os.path.isfile(root) else []
+
+
 def engine_macros(source_root, excluded):
     """Macros of the declaration roots, keyed 'file:name': the same name is legitimately defined in more
     than one layer file (MAX_MODEL_NAME, DMG_*, SVC_*), and each definition is a separate fact the model
@@ -266,11 +274,8 @@ def engine_macros(source_root, excluded):
     macros = {}
     files = []
     for relative_root in abi_scope.declaration_roots():
-        root = os.path.join(source_root, *relative_root.split("/"))
-        files.extend(sources.walk_sources(root) if os.path.isdir(root) else [root])
+        files.extend(root_files(source_root, relative_root))
     for path in files:
-        if not os.path.isfile(path):
-            continue
         relative = paths.relative(path, source_root)
         for name, (line, params, body) in sources.parse_defines(sources.read_text(path)).items():
             if name in excluded or sources.is_include_guard(name, body):
@@ -290,8 +295,8 @@ def scan_macro_uses(source_root, macros):
     for key, entry in macros.items():
         by_name.setdefault(entry["name"], []).append(key)
 
-    for directory in abi_scope.OUR_SOURCE_DIRS:
-        for path in sources.walk_sources(os.path.join(source_root, *directory.split("/"))):
+    for relative_root in abi_scope.source_roots():
+        for path in root_files(source_root, relative_root):
             relative = paths.relative(path, source_root)
             text = sources.read_text(path)
             declaration_file = abi_scope.is_declaration_file(relative)

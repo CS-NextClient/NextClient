@@ -19,6 +19,18 @@ FIELD = OLD + ":106:20"
 ENTITY = {"action": "qualify", "kind": "record", "spelling": "goldsrc::cl_entity_t", "header": "goldsrc/entity.h"}
 CVARDEF = SDK + "/cvardef.h"
 
+# Paths of the declaration scope the fork migration reaches: a closed HLTV interface it names one by one,
+# and the macro-only header sitting inside a directory it names whole, next to a source it does migrate.
+PUBLIC_DIR = "dep/NclNitroApi/dep/ncl-hl1-source-sdk/public"
+INTERFACE = PUBLIC_DIR + "/HLTV/IDemoPlayer.h"
+FORK_DIR = "dep/NclNitroApi/dep/ncl-hl1-source-sdk/HLTV/common"
+FORK_MACROS = FORK_DIR + "/hltv.h"
+FORK_SOURCE = FORK_DIR + "/DirectorCmd.cpp"
+TWIN_MACROS = SDK + "/hltv.h"
+MOVEVARS = "dep/NclNitroApi/dep/ncl-hl1-source-sdk/pm_shared/pm_movevars.h:59:3"
+VARS = {"action": "qualify", "kind": "record", "spelling": "goldsrc::movevars_s", "header": "goldsrc/pmove.h"}
+DIRECTOR = {"action": "qualify", "kind": "constant", "spelling": "goldsrc::DRC_CMD_NONE", "header": "goldsrc/hltv.h"}
+
 _FAKE_CLANG_FORMAT = '''import sys
 
 with open(sys.argv[1], "a", encoding="utf-8") as handle:
@@ -115,8 +127,10 @@ def inputs_for(root, *, references=(), declarations=None, renames=None, redeclar
              "macro_shadows": dict(shadows or {})}
     table = {"declarations": {}, "macros": {}, "by_name": {}}
     table.update(renames or {})
+    include_dirs = [os.path.join(root, *SDK.split("/")), os.path.join(root, *PUBLIC_DIR.split("/"))]
     return migration.Inputs(source_root=root, usage=usage, renames=table, fwd_header="goldsrc/fwd.h",
-                            module_include_dirs={"nextclient/client_mini": [os.path.join(root, *SDK.split("/"))]})
+                            module_include_dirs={"nextclient/client_mini": include_dirs,
+                                                 "dep/NclNitroApi": include_dirs})
 
 
 def migrate(inputs, clang_format="none", excludes=()):
@@ -132,9 +146,9 @@ def read(root, relative):
         return handle.read().decode("utf-8")
 
 
-def macro_record(name, lines, defined_in_ours=()):
-    return {"file": CVARDEF, "name": name, "line": 1, "params": None,
-            "uses": [{"file": SOURCE, "line": line} for line in lines], "defined_in_ours": list(defined_in_ours)}
+def macro_record(name, lines, defined_in_ours=(), file=CVARDEF, used_by=SOURCE):
+    return {"file": file, "name": name, "line": 1, "params": None,
+            "uses": [{"file": used_by, "line": line} for line in lines], "defined_in_ours": list(defined_in_ours)}
 
 
 class ReferenceTest(unittest.TestCase):
@@ -221,6 +235,32 @@ class ReferenceTest(unittest.TestCase):
             self.assertEqual(summary["problems"], [])
             self.assertEqual(read(root, SOURCE), "#include <cstdint>\n\nuint8_t* data;\n")
 
+    def test_an_alias_of_the_scope_no_fact_backs_is_qualified_by_its_name(self):
+        """public/HLTV/IWorld.h points at movevars_t, an alias the facts never reached; only the map's
+        substitute of that name connects it to the record the library declares."""
+        with tempfile.TemporaryDirectory() as root:
+            write(root, SOURCE, "void f(movevars_t* vars);\n")
+            summary = migrate(inputs_for(
+                root,
+                references=[reference(MOVEVARS, SOURCE, 1, 8, "TypedefTypeLoc")],
+                declarations={MOVEVARS: declared("TypedefDecl", "movevars_t")},
+                renames={"by_name": {"movevars_t": VARS}}))
+
+            self.assertEqual(summary["problems"], [])
+            self.assertEqual(read(root, SOURCE), "#include <goldsrc/pmove.h>\n\nvoid f(goldsrc::movevars_s* vars);\n")
+
+    def test_the_rename_of_the_key_wins_over_the_one_of_the_name(self):
+        with tempfile.TemporaryDirectory() as root:
+            write(root, SOURCE, "void f(movevars_t* vars);\n")
+            summary = migrate(inputs_for(
+                root,
+                references=[reference(MOVEVARS, SOURCE, 1, 8, "TypedefTypeLoc")],
+                declarations={MOVEVARS: declared("TypedefDecl", "movevars_t")},
+                renames={"declarations": {MOVEVARS: ENTITY}, "by_name": {"movevars_t": VARS}}))
+
+            self.assertEqual(summary["problems"], [])
+            self.assertEqual(read(root, SOURCE), "#include <goldsrc/entity.h>\n\nvoid f(goldsrc::cl_entity_t* vars);\n")
+
     def test_kept_references_are_listed_for_a_person_except_functions_and_variables(self):
         gamehud, cvar_set = OLD + ":785:8", OLD + ":90:6"
         with tempfile.TemporaryDirectory() as root:
@@ -231,7 +271,8 @@ class ReferenceTest(unittest.TestCase):
                             reference(cvar_set, SOURCE, 2, 12, "DeclRefExpr")],
                 declarations={gamehud: declared("CXXRecordDecl", "gamehud_t"), cvar_set: declared("FunctionDecl", "Cvar_Set")},
                 renames={"declarations": {gamehud: {"action": "keep", "reason": "a NitroApi type"},
-                                          cvar_set: {"action": "keep", "reason": model.KEEP_FUNCTIONS_AND_VARIABLES}}}))
+                                          cvar_set: {"action": "keep", "silent": True,
+                                                     "reason": model.KEEP_FUNCTIONS_AND_VARIABLES}}}))
 
             self.assertEqual(summary["problems"], [])
             self.assertEqual(len(summary["manual"]), 1)
@@ -257,6 +298,33 @@ class RedeclarationTest(unittest.TestCase):
             self.assertEqual(summary["problems"], [])
             self.assertEqual(read(root, HEADER), "#pragma once\n\n#include <goldsrc/fwd.h>\n\n"
                                                  "void draw(const goldsrc::cl_entity_t* entity);\n")
+
+    def test_a_redeclaration_of_a_kept_entity_stays_and_brings_no_fwd_h(self):
+        """goldsrc/fwd.h carries nothing under the name of an HLTV interface the fork keeps, so the line
+        removed for a declared entity is here the only declaration the file has. Neither reference asks for
+        attention: the fork's own header answers both."""
+        signal = INTERFACE + ":93:1/DRC_ACTIVE"
+        redeclaration = HEADER + ":3:7"
+        with tempfile.TemporaryDirectory() as root:
+            write(root, HEADER, "#pragma once\n\nclass IDemoPlayer;\n\nvoid play(IDemoPlayer* player);\n"
+                                "int first = DRC_ACTIVE;\n")
+            summary = migrate(inputs_for(
+                root,
+                references=[reference(INTERFACE + ":40:7", HEADER, 5, 11, "RecordTypeLoc", via=redeclaration),
+                            reference(signal, HEADER, 6, 13, "DeclRefExpr")],
+                declarations={INTERFACE + ":40:7": declared("CXXRecordDecl", "IDemoPlayer"),
+                              signal: declared("EnumConstantDecl", "DRC_ACTIVE")},
+                renames={"declarations": {
+                    INTERFACE + ":40:7": {"action": "keep", "silent": True, "reason": "an interface the fork keeps"},
+                    signal: {"action": "keep", "silent": True, "reason": "the signal enum of that interface"}}},
+                redeclarations={redeclaration: {"name": "IDemoPlayer", "kind": "tag", "scope": "", "file": HEADER,
+                                                "line": 3, "col": 7, "decl": INTERFACE + ":40:7", "units": [SOURCE]}}))
+
+            self.assertEqual(summary["problems"], [])
+            self.assertEqual(summary["manual"], [])
+            self.assertEqual(summary["files"], {})
+            self.assertEqual(read(root, HEADER), "#pragma once\n\nclass IDemoPlayer;\n\nvoid play(IDemoPlayer* player);\n"
+                                                 "int first = DRC_ACTIVE;\n")
 
     def test_a_reference_via_a_redeclaration_of_another_file_keeps_the_real_header(self):
         redeclaration = HEADER + ":3:28"
@@ -325,8 +393,191 @@ class MacroTest(unittest.TestCase):
             self.assertEqual(len(summary["manual"]), 2)
             self.assertEqual(read(root, SOURCE), "int a = DRC_CMD_BANNER;\nint b = DRC_CMD_STUFFTEXT;\n")
 
+    def test_a_use_of_a_twin_definition_takes_the_only_placed_macro_of_that_name(self):
+        """The replaced layer defines the director constants in two headers; the facts place one of them, and
+        a use recorded against the other carries a key the rename table never holds."""
+        twin = TWIN_MACROS + ":DRC_CMD_NONE"
+        placed = FORK_MACROS + ":DRC_CMD_NONE"
+        with tempfile.TemporaryDirectory() as root:
+            write(root, SOURCE, "int c = DRC_CMD_NONE;\n")
+            summary = migrate(inputs_for(root,
+                                         macros={twin: macro_record("DRC_CMD_NONE", [1], file=TWIN_MACROS)},
+                                         renames={"macros": {placed: DIRECTOR}}))
+
+            self.assertEqual(summary["problems"], [])
+            self.assertEqual(summary["manual"], [])
+            self.assertEqual(read(root, SOURCE), "#include <goldsrc/hltv.h>\n\nint c = goldsrc::DRC_CMD_NONE;\n")
+
+    def test_two_placed_macros_of_one_name_leave_the_use_for_a_person(self):
+        twin = TWIN_MACROS + ":DRC_CMD_NONE"
+        with tempfile.TemporaryDirectory() as root:
+            write(root, SOURCE, "int c = DRC_CMD_NONE;\n")
+            summary = migrate(inputs_for(root,
+                                         macros={twin: macro_record("DRC_CMD_NONE", [1], file=TWIN_MACROS)},
+                                         renames={"macros": {FORK_MACROS + ":DRC_CMD_NONE": DIRECTOR,
+                                                             CVARDEF + ":DRC_CMD_NONE": DIRECTOR}}))
+
+            self.assertEqual(summary["problems"], [])
+            self.assertEqual(len(summary["manual"]), 1)
+            self.assertIn("is not a library constant", summary["manual"][0])
+            self.assertEqual(read(root, SOURCE), "int c = DRC_CMD_NONE;\n")
+
+    def test_a_use_whose_own_key_is_placed_is_rewritten_although_the_name_is_ambiguous(self):
+        twin = TWIN_MACROS + ":DRC_CMD_NONE"
+        own = {"action": "qualify", "kind": "constant", "spelling": "goldsrc::cstrike::DRC_CMD_NONE",
+               "header": "goldsrc/cstrike/hltv.h"}
+        with tempfile.TemporaryDirectory() as root:
+            write(root, SOURCE, "int c = DRC_CMD_NONE;\n")
+            summary = migrate(inputs_for(root,
+                                         macros={twin: macro_record("DRC_CMD_NONE", [1], file=TWIN_MACROS)},
+                                         renames={"macros": {twin: own, FORK_MACROS + ":DRC_CMD_NONE": DIRECTOR}}))
+
+            self.assertEqual(summary["problems"], [])
+            self.assertEqual(read(root, SOURCE),
+                             "#include <goldsrc/cstrike/hltv.h>\n\nint c = goldsrc::cstrike::DRC_CMD_NONE;\n")
+
+
+class DeclarationFileTest(unittest.TestCase):
+    """Files of the declaration scope are migrated only where --paths names one by its own path: the fork's
+    HLTV/common holds hltv.h, whose own #define lines the macro rewrite would turn into problems."""
+
+    def test_a_declaration_file_inside_a_named_directory_is_left_alone(self):
+        twin = TWIN_MACROS + ":DRC_CMD_NONE"
+        with tempfile.TemporaryDirectory() as root:
+            write(root, FORK_MACROS, "#pragma once\n\n#define DRC_CMD_NONE 0\n")
+            write(root, FORK_SOURCE, "int c = DRC_CMD_NONE;\n")
+            macro = macro_record("DRC_CMD_NONE", [1], file=TWIN_MACROS, used_by=FORK_SOURCE)
+            macro["uses"].append({"file": FORK_MACROS, "line": 3})
+            inputs = inputs_for(root, macros={twin: macro},
+                                renames={"macros": {FORK_MACROS + ":DRC_CMD_NONE": DIRECTOR}})
+
+            plans = migration.plan(inputs, [FORK_DIR], migrate_declarations=True)
+            summary = migration.summarize(plans)
+
+            self.assertEqual(sorted(plans), [FORK_SOURCE])
+            self.assertEqual(summary["problems"], [])
+            self.assertEqual(summary["files"][FORK_SOURCE]["edits"], 1)
+
+    def test_naming_the_macro_header_itself_turns_its_own_defines_into_problems(self):
+        twin = TWIN_MACROS + ":DRC_CMD_NONE"
+        with tempfile.TemporaryDirectory() as root:
+            write(root, FORK_MACROS, "#pragma once\n\n#define DRC_CMD_NONE 0\n")
+            inputs = inputs_for(root, macros={twin: macro_record("DRC_CMD_NONE", [3], file=TWIN_MACROS,
+                                                                used_by=FORK_MACROS)},
+                                renames={"macros": {FORK_MACROS + ":DRC_CMD_NONE": DIRECTOR}})
+
+            summary = migration.summarize(migration.plan(inputs, [FORK_MACROS], migrate_declarations=True))
+
+            self.assertEqual(len(summary["problems"]), 1)
+            self.assertIn("is defined here", summary["problems"][0])
+
+    def test_a_path_is_matched_whichever_separator_it_is_written_with(self):
+        with tempfile.TemporaryDirectory() as root:
+            write(root, INTERFACE, "#pragma once\n\nclass IDemoPlayer\n{\n"
+                                   "    virtual void Play(cl_entity_t* entity) = 0;\n};\n")
+            inputs = inputs_for(root, references=[reference(TYPEDEF, INTERFACE, 5, 23, "TypedefTypeLoc")],
+                                declarations={TYPEDEF: declared("TypedefDecl", "cl_entity_t")},
+                                renames={"declarations": {TYPEDEF: ENTITY}})
+            windows = INTERFACE.replace("/", "\\")
+
+            self.assertEqual(migration.selected_declaration_files([windows], True), frozenset([INTERFACE]))
+            summary = migration.summarize(migration.plan(inputs, [windows], migrate_declarations=True))
+            self.assertEqual(summary["problems"], [])
+            self.assertEqual(summary["files"][INTERFACE]["edits"], 1)
+
+    def test_a_declaration_file_named_by_its_own_path_is_migrated_only_with_the_parameter(self):
+        with tempfile.TemporaryDirectory() as root:
+            write(root, INTERFACE, "#pragma once\n\nclass IDemoPlayer\n{\n"
+                                   "    virtual void Play(cl_entity_t* entity) = 0;\n};\n")
+            inputs = inputs_for(root, references=[reference(TYPEDEF, INTERFACE, 5, 23, "TypedefTypeLoc")],
+                                declarations={TYPEDEF: declared("TypedefDecl", "cl_entity_t")},
+                                renames={"declarations": {TYPEDEF: ENTITY}})
+
+            self.assertEqual(migration.plan(inputs, [INTERFACE]), {})
+
+            summary = migration.summarize(migration.plan(inputs, [INTERFACE], migrate_declarations=True))
+            self.assertEqual(summary["problems"], [])
+            self.assertEqual(summary["files"][INTERFACE]["edits"], 1)
+            self.assertEqual(summary["files"][INTERFACE]["headers"], ["goldsrc/entity.h"])
+
+
+class ShorterFileTest(unittest.TestCase):
+    """A snapshot outlives the tree it was taken from: running the migration again over files it already
+    shortened names lines that are no longer there. Each such coordinate is one file's problem, and the
+    files beside it still plan."""
+
+    def _other(self, root):
+        write(root, HEADER, "#pragma once\n\ncl_entity_t* e;\n")
+        return reference(TYPEDEF, HEADER, 3, 1, "TypedefTypeLoc")
+
+    def test_a_reference_past_the_end_is_a_problem(self):
+        with tempfile.TemporaryDirectory() as root:
+            write(root, SOURCE, "cl_entity_t* e;\n")
+            summary = migrate(inputs_for(
+                root,
+                references=[reference(TYPEDEF, SOURCE, 9, 1, "TypedefTypeLoc"), self._other(root)],
+                declarations={TYPEDEF: declared("TypedefDecl", "cl_entity_t")},
+                renames={"declarations": {TYPEDEF: ENTITY}}))
+
+            self.assertEqual(len(summary["problems"]), 1)
+            self.assertIn("%s:9: the reference to cl_entity_t is past the end of the file, which has 2 line(s)"
+                          % SOURCE, summary["problems"][0])
+            self.assertEqual(summary["files"][HEADER]["edits"], 1)
+
+    def test_a_redeclaration_past_the_end_is_a_problem(self):
+        redeclaration = SOURCE + ":9:28"
+        with tempfile.TemporaryDirectory() as root:
+            write(root, SOURCE, "cl_entity_t* e;\n")
+            summary = migrate(inputs_for(
+                root,
+                references=[self._other(root)],
+                declarations={TYPEDEF: declared("TypedefDecl", "cl_entity_t")},
+                renames={"declarations": {TYPEDEF: ENTITY}},
+                redeclarations={redeclaration: {"name": "cl_entity_t", "kind": "typedef", "scope": "",
+                                                "file": SOURCE, "line": 9, "col": 28, "decl": TYPEDEF,
+                                                "units": [SOURCE]}}))
+
+            self.assertEqual(len(summary["problems"]), 1)
+            self.assertIn("%s:9: the redeclaration of cl_entity_t is past the end of the file" % SOURCE,
+                          summary["problems"][0])
+            self.assertEqual(summary["files"][HEADER]["edits"], 1)
+
+    def test_a_macro_use_past_the_end_is_a_problem(self):
+        key = CVARDEF + ":FCVAR_ARCHIVE"
+        with tempfile.TemporaryDirectory() as root:
+            write(root, SOURCE, "int flags = 0;\n")
+            summary = migrate(inputs_for(
+                root,
+                references=[self._other(root)],
+                declarations={TYPEDEF: declared("TypedefDecl", "cl_entity_t")},
+                macros={key: macro_record("FCVAR_ARCHIVE", [9])},
+                renames={"declarations": {TYPEDEF: ENTITY},
+                         "macros": {key: {"action": "qualify", "kind": "constant",
+                                          "spelling": "goldsrc::FCVAR_ARCHIVE", "header": "goldsrc/cvar.h"}}}))
+
+            self.assertEqual(len(summary["problems"]), 1)
+            self.assertIn("%s:9: the use of FCVAR_ARCHIVE is past the end of the file" % SOURCE,
+                          summary["problems"][0])
+            self.assertEqual(summary["files"][HEADER]["edits"], 1)
+
 
 class IncludeTest(unittest.TestCase):
+    def test_the_include_of_an_interface_the_fork_carries_over_stays_while_the_rest_go(self):
+        """Both directions of the declaration-file rule: the engine-layer header goes, and the header of an
+        interface the fork carries over stays, since nothing in the library declares what it declares."""
+        with tempfile.TemporaryDirectory() as root:
+            write(root, OLD, "#pragma once\n")
+            write(root, INTERFACE, "#pragma once\n")
+            write(root, SOURCE, "#include <HLTV/IDemoPlayer.h>\n#include <cl_entity.h>\n\ncl_entity_t* e;\n")
+            summary = migrate(inputs_for(root, references=[reference(TYPEDEF, SOURCE, 4, 1, "TypedefTypeLoc")],
+                                         declarations={TYPEDEF: declared("TypedefDecl", "cl_entity_t")},
+                                         renames={"declarations": {TYPEDEF: ENTITY}}))
+
+            self.assertEqual(summary["problems"], [])
+            self.assertEqual(summary["files"][SOURCE]["removed_includes"], [OLD])
+            self.assertEqual(read(root, SOURCE), "#include <HLTV/IDemoPlayer.h>\n#include <goldsrc/entity.h>\n\n"
+                                                 "goldsrc::cl_entity_t* e;\n")
+
     def test_old_includes_become_one_sorted_block_where_the_first_of_them_was(self):
         with tempfile.TemporaryDirectory() as root:
             write(root, OLD, "#pragma once\n")
@@ -387,6 +638,20 @@ class IncludeTest(unittest.TestCase):
             self.assertEqual(summary["problems"], [])
             self.assertEqual(read(root, SOURCE), "int header;\n\n#include <goldsrc/entity.h>\n\nint middle;\n\n"
                                                  "goldsrc::cl_entity_t* e;\n")
+
+    def test_a_run_reaching_the_end_of_a_file_without_a_final_newline_takes_no_line_along(self):
+        # The removed run ends on the last line of a file that does not end with a newline, so the split
+        # leaves no element at all where the line after the run would be. The blank line before the run
+        # stays and becomes the file's final newline.
+        other_old = SDK + "/other.h"
+        with tempfile.TemporaryDirectory() as root:
+            write(root, OLD, "#pragma once\n")
+            write(root, other_old, "#pragma once\n")
+            write(root, SOURCE, "int before;\n\n#include <cl_entity.h>\n#include <other.h>")
+            summary = migrate(inputs_for(root))
+
+            self.assertEqual(summary["problems"], [])
+            self.assertEqual(read(root, SOURCE), "int before;\n")
 
     def test_an_excluded_directory_under_a_path_is_left_alone(self):
         tests_dir = "nextclient/client_mini/tests"

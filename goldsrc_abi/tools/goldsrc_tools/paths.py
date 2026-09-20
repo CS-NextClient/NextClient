@@ -17,6 +17,11 @@ def location_key(location, root):
     return "%s:%d:%d" % (relative(location[0], root), location[1], location[2])
 
 
+def posix(path):
+    """A relative path spelled the way `relative` spells one, whichever separator the caller typed."""
+    return path.replace("\\", "/").rstrip("/")
+
+
 def relative(path, root):
     """Path relative to root with forward slashes; a path on another drive stays absolute."""
     try:

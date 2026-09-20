@@ -115,6 +115,47 @@ class SourceRootGateTest(unittest.TestCase):
             self.assertIn(build_dir, out.getvalue())
 
 
+class DeclarationFileReportTest(unittest.TestCase):
+    """Which files of the declaration scope a run migrates is the one thing --paths decides silently: a
+    directory holding one selects nothing, and a run that selected nothing otherwise looks like any other."""
+
+    def _run(self, directory, *selected):
+        source_root = os.path.join(directory, "src")
+        build_dir = os.path.join(directory, "build")
+        os.makedirs(source_root, exist_ok=True)
+        _codemodel_reply(build_dir, source_root)
+        write_json(os.path.join(build_dir, "compile_commands.json"), [])
+        write_json(os.path.join(directory, "usage.json"), _usage(source_root))
+        write_json(os.path.join(directory, "facts.json"), {})
+        write_json(os.path.join(directory, "map.json"), {})
+
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            code = codemod.main(["--usage", os.path.join(directory, "usage.json"),
+                                 "--facts", os.path.join(directory, "facts.json"),
+                                 "--map", os.path.join(directory, "map.json"), "--build-dir", build_dir,
+                                 "--migrate-declaration-files", "--dry-run", "--paths"] + list(selected))
+        return code, out.getvalue()
+
+    def test_a_run_that_selected_none_of_them_says_so(self):
+        with tempfile.TemporaryDirectory() as directory:
+            code, printed = self._run(directory, "dep/NclNitroApi/dep/ncl-hl1-source-sdk/public/HLTV")
+
+            self.assertEqual(code, 0)
+            self.assertIn("declaration files to migrate: 0", printed)
+            self.assertIn("warning:", printed)
+
+    def test_a_run_names_the_files_it_selected_whichever_separator_they_came_with(self):
+        interface = "dep/NclNitroApi/dep/ncl-hl1-source-sdk/public/HLTV/IDemoPlayer.h"
+        with tempfile.TemporaryDirectory() as directory:
+            code, printed = self._run(directory, interface.replace("/", "\\"))
+
+            self.assertEqual(code, 0)
+            self.assertIn("declaration files to migrate: 1", printed)
+            self.assertIn(interface, printed)
+            self.assertNotIn("warning:", printed)
+
+
 class WriteCommandTest(unittest.TestCase):
     """Only test_migration.py exercises migration.apply() directly; this is the one test of codemod.py's
     own non-dry-run path (still fully inside a tempdir - the "never run codemod.py without --dry-run"
