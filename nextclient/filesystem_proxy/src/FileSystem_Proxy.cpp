@@ -1,7 +1,9 @@
 #include "FileSystem_Proxy.h"
 #include <strtools.h>
 #include <cstdio>
-#include <Windows.h>
+#ifdef _WIN32
+    #include <Windows.h>
+#endif
 #include <format>
 #include <nitro_utils/string_utils.h>
 
@@ -14,12 +16,20 @@ static IFileSystem* g_FileSystem_Stdio;
 EXPOSE_SINGLE_INTERFACE_GLOBALVAR(FileSystem_Proxy, IFileSystem, FILESYSTEM_INTERFACE_VERSION, g_FileSystem_Proxy)
 EXPOSE_SINGLE_INTERFACE_GLOBALVAR(FileSystem_Proxy, IFileSystemNext, FILESYSTEM_NEXT_INTERFACE_VERSION, g_FileSystemNext)
 
+#ifdef _WIN32
+    #define FS_STDIO_MODULE_NAME "filesystem_stdio.dll"
+    #define FS_FATAL_ERROR(msg) MessageBoxA(NULL, msg, ERROR_TITLE, MB_OK | MB_ICONERROR)
+#else
+    #define FS_STDIO_MODULE_NAME "filesystem_stdio.so"
+    #define FS_FATAL_ERROR(msg) fprintf(stderr, "%s: %s\n", ERROR_TITLE, msg)
+#endif
+
 void FileSystem_Proxy::Mount()
 {
-    CSysModule *fs_module = Sys_LoadModule("filesystem_stdio.dll");
+    CSysModule *fs_module = Sys_LoadModule(FS_STDIO_MODULE_NAME);
     if (fs_module == nullptr)
     {
-        MessageBoxA(NULL, "Failed to start the file manager subsystem.\nMake sure that filesystem_stdio.dll is exists in the cs.exe root folder.", ERROR_TITLE, MB_OK | MB_ICONERROR);
+        FS_FATAL_ERROR("Failed to start the file manager subsystem.\nMake sure that " FS_STDIO_MODULE_NAME " is exists in the cs.exe root folder.");
         return;
     }
 
@@ -28,7 +38,7 @@ void FileSystem_Proxy::Mount()
     if (g_FileSystem_Stdio)
         g_FileSystem_Stdio->Mount();
     else
-        MessageBoxA(NULL, "Failed to start the file manager subsystem. Filesystem interface not found.", ERROR_TITLE, MB_OK | MB_ICONERROR);
+        FS_FATAL_ERROR("Failed to start the file manager subsystem. Filesystem interface not found.");
 }
 
 void FileSystem_Proxy::Unmount()
@@ -305,9 +315,12 @@ const char *FileSystem_Proxy::GetLocalPath(const char *pFileName, char *pLocalPa
     if (g_FileSystem_Stdio)
     {
         const char* resolvedPath = g_FileSystemNext.ResolveAliasPath(pFileName);
-        bool convert = strstr(resolvedPath, "motd_temp.html") != nullptr;
 
         const char* result = g_FileSystem_Stdio->GetLocalPath(resolvedPath, pLocalPath, localPathBufferSize);
+        // There's no "ANSI code page" concept outside Windows - paths are already raw
+        // bytes, UTF-8 in practice, so no conversion is needed there.
+#ifdef _WIN32
+        bool convert = strstr(resolvedPath, "motd_temp.html") != nullptr;
         if (convert)
         {
             wchar_t wlocal_path[MAX_PATH];
@@ -315,6 +328,7 @@ const char *FileSystem_Proxy::GetLocalPath(const char *pFileName, char *pLocalPa
             if (bytes != 0)
                 Q_UTF16ToUTF8(wlocal_path, pLocalPath, localPathBufferSize);
         }
+#endif
 
         return result;
     }
