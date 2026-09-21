@@ -57,6 +57,15 @@
   }, {
     "name": "libmaxminddb",
     "version>=": "1.13.3"
+  }, {
+    "name": "sdl2",
+    "version>=": "2.30.9",
+    "platform": "!windows",
+    "default-features": false,
+    "features": ["x11"]
+  }, {
+    "name": "openssl",
+    "platform": "!windows"
   }],
   "overrides": [ {
     "name": "taocpp-json",
