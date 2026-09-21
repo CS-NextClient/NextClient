@@ -1,5 +1,6 @@
 #include "engine.h"
 #include "cl_main.h"
+#include "client.h"
 
 #include <optick.h>
 #include <next_engine_mini/nclm_proto.h>

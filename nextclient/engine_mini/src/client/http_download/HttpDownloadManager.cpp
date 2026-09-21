@@ -2,6 +2,7 @@
 #include "../../engine.h"
 #include "../../console/console.h"
 #include <nitro_utils/string_utils.h>
+#include <algorithm>
 #include <filesystem>
 #include <format>
 #include <fstream>

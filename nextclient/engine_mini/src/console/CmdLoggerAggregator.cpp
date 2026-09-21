@@ -1,5 +1,7 @@
 #include "CmdLoggerAggregator.h"
 
+#include <algorithm>
+
 void CmdLoggerAggregator::LogCommand(const char* command, const char* value, LogCommandType type)
 {
     for (auto& logger : loggers_)

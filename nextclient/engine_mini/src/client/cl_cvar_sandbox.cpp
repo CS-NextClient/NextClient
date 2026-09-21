@@ -3,6 +3,7 @@
 #include <string>
 #include <array>
 #include <unordered_map>
+#include <algorithm>
 
 #include <parsemsg.h>
 #include <nitro_utils/string_utils.h>
