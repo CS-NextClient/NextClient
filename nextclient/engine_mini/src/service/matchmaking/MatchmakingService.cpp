@@ -1,11 +1,11 @@
 #include "MatchmakingService.h"
 
 #include <optick.h>
+#include <mutex>
+#include <queue>
 #include <ranges>
 #include <utility>
 
-#include <ppl.h>
-#include <concurrent_queue.h>
 #include <strtools.h>
 #include <taskcoro/TaskCoro.h>
 
@@ -16,6 +16,42 @@
 using namespace service::matchmaking;
 using namespace concurrencpp;
 using namespace taskcoro;
+
+namespace
+{
+    // Minimal stand-in for PPL's concurrency::concurrent_queue (Windows-only) - just
+    // push/try_pop/empty are needed here, a lock-free queue would be overkill.
+    template <typename T>
+    class ThreadSafeQueue
+    {
+        std::mutex mutex_;
+        std::queue<T> queue_;
+
+    public:
+        void push(T value)
+        {
+            std::scoped_lock lock(mutex_);
+            queue_.push(std::move(value));
+        }
+
+        bool try_pop(T& out)
+        {
+            std::scoped_lock lock(mutex_);
+            if (queue_.empty())
+                return false;
+
+            out = std::move(queue_.front());
+            queue_.pop();
+            return true;
+        }
+
+        bool empty()
+        {
+            std::scoped_lock lock(mutex_);
+            return queue_.empty();
+        }
+    };
+}
 
 MatchmakingService::MatchmakingService(std::shared_ptr<MultiSourceQuery> source_query) :
     source_query_(std::move(source_query))
@@ -148,8 +184,8 @@ result<std::vector<MatchmakingService::ServerInfo>> MatchmakingService::RequestS
 {
     std::vector<ServerInfo> servers;
 
-    std::shared_ptr<concurrency::concurrent_queue<MasterServerEntry>> entries_to_process =
-        std::make_shared<concurrency::concurrent_queue<MasterServerEntry>>();
+    std::shared_ptr<ThreadSafeQueue<MasterServerEntry>> entries_to_process =
+        std::make_shared<ThreadSafeQueue<MasterServerEntry>>();
     std::vector<SQInfoTask> server_info_tasks{};
     size_t server_index = 0;
 
