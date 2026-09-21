@@ -98,11 +98,7 @@ add_subdirectory(dep/glad)
 add_subdirectory(dep/stb)
 add_subdirectory(nextclient/filesystem_proxy)
 
-# The launcher is still Windows-only; it's being ported to Linux incrementally,
-# module by module.
-if (WIN32)
-    add_subdirectory(nextclient/launcher)
-endif ()
+add_subdirectory(nextclient/launcher)
 
 # Windows 7 compatibility
 if (MSVC)
