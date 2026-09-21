@@ -47,20 +47,16 @@
     "platform": "windows"
   }, {
     "name": "imageinfo",
-    "version>=": "2024-12-02#0",
-    "platform": "windows"
+    "version>=": "2024-12-02#0"
   }, {
     "name": "unordered-dense",
-    "version>=": "4.8.1",
-    "platform": "windows"
+    "version>=": "4.8.1"
   }, {
     "name": "eastl",
-    "version>=": "3.27.1",
-    "platform": "windows"
+    "version>=": "3.27.1"
   }, {
     "name": "libmaxminddb",
-    "version>=": "1.13.3",
-    "platform": "windows"
+    "version>=": "1.13.3"
   }],
   "overrides": [ {
     "name": "taocpp-json",
