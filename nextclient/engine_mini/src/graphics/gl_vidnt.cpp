@@ -1,7 +1,11 @@
 #include "engine.h"
 
 #include <SDL_video.h>
-#include <Windows.h>
+#ifdef _WIN32
+    #include <Windows.h>
+#else
+    #include <port.h>
+#endif
 #include <common/cvar.h>
 #include <glad/glad.h>
 
