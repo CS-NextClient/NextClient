@@ -5,8 +5,13 @@
 #include <optional>
 #include <string>
 
-#include <winsock2.h>
-#include <Windows.h>
+#ifdef _WIN32
+    #include <winsock2.h>
+    #include <Windows.h>
+#else
+    #include <arpa/inet.h>
+    #include <netinet/in.h>
+#endif
 #include <maxminddb.h>
 
 #include "common/utf8.h"
@@ -14,6 +19,7 @@
 namespace
 {
     // libmaxminddb takes the file name as UTF-8 on Windows
+#ifdef _WIN32
     std::string AnsiToUtf8(const char* ansi)
     {
         int wide_size = MultiByteToWideChar(CP_ACP, 0, ansi, -1, nullptr, 0);
@@ -39,6 +45,13 @@ namespace
 
         return utf8;
     }
+#else
+    // POSIX has no separate "ANSI code page" - paths are already raw bytes, UTF-8 in practice
+    std::string AnsiToUtf8(const char* ansi)
+    {
+        return ansi;
+    }
+#endif
 
     // The UTF-8 string field at path (NULL-terminated key list); the view points into the database's memory
     std::optional<std::string_view> ReadUtf8Field(MMDB_entry_s& entry, const char* const* path)
