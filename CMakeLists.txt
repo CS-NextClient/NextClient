@@ -90,18 +90,18 @@ add_subdirectory(nextclient/gameui)
 add_subdirectory(nextclient/client_mini)
 add_subdirectory(nextclient/steam_api_proxy)
 
-# The launcher and remaining game modules are still Windows-only; they are being
-# ported to Linux incrementally, module by module. Their external dependencies
-# are only needed once those modules are built, so they're gated the same way.
+# external dependencies (needed by engine_mini as well as the launcher)
+add_subdirectory(dep/cpr)
+add_subdirectory(dep/easyloggingpp)
+add_subdirectory(dep/bzip2)
+add_subdirectory(dep/glad)
+add_subdirectory(dep/stb)
+add_subdirectory(nextclient/filesystem_proxy)
+
+# The launcher is still Windows-only; it's being ported to Linux incrementally,
+# module by module.
 if (WIN32)
-    # external dependencies
-    add_subdirectory(dep/cpr)
-    add_subdirectory(dep/easyloggingpp)
-    add_subdirectory(dep/bzip2)
-    add_subdirectory(dep/glad)
-    add_subdirectory(dep/stb)
     add_subdirectory(nextclient/launcher)
-    add_subdirectory(nextclient/filesystem_proxy)
 endif ()
 
 # Windows 7 compatibility
