@@ -2,8 +2,9 @@
 
 #include "HudBase.h"
 #include "HudBaseHelper.h"
-#include <map>
+#include <array>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 #include <memory>
@@ -122,8 +123,14 @@ private:
 	int GetCustomWeaponSpriteHeight(wpn_icon_override_t* icon);
 	int DrawCustomWeaponSprite(wpn_icon_override_t* icon, int x, int y);
 
-	std::map<uint8_t, std::string> last_player_name_;
+	// Name a player carried before the userinfo update currently being parsed. Dropped at the
+	// end of every server packet: the AMXX Kill Assist plugin renames the killer only for the
+	// DeathMsg it sends in that same packet and restores the name right after.
+	std::array<std::string, MAX_PLAYERS + 1> previous_player_names_;
+
 	void SVC_UpdateUserInfo();
+	std::string_view get_player_name(int client_index);
+	int FindPlayerByNamePrefix(std::string_view name_prefix, int skip_client_index);
 public:
 	explicit HudDeathNotice(nitroapi::NitroApiInterface* nitro_api);
 
@@ -138,5 +145,5 @@ public:
 
 	void SetWpnIconForNextMessage(wpn_icon_override_t&& wpn_icon);
 
-	bool HandleAmxxKillAssistCaseIfSo(int killer_id, int& assistant_id, notice_row_t* notice);
+	void ApplyKillAssistRename(int killer_id, int& assistant_id, notice_row_t* notice);
 };
