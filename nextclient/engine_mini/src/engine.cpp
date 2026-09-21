@@ -166,7 +166,9 @@ static void EngineMiniUninitialize()
     CL_DeleteHttpDownloadManager();
     KV_UninitializeKeyValuesSystem();
 
+#ifdef _WIN32
     JSAPI_Shutdown();
+#endif
 
     taskcoro::TaskCoro::UnInitialize();
     g_pTaskCoroImpl = nullptr;
@@ -626,7 +628,9 @@ static void OnGameInitialized()
     Preview_Init();
 
     CL_CreateHttpDownloadManager(g_pGameUi, g_pLocalize, g_SettingGuard);
+#ifdef _WIN32
     JSAPI_Init();
+#endif
     CL_CvarsSandboxInit();
     CL_StringRegistryInit();
     CL_NclEntitySyncInit();
@@ -695,7 +699,7 @@ public:
     void GetVersion(char* buffer, int size) override
     {
         if (buffer != nullptr)
-            strcpy_s(buffer, size,  ENGINE_MINI_INTERFACE_VERSION ", " __DATE__ " " __TIME__);
+            snprintf(buffer, size, "%s", ENGINE_MINI_INTERFACE_VERSION ", " __DATE__ " " __TIME__);
     }
 
     HttpDownloadManagerInterface* GetHttpDownloadManager() override
