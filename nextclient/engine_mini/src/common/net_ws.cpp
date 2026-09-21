@@ -1,6 +1,15 @@
 #include "net_ws.h"
 
-#include <winsock2.h>
+#ifdef _WIN32
+    #include <winsock2.h>
+#else
+    #include <cerrno>
+    #define WSAEWOULDBLOCK      EWOULDBLOCK
+    #define WSAECONNREFUSED     ECONNREFUSED
+    #define WSAECONNRESET       ECONNRESET
+    #define WSAEADDRNOTAVAIL    EADDRNOTAVAIL
+    #define WSAENOBUFS          ENOBUFS
+#endif
 #include <optick.h>
 
 #include "console/console.h"
@@ -66,7 +75,11 @@ void NET_SendPacket(netsrc_t sock, int length, void* data, netadr_t to)
         return;
     }
 
-    int err = WSAGetLastError();
+    #ifdef _WIN32
+        int err = WSAGetLastError();
+    #else
+        int err = errno;
+    #endif
 
     if (err == WSAEWOULDBLOCK || err == WSAECONNREFUSED || err == WSAECONNRESET)
     {
