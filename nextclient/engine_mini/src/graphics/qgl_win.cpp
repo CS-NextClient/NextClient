@@ -3549,7 +3549,7 @@ void GLimp_EnableLogging(qboolean enable)
 
             asctime(newtime);
 
-            sprintf_s(buffer, sizeof(buffer), "%s/gl.log", gEngfuncs.pfnGetGameDirectory());
+            snprintf(buffer, sizeof(buffer), "%s/gl.log", gEngfuncs.pfnGetGameDirectory());
             glw_state.log_fp = fopen(buffer, "wt");
 
             fprintf(glw_state.log_fp, "%s\n", asctime(newtime));
