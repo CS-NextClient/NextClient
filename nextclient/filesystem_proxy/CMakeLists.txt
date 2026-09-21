@@ -9,6 +9,11 @@ set(CMAKE_CXX_STANDARD 23)
 # common options
 set(BUILD_SHARED_LIBS OFF)
 
+# The real library is still Windows-only; only its header-only export target is
+# built on other platforms (see the bottom of this file), so other Linux modules
+# can at least see its public interface while it gets ported.
+if (WIN32)
+
 add_library(${PROJECT_NAME} SHARED
 		src/FileSystem_Proxy.cpp
 		src/FileSystem_Proxy.h
@@ -53,6 +58,8 @@ set_target_properties(${PROJECT_NAME} PROPERTIES
 		SUFFIX ".dll"
 		PDB_NAME ${OUTPUT_NAME}
 )
+
+endif () # WIN32
 
 #-----------------------------------------------------------------
 # Export library headers
