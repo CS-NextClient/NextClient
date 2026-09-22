@@ -66,6 +66,9 @@
   }, {
     "name": "openssl",
     "platform": "!windows"
+  }, {
+    "name": "curl",
+    "platform": "!windows"
   }],
   "overrides": [ {
     "name": "taocpp-json",
