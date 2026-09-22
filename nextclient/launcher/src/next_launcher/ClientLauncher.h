@@ -1,6 +1,10 @@
 #pragma once
 
-#include <Windows.h>
+#ifdef _WIN32
+    #include <Windows.h>
+#else
+    #include <port.h>
+#endif
 #include <string>
 #include <format>
 #include <optional>
@@ -19,7 +23,7 @@
 #include <nitro_utils/config_utils.h>
 #include <next_client_mini/client_mini.h>
 #include <next_engine_mini/engine_mini.h>
-#include <next_gameui/IGameUINext.h>
+#include <next_gameui/IGameUiNext.h>
 #include <updater_gui_app/json_data/BranchEntry.h>
 #include <updater_gui_app/UpdaterDoneStatus.h>
 #include <updater_gui_app/UpdaterFlags.h>
@@ -41,7 +45,14 @@ private:
         Restart,
     };
 
+#ifdef _WIN32
     static constexpr char kEngineDll[] = "hw.dll";
+#else
+    // Placeholder - the real Half-Life engine binary's Linux name needs verifying
+    // against an actual Linux GoldSrc install once this is runtime-tested; nothing
+    // runs yet regardless.
+    static constexpr char kEngineDll[] = "hw.so";
+#endif
     static constexpr char kErrorTitle[] = "Counter-Strike Launcher";
     static constexpr char kNextClientRegistry[] = "Software\\Valve\\Half-Life\\nextclient";
     static constexpr char kHlRegistry[] = "Software\\Valve\\Half-Life\\Settings";
@@ -74,7 +85,12 @@ private:
     std::vector<BranchEntry> available_branches_;
 
     HINSTANCE module_instance_;
+#ifdef _WIN32
     HANDLE global_win_mutex_;
+#else
+    int global_win_mutex_fd_ = -1;
+    bool global_lock_acquired_ = false;
+#endif
     bool is_relaunch_{};
     
     std::optional<NextProcess> next_process_;
@@ -126,7 +142,11 @@ private:
     {
         auto raise_error = [this](const std::string& error) {
             analytics_->SendCrashMonitoringEvent("LoadModule Error", error.c_str(), true);
+#ifdef _WIN32
             MessageBoxA(NULL, error.c_str(), kErrorTitle, MB_OK | MB_ICONERROR | MB_DEFAULT_DESKTOP_ONLY);
+#else
+            fprintf(stderr, "%s: %s\n", kErrorTitle, error.c_str());
+#endif
         };
 
         CSysModule* module = Sys_LoadModule(module_name);
