@@ -1052,55 +1052,5 @@
       "consumer": "dep/NclNitroApi/include/nitroapi/modules/engine/EngineData.h",
       "reason": "an engine sound type NitroApi reaches through a pointer only; no replaced header declares it"
     }
-  },
-  "equivalence": {
-    "includes": [
-      "dep/ncl-hl1-source-sdk/dlls/extdll.h",
-      "dep/ncl-hl1-source-sdk/pm_shared/pm_defs.h",
-      "dep/ncl-hl1-source-sdk/engine/client.h",
-      "dep/ncl-hl1-source-sdk/common/vmodes.h",
-      "dep/ncl-hl1-source-sdk/common/event_api.h",
-      "dep/ncl-hl1-source-sdk/engine/studio.h",
-      "dep/ncl-hl1-source-sdk/dlls/weapontype.h",
-      "dep/ncl-hl1-source-sdk/dlls/cbase.h",
-      "include/nitroapi/modules/engine/structs.h",
-      "include/nitroapi/modules/engine/voice.h",
-      "dep/ncl-hl1-source-sdk/engine/server.h",
-      "dep/ncl-hl1-source-sdk/common/r_efx.h",
-      "dep/ncl-hl1-source-sdk/common/ref_params.h",
-      "dep/ncl-hl1-source-sdk/common/ref_int.h",
-      "dep/ncl-hl1-source-sdk/engine/APIProxy.h",
-      "dep/ncl-hl1-source-sdk/common/r_studioint.h",
-      "dep/ncl-hl1-source-sdk/engine/cdll_int.h",
-      "dep/ncl-hl1-source-sdk/engine/cmd.h",
-      "include/nitroapi/modules/client/cl_dll/hud.h",
-      "dep/ncl-hl1-source-sdk/public/HLTV/IDemoPlayer.h",
-      "dep/ncl-hl1-source-sdk/common/quakedef.h",
-      "dep/ncl-hl1-source-sdk/engine/common.h",
-      "dep/ncl-hl1-source-sdk/common/cvardef.h",
-      "dep/ncl-hl1-source-sdk/common/kbutton.h",
-      "dep/ncl-hl1-source-sdk/engine/custom.h",
-      "dep/ncl-hl1-source-sdk/pm_shared/pm_movevars.h",
-      "dep/ncl-hl1-source-sdk/public/HLTV/IEngineWrapper.h",
-      "dep/ncl-hl1-source-sdk/pm_shared/pm_shared.h",
-      "dep/ncl-hl1-source-sdk/common/triangleapi.h",
-      "dep/ncl-hl1-source-sdk/common/ivoicetweak.h",
-      "dep/ncl-hl1-source-sdk/HLTV/common/hltv.h",
-      "dep/ncl-hl1-source-sdk/engine/keydefs.h",
-      "dep/ncl-hl1-source-sdk/public/tier0/basetypes.h",
-      "dep/ncl-hl1-source-sdk/public/tier1/netadr.h"
-    ],
-    "prelude": [
-      {
-        "include": "dep/ncl-hl1-source-sdk/HLTV/common/BitBuffer.h",
-        "before": "dep/ncl-hl1-source-sdk/public/HLTV/IDemoPlayer.h",
-        "reason": "IDemoPlayer.h names BitBuffer in a signature without declaring it"
-      },
-      {
-        "include": "dep/ncl-hl1-source-sdk/public/HLTV/ISystemModule.h",
-        "before": "dep/ncl-hl1-source-sdk/public/HLTV/IEngineWrapper.h",
-        "reason": "IEngineWrapper.h derives from ISystemModule without declaring it"
-      }
-    ]
   }
 }

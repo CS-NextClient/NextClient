@@ -96,8 +96,7 @@ def facts(records=(), typedefs=(), enums=(), macros=(), functions=(), variables=
     }
 
 
-def library(*, headers=None, files=None, rules=(), macros=None, substitutes=None, opaque=None, equivalence=None,
-            fwd=None):
+def library(*, headers=None, files=None, rules=(), macros=None, substitutes=None, opaque=None, fwd=None):
     built = {"headers": headers if headers is not None else {PUBLIC: {"namespace": "goldsrc"}},
              "files": dict(files or {}), "declarations": [dict(rule) for rule in rules]}
     if macros is not None:
@@ -106,8 +105,6 @@ def library(*, headers=None, files=None, rules=(), macros=None, substitutes=None
         built["substitutes"] = substitutes
     if opaque is not None:
         built["opaque"] = opaque
-    if equivalence is not None:
-        built["equivalence"] = equivalence
     if fwd is not None:
         built["fwd"] = fwd
     return built
@@ -580,8 +577,7 @@ class TypeResolutionTest(unittest.TestCase):
                          "struct {} num")
 
     def test_a_field_typed_with_an_unnamed_record_is_not_type_compared(self):
-        # Neither side has a name for such a type, so the equivalence test has nothing to relate the
-        # two by and would compare our unnamed type against the old one.
+        # Neither the facts nor the library spell such a type, so there is no name to record it by.
         source = "engine/studio.h"
         inner = record(source, None, used_fields=["valid"], fields=[field("valid", "uint8_t")])
         value = record(source, None, tag="union", typedef_name="mstudioanimvalue_t",
@@ -918,30 +914,9 @@ class MapFormTest(unittest.TestCase):
                     "exclude": [{"name": "WIN32_LEAN_AND_MEAN", "reason": "a build switch, not a constant"}]},
             substitutes={"Vector": {"type": "vec3_t", "reason": "the game math type has no facts"}},
             opaque={"IWorld": {"tag": "class", "reason": "held through a pointer only"}},
-            equivalence={"skip_records": [{"name": "host_s", "reason": "a prefix layout"}],
-                         "includes": ["dep/ncl-hl1-source-sdk/public/HLTV/IDemoPlayer.h"],
-                         "prelude": [{"include": "dep/ncl-hl1-source-sdk/HLTV/common/BitBuffer.h",
-                                      "before": "dep/ncl-hl1-source-sdk/public/HLTV/IDemoPlayer.h",
-                                      "reason": "IDemoPlayer.h names BitBuffer without declaring it"}]},
             fwd={"path": "goldsrc/fwd.h", "namespace": "goldsrc"}))
 
         self.assertEqual(problems, [])
-
-    def test_a_prelude_entry_placed_before_a_header_the_includes_dropped_is_a_problem(self):
-        problems = header_map.validate(library(
-            equivalence={"includes": ["a.h"],
-                         "prelude": [{"include": "prelude.h", "before": "gone.h", "reason": "x"}]}))
-
-        self.assertEqual(len(problems), 1)
-        self.assertIn("gone.h", problems[0])
-
-    def test_prelude_entries_are_inserted_before_the_header_they_name(self):
-        includes = header_map.equivalence_includes(
-            {"includes": ["a.h", "b.h"],
-             "prelude": [{"include": "p.h", "before": "b.h", "reason": "x"},
-                         {"include": "front.h", "reason": "nothing to precede"}]})
-
-        self.assertEqual(includes, ["front.h", "a.h", "p.h", "b.h"])
 
     def test_qualified_opaque_name_and_unknown_completeness_are_problems(self):
         problems = header_map.validate(library(

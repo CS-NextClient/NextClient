@@ -6,7 +6,7 @@ from goldsrc_tools import header_map as library_map
 ORDER = {"incomplete": 0, "prefix": 1, "complete": 2}
 
 # Stock integer aliases the library replaces instead of reproducing. The replacement names the same type,
-# so unlike a substitute it leaves the type comparison of the equivalence test in place.
+# so the field keeps compare_type.
 INTEGER_ALIASES = {"byte": "uint8_t", "uint8": "uint8_t", "int32": "int32_t", "uint16": "uint16_t",
                    "uint32": "uint32_t", "uint64": "uint64_t", "uint": "unsigned int"}
 
@@ -637,8 +637,8 @@ class _Builder:
         """The spelling the replaced headers use for an opaque name, which the library is free to rename.
         The map gives it outright, or the substitute that renames the old name to this one does (that
         substitution is what the old spelling is), or the facts do when they record an external name
-        spelled exactly this way. None of the three, and the equivalence test would compare a name it
-        invented against a type the replaced headers never declare, so it is a problem."""
+        spelled exactly this way. With none of the three the old spelling is unknown, and both the rename
+        records and the substitution check below would rest on an invented name, so it is a problem."""
         if name in self.opaque_old:
             return self.opaque_old[name]
 
@@ -659,9 +659,9 @@ class _Builder:
         return old
 
     def _substitution_reason(self, name):
-        """Why a field of a substituted type cannot have its type compared, or None when the substitution
-        changes the spelling alone: a rename to the library's own name for the very type the old name
-        declares keeps the identity, and the equivalence test bridges the two names itself."""
+        """Why a field of a substituted type names another type than the facts record, or None when the
+        substitution changes the spelling alone: a rename to the library's own name for the very type the
+        old name declares keeps the identity."""
         replacement = self.substitutes[name].get("type") or name
         if replacement in self.opaque and self._opaque_old(replacement) == name:
             return None
@@ -756,8 +756,7 @@ class _Builder:
         def mapping(spelling):
             nonlocal reason
             if cxx_types.is_unnamed(spelling):
-                # An unnamed record is a distinct type with no spelling on either side, so the
-                # equivalence test has no name to relate the two by.
+                # An unnamed record is a distinct type that neither the facts nor the library spell.
                 reason = reason or "an unnamed record has no name to compare by"
                 return None
             target = self._resolve(spelling, scope, where, quiet=True)
@@ -1014,8 +1013,7 @@ class _Builder:
         self._check_include_cycles()
         self._check_collisions(headers)
         return {"fwd": self.fwd, "headers": headers, "forward": self._forward(), "records": dict(self.rendered),
-                "names": self._names(), "equivalence": library_map.equivalence(self.map), "ignored": self._ignored(),
-                "renames": self._renames()}
+                "names": self._names(), "ignored": self._ignored(), "renames": self._renames()}
 
     def _ordered(self, path):
         """Declarations of one header: a by-value dependency comes first whichever group it belongs to, and

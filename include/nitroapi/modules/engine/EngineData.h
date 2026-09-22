@@ -25,9 +25,7 @@
 #include <Windows.h>
 #include <FileSystem.h>
 
-#if NO_HLSDK_ARCHTYPES
 #include <steam/steamtypes.h>
-#endif
 
 namespace nitroapi
 {
@@ -93,11 +91,11 @@ namespace nitroapi
         NitroFunctionVoid<>                             CL_HTTPCancel_f;
         // void CL_Disconnect()
         NitroFunctionVoid<>                             CL_Disconnect;
-        // void CL_SendConsistencyInfo(sizebuf_t *buf)
+        // void CL_SendConsistencyInfo(goldsrc::sizebuf_t *buf)
         NitroFunctionVoid<goldsrc::sizebuf_t*> CL_SendConsistencyInfo;
         // void CL_Init()
         NitroFunctionVoid<>                             CL_Init;
-        // int CL_CheckFile(sizebuf_t *msg, char *filename)
+        // int CL_CheckFile(goldsrc::sizebuf_t *msg, char *filename)
         NitroFunction<int, goldsrc::sizebuf_t*, char*> CL_CheckFile;
         // void CL_SendConnectPacket()
         NitroFunctionVoid<>                             CL_SendConnectPacket;
@@ -109,9 +107,9 @@ namespace nitroapi
         NitroFunctionVoid<>                             CL_ReadPackets;
         // void CL_StartResourceDownloading(const char *pszMessage, int bCustom)
         NitroFunctionVoid<const char*, int>             CL_StartResourceDownloading;
-        // void CL_ParseServerMessage(qboolean normal_message)
+        // void CL_ParseServerMessage(goldsrc::qboolean normal_message)
         NitroFunctionVoid<goldsrc::qboolean> CL_ParseServerMessage;
-        // void CL_RegisterResources(sizebuf_t *msg)
+        // void CL_RegisterResources(goldsrc::sizebuf_t *msg)
         NitroFunctionVoid<goldsrc::sizebuf_t*> CL_RegisterResources;
         // void CL_MarkMapAsUsingHTTPDownload()
         NitroFunctionVoid<>                             CL_MarkMapAsUsingHTTPDownload;
@@ -119,9 +117,9 @@ namespace nitroapi
         NitroFunctionVoid<>                             CL_SetSolidEntities;
         // void CL_ConnectionlessPacket()
         NitroFunctionVoid<>                             CL_ConnectionlessPacket;
-        // void CL_ProcessFile_0(qboolean successfully_received, const char* filename)
+        // void CL_ProcessFile_0(goldsrc::qboolean successfully_received, const char* filename)
         NitroFunctionVoid<goldsrc::qboolean, const char*> CL_ProcessFile_0;
-        // qboolean CL_RequestMissingResources()
+        // goldsrc::qboolean CL_RequestMissingResources()
         NitroFunction<goldsrc::qboolean> CL_RequestMissingResources;
         // void CL_InitSpectator()
         NitroFunctionVoid<>                             CL_InitSpectator;
@@ -131,11 +129,11 @@ namespace nitroapi
         NitroFunctionVoid<const char*, const char*>     Cvar_Set;
         // void SCR_UpdateScreen()
         NitroFunctionVoid<>                             SCR_UpdateScreen;
-        // void BuildSurfaceDisplayList(msurface_t* fa)
+        // void BuildSurfaceDisplayList(goldsrc::msurface_t* fa)
         NitroFunctionVoid<goldsrc::msurface_t*> BuildSurfaceDisplayList;
         // void COM_InitArgv(int argc, char *argv[])
         NitroFunctionVoid<int, char**>                  COM_InitArgv;
-        // qboolean COM_CreateCustomization(customization_t* pListHead, resource_t* pResource, int playernumber, int flags, customization_t** pCustomization, int* nLumps)
+        // goldsrc::qboolean COM_CreateCustomization(goldsrc::customization_t* pListHead, goldsrc::resource_t* pResource, int playernumber, int flags, goldsrc::customization_t** pCustomization, int* nLumps)
         NitroFunction<goldsrc::qboolean, goldsrc::customization_t*, goldsrc::resource_t*, int, int, goldsrc::customization_t**, int*>
             COM_CreateCustomization;
         // void SetCareerAudioState(int paused)
@@ -148,7 +146,7 @@ namespace nitroapi
         // int Info_IsKeyImportant(const char* key)
         NitroFunction<int, const char*>                 Info_IsKeyImportant;
 
-        // char* Cbuf_AddText(const char *text, sizebuf_t *buf)
+        // char* Cbuf_AddText(const char *text, goldsrc::sizebuf_t *buf)
         NitroFunction<char*, const char*, goldsrc::sizebuf_t*> Cbuf_AddText;
         // char* Con_Printf(const char *format, ...);
         NitroFunctionTyped<EngCon_PrintfFunc, char*, const char*>  Con_Printf;
@@ -162,34 +160,34 @@ namespace nitroapi
         NitroFunction<void*, size_t>                    Mem_ZeroMalloc;
         // char* Mem_Strdup(const char* strSource)
         NitroFunction<char*, const char*>               Mem_Strdup;
-        // char* SZ_Write(sizebuf_t *buf, char *text, int length)
+        // char* SZ_Write(goldsrc::sizebuf_t *buf, char *text, int length)
         NitroFunction<char*, goldsrc::sizebuf_t*, char*, int> SZ_Write;
-        // void SZ_Clear(sizebuf_t *buf)
+        // void SZ_Clear(goldsrc::sizebuf_t *buf)
         NitroFunctionVoid<goldsrc::sizebuf_t*> SZ_Clear;
-        // signed int Netchan_CopyFileFragments(netchan_t *chan);
+        // signed int Netchan_CopyFileFragments(goldsrc::netchan_t *chan);
         NitroFunction<signed int, goldsrc::netchan_t*> Netchan_CopyFileFragments;
-        // void Netchan_CreateFragments(qboolean server, netchan_t *chan, sizebuf_t *msg)
+        // void Netchan_CreateFragments(goldsrc::qboolean server, goldsrc::netchan_t *chan, goldsrc::sizebuf_t *msg)
         NitroFunctionVoid<goldsrc::qboolean, goldsrc::netchan_t*, goldsrc::sizebuf_t*> Netchan_CreateFragments;
-        // void Netchan_FragSend(netchan_t *chan)
+        // void Netchan_FragSend(goldsrc::netchan_t *chan)
         NitroFunctionVoid<goldsrc::netchan_t*> Netchan_FragSend;
-        // void Netchan_UpdateProgress(netchan_t *chan)
+        // void Netchan_UpdateProgress(goldsrc::netchan_t *chan)
         NitroFunctionVoid<goldsrc::netchan_t*> Netchan_UpdateProgress;
-        // void Netchan_FlushIncoming(netchan_t *chan, int stream)
+        // void Netchan_FlushIncoming(goldsrc::netchan_t *chan, int stream)
         NitroFunctionVoid<goldsrc::netchan_t*, int> Netchan_FlushIncoming;
-        // qboolean Netchan_Process(netchan_t *chan)
+        // goldsrc::qboolean Netchan_Process(goldsrc::netchan_t *chan)
         NitroFunction<goldsrc::qboolean, goldsrc::netchan_t*> Netchan_Process;
-        // qboolean Netchan_CopyNormalFragments(netchan_t *chan)
+        // goldsrc::qboolean Netchan_CopyNormalFragments(goldsrc::netchan_t *chan)
         NitroFunction<goldsrc::qboolean, goldsrc::netchan_t*> Netchan_CopyNormalFragments;
-        // VoiceRecordInterface* CreateVoiceRecord(int sample_rate)
+        // goldsrc::VoiceRecordInterface* CreateVoiceRecord(int sample_rate)
         NitroFunction<goldsrc::VoiceRecordInterface*, int> CreateVoiceRecord_DSound;
-        // VoiceRecordInterface* CreateVoiceRecord(int sample_rate)
+        // goldsrc::VoiceRecordInterface* CreateVoiceRecord(int sample_rate)
         NitroFunction<goldsrc::VoiceRecordInterface*, int> CreateVoiceRecord_WaveIn;
 
         // void MSG_BeginReading()
         NitroFunctionVoid<>                             MSG_BeginReading;
-        // void MSG_StartBitReading(sizebuf_t *buf)
+        // void MSG_StartBitReading(goldsrc::sizebuf_t *buf)
         NitroFunctionVoid<goldsrc::sizebuf_t*> MSG_StartBitReading;
-        // void MSG_EndBitReading(sizebuf_t *buf)
+        // void MSG_EndBitReading(goldsrc::sizebuf_t *buf)
         NitroFunctionVoid<goldsrc::sizebuf_t*> MSG_EndBitReading;
         // int MSG_ReadBits(int numbits)
         NitroFunction<int, int>                         MSG_ReadBits;
@@ -205,16 +203,16 @@ namespace nitroapi
         NitroFunction<int>                              MSG_ReadLong;
         // char* MSG_ReadStringLine()
         NitroFunction<char*>                            MSG_ReadStringLine;
-        // void MSG_WriteByte(sizebuf_t *sb, int c)
+        // void MSG_WriteByte(goldsrc::sizebuf_t *sb, int c)
         NitroFunctionVoid<goldsrc::sizebuf_t*, int> MSG_WriteByte;
-        // void MSG_WriteString(sizebuf_t *sb, const char *s)
+        // void MSG_WriteString(goldsrc::sizebuf_t *sb, const char *s)
         NitroFunctionVoid<goldsrc::sizebuf_t*, const char*> MSG_WriteString;
 
-        // int NET_SendPacket(netsrc_t sock, int length, void *data, netadr_t to)
+        // int NET_SendPacket(goldsrc::netsrc_t sock, int length, void *data, goldsrc::netadr_t to)
         NitroFunction<int, goldsrc::netsrc_t, int, void*, goldsrc::netadr_t> NET_SendPacket;
-        // qboolean NET_GetPacket(netsrc_t sock)
+        // goldsrc::qboolean NET_GetPacket(goldsrc::netsrc_t sock)
         NitroFunction<goldsrc::qboolean, goldsrc::netsrc_t> NET_GetPacket;
-        // qboolean NET_GetPacket_0()
+        // goldsrc::qboolean NET_GetPacket_0()
         NitroFunction<goldsrc::qboolean> NET_GetPacket_0;
         // void Net_APICheckTimeouts()
         NitroFunctionVoid<>                             Net_APICheckTimeouts;
@@ -235,7 +233,7 @@ namespace nitroapi
         NitroFunction<int, float>                       Host_FilterTime;
         // void Host_Map_f()
         NitroFunctionVoid<>                             Host_Map_f;
-        // void Host_Map(qboolean bIsDemo, const char* mapstring, const char* mapName, qboolean loadGame)
+        // void Host_Map(goldsrc::qboolean bIsDemo, const char* mapstring, const char* mapName, goldsrc::qboolean loadGame)
         NitroFunctionVoid<goldsrc::qboolean, const char*, const char*, goldsrc::qboolean> Host_Map;
         // void Con_MessageMode_f()
         NitroFunctionVoid<>                             Con_MessageMode_f;
@@ -261,11 +259,11 @@ namespace nitroapi
         //NitroFunctionVoid<>                           ClientDLL_Shutdown;
         // void AddStartupTiming(const char *name)
         NitroFunctionVoid<const char *>                 AddStartupTiming;
-        // bool HPAK_GetDataPointer(const char *filename, resource_t *pResource, uint8_t **buffer, int *bufsize)
+        // bool HPAK_GetDataPointer(const char *filename, goldsrc::resource_t *pResource, uint8_t **buffer, int *bufsize)
         NitroFunction<bool, const char*, goldsrc::resource_t*, uint8_t**, int*> HPAK_GetDataPointer;
-        // void HPAK_AddLump(qboolean bUseQueue, const char* pakname, resource_t* pResource, uint8_t* pData, FileHandle_t fpSource)
+        // void HPAK_AddLump(goldsrc::qboolean bUseQueue, const char* pakname, goldsrc::resource_t* pResource, uint8_t* pData, FileHandle_t fpSource)
         NitroFunctionVoid<goldsrc::qboolean, const char*, goldsrc::resource_t*, uint8_t*, FileHandle_t> HPAK_AddLump;
-        // qboolean GL_SetMode(void* mainwindow, HDC* pmaindc, HGLRC* pbaseRC, const char* pszDriver, const char* pszCmdLine)
+        // goldsrc::qboolean GL_SetMode(void* mainwindow, HDC* pmaindc, HGLRC* pbaseRC, const char* pszDriver, const char* pszCmdLine)
         NitroFunction<goldsrc::qboolean, void*, HDC*, HGLRC*, const char*, const char*> GL_SetMode;
         // void NotifyDedicatedServerUI(const char* message)
         NitroFunctionVoid<const char*>                  NotifyDedicatedServerUI;
@@ -275,23 +273,23 @@ namespace nitroapi
         NitroFunctionVoid<const char*>                  SetLoadingProgressBarStatusText;
         // void Mod_ClearAll()
         NitroFunctionVoid<>                             Mod_ClearAll;
-        // model_t* Mod_FindName(qboolean trackCRC, const char* name)
+        // goldsrc::model_t* Mod_FindName(goldsrc::qboolean trackCRC, const char* name)
         NitroFunction<goldsrc::model_t*, goldsrc::qboolean, const char*> Mod_FindName;
-        // model_t* Mod_LoadModel(model_t* mod, qboolean crash, qboolean trackCRC)
+        // goldsrc::model_t* Mod_LoadModel(goldsrc::model_t* mod, goldsrc::qboolean crash, goldsrc::qboolean trackCRC)
         NitroFunction<goldsrc::model_t*, goldsrc::model_t*, goldsrc::qboolean, goldsrc::qboolean> Mod_LoadModel;
         // void Mod_Print()
         NitroFunctionVoid<>                             Mod_Print;
-        // qboolean Mod_ValidateCRC(const char* name, CRC32_t crc)
+        // goldsrc::qboolean Mod_ValidateCRC(const char* name, goldsrc::CRC32_t crc)
         NitroFunction<goldsrc::qboolean, const char*, goldsrc::CRC32_t> Mod_ValidateCRC;
-        //void Mod_NeedCRC(const char* name, qboolean needCRC)
+        //void Mod_NeedCRC(const char* name, goldsrc::qboolean needCRC)
         NitroFunctionVoid<const char*, goldsrc::qboolean> Mod_NeedCRC;
-        // void Mod_LoadAliasModel(model_t* mod, void* buffer)
+        // void Mod_LoadAliasModel(goldsrc::model_t* mod, void* buffer)
         NitroFunctionVoid<goldsrc::model_t*, void*> Mod_LoadAliasModel;
-        // void Mod_LoadSpriteModel(model_t* mod, void* buffer)
+        // void Mod_LoadSpriteModel(goldsrc::model_t* mod, void* buffer)
         NitroFunctionVoid<goldsrc::model_t*, void*> Mod_LoadSpriteModel;
-        // void Mod_LoadStudioModel(model_t* mod, void* buffer)
+        // void Mod_LoadStudioModel(goldsrc::model_t* mod, void* buffer)
         NitroFunctionVoid<goldsrc::model_t*, void*> Mod_LoadStudioModel;
-        // void Mod_LoadBrushModel(model_t* mod, void* buffer)
+        // void Mod_LoadBrushModel(goldsrc::model_t* mod, void* buffer)
         NitroFunctionVoid<goldsrc::model_t*, void*> Mod_LoadBrushModel;
         // char* S_PrecacheSound(char* name)
         NitroFunction<goldsrc::sfx_t*, char*> S_PrecacheSound;
@@ -299,17 +297,17 @@ namespace nitroapi
         NitroFunctionVoid<>                             SPR_Shutdown;
         // void SPR_Init()
         NitroFunctionVoid<>                             SPR_Init;
-        // int* R_StudioReloadSkin(model_t* pModel, int index, skin_t* pskin)
+        // int* R_StudioReloadSkin(goldsrc::model_t* pModel, int index, goldsrc::skin_t* pskin)
         NitroFunction<int*, goldsrc::model_t*, int, goldsrc::skin_t*> R_StudioReloadSkin;
         // void R_NewMap()
         NitroFunctionVoid<>                             R_NewMap;
         // void DT_LoadDetailMapFile(char* levelName)
         NitroFunctionVoid<char*>                        DT_LoadDetailMapFile;
-        // void* Cache_Alloc(cache_user_t* c, int size, char* name)
+        // void* Cache_Alloc(goldsrc::cache_user_t* c, int size, char* name)
         NitroFunction<void*, goldsrc::cache_user_t*, int, char*> Cache_Alloc;
-        // void* Cache_Check(cache_user_t* c)
+        // void* Cache_Check(goldsrc::cache_user_t* c)
         NitroFunction<void*, goldsrc::cache_user_t*> Cache_Check;
-        // void Cache_Free(cache_user_t* c)
+        // void Cache_Free(goldsrc::cache_user_t* c)
         NitroFunctionVoid<goldsrc::cache_user_t*> Cache_Free;
         // void* Z_Malloc(int size)
         NitroFunction<void*, int>                       Z_Malloc;
@@ -353,7 +351,7 @@ namespace nitroapi
         NitroFunctionVoid<>                             SVC_SendCvarValue;
         // void SVC_UpdateUserInfo()
         NitroFunctionVoid<>                             SVC_UpdateUserInfo;
-        // void Netchan_Setup(netsrc_t socketnumber, netchan_t *chan, netadr_t adr, int player_slot, void *connection_status, qboolean(*pfnNetchan_Blocksize)(void *))
+        // void Netchan_Setup(goldsrc::netsrc_t socketnumber, goldsrc::netchan_t *chan, goldsrc::netadr_t adr, int player_slot, void *connection_status, goldsrc::qboolean(*pfnNetchan_Blocksize)(void *))
         NitroFunctionVoid<goldsrc::netsrc_t, goldsrc::netchan_t*, goldsrc::netadr_t, int, void*, goldsrc::qboolean (*)(void*)>
             Netchan_Setup;
         // void SVC_TimeScale()
@@ -361,19 +359,19 @@ namespace nitroapi
 
         goldsrc::cvar_t* sys_timescale = nullptr;
 
-        // qboolean Cvar_Command()
+        // goldsrc::qboolean Cvar_Command()
         NitroFunction<goldsrc::qboolean> Cvar_Command;
         // int MSG_ReadFloat()
         NitroFunction<float>                            MSG_ReadFloat;
-        // void CL_WriteDemoStartup(int start, sizebuf_t* msg)
+        // void CL_WriteDemoStartup(int start, goldsrc::sizebuf_t* msg)
         NitroFunctionVoid<int, goldsrc::sizebuf_t*> CL_WriteDemoStartup;
-        // void CL_WriteDemoMessage(int start, sizebuf_t* msg)
+        // void CL_WriteDemoMessage(int start, goldsrc::sizebuf_t* msg)
         NitroFunctionVoid<int, goldsrc::sizebuf_t*> CL_WriteDemoMessage;
         // void CL_Record_f()
         NitroFunctionVoid<>                             CL_Record_f;
-        // goldsrc::sfxcache_t* S_LoadSound(sfx_t* sound, goldsrc::channel_t* channel)
+        // goldsrc::sfxcache_t* S_LoadSound(goldsrc::sfx_t* sound, goldsrc::channel_t* channel)
         NitroFunction<goldsrc::sfxcache_t*, goldsrc::sfx_t*, goldsrc::channel_t*> S_LoadSound;
-        // goldsrc::sfxcache_t* VoiceSE_GetSFXCache(sfx_t* sound)
+        // goldsrc::sfxcache_t* VoiceSE_GetSFXCache(goldsrc::sfx_t* sound)
         NitroFunction<goldsrc::sfxcache_t*, goldsrc::sfx_t*> VoiceSE_GetSFXCache;
         // double Sys_FloatTime()
         NitroFunction<double>                           Sys_FloatTime;
@@ -382,7 +380,7 @@ namespace nitroapi
         goldsrc::wavstream_t** wavstreams = nullptr;
         goldsrc::channel_t** channels = nullptr;
 
-        // HSPRITE_t SPR_Load(const char *pTextureName);
+        // goldsrc::HSPRITE_t SPR_Load(const char *pTextureName);
         NitroFunction<goldsrc::HSPRITE_t, const char*> SPR_Load;
 
         // void GL_UnloadTexture(const char *identifier)
@@ -391,15 +389,15 @@ namespace nitroapi
         goldsrc::qboolean* host_initialized = nullptr;
         goldsrc::cl_enginefunc_dst_t* g_engdstAddrs = nullptr;
 
-        // void SPR_Set(HSPRITE_t hsprite, int r, int g, int b)
+        // void SPR_Set(goldsrc::HSPRITE_t hsprite, int r, int g, int b)
         NitroFunctionVoid<goldsrc::HSPRITE_t, int, int, int> SPR_Set;
-        // int SPR_Width(HSPRITE_t hsprite, int frame)
+        // int SPR_Width(goldsrc::HSPRITE_t hsprite, int frame)
         NitroFunction<int, goldsrc::HSPRITE_t, int> SPR_Width;
-        // int SPR_Height(HSPRITE_t hsprite, int frame)
+        // int SPR_Height(goldsrc::HSPRITE_t hsprite, int frame)
         NitroFunction<int, goldsrc::HSPRITE_t, int> SPR_Height;
-        // int SPR_Frames(HSPRITE_t hsprite)
+        // int SPR_Frames(goldsrc::HSPRITE_t hsprite)
         NitroFunction<int, goldsrc::HSPRITE_t> SPR_Frames;
-        // const model_t* SPR_GetModelPointer(HSPRITE_t hsprite)
+        // const goldsrc::model_t* SPR_GetModelPointer(goldsrc::HSPRITE_t hsprite)
         NitroFunction<const goldsrc::model_t*, goldsrc::HSPRITE_t> SPR_GetModelPointer;
         // void SPR_Shutdown_NoModelFree()
         NitroFunctionVoid<>                             SPR_Shutdown_NoModelFree;
@@ -413,19 +411,19 @@ namespace nitroapi
         goldsrc::refdef_t* r_refdef = nullptr;
         int* currenttexture                             = nullptr;
 
-        // void SPR_Draw(int frame, int x, int y, const wrect_t *prc)
+        // void SPR_Draw(int frame, int x, int y, const goldsrc::wrect_t *prc)
         NitroFunctionVoid<int, int, int, const goldsrc::wrect_t*> SPR_Draw;
-        // void SPR_DrawAdditive(int frame, int x, int y, const wrect_t* prc)
+        // void SPR_DrawAdditive(int frame, int x, int y, const goldsrc::wrect_t* prc)
         NitroFunctionVoid<int, int, int, const goldsrc::wrect_t*> SPR_DrawAdditive;
-        // void SPR_DrawHoles(int frame, int x, int y, const wrect_t* prc)
+        // void SPR_DrawHoles(int frame, int x, int y, const goldsrc::wrect_t* prc)
         NitroFunctionVoid<int, int, int, const goldsrc::wrect_t*> SPR_DrawHoles;
-        // void SPR_DrawGeneric(int frame, int x, int y, const wrect_t* prc, int src, int dest, int width, int height)
+        // void SPR_DrawGeneric(int frame, int x, int y, const goldsrc::wrect_t* prc, int src, int dest, int width, int height)
         NitroFunctionVoid<int, int, int, const goldsrc::wrect_t*, int, int, int, int> SPR_DrawGeneric;
         // void SPR_EnableScissor(int x, int y, int width, int height)
         NitroFunctionVoid<int, int, int, int>           SPR_EnableScissor;
         // void SPR_DisableScissor()
         NitroFunctionVoid<>                             SPR_DisableScissor;
-        // model_t* CL_GetModelByIndex(int index)
+        // goldsrc::model_t* CL_GetModelByIndex(int index)
         NitroFunction<goldsrc::model_t*, int> CL_GetModelByIndex;
         // void GL_Init()
         NitroFunctionVoid<>                             GL_Init;
@@ -433,7 +431,7 @@ namespace nitroapi
         NitroFunctionVoid<>                             DT_Initialize;
         // void GL_BuildLightmaps()
         NitroFunctionVoid<>                             GL_BuildLightmaps;
-        // void Cvar_DirectSet(cvar_t* var, const char* value)
+        // void Cvar_DirectSet(goldsrc::cvar_t* var, const char* value)
         NitroFunctionVoid<goldsrc::cvar_t*, const char*> Cvar_DirectSet;
         // void V_Init()
         NitroFunctionVoid<>                             V_Init;
@@ -449,29 +447,29 @@ namespace nitroapi
         NitroFunctionVoid<int>                          GL_Bind;
         // void VGUI2_ResetCurrentTexture()
         NitroFunctionVoid<>                             VGUI2_ResetCurrentTexture;
-        // void SetCrosshair(HSPRITE_t hspr, wrect_t rc, int r, int g, int b)
+        // void SetCrosshair(goldsrc::HSPRITE_t hspr, goldsrc::wrect_t rc, int r, int g, int b)
         NitroFunctionVoid<goldsrc::HSPRITE_t, goldsrc::wrect_t, int, int, int> SetCrosshair;
         // void DrawCrosshair(int x, int y)
         NitroFunctionVoid<int, int>                     DrawCrosshair;
-        // void R_DrawTEntitiesOnList(qboolean clientOnly)
+        // void R_DrawTEntitiesOnList(goldsrc::qboolean clientOnly)
         NitroFunctionVoid<goldsrc::qboolean> R_DrawTEntitiesOnList;
-        // int CL_FxBlend(cl_entity_t* ent)
+        // int CL_FxBlend(goldsrc::cl_entity_t* ent)
         NitroFunction<int, goldsrc::cl_entity_t*> CL_FxBlend;
         // float* R_GetAttachmentPoint(int entity, int attachment)
         NitroFunction<float*, int, int>                 R_GetAttachmentPoint;
-        // float GlowBlend(cl_entity_t* pEntity)
+        // float GlowBlend(goldsrc::cl_entity_t* pEntity)
         NitroFunction<float, goldsrc::cl_entity_t*> GlowBlend;
-        // void R_DrawSpriteModel(cl_entity_t* e)
+        // void R_DrawSpriteModel(goldsrc::cl_entity_t* e)
         NitroFunctionVoid<goldsrc::cl_entity_t*> R_DrawSpriteModel;
-        // void R_DrawBrushModel(cl_entity_t* e)
+        // void R_DrawBrushModel(goldsrc::cl_entity_t* e)
         NitroFunctionVoid<goldsrc::cl_entity_t*> R_DrawBrushModel;
-        // void R_DrawAliasModel(cl_entity_t* e)
+        // void R_DrawAliasModel(goldsrc::cl_entity_t* e)
         NitroFunctionVoid<goldsrc::cl_entity_t*> R_DrawAliasModel;
         // void ClientDLL_DrawTransparentTriangles()
         NitroFunctionVoid<>                             ClientDLL_DrawTransparentTriangles;
-        // qboolean CL_IsDevOverviewMode()
+        // goldsrc::qboolean CL_IsDevOverviewMode()
         NitroFunction<goldsrc::qboolean> CL_IsDevOverviewMode;
-        // void CL_SetDevOverView(refdef_t* refdef)
+        // void CL_SetDevOverView(goldsrc::refdef_t* refdef)
         NitroFunctionVoid<goldsrc::refdef_t*> CL_SetDevOverView;
         // void R_SetupFrame()
         NitroFunctionVoid<>                             R_SetupFrame;
@@ -497,9 +495,9 @@ namespace nitroapi
         NitroFunctionVoid<>                             R_DrawViewModel;
         // void R_PolyBlend()
         NitroFunctionVoid<>                             R_PolyBlend;
-        // void AddTEntity(cl_entity_t* ent)
+        // void AddTEntity(goldsrc::cl_entity_t* ent)
         NitroFunctionVoid<goldsrc::cl_entity_t*> AddTEntity;
-        // void AppendTEntity(cl_entity_t* ent)
+        // void AppendTEntity(goldsrc::cl_entity_t* ent)
         NitroFunctionVoid<goldsrc::cl_entity_t*> AppendTEntity;
         // void R_PreDrawViewModel()
         NitroFunctionVoid<>                             R_PreDrawViewModel;
@@ -525,29 +523,29 @@ namespace nitroapi
         int* cszrawsentences                            = nullptr;
         char* (*rgpszrawsentence)[goldsrc::CVOXFILESENTENCEMAX] = nullptr;
 
-        // void MSG_WriteShort(sizebuf_t* sb, uint16_t c)
+        // void MSG_WriteShort(goldsrc::sizebuf_t* sb, uint16_t c)
         NitroFunctionVoid<goldsrc::sizebuf_t*, uint16_t> MSG_WriteShort;
-        // qboolean SNDDMA_Init()
+        // goldsrc::qboolean SNDDMA_Init()
         NitroFunction<goldsrc::qboolean> SNDDMA_Init;
         // void S_Init()
         NitroFunctionVoid<>                             S_Init;
         // void S_Shutdown()
         NitroFunctionVoid<>                             S_Shutdown;
-        // sfx_t* S_FindName(const char* name, int* pfInCache)
+        // goldsrc::sfx_t* S_FindName(const char* name, int* pfInCache)
         NitroFunction<goldsrc::sfx_t*, const char*, int*> S_FindName;
-        // void S_StartDynamicSound(int entnum, int entchannel, sfx_t* sfx, float* origin, float fvol, float attenuation, int flags, int pitch)
+        // void S_StartDynamicSound(int entnum, int entchannel, goldsrc::sfx_t* sfx, float* origin, float fvol, float attenuation, int flags, int pitch)
         NitroFunctionVoid<int, int, goldsrc::sfx_t*, float*, float, float, int, int> S_StartDynamicSound;
-        // void S_StartStaticSound(int entnum, int entchannel, sfx_t* sfx, float* origin, float fvol, float attenuation, int flags, int pitch)
+        // void S_StartStaticSound(int entnum, int entchannel, goldsrc::sfx_t* sfx, float* origin, float fvol, float attenuation, int flags, int pitch)
         NitroFunctionVoid<int, int, goldsrc::sfx_t*, float*, float, float, int, int> S_StartStaticSound;
         // void S_StopSound(int entnum, int entchannel)
         NitroFunctionVoid<int, int>                     S_StopSound;
-        // void S_StopAllSounds(qboolean clear)
+        // void S_StopAllSounds(goldsrc::qboolean clear)
         NitroFunctionVoid<goldsrc::qboolean> S_StopAllSounds;
         // void S_Update(float* origin, float* forward, float* right, float* up)
         NitroFunctionVoid<float*, float*, float*, float*> S_Update;
         // void VoiceSE_NotifyFreeChannel(int iChannel)
         NitroFunctionVoid<int>                          VoiceSE_NotifyFreeChannel;
-        // sentenceEntry_s* SequenceGetSentenceByIndex(unsigned int index)
+        // goldsrc::sentenceEntry_s* SequenceGetSentenceByIndex(unsigned int index)
         NitroFunction<goldsrc::sentenceEntry_s*, unsigned int> SequenceGetSentenceByIndex;
 
         float* scr_con_current                          = nullptr;
@@ -561,9 +559,9 @@ namespace nitroapi
         NitroFunctionVoid<>                             CL_ConnectClient;
         // int CL_GetFragmentSize(void* state)
         NitroFunction<int, void*>                       CL_GetFragmentSize;
-        // void NET_ClearLagData(qboolean bClient, qboolean bServer)
+        // void NET_ClearLagData(goldsrc::qboolean bClient, goldsrc::qboolean bServer)
         NitroFunctionVoid<goldsrc::qboolean, goldsrc::qboolean> NET_ClearLagData;
-        // void* SZ_GetSpace(sizebuf_t* buf, int length)
+        // void* SZ_GetSpace(goldsrc::sizebuf_t* buf, int length)
         NitroFunction<void*, goldsrc::sizebuf_t*, int> SZ_GetSpace;
         // void Host_Shutdown()
         NitroFunctionVoid<>                             Host_Shutdown;
@@ -571,9 +569,9 @@ namespace nitroapi
         NitroFunctionVoid<>                             Host_Quit_f;
         // void CL_ClearClientState()
         NitroFunctionVoid<>                             CL_ClearClientState;
-        // qboolean MD5_Hash_File(unsigned char digest[16], char* pszFileName, int bUsefopen, int bSeed, unsigned int seed[4])
+        // goldsrc::qboolean MD5_Hash_File(unsigned char digest[16], char* pszFileName, int bUsefopen, int bSeed, unsigned int seed[4])
         NitroFunction<goldsrc::qboolean, unsigned char*, char*, int, int, unsigned int*> MD5_Hash_File;
-        // void COM_ClearCustomizationList(customization_t* pHead, qboolean bCleanDecals)
+        // void COM_ClearCustomizationList(goldsrc::customization_t* pHead, goldsrc::qboolean bCleanDecals)
         NitroFunctionVoid<goldsrc::customization_t*, goldsrc::qboolean> COM_ClearCustomizationList;
         // void HPAK_FlushHostQueue()
         NitroFunctionVoid<>                             HPAK_FlushHostQueue;
@@ -596,37 +594,37 @@ namespace nitroapi
         NitroFunctionVoid<>                             Draw_Init;
         // void Draw_Shutdown()
         NitroFunctionVoid<>                             Draw_Shutdown;
-        // qpic_t* Draw_PicFromWad(const char *name)
+        // goldsrc::qpic_t* Draw_PicFromWad(const char *name)
         NitroFunction<void*, const char*>               Draw_PicFromWad;
-        // void Draw_CacheWadHandler(cachewad_t* wad, PFNCACHE fn, int extraDataSize)
+        // void Draw_CacheWadHandler(goldsrc::cachewad_t* wad, goldsrc::PFNCACHE fn, int extraDataSize)
         NitroFunctionVoid<goldsrc::cachewad_t*, goldsrc::PFNCACHE, int> Draw_CacheWadHandler;
-        // void Draw_FreeWad(cachewad_t* pWad)
+        // void Draw_FreeWad(goldsrc::cachewad_t* pWad)
         NitroFunctionVoid<goldsrc::cachewad_t*> Draw_FreeWad;
-        // void Draw_CacheWadInit(const char* name, int cacheMax, cachewad_t* wad)
+        // void Draw_CacheWadInit(const char* name, int cacheMax, goldsrc::cachewad_t* wad)
         NitroFunctionVoid<const char*, int, goldsrc::cachewad_t*> Draw_CacheWadInit;
-        // void Draw_CacheWadInitFromFile(FileHandle_t hFile, int len, const char *name, int cacheMax, cachewad_t *wad)
+        // void Draw_CacheWadInitFromFile(FileHandle_t hFile, int len, const char *name, int cacheMax, goldsrc::cachewad_t *wad)
         NitroFunctionVoid<FileHandle_t, int, const char*, int, goldsrc::cachewad_t*> Draw_CacheWadInitFromFile;
-        // void Draw_MiptexTexture(cachewad_t* wad, unsigned char* data)
+        // void Draw_MiptexTexture(goldsrc::cachewad_t* wad, unsigned char* data)
         NitroFunctionVoid<goldsrc::cachewad_t*, unsigned char*> Draw_MiptexTexture;
         // void V_UpdatePalette()
         NitroFunctionVoid<>                             V_UpdatePalette;
-        // qboolean V_CheckGamma()
+        // goldsrc::qboolean V_CheckGamma()
         NitroFunction<goldsrc::qboolean> V_CheckGamma;
         // void BuildGammaTable(float g)
         NitroFunctionVoid<float>                        BuildGammaTable;
         // void GL_Config()
         NitroFunctionVoid<>                             GL_Config;
-        // qboolean Cvar_HookVariable(const char* var_name, cvarhook_t* hook)
+        // goldsrc::qboolean Cvar_HookVariable(const char* var_name, cvarhook_t* hook)
         NitroFunction<goldsrc::qboolean, const char*, void*> Cvar_HookVariable;
         // void VGUI2_Draw_Init()
         NitroFunctionVoid<>                             VGUI2_Draw_Init;
-        // void Cmd_AddCommand(char* cmd_name, xcommand_t function)
+        // void Cmd_AddCommand(char* cmd_name, goldsrc::xcommand_t function)
         NitroFunctionVoid<const char*, goldsrc::xcommand_t> Cmd_AddCommand;
         // void VGUI2_Draw_SetTextColor(int r, int g, int b)
         NitroFunctionVoid<int, int, int>                VGUI2_Draw_SetTextColor;
-        // qboolean DT_SetRenderState(int diffuseId)
+        // goldsrc::qboolean DT_SetRenderState(int diffuseId)
         NitroFunction<goldsrc::qboolean, int> DT_SetRenderState;
-        // void R_ForceCVars(qboolean mp)
+        // void R_ForceCVars(goldsrc::qboolean mp)
         NitroFunctionVoid<goldsrc::qboolean> R_ForceCVars;
         // int GL_LoadTexture2(const char* identifier, int textureType, int width, int height, uint8_t* data, int mipmap, int iType, uint8_t* pPal, int filter)
         NitroFunction<int, const char*, int, int, int, uint8_t*, int, int, uint8_t*, int> GL_LoadTexture2;
@@ -639,25 +637,25 @@ namespace nitroapi
         int* maxTransObjs                               = nullptr;
         int* gLoadSky                                   = nullptr;
 
-        // void CL_ClearState(qboolean quiet)
+        // void CL_ClearState(goldsrc::qboolean quiet)
         NitroFunctionVoid<goldsrc::qboolean> CL_ClearState;
         // void CL_StopPlayback()
         NitroFunctionVoid<>                             CL_StopPlayback;
-        // void Host_ShutdownServer(qboolean crash)
+        // void Host_ShutdownServer(goldsrc::qboolean crash)
         NitroFunctionVoid<goldsrc::qboolean> Host_ShutdownServer;
         // void Steam_GSTerminateGameConnection(uint32_t ip, uint16_t port)
         NitroFunctionVoid<uint32_t, uint16_t>           Steam_GSTerminateGameConnection;
         // void CL_Stop_f()
         NitroFunctionVoid<>                             CL_Stop_f;
-        // qboolean NET_LeaveGroup(netsrc_t sock, netadr_t addr)
+        // goldsrc::qboolean NET_LeaveGroup(goldsrc::netsrc_t sock, goldsrc::netadr_t addr)
         NitroFunction<goldsrc::qboolean, goldsrc::netsrc_t, goldsrc::netadr_t> NET_LeaveGroup;
-        // void Netchan_Transmit(netchan_t* chan, int length, uint8_t* data)
+        // void Netchan_Transmit(goldsrc::netchan_t* chan, int length, uint8_t* data)
         NitroFunctionVoid<goldsrc::netchan_t*, int, uint8_t*> Netchan_Transmit;
-        // void Netchan_Clear(netchan_t* chan)
+        // void Netchan_Clear(goldsrc::netchan_t* chan)
         NitroFunctionVoid<goldsrc::netchan_t*> Netchan_Clear;
         // void StopLoadingProgressBar()
         NitroFunctionVoid<>                             StopLoadingProgressBar;
-        // void CL_HookEvent(char* name, void (*pfnEvent)(event_args_s*))
+        // void CL_HookEvent(char* name, void (*pfnEvent)(goldsrc::event_args_t*))
         NitroFunctionVoid<char*, void (*)(goldsrc::event_args_t*)> CL_HookEvent;
 
         // int lightmap_textures[MAX_LIGHTMAPS]

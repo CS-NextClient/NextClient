@@ -1,7 +1,7 @@
 import json
 import re
 
-SECTIONS = ("fwd", "headers", "files", "declarations", "macros", "substitutes", "opaque", "equivalence")
+SECTIONS = ("fwd", "headers", "files", "declarations", "macros", "substitutes", "opaque")
 TAGS = ("struct", "union", "class", "enum")
 
 # The header that forward-declares every record of the library; a pointer dependency includes it instead
@@ -29,12 +29,6 @@ _EXCLUDE_KEYS = ("name", "key", "file", "reason")
 _MACRO_SECTIONS = ("families", "names", "exclude")
 _SUBSTITUTE_KEYS = ("type", "reason")
 _OPAQUE_KEYS = ("tag", "namespace", "old", "consumer", "reason")
-_EQUIVALENCE_RULE_KEYS = {"skip_records": ("name", "reason"), "skip_fields": ("record", "field", "reason"),
-                          "prelude": ("include", "before", "reason")}
-# The one key of the equivalence section that holds old header paths instead of rules: the computed
-# preamble, in include order. A header that carries no compared declaration but that a listed header needs
-# declared before it is a prelude rule placed relative to this list, so recomputing the list keeps it.
-_EQUIVALENCE_LIST_KEY = "includes"
 
 
 def load(path):
@@ -74,10 +68,6 @@ def substitutes(library_map):
 
 def opaque(library_map):
     return library_map.get("opaque") or {}
-
-
-def equivalence(library_map):
-    return library_map.get("equivalence") or {}
 
 
 def _entry(kind, source, exclude=False):
@@ -188,7 +178,6 @@ def validate(library_map):
     _validate_macros(library_map.get("macros"), known, problems)
     _validate_substitutes(library_map, problems)
     _validate_opaque(library_map, problems)
-    _validate_equivalence(library_map, problems)
     return problems
 
 
@@ -341,50 +330,3 @@ def _validate_opaque(library_map, problems):
             # fwd.h declares the name inside the library namespace, where a qualified spelling is not a
             # declaration at all; such a type belongs in substitutes.
             problems.append("%s is a qualified name, which cannot be declared in a namespace" % where)
-
-
-def _validate_equivalence(library_map, problems):
-    section = library_map.get("equivalence")
-    if section is None:
-        return
-    if not isinstance(section, dict):
-        problems.append("section equivalence is not an object")
-        return
-    for name in sorted(section):
-        if name == _EQUIVALENCE_LIST_KEY:
-            if not isinstance(section[name], list) or not all(isinstance(item, str) for item in section[name]):
-                problems.append("section equivalence key %s is not a list of strings" % name)
-            continue
-        if name not in _EQUIVALENCE_RULE_KEYS:
-            problems.append("unknown key %s in section equivalence" % name)
-            continue
-        for index, rule in enumerate(section[name] or []):
-            where = "equivalence %s %d" % (name, index)
-            if not isinstance(rule, dict):
-                problems.append("%s is not an object" % where)
-                continue
-            _unknown_keys(rule, _EQUIVALENCE_RULE_KEYS[name], where, problems)
-            if not rule.get("reason"):
-                problems.append("%s has no reason" % where)
-            if name == "prelude":
-                _validate_prelude(section, rule, where, problems)
-
-
-def _validate_prelude(section, rule, where, problems):
-    """A prelude entry is placed relative to the computed list, so a `before` the list no longer carries
-    would silently move its header to the front, where it no longer precedes what needs it."""
-    if not rule.get("include"):
-        problems.append("%s includes nothing" % where)
-    before = rule.get("before")
-    if before and before not in (section.get(_EQUIVALENCE_LIST_KEY) or ()):
-        problems.append("%s is placed before %s, which the computed includes do not carry" % (where, before))
-
-
-def equivalence_includes(section):
-    """The old headers the equivalence test includes: the computed list with every prelude entry put in
-    front of the one it names."""
-    includes = list(section.get(_EQUIVALENCE_LIST_KEY) or ())
-    for rule in section.get("prelude") or ():
-        before = rule.get("before")
-        includes.insert(includes.index(before) if before in includes else 0, rule["include"])
-    return includes

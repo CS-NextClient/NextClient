@@ -1,8 +1,6 @@
 #pragma once
 
-#if NO_HLSDK_ARCHTYPES
 #include <steam/steamtypes.h>
-#endif
 
 #include <FileSystem.h>
 #include <iregistry.h>

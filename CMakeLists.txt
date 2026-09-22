@@ -73,11 +73,6 @@ add_library(nitro_api SHARED
         src/SearchConfig.h
         include/nitroapi/BuildVersion.h
         include/nitroapi/modules/client/ClientData.h
-        include/nitroapi/modules/client/cl_dll/interpolation.h
-        include/nitroapi/modules/client/cl_dll/hud.h
-        include/nitroapi/modules/client/cl_dll/hud_spectator.h
-        include/nitroapi/modules/client/cl_dll/ammo.h
-        include/nitroapi/modules/client/cl_dll/health.h
         src/modules/sdl2/SDL2Module.cpp
         src/modules/sdl2/SDL2Module.h
         include/nitroapi/modules/sdl2/SDL2Data.h
@@ -93,9 +88,8 @@ add_library(nitro_api SHARED
         src/modules/engine/EngineAddressProvider8684Linux.h
 )
 
-# Built with nitro_api, never linked into it: the layout tests are compile-time checks, not code the
-# shipped module carries.
-add_dependencies(nitro_api goldsrc_abi_golden goldsrc_abi_equivalence)
+# Built with nitro_api, never linked into it: the layout test is a compile-time check.
+add_dependencies(nitro_api goldsrc_abi_golden)
 
 target_include_directories(nitro_api PRIVATE
         ${OPENGL_INCLUDE_DIR}

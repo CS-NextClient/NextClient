@@ -16,9 +16,7 @@
 #include <goldsrc/usercmd.h>
 #include <goldsrc/view.h>
 
-#if NO_HLSDK_ARCHTYPES
 #include <steam/steamtypes.h>
-#endif
 
 namespace nitroapi
 {
@@ -34,10 +32,10 @@ namespace nitroapi
         // int UserMsg_SetFOV(const char* name, int size, void* data)
         NitroFunction<int, const char*, int, void*>                 UserMsg_SetFOV;
 
-        // int CHudAmmo::DrawCrosshair(CHudAmmo *const this, float flTime, int weaponid)
+        // int CHudAmmo::DrawCrosshair(goldsrc::cstrike::CHudAmmo *const this, float flTime, int weaponid)
         NitroFunction<int, goldsrc::cstrike::CHudAmmo* const, float, int> CHudAmmo__DrawCrosshair;
 
-        // int Initialize(cl_enginefunc_t *pEnginefuncs, int iVersion)
+        // int Initialize(goldsrc::cl_enginefunc_t *pEnginefuncs, int iVersion)
         NitroFunction<int, goldsrc::cl_enginefunc_t*, int> CLDLL_Initialize;
         // void HUD_Init()
         NitroFunctionVoid<>                                         HUD_Init;
@@ -45,13 +43,13 @@ namespace nitroapi
         NitroFunction<int>                                          HUD_VidInit;
         // int HUD_Redraw(float flTime, int iIntermission)
         NitroFunction<int, float, int>                              HUD_Redraw;
-        // int HUD_UpdateClientData(client_data_t *cdata, float flTime)
+        // int HUD_UpdateClientData(goldsrc::client_data_t *cdata, float flTime)
         NitroFunction<int, goldsrc::client_data_t*, float> HUD_UpdateClientData;
         // void HUD_Reset()
         NitroFunctionVoid<>                                         HUD_Reset;
-        // void HUD_PlayerMove(struct playermove_t *ppmove, int server)
+        // void HUD_PlayerMove(struct goldsrc::playermove_t *ppmove, int server)
         NitroFunctionVoid<goldsrc::playermove_t*, int> HUD_PlayerMove;
-        // void HUD_PlayerMoveInit(struct playermove_t *ppmove)
+        // void HUD_PlayerMoveInit(struct goldsrc::playermove_t *ppmove)
         NitroFunctionVoid<goldsrc::playermove_t*> HUD_PlayerMoveInit;
         // char HUD_PlayerMoveTexture(char *name)
         NitroFunction<char, char*>                                  HUD_PlayerMoveTexture;
@@ -65,19 +63,19 @@ namespace nitroapi
         NitroFunctionVoid<>                                         IN_ClearStates;
         // void IN_Accumulate()
         NitroFunctionVoid<>                                         IN_Accumulate;
-        // void CL_CreateMove(float frametime, struct usercmd_s *cmd, int active)
+        // void CL_CreateMove(float frametime, struct goldsrc::usercmd_t *cmd, int active)
         NitroFunctionVoid<float, goldsrc::usercmd_t*, int> CL_CreateMove;
         // int CL_IsThirdPerson()
         NitroFunction<int>                                          CL_IsThirdPerson;
         // void CL_CameraOffset(float *ofs)
         NitroFunctionVoid<float*>                                   CL_CameraOffset;
-        // struct kbutton_s *KB_Find(const char *name)
+        // struct goldsrc::kbutton_t *KB_Find(const char *name)
         NitroFunction<goldsrc::kbutton_t*, const char*> KB_Find;
         // void CAM_Think()
         NitroFunctionVoid<>                                         CAM_Think;
-        // void V_CalcRefdef(struct ref_params_s* pparams)
+        // void V_CalcRefdef(struct goldsrc::ref_params_t* pparams)
         NitroFunctionVoid<goldsrc::ref_params_t*> V_CalcRefdef;
-        // int HUD_AddEntity(int type, struct cl_entity_s *ent, const char *modelname)
+        // int HUD_AddEntity(int type, struct goldsrc::cl_entity_t *ent, const char *modelname)
         NitroFunction<int, int, goldsrc::cl_entity_t*, const char*> HUD_AddEntity;
         // void HUD_CreateEntities()
         NitroFunctionVoid<>                                         HUD_CreateEntities;
@@ -85,17 +83,17 @@ namespace nitroapi
         NitroFunctionVoid<>                                         HUD_DrawNormalTriangles;
         // void HUD_DrawTransparentTriangles()
         NitroFunctionVoid<>                                         HUD_DrawTransparentTriangles;
-        // void HUD_StudioEvent(const struct mstudioevent_s *event, const struct cl_entity_s *entity)
+        // void HUD_StudioEvent(const struct goldsrc::mstudioevent_s *event, const struct goldsrc::cl_entity_t *entity)
         NitroFunctionVoid<const goldsrc::mstudioevent_s*, const goldsrc::cl_entity_t*> HUD_StudioEvent;
-        // void HUD_PostRunCmd(struct local_state_s *from, struct local_state_s *to, struct usercmd_s *cmd, int runfuncs, double time, unsigned int random_seed)
+        // void HUD_PostRunCmd(struct goldsrc::local_state_t *from, struct goldsrc::local_state_t *to, struct goldsrc::usercmd_t *cmd, int runfuncs, double time, unsigned int random_seed)
         NitroFunctionVoid<goldsrc::local_state_t*, goldsrc::local_state_t*, goldsrc::usercmd_t*, int, double, unsigned int> HUD_PostRunCmd;
         // void HUD_Shutdown()
         NitroFunctionVoid<>                                         HUD_Shutdown;
-        // void HUD_TxferLocalOverrides(struct entity_state_s *state, const struct clientdata_s *client)
+        // void HUD_TxferLocalOverrides(struct goldsrc::entity_state_t *state, const struct goldsrc::clientdata_t *client)
         NitroFunctionVoid<goldsrc::entity_state_t*, const goldsrc::clientdata_t*> HUD_TxferLocalOverrides;
-        // void HUD_ProcessPlayerState(struct entity_state_s *dst, const struct entity_state_s *src)
+        // void HUD_ProcessPlayerState(struct goldsrc::entity_state_t *dst, const struct goldsrc::entity_state_t *src)
         NitroFunctionVoid<goldsrc::entity_state_t*, const goldsrc::entity_state_t*> HUD_ProcessPlayerState;
-        // void HUD_TxferPredictionData(struct entity_state_s *ps, const struct entity_state_s *pps, struct clientdata_s *pcd, const struct clientdata_s *ppcd, struct weapon_data_s *wd, const struct weapon_data_s *pwd)
+        // void HUD_TxferPredictionData(struct goldsrc::entity_state_t *ps, const struct goldsrc::entity_state_t *pps, struct goldsrc::clientdata_t *pcd, const struct goldsrc::clientdata_t *ppcd, struct goldsrc::weapon_data_t *wd, const struct goldsrc::weapon_data_t *pwd)
         NitroFunctionVoid<goldsrc::entity_state_t*,
                           const goldsrc::entity_state_t*,
                           goldsrc::clientdata_t*,
@@ -114,7 +112,7 @@ namespace nitroapi
         NitroFunctionVoid<double>                                   HUD_Frame;
         // int HUD_Key_Event(int eventcode, int keynum, const char *pszCurrentBinding)
         NitroFunction<int, int, int, const char*>                   HUD_Key_Event;
-        // void HUD_TempEntUpdate(double frametime,double client_time, double cl_gravity, TEMPENTITY **ppTempEntFree, TEMPENTITY **ppTempEntActive, int ( *Callback_AddVisibleEntity )( cl_entity_t *pEntity ), void ( *Callback_TempEntPlaySound )( TEMPENTITY *pTemp, float damp ))
+        // void HUD_TempEntUpdate(double frametime,double client_time, double cl_gravity, goldsrc::TEMPENTITY **ppTempEntFree, goldsrc::TEMPENTITY **ppTempEntActive, int ( *Callback_AddVisibleEntity )( goldsrc::cl_entity_t *pEntity ), void ( *Callback_TempEntPlaySound )( goldsrc::TEMPENTITY *pTemp, float damp ))
         NitroFunctionVoid<double,
                           double,
                           double,
@@ -123,13 +121,13 @@ namespace nitroapi
                           int (*)(goldsrc::cl_entity_t* pEntity),
                           void (*)(goldsrc::TEMPENTITY* pTemp, float damp)>
             HUD_TempEntUpdate;
-        // struct cl_entity_s *HUD_GetUserEntity(int index)
+        // struct goldsrc::cl_entity_t *HUD_GetUserEntity(int index)
         NitroFunction<goldsrc::cl_entity_t*, int> HUD_GetUserEntity;
-        // int HUD_VoiceStatus(int entindex, qboolean bTalking)
+        // int HUD_VoiceStatus(int entindex, goldsrc::qboolean bTalking)
         NitroFunction<int, int, goldsrc::qboolean> HUD_VoiceStatus;
         // void HUD_DirectorMessage(int iSize, void *pbuf)
         NitroFunctionVoid<int, void*>                               HUD_DirectorMessage;
-        // int HUD_GetStudioModelInterface(int version, struct r_studio_interface_s **ppinterface, struct engine_studio_api_s *pstudio)
+        // int HUD_GetStudioModelInterface(int version, struct goldsrc::r_studio_interface_t **ppinterface, struct goldsrc::engine_studio_api_t *pstudio)
         NitroFunction<int, int, goldsrc::r_studio_interface_t**, goldsrc::engine_studio_api_t*> HUD_GetStudioModelInterface;
 
         // int UserMsg_CurWeapon(const char* name, int size, void* data)
@@ -139,13 +137,13 @@ namespace nitroapi
         // int UserMsg_TextMsg(const char* name, int size, void* data)
         NitroFunction<int, const char*, int, void*>                 UserMsg_TextMsg;
 
-        // int CHudHealth::Draw(CHudHealth *const this, float flTime)
+        // int CHudHealth::Draw(goldsrc::cstrike::CHudHealth *const this, float flTime)
         NitroFunction<int, goldsrc::cstrike::CHudHealth* const, float> CHudHealth__Draw;
-        // void CHudHealth::DrawRadar(CHudHealth *const this, float flTime)
+        // void CHudHealth::DrawRadar(goldsrc::cstrike::CHudHealth *const this, float flTime)
         NitroFunctionVoid<goldsrc::cstrike::CHudHealth* const, float> CHudHealth__DrawRadar;
-        // void CHudHealth::GetAllPlayersInfo(CHudHealth *const this)
+        // void CHudHealth::GetAllPlayersInfo(goldsrc::cstrike::CHudHealth *const this)
         NitroFunctionVoid<goldsrc::cstrike::CHudHealth* const> CHudHealth__GetAllPlayersInfo;
-        // int CHudDeathNotice::Draw(CHudDeathNotice *const this, float flTime)
+        // int CHudDeathNotice::Draw(goldsrc::cstrike::CHudDeathNotice *const this, float flTime)
         NitroFunction<int, goldsrc::cstrike::CHudDeathNotice* const, float> CHudDeathNotice__Draw;
 
         // void UserMsg_DeathMsg(const char* name, int size, void* data)

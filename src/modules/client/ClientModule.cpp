@@ -143,27 +143,27 @@ namespace nitroapi
         client_data_->gHUD->m_Ammo = (goldsrc::cstrike::CHudAmmo*)(hud + 0x184);
         client_data_->gHUD->m_Health = (goldsrc::cstrike::CHudHealth*)(hud + 0x1F4);
         client_data_->gHUD->m_Spectator = (goldsrc::cstrike::CHudSpectator*)(hud + 0x358);
-//        client_data_->gHUD->m_Geiger = (CHudGeiger*)(hud + 0x1AC0);
-//        client_data_->gHUD->m_Battery = (CHudBattery*)(hud + 0x1AD8);
-//        client_data_->gHUD->m_Train = (CHudTrain*)(hud + 0x1B08);
-//        client_data_->gHUD->m_Flash = (CHudFlashlight*)(hud + 0x1B24);
-//        client_data_->gHUD->m_Message = (CHudMessage*)(hud + 0x1B64);
-//        client_data_->gHUD->m_StatusBar = (CHudStatusBar*)(hud + 0x3CCC);
-//        client_data_->gHUD->m_DeathNotice = (CHudDeathNotice*)(hud + 0x3E08);
-//        client_data_->gHUD->m_SayText = (CHudSayText*)(hud + 0x3E30);
-//        client_data_->gHUD->m_Menu = (CHudMenu*)(hud + 0x3E4C);
-//        client_data_->gHUD->m_AmmoSecondary = (CHudAmmoSecondary*)(hud + 0x3E70);
-//        client_data_->gHUD->m_TextMessage = (CHudTextMessage*)(hud + 0x5E98); // UNVERIFIED
-//        client_data_->gHUD->m_StatusIcons = (CHudStatusIcons*)(hud + 0x3E9C);
-//        client_data_->gHUD->m_accountBalance = (CHudAccountBalance*)(hud + 0x3EB0);
-//        client_data_->gHUD->m_roundTimer = (CHudRoundTimer*)(hud + 0x3FA0);
-//        client_data_->gHUD->m_progressBar = (CHudProgressBar*)(hud + 0x3FDC);
+//        client_data_->gHUD->m_Geiger = (goldsrc::cstrike::CHudGeiger*)(hud + 0x1AC0);
+//        client_data_->gHUD->m_Battery = (goldsrc::cstrike::CHudBattery*)(hud + 0x1AD8);
+//        client_data_->gHUD->m_Train = (goldsrc::cstrike::CHudTrain*)(hud + 0x1B08);
+//        client_data_->gHUD->m_Flash = (goldsrc::cstrike::CHudFlashlight*)(hud + 0x1B24);
+//        client_data_->gHUD->m_Message = (goldsrc::cstrike::CHudMessage*)(hud + 0x1B64);
+//        client_data_->gHUD->m_StatusBar = (goldsrc::cstrike::CHudStatusBar*)(hud + 0x3CCC);
+//        client_data_->gHUD->m_DeathNotice = (goldsrc::cstrike::CHudDeathNotice*)(hud + 0x3E08);
+//        client_data_->gHUD->m_SayText = (goldsrc::cstrike::CHudSayText*)(hud + 0x3E30);
+//        client_data_->gHUD->m_Menu = (goldsrc::cstrike::CHudMenu*)(hud + 0x3E4C);
+//        client_data_->gHUD->m_AmmoSecondary = (goldsrc::cstrike::CHudAmmoSecondary*)(hud + 0x3E70);
+//        client_data_->gHUD->m_TextMessage = (goldsrc::cstrike::CHudTextMessage*)(hud + 0x5E98); // UNVERIFIED
+//        client_data_->gHUD->m_StatusIcons = (goldsrc::cstrike::CHudStatusIcons*)(hud + 0x3E9C);
+//        client_data_->gHUD->m_accountBalance = (goldsrc::cstrike::CHudAccountBalance*)(hud + 0x3EB0);
+//        client_data_->gHUD->m_roundTimer = (goldsrc::cstrike::CHudRoundTimer*)(hud + 0x3FA0);
+//        client_data_->gHUD->m_progressBar = (goldsrc::cstrike::CHudProgressBar*)(hud + 0x3FDC);
         client_data_->gHUD->m_NightVision = (goldsrc::cstrike::CHudNightVision*)(hud + 0x4048);
-//        client_data_->gHUD->m_careerTaskTimer = (CHudCareerTaskTimer*)(hud + 0x400C);
-//        client_data_->gHUD->m_scenarioStatus = (CHudScenarioStatus*)(hud + 0x4068);
-//        client_data_->gHUD->m_sniperScope = (CHudSniperScope*)(hud + 0x40DC);
-//        client_data_->gHUD->m_VGUI2Print = (CHudVGUI2Print*)(hud + 0x4104);
-//        client_data_->gHUD->m_scrinfo = (SCREENINFO*)(hud + 0x6930); // UNVERIFIED
+//        client_data_->gHUD->m_careerTaskTimer = (goldsrc::cstrike::CHudCareerTaskTimer*)(hud + 0x400C);
+//        client_data_->gHUD->m_scenarioStatus = (goldsrc::cstrike::CHudScenarioStatus*)(hud + 0x4068);
+//        client_data_->gHUD->m_sniperScope = (goldsrc::cstrike::CHudSniperScope*)(hud + 0x40DC);
+//        client_data_->gHUD->m_VGUI2Print = (goldsrc::cstrike::CHudVGUI2Print*)(hud + 0x4104);
+//        client_data_->gHUD->m_scrinfo = (goldsrc::SCREENINFO*)(hud + 0x6930); // UNVERIFIED
     }
 
     void ClientModule::OnLibraryUnload()

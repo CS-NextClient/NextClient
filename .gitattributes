@@ -1,0 +1,5 @@
+# The generation input and its output are compared byte for byte, so their endings cannot vary by
+# checkout. The rule covers the whole library subtree rather than today's extensions and depths: a
+# generated file of another kind, or one a level deeper, would otherwise fall out of it silently.
+# text=auto leaves a file Git detects as binary alone.
+goldsrc_abi/** text=auto eol=lf

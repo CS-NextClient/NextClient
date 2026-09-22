@@ -1,6 +1,6 @@
 import unittest
 
-from goldsrc_tools import abi_scope, cxx_types, emit
+from goldsrc_tools import cxx_types, emit
 
 PUBLIC = "goldsrc/cvar.h"
 
@@ -59,11 +59,10 @@ def header_entry(path, declarations, *, namespace="goldsrc", system_includes=(),
             "includes": list(includes), "declarations": list(declarations)}
 
 
-def model_of(*headers, forward=(), records=None, names=None, equivalence=None):
+def model_of(*headers, forward=(), records=None, names=None):
     records_dict = records if isinstance(records, dict) else {item["old"]["key"]: item for item in records or ()}
     return {"fwd": {"path": "goldsrc/fwd.h", "namespace": "goldsrc"}, "headers": list(headers),
-            "forward": list(forward), "records": records_dict, "names": dict(names or {}),
-            "equivalence": dict(equivalence or {}), "ignored": {}}
+            "forward": list(forward), "records": records_dict, "names": dict(names or {}), "ignored": {}}
 
 
 class HeaderTextTest(unittest.TestCase):
@@ -590,33 +589,6 @@ class GoldenConstantTest(unittest.TestCase):
         self.assertNotIn("goldsrc::WEAPON_NONE", text)
 
 
-class EquivalenceIncludesTest(unittest.TestCase):
-    def test_standard_and_goldsrc_headers_are_included(self):
-        model = model_of(header_entry(PUBLIC, [constant("FCVAR_ARCHIVE", NAMED_INT, 1)]), records={})
-
-        text, _problems = emit.equivalence(model, [])
-
-        for name in ("cstddef", "cstdint", "string_view", "type_traits"):
-            self.assertIn("#include <%s>" % name, text)
-        self.assertIn("#include <%s>" % PUBLIC, text)
-
-
-class EquivalenceMapBoilerplateTest(unittest.TestCase):
-    def test_boilerplate_matches_the_specified_form(self):
-        text, _problems = emit.equivalence(model_of(records=[]), [])
-
-        self.assertIn("template <class T> struct map { using type = T; };", text)
-        self.assertIn("template <class T> using map_t = typename map<T>::type;", text)
-        self.assertIn("template <class T> struct map<T*> { using type = map_t<T>*; };", text)
-        self.assertIn("template <class T> struct map<T&> { using type = map_t<T>&; };", text)
-        self.assertIn("template <class T> struct map<const T> { using type = const map_t<T>; };", text)
-        self.assertIn("template <class T, std::size_t N> struct map<T[N]> { using type = map_t<T>[N]; };", text)
-        self.assertIn("template <class R, class... A> struct map<R (__cdecl*)(A...)> "
-                     "{ using type = map_t<R> (__cdecl*)(map_t<A>...); };", text)
-        self.assertIn("template <class R, class... A> struct map<R (__cdecl*)(A..., ...)> "
-                     "{ using type = map_t<R> (__cdecl*)(map_t<A>..., ...); };", text)
-
-
 class NamespaceQualificationTest(unittest.TestCase):
     """Regression: model.py's own model["names"] only ever adds the owning record's name (nested
     classes), never the enclosing namespace - a record's namespace comes from the header that
@@ -631,11 +603,9 @@ class NamespaceQualificationTest(unittest.TestCase):
         model = model_of(header)
 
         golden_text = emit.golden(model)
-        equivalence_text, _problems = emit.equivalence(model, [])
 
         self.assertIn("static_assert(offsetof(goldsrc::cstrike::CBasePlayer, m_flHealth) == 0);", golden_text)
         self.assertNotIn("goldsrc::CBasePlayer", golden_text)
-        self.assertIn("using r0 = goldsrc::cstrike::CBasePlayer;", equivalence_text)
 
     def test_a_nested_record_inherits_its_top_level_owners_namespace(self):
         inner = record("POSITION", old_name="POSITION", size=8, align=4,
@@ -644,439 +614,24 @@ class NamespaceQualificationTest(unittest.TestCase):
         header = header_entry("goldsrc/cstrike/hud.h", [outer], namespace="goldsrc::cstrike")
         model = model_of(header)
 
-        text, _problems = emit.equivalence(model, [])
+        text = emit.golden(model)
 
-        self.assertRegex(text, r"using r\d+ = goldsrc::cstrike::CHudBase::POSITION;")
+        self.assertIn("static_assert(sizeof(goldsrc::cstrike::CHudBase::POSITION) == 8);", text)
+        self.assertIn("static_assert(offsetof(goldsrc::cstrike::CHudBase::POSITION, x) == 0);", text)
 
-    def test_a_top_level_incomplete_record_recovers_its_namespace_from_the_forward_entry(self):
-        # An incomplete record is never listed in any header's declarations (there is nothing to say
-        # about it there), so its namespace can only come from its own forward.h entry.
-        declaration = record("client_t", old_name="client_s", completeness="incomplete")
+    def test_a_record_outside_every_header_recovers_its_namespace_from_the_forward_entry(self):
+        # A record left out of every header's declarations has only its own forward.h entry to take a
+        # namespace from. model.py leaves out an incomplete record, but the fixture's one is complete
+        # because golden prints nothing at all for an incomplete record.
+        declaration = record("client_t", old_name="client_s", size=8, align=4,
+                             fields=[field("frames", NAMED_INT, offset=0)])
         model = model_of(records=[declaration],
                          forward=[{"namespace": "goldsrc::cstrike", "tag": "struct", "name": "client_t"}])
 
-        text, _problems = emit.equivalence(model, [])
+        text = emit.golden(model)
 
-        self.assertRegex(text, r"using r\d+ = goldsrc::cstrike::client_t;")
-
-
-class EquivalenceMapSpecializationTest(unittest.TestCase):
-    def test_every_record_gets_a_map_specialization_including_incomplete(self):
-        complete = record("cvar_t", old_name="cvar_s", size=20, align=4,
-                          fields=[field("next", cxx_types.Pointer(cxx_types.Named(text="cvar_t")), offset=16)])
-        incomplete = record("client_t", old_name="client_s", completeness="incomplete")
-        model = model_of(records=[complete, incomplete],
-                         names={"cvar_s": "goldsrc::cvar_t", "client_s": "goldsrc::client_t"})
-
-        text, _problems = emit.equivalence(model, [])
-
-        self.assertRegex(text, r"template <> struct map<::cvar_s> \{ using type = r\d+; \};")
-        self.assertRegex(text, r"template <> struct map<::client_s> \{ using type = r\d+; \};")
-        self.assertRegex(text, r"using r\d+ = goldsrc::cvar_t;")
-        self.assertRegex(text, r"using r\d+ = goldsrc::client_t;")
-        self.assertNotIn("sizeof(::client_s)", text)
-        self.assertNotIn("offsetof(::client_s", text)
-
-
-class EquivalenceOrderTest(unittest.TestCase):
-    def test_all_captures_precede_the_old_header_includes(self):
-        declaration = record("cvar_t", old_name="cvar_s", size=20, align=4, fields=[
-            field("next", cxx_types.Pointer(cxx_types.Named(text="cvar_t")), offset=16),
-        ])
-        model = model_of(records=[declaration], names={"cvar_s": "goldsrc::cvar_t"})
-
-        text, _problems = emit.equivalence(model, ["dep/ncl-hl1-source-sdk/common/cvardef.h"])
-
-        include_index = text.index('#include "dep/ncl-hl1-source-sdk/common/cvardef.h"')
-        for needle in ("using r", "using t", "constexpr std::size_t s", "constexpr std::size_t o"):
-            self.assertLess(text.index(needle), include_index)
-        self.assertGreater(text.count("namespace goldsrc_equivalence"), 1)
-
-    def test_old_includes_are_printed_in_the_given_order(self):
-        text, _problems = emit.equivalence(model_of(records=[]), ["b/two.h", "a/one.h"])
-
-        self.assertLess(text.index('#include "b/two.h"'), text.index('#include "a/one.h"'))
-
-
-class EquivalenceSubstituteFieldTest(unittest.TestCase):
-    def test_a_substitute_field_is_compared_by_offset_and_says_why_its_type_is_not(self):
-        declaration = record("cl_entity_t", old_name="cl_entity_s", size=8, align=4, fields=[
-            field("origin", cxx_types.Named(text="vec3_t"), offset=0, compare_type=False,
-                  type_reason="the map substitutes vec3_t for Vector"),
-        ])
-        model = model_of(records=[declaration], names={"cl_entity_s": "goldsrc::cl_entity_t"})
-
-        text, _problems = emit.equivalence(model, [])
-
-        self.assertRegex(text, r"offsetof\(::cl_entity_s, origin\)")
-        self.assertNotIn("decltype(::cl_entity_s::origin)", text)
-        self.assertIn("// cl_entity_s.origin: type comparison skipped - the map substitutes vec3_t for Vector",
-                      text)
-
-
-class EquivalenceRecordAssertsTest(unittest.TestCase):
-    def test_complete_record_gets_size_offset_and_type_asserts(self):
-        declaration = record("cvar_t", old_name="cvar_s", size=20, align=4, fields=[
-            field("next", cxx_types.Pointer(cxx_types.Named(text="cvar_t")), offset=16),
-        ])
-        model = model_of(records=[declaration], names={"cvar_s": "goldsrc::cvar_t"})
-
-        text, _problems = emit.equivalence(model, [])
-
-        self.assertRegex(text, r'static_assert\(s\d+ == sizeof\(::cvar_s\), "sizeof cvar_s"\);')
-        self.assertRegex(text, r'static_assert\(o\d+ == offsetof\(::cvar_s, next\), "offsetof cvar_s\.next"\);')
-        self.assertRegex(text, r'static_assert\(std::is_same_v<t\d+, map_t<decltype\(::cvar_s::next\)>>, "type cvar_s\.next"\);')
-
-    def test_prefix_record_is_compared_by_sizeof_too(self):
-        declaration = record("client_state_t", old_name="client_state_s", completeness="prefix", fields=[
-            field("max_edicts", NAMED_INT, offset=0),
-        ])
-        model = model_of(records=[declaration], names={"client_state_s": "goldsrc::client_state_t"})
-
-        text, _problems = emit.equivalence(model, [])
-
-        self.assertRegex(text, r'static_assert\(s\d+ == sizeof\(::client_state_s\), "sizeof client_state_s"\);')
-        self.assertRegex(text, r"offsetof\(::client_state_s, max_edicts\)")
-
-
-class EquivalenceVariableConstantTest(unittest.TestCase):
-    def test_a_constant_variable_is_compared_without_the_const_of_its_declaration(self):
-        declaration = constant("CVOXFILESENTENCEMAX", NAMED_INT, 1536)
-        declaration["old"]["kind"] = "variable"
-        model = model_of(header_entry(PUBLIC, [declaration]), records={})
-
-        text, _problems = emit.equivalence(model, [])
-
-        self.assertIn('static_assert(c0 == ::CVOXFILESENTENCEMAX, "value CVOXFILESENTENCEMAX");', text)
-        self.assertIn('static_assert(std::is_same_v<std::remove_const_t<decltype(c0)>, '
-                      'std::remove_const_t<decltype(::CVOXFILESENTENCEMAX)>>, "type CVOXFILESENTENCEMAX");', text)
-
-
-class EquivalenceEnumConstantTest(unittest.TestCase):
-    def test_a_named_enums_constant_is_compared_by_value_and_by_its_own_enumeration(self):
-        declaration = enum_decl("RenderMode_t", [("kRenderNormal", 0)], old_name="RenderMode_t")
-        model = model_of(header_entry(PUBLIC, [declaration]), records={})
-
-        text, _problems = emit.equivalence(model, [])
-
-        # decltype of an unscoped enumerator is its own enumeration type, which map<> already bridges,
-        # so this catches an enumerator moved to another enumeration of the same underlying type - the
-        # underlying-type comparison alone would not. Both sides of the value comparison go through
-        # long long: comparing two distinct enum types directly with == warns under -Wenum-compare,
-        # which /WX turns into a build failure.
-        self.assertRegex(text, r'static_assert\(static_cast<long long>\(c\d+\) == '
-                               r'static_cast<long long>\(::kRenderNormal\), "value ::kRenderNormal"\);')
-        self.assertRegex(text, r'static_assert\(std::is_same_v<std::remove_const_t<decltype\(c\d+\)>, '
-                               r'map_t<decltype\(::kRenderNormal\)>>, "type ::kRenderNormal"\);')
-
-    def test_an_anonymous_enums_constant_falls_back_to_the_underlying_type(self):
-        # Nothing names the old enumeration, so map<> carries no specialization for it and the types
-        # cannot be compared; the width they agree on still can.
-        declaration = enum_decl(None, [("MAX_PLAYERS", 64)], old_name=None)
-        model = model_of(header_entry(PUBLIC, [declaration]), records={})
-
-        text, _problems = emit.equivalence(model, [])
-
-        self.assertRegex(text, r'static_assert\(std::is_same_v<std::underlying_type_t<decltype\(c\d+\)>, '
-                               r'std::underlying_type_t<decltype\(::MAX_PLAYERS\)>>, "type ::MAX_PLAYERS"\);')
-
-
-class EquivalenceProbeTest(unittest.TestCase):
-    """An enumerator of an enum declared inside a record is reached through a struct deriving from that
-    record: a derived class may name a protected member of its base (CHudStatusBar declares three of its
-    four compared constants that way), and a public one is named the same way, so the generator needs no
-    knowledge of the access at all."""
-
-    def test_a_record_owned_enumerator_is_compared_inside_a_probe(self):
-        owned = enum_decl(None, [("MAX_STATUSBAR_LINES", 3)], old_name=None, scope="::CHudStatusBar::",
-                          owner="::CHudStatusBar")
-        free = enum_decl("RenderMode_t", [("kRenderNormal", 0)], old_name="RenderMode_t")
-        model = model_of(header_entry(PUBLIC, [free, owned]), records={})
-
-        text, problems = emit.equivalence(model, [])
-
-        self.assertEqual(problems, [])
-        self.assertIn("struct p0 : ::CHudStatusBar", text)
-        probe = text.split("struct p0 : ::CHudStatusBar")[1]
-        self.assertRegex(probe, r'static_cast<long long>\(MAX_STATUSBAR_LINES\), '
-                                r'"value ::CHudStatusBar::MAX_STATUSBAR_LINES"\);')
-        self.assertNotIn("::CHudStatusBar::MAX_STATUSBAR_LINES)", probe.split("};")[0])
-        # Only inside the probe: the same assertion at namespace scope would not compile for a
-        # protected enumerator, and a second copy of it would compare nothing new.
-        self.assertEqual(text.count('"value ::CHudStatusBar::MAX_STATUSBAR_LINES"'), 1)
-        self.assertLess(text.index("::kRenderNormal"), text.index("struct p0"))
-
-
-class EquivalenceConstantTest(unittest.TestCase):
-    def test_integer_constant_is_compared_by_value_and_type(self):
-        model = model_of(header_entry(PUBLIC, [constant("FCVAR_ARCHIVE", NAMED_INT, 1)]), records={})
-
-        text, _problems = emit.equivalence(model, [])
-
-        self.assertRegex(text, r'static_assert\(c\d+ == FCVAR_ARCHIVE, "value FCVAR_ARCHIVE"\);')
-        self.assertRegex(text, r'static_assert\(std::is_same_v<std::remove_const_t<decltype\(c\d+\)>, '
-                               r'decltype\(FCVAR_ARCHIVE\)>, "type FCVAR_ARCHIVE"\);')
-
-    def test_string_constant_is_compared_through_string_view_only(self):
-        declaration = constant("PROBE_IFACE_VERSION", cxx_types.Array(NAMED_CHAR), "probe_iface_v2")
-        model = model_of(header_entry(PUBLIC, [declaration]), records={})
-
-        text, _problems = emit.equivalence(model, [])
-
-        self.assertRegex(text, r'static_assert\(std::string_view\(c\d+\) == std::string_view\(PROBE_IFACE_VERSION\), '
-                               r'"value PROBE_IFACE_VERSION"\);')
-        self.assertNotIn('"type PROBE_IFACE_VERSION"', text)
-
-
-class EquivalenceSkipTest(unittest.TestCase):
-    """A skip_records/skip_fields entry never removes the map<> specialization itself: an unrelated
-    field elsewhere may still need it to resolve its own type comparison (Critical 2 of round 1 -
-    removing it broke 23 other assertions on real data). It only drops the size/offset/type
-    assertions the entry names, replacing them with a short comment naming the map's own reason -
-    provenance of the model's decisions, not of the source tree, so the usual no-provenance-comments
-    rule does not apply here."""
-
-    def test_a_skipped_record_keeps_its_specialization_but_drops_its_asserts(self):
-        skipped = record("host_t", old_name="host_s", size=4, align=4,
-                         fields=[field("frametime", NAMED_FLOAT, offset=0)])
-        kept = record("cvar_t", old_name="cvar_s", size=20, align=4,
-                      fields=[field("next", cxx_types.Pointer(cxx_types.Named(text="cvar_t")), offset=16)])
-        model = model_of(records=[skipped, kept], names={"host_s": "goldsrc::host_t", "cvar_s": "goldsrc::cvar_t"},
-                         equivalence={"skip_records": [{"name": "host_s", "reason": "a prefix layout"}]})
-
-        text, problems = emit.equivalence(model, [])
-
-        self.assertEqual(problems, [])
-        self.assertRegex(text, r"template <> struct map<::host_s> \{ using type = r\d+; \};")
-        self.assertIn("using r", text.split("host_s")[0])  # the r<i> capture for host_t is still there
-        self.assertIn("// host_s: comparisons skipped - a prefix layout", text)
-        self.assertNotIn("sizeof(::host_s)", text)
-        self.assertNotIn("offsetof(::host_s", text)
-        self.assertRegex(text, r'static_assert\(s\d+ == sizeof\(::cvar_s\), "sizeof cvar_s"\);')
-
-    def test_two_skipped_records_get_separate_comment_blocks_not_a_run_on_paragraph(self):
-        first = record("qpic_t", old_name="qpic_t")
-        second = record("wadinfo_t", old_name="wadinfo_t")
-        model = model_of(records=[first, second],
-                         names={"qpic_t": "goldsrc::format::qpic_t", "wadinfo_t": "goldsrc::format::wadinfo_t"},
-                         equivalence={"skip_records": [
-                             {"name": "qpic_t", "reason": "declared in our NextClient sources"},
-                             {"name": "wadinfo_t", "reason": "declared in our NextClient sources"},
-                         ]})
-
-        text, problems = emit.equivalence(model, [])
-
-        self.assertEqual(problems, [])
-        # A blank line between the two comments, not a single run of "//" lines clang-format's
-        # ReflowComments would merge into one paragraph.
-        self.assertRegex(text, r"// qpic_t: comparisons skipped - declared in our NextClient sources\n\n\s*"
-                               r"// wadinfo_t: comparisons skipped - declared in our NextClient sources")
-
-    def test_a_skipped_field_keeps_the_records_other_asserts_and_comments_the_field(self):
-        declaration = record("cvar_t", old_name="cvar_s", size=20, align=4, fields=[
-            field("next", cxx_types.Pointer(cxx_types.Named(text="cvar_t")), offset=16),
-            field("flags", NAMED_INT, offset=8),
-        ])
-        model = model_of(records=[declaration], names={"cvar_s": "goldsrc::cvar_t"},
-                         equivalence={"skip_fields": [{"record": "cvar_s", "field": "flags", "reason": "quirk"}]})
-
-        text, problems = emit.equivalence(model, [])
-
-        self.assertEqual(problems, [])
-        self.assertRegex(text, r"offsetof\(::cvar_s, next\)")
-        self.assertRegex(text, r'static_assert\(s\d+ == sizeof\(::cvar_s\), "sizeof cvar_s"\);')
-        self.assertIn("// cvar_s.flags: comparisons skipped - quirk", text)
-        self.assertNotIn("offsetof(::cvar_s, flags)", text)
-
-    def test_a_stale_skip_entry_matching_nothing_is_a_problem(self):
-        declaration = record("cvar_t", old_name="cvar_s", size=20, align=4, fields=[])
-        model = model_of(records=[declaration], names={"cvar_s": "goldsrc::cvar_t"},
-                         equivalence={"skip_records": [{"name": "no_such_record", "reason": "x"}],
-                                     "skip_fields": [{"record": "cvar_s", "field": "no_such_field", "reason": "y"}]})
-
-        _text, problems = emit.equivalence(model, [])
-
-        self.assertIn("stale skip_records entry no_such_record", problems)
-        self.assertIn("stale skip_fields entry ('cvar_s', 'no_such_field')", problems)
-
-
-class EquivalenceAccessTest(unittest.TestCase):
-    """A member the old header declares non-public is out of reach of both offsetof and decltype, so
-    the test would not compile at all rather than report a difference (netadr_s, whose four fields are
-    private). The facts carry the access, so no map entry is needed and none can go stale."""
-
-    def test_a_private_field_is_commented_and_the_records_size_is_still_compared(self):
-        declaration = record("netadr_t", old_name="netadr_s", size=20, align=4, fields=[
-            field("port", cxx_types.Named(text="uint16_t"), offset=18, access="private"),
-        ])
-        model = model_of(records=[declaration], names={"netadr_s": "goldsrc::netadr_t"})
-
-        text, problems = emit.equivalence(model, [])
-
-        self.assertEqual(problems, [])
-        self.assertIn("// netadr_s.port: comparisons skipped - declared private in the old header", text)
-        self.assertNotIn("offsetof(::netadr_s, port)", text)
-        self.assertRegex(text, r'static_assert\(s\d+ == sizeof\(::netadr_s\), "sizeof netadr_s"\);')
-
-    def test_a_public_field_is_compared_as_usual(self):
-        declaration = record("cvar_t", old_name="cvar_s", size=20, align=4,
-                             fields=[field("flags", NAMED_INT, offset=8, access="public")])
-        model = model_of(records=[declaration], names={"cvar_s": "goldsrc::cvar_t"})
-
-        text, problems = emit.equivalence(model, [])
-
-        self.assertEqual(problems, [])
-        self.assertRegex(text, r"offsetof\(::cvar_s, flags\)")
-
-
-class EquivalenceEnumTypedFieldTest(unittest.TestCase):
-    """Regression (Critical 1 of round 1, found by compiling a probe against real facts): a field
-    typed with a reproduced enum (13 real cases, e.g. model_s.type) compares its new enum type
-    against the *old* enum type; without a map<> specialization for the enum itself, map_t leaves the
-    old type untouched and the comparison is between two unrelated enum types, which fails to
-    compile."""
-
-    def test_a_field_typed_with_a_reproduced_enum_gets_a_working_type_comparison(self):
-        modtype = enum_decl("modtype_t", [("mod_brush", 0), ("mod_sprite", 1)], old_name="modtype_t")
-        model_record = record("model_s", old_name="model_s", size=8, align=4,
-                              fields=[field("type", cxx_types.Named(text="modtype_t"), offset=0)])
-        model = model_of(header_entry(PUBLIC, [modtype, model_record]))
-
-        text, problems = emit.equivalence(model, [])
-
-        self.assertEqual(problems, [])
-        self.assertRegex(text, r"template <> struct map<::modtype_t> \{ using type = r\d+; \};")
-        self.assertRegex(text, r'static_assert\(std::is_same_v<t\d+, map_t<decltype\(::model_s::type\)>>, '
-                               r'"type model_s\.type"\);')
-
-
-class EquivalenceOpaqueTypedFieldTest(unittest.TestCase):
-    """Regression (Critical 1 of round 1): a field pointing at a name known only through fwd.h (9 real
-    cases, e.g. cl_enginefuncs_s.pDemoAPI -> demo_api_s, a pure opaque name with no facts at all) needs
-    the same bridging specialization - an opaque reference is never marked compare_type: False (only a
-    substitute is), so this field's type is still fully compared."""
-
-    def test_a_field_pointing_at_a_forward_only_name_gets_a_working_type_comparison(self):
-        declaration = record("cl_enginefuncs_s", old_name="cl_enginefuncs_s", size=4, align=4,
-                             fields=[field("pDemoAPI", cxx_types.Pointer(cxx_types.Named(text="demo_api_s")), offset=0)])
-        model = model_of(records=[declaration],
-                         forward=[{"namespace": "goldsrc", "tag": "struct", "name": "demo_api_s",
-                                   "old": "demo_api_s"}])
-
-        text, problems = emit.equivalence(model, [])
-
-        self.assertEqual(problems, [])
-        self.assertRegex(text, r"template <> struct map<::demo_api_s> \{ using type = r\d+; \};")
-        self.assertRegex(text, r"using r\d+ = goldsrc::demo_api_s;")
-        self.assertRegex(text, r'static_assert\(std::is_same_v<t\d+, map_t<decltype\(::cl_enginefuncs_s::pDemoAPI\)>>, '
-                               r'"type cl_enginefuncs_s\.pDemoAPI"\);')
-
-    def test_a_globally_declared_name_is_compared_against_itself(self):
-        declaration = record("cl_enginefuncs_s", old_name="cl_enginefuncs_s", size=4, align=4,
-                             fields=[field("pfnGetMousePos", cxx_types.Pointer(cxx_types.Named(text="::tagPOINT")),
-                                           offset=0)])
-        model = model_of(records=[declaration],
-                         forward=[{"namespace": "::", "tag": "struct", "name": "tagPOINT", "old": "tagPOINT"}])
-
-        text, problems = emit.equivalence(model, [])
-
-        self.assertEqual(problems, [])
-        self.assertRegex(text, r"using r\d+ = ::tagPOINT;")
-        self.assertRegex(text, r"template <> struct map<::tagPOINT> \{ using type = r\d+; \};")
-
-    def test_a_forward_only_name_is_compared_under_the_spelling_the_old_headers_use(self):
-        # Our code reaches this type by a typedef name the replaced headers no longer declare
-        # (con_nprint_t), while what they do declare, and what their own declarations are typed with, is
-        # the record tag it named; comparing against the library's name leaves map<> unable to bridge.
-        declaration = record("cl_enginefuncs_s", old_name="cl_enginefuncs_s", size=4, align=4,
-                             fields=[field("Con_NXPrintf",
-                                           cxx_types.Pointer(cxx_types.Named(text="con_nprint_t")), offset=0)])
-        model = model_of(records=[declaration],
-                         forward=[{"namespace": "goldsrc", "tag": "struct", "name": "con_nprint_t",
-                                   "old": "con_nprint_s"}])
-
-        text, problems = emit.equivalence(model, [])
-
-        self.assertEqual(problems, [])
-        self.assertRegex(text, r"using r\d+ = goldsrc::con_nprint_t;")
-        self.assertRegex(text, r"template <> struct map<::con_nprint_s> \{ using type = r\d+; \};")
-        self.assertIn("struct con_nprint_s;", text)
-        self.assertNotIn("struct con_nprint_t;", text)
-
-    def test_a_forward_only_name_gets_its_own_bare_forward_declaration_before_the_old_includes(self):
-        # Round 2's real-compile check: a pure opaque name is not guaranteed to be forward-declared by
-        # every old header that mentions it (found via a real compile - one reached only through an
-        # excluded HLTV interface left "unknown type name" with nothing else declaring it). Since a
-        # repeated forward declaration is harmless, this one is always printed, not just when needed.
-        declaration = record("cl_enginefuncs_s", old_name="cl_enginefuncs_s", size=4, align=4,
-                             fields=[field("pDemoAPI", cxx_types.Pointer(cxx_types.Named(text="demo_api_s")), offset=0)])
-        model = model_of(records=[declaration],
-                         forward=[{"namespace": "goldsrc", "tag": "struct", "name": "demo_api_s",
-                                   "old": "demo_api_s"}])
-
-        text, problems = emit.equivalence(model, ["dep/ncl-hl1-source-sdk/common/some.h"])
-
-        self.assertEqual(problems, [])
-        declaration_index = text.index("struct demo_api_s;")
-        include_index = text.index('#include "dep/ncl-hl1-source-sdk/common/some.h"')
-        self.assertLess(declaration_index, include_index)
-        self.assertLess(text.index("} // namespace goldsrc_equivalence"), declaration_index)
-
-
-class EquivalenceOutsideTreeTest(unittest.TestCase):
-    def test_a_record_declared_in_our_sources_is_compared_by_name_only(self):
-        declaration = record("lumpinfo_t", old_name="lumpinfo_s", size=32, align=4,
-                             key="nextclient/engine_mini/src/graphics/wad_format.h:12:8",
-                             fields=[field("filepos", NAMED_INT, offset=0)])
-        model = model_of(records=[declaration], names={"lumpinfo_s": "goldsrc::lumpinfo_t"})
-
-        text, problems = emit.equivalence(model, [])
-
-        self.assertEqual(problems, [])
-        self.assertIn("struct lumpinfo_s;", text)
-        self.assertIn("map<::lumpinfo_s>", text)
-        self.assertNotIn("sizeof(::lumpinfo_s)", text)
-        self.assertNotIn("offsetof(::lumpinfo_s", text)
-        self.assertIn("// lumpinfo_s: comparisons skipped - declared in our NextClient sources", text)
-        self.assertNotIn("nextclient/engine_mini/src/graphics/wad_format.h", emit.equivalence_files(model))
-
-    def test_a_deleted_stock_file_of_ours_stays_outside_the_tree_after_leaving_the_roots(self):
-        for path in abi_scope.DELETED_OUR_STOCK_FILES:
-            self.assertTrue(emit._outside_file(path), path)
-            self.assertNotIn(path, abi_scope.declaration_roots())
-        self.assertFalse(emit._outside_file("nextclient/engine_mini/src/graphics/gl_local.h"))
-        self.assertFalse(emit._outside_file(abi_scope.EXTERNAL_MACRO_FILES[0]))
-
-
-class EquivalenceFilesTest(unittest.TestCase):
-    def test_required_files_come_from_records_enums_and_constants_only(self):
-        cvar = record("cvar_t", old_name="cvar_s", key="a.h:1:1", size=4, align=4)
-        modtype = enum_decl("modtype_t", [("mod_brush", 0)], old_name="modtype_t", key="b.h:2:2")
-        fcvar = constant("FCVAR_ARCHIVE", NAMED_INT, 1)
-        header = header_entry(PUBLIC, [modtype, fcvar, cvar])
-        model = model_of(header, forward=[{"namespace": "goldsrc", "tag": "struct", "name": "demo_api_s",
-                                   "old": "demo_api_s"}])
-
-        self.assertEqual(emit.equivalence_files(model), {"a.h", "b.h", "f.h"})
-
-    def test_a_skipped_records_file_is_still_required(self):
-        skipped = record("host_t", old_name="host_s", key="host.h:9:1", size=4, align=4)
-        model = model_of(records=[skipped], equivalence={"skip_records": [{"name": "host_s", "reason": "x"}]})
-
-        self.assertEqual(emit.equivalence_files(model), {"host.h"})
-
-
-class EquivalenceReproducibilityTest(unittest.TestCase):
-    def test_regenerating_from_the_same_model_is_byte_identical(self):
-        declaration = record("cvar_t", old_name="cvar_s", size=20, align=4, fields=[
-            field("next", cxx_types.Pointer(cxx_types.Named(text="cvar_t")), offset=16),
-        ])
-        model = model_of(records=[declaration], names={"cvar_s": "goldsrc::cvar_t"})
-
-        first, _problems = emit.equivalence(model, ["dep/ncl-hl1-source-sdk/common/cvardef.h"])
-        second, _problems = emit.equivalence(model, ["dep/ncl-hl1-source-sdk/common/cvardef.h"])
-
-        self.assertEqual(first, second)
+        self.assertIn("static_assert(sizeof(goldsrc::cstrike::client_t) == 8);", text)
+        self.assertNotIn("goldsrc::client_t", text)
 
 
 if __name__ == "__main__":
