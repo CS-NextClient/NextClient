@@ -1,0 +1,64 @@
+#pragma once
+
+namespace goldsrc
+{
+    inline constexpr int SVC_BAD = 0;
+    inline constexpr int SVC_NOP = 1;
+    inline constexpr int SVC_DISCONNECT = 2;
+    inline constexpr int SVC_EVENT = 3;
+    inline constexpr int SVC_VERSION = 4;
+    inline constexpr int SVC_SETVIEW = 5;
+    inline constexpr int SVC_SOUND = 6;
+    inline constexpr int SVC_TIME = 7;
+    inline constexpr int SVC_PRINT = 8;
+    inline constexpr int SVC_STUFFTEXT = 9;
+    inline constexpr int SVC_SETANGLE = 10;
+    inline constexpr int SVC_SERVERINFO = 11;
+    inline constexpr int SVC_LIGHTSTYLE = 12;
+    inline constexpr int SVC_UPDATEUSERINFO = 13;
+    inline constexpr int SVC_DELTADESCRIPTION = 14;
+    inline constexpr int SVC_CLIENTDATA = 15;
+    inline constexpr int SVC_STOPSOUND = 16;
+    inline constexpr int SVC_PINGS = 17;
+    inline constexpr int SVC_PARTICLE = 18;
+    inline constexpr int SVC_DAMAGE = 19;
+    inline constexpr int SVC_SPAWNSTATIC = 20;
+    inline constexpr int SVC_EVENT_RELIABLE = 21;
+    inline constexpr int SVC_SPAWNBASELINE = 22;
+    inline constexpr int SVC_TEMPENTITY = 23;
+    inline constexpr int SVC_SETPAUSE = 24;
+    inline constexpr int SVC_SIGNONNUM = 25;
+    inline constexpr int SVC_CENTERPRINT = 26;
+    inline constexpr int SVC_KILLEDMONSTER = 27;
+    inline constexpr int SVC_FOUNDSECRET = 28;
+    inline constexpr int SVC_SPAWNSTATICSOUND = 29;
+    inline constexpr int SVC_INTERMISSION = 30;
+    inline constexpr int SVC_FINALE = 31;
+    inline constexpr int SVC_CDTRACK = 32;
+    inline constexpr int SVC_RESTORE = 33;
+    inline constexpr int SVC_CUTSCENE = 34;
+    inline constexpr int SVC_WEAPONANIM = 35;
+    inline constexpr int SVC_DECALNAME = 36;
+    inline constexpr int SVC_ROOMTYPE = 37;
+    inline constexpr int SVC_ADDANGLE = 38;
+    inline constexpr int SVC_NEWUSERMSG = 39;
+    inline constexpr int SVC_PACKETENTITIES = 40;
+    inline constexpr int SVC_DELTAPACKETENTITIES = 41;
+    inline constexpr int SVC_CHOKE = 42;
+    inline constexpr int SVC_RESOURCELIST = 43;
+    inline constexpr int SVC_NEWMOVEVARS = 44;
+    inline constexpr int SVC_RESOURCEREQUEST = 45;
+    inline constexpr int SVC_CUSTOMIZATION = 46;
+    inline constexpr int SVC_CROSSHAIRANGLE = 47;
+    inline constexpr int SVC_SOUNDFADE = 48;
+    inline constexpr int SVC_FILETXFERFAILED = 49;
+    inline constexpr int SVC_HLTV = 50;
+    inline constexpr int SVC_DIRECTOR = 51;
+    inline constexpr int SVC_VOICEINIT = 52;
+    inline constexpr int SVC_VOICEDATA = 53;
+    inline constexpr int SVC_SENDEXTRAINFO = 54;
+    inline constexpr int SVC_TIMESCALE = 55;
+    inline constexpr int SVC_RESOURCELOCATION = 56;
+    inline constexpr int SVC_SENDCVARVALUE = 57;
+    inline constexpr int SVC_SENDCVARVALUE2 = 58;
+} // namespace goldsrc

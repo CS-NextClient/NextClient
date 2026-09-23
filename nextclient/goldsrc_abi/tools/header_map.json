@@ -1,0 +1,1056 @@
+{
+  "fwd": {
+    "path": "goldsrc/fwd.h",
+    "namespace": "goldsrc"
+  },
+  "headers": {
+    "goldsrc/fwd.h": {
+      "namespace": "goldsrc",
+      "internal": false
+    },
+    "goldsrc/types.h": {
+      "namespace": "goldsrc",
+      "internal": false
+    },
+    "goldsrc/limits.h": {
+      "namespace": "goldsrc",
+      "internal": false
+    },
+    "goldsrc/cvar.h": {
+      "namespace": "goldsrc",
+      "internal": false
+    },
+    "goldsrc/entity.h": {
+      "namespace": "goldsrc",
+      "internal": false
+    },
+    "goldsrc/usercmd.h": {
+      "namespace": "goldsrc",
+      "internal": false
+    },
+    "goldsrc/pmove.h": {
+      "namespace": "goldsrc",
+      "internal": false
+    },
+    "goldsrc/client_api.h": {
+      "namespace": "goldsrc",
+      "internal": false
+    },
+    "goldsrc/server_api.h": {
+      "namespace": "goldsrc",
+      "internal": false
+    },
+    "goldsrc/studio_api.h": {
+      "namespace": "goldsrc",
+      "internal": false
+    },
+    "goldsrc/triangle_api.h": {
+      "namespace": "goldsrc",
+      "internal": false
+    },
+    "goldsrc/efx_api.h": {
+      "namespace": "goldsrc",
+      "internal": false
+    },
+    "goldsrc/event_api.h": {
+      "namespace": "goldsrc",
+      "internal": false
+    },
+    "goldsrc/voice_tweak.h": {
+      "namespace": "goldsrc",
+      "internal": false
+    },
+    "goldsrc/view.h": {
+      "namespace": "goldsrc",
+      "internal": false
+    },
+    "goldsrc/sequence.h": {
+      "namespace": "goldsrc",
+      "internal": false
+    },
+    "goldsrc/keys.h": {
+      "namespace": "goldsrc",
+      "internal": false
+    },
+    "goldsrc/protocol.h": {
+      "namespace": "goldsrc",
+      "internal": false
+    },
+    "goldsrc/hltv.h": {
+      "namespace": "goldsrc",
+      "internal": false
+    },
+    "goldsrc/format/studio.h": {
+      "namespace": "goldsrc",
+      "internal": false
+    },
+    "goldsrc/format/sprite.h": {
+      "namespace": "goldsrc",
+      "internal": false
+    },
+    "goldsrc/format/bsp.h": {
+      "namespace": "goldsrc",
+      "internal": false
+    },
+    "goldsrc/format/wad.h": {
+      "namespace": "goldsrc",
+      "internal": false
+    },
+    "goldsrc/engine/client_state.h": {
+      "namespace": "goldsrc",
+      "internal": true
+    },
+    "goldsrc/engine/server_state.h": {
+      "namespace": "goldsrc",
+      "internal": true
+    },
+    "goldsrc/engine/net.h": {
+      "namespace": "goldsrc",
+      "internal": true
+    },
+    "goldsrc/engine/model.h": {
+      "namespace": "goldsrc",
+      "internal": true
+    },
+    "goldsrc/engine/resource.h": {
+      "namespace": "goldsrc",
+      "internal": true
+    },
+    "goldsrc/engine/cmd.h": {
+      "namespace": "goldsrc",
+      "internal": true
+    },
+    "goldsrc/engine/event.h": {
+      "namespace": "goldsrc",
+      "internal": true
+    },
+    "goldsrc/engine/sound.h": {
+      "namespace": "goldsrc",
+      "internal": true
+    },
+    "goldsrc/engine/user_msg.h": {
+      "namespace": "goldsrc",
+      "internal": true
+    },
+    "goldsrc/engine/video.h": {
+      "namespace": "goldsrc",
+      "internal": true
+    },
+    "goldsrc/engine/voice.h": {
+      "namespace": "goldsrc",
+      "internal": true
+    },
+    "goldsrc/cstrike/weapons.h": {
+      "namespace": "goldsrc::cstrike",
+      "internal": false
+    },
+    "goldsrc/cstrike/game.h": {
+      "namespace": "goldsrc::cstrike",
+      "internal": false
+    },
+    "goldsrc/cstrike/hud.h": {
+      "namespace": "goldsrc::cstrike",
+      "internal": true
+    },
+    "goldsrc/cstrike/hud_elements.h": {
+      "namespace": "goldsrc::cstrike",
+      "internal": true
+    },
+    "goldsrc/cstrike/spectator.h": {
+      "namespace": "goldsrc::cstrike",
+      "internal": true
+    }
+  },
+  "files": {
+    "dep/NclNitroApi/dep/ncl-hl1-source-sdk/common/crc.h": "goldsrc/types.h",
+    "dep/NclNitroApi/dep/ncl-hl1-source-sdk/common/quakedef.h": "goldsrc/types.h",
+    "dep/NclNitroApi/dep/ncl-hl1-source-sdk/common/vmodes.h": "goldsrc/types.h",
+    "dep/NclNitroApi/dep/ncl-hl1-source-sdk/dlls/extdll.h": "goldsrc/types.h",
+    "dep/NclNitroApi/dep/ncl-hl1-source-sdk/public/tier0/basetypes.h": "goldsrc/types.h",
+    "dep/NclNitroApi/dep/ncl-hl1-source-sdk/common/cl_entity.h": "goldsrc/entity.h",
+    "dep/NclNitroApi/dep/ncl-hl1-source-sdk/common/entity_state.h": "goldsrc/entity.h",
+    "dep/NclNitroApi/dep/ncl-hl1-source-sdk/common/weaponinfo.h": "goldsrc/entity.h",
+    "dep/NclNitroApi/dep/ncl-hl1-source-sdk/common/const.h": "goldsrc/entity.h",
+    "dep/NclNitroApi/dep/ncl-hl1-source-sdk/common/cvardef.h": "goldsrc/cvar.h",
+    "dep/NclNitroApi/dep/ncl-hl1-source-sdk/common/usercmd.h": "goldsrc/usercmd.h",
+    "dep/NclNitroApi/dep/ncl-hl1-source-sdk/common/kbutton.h": "goldsrc/usercmd.h",
+    "dep/NclNitroApi/dep/ncl-hl1-source-sdk/common/pmtrace.h": "goldsrc/pmove.h",
+    "dep/NclNitroApi/dep/ncl-hl1-source-sdk/pm_shared/pm_defs.h": "goldsrc/pmove.h",
+    "dep/NclNitroApi/dep/ncl-hl1-source-sdk/pm_shared/pm_movevars.h": "goldsrc/pmove.h",
+    "dep/NclNitroApi/dep/ncl-hl1-source-sdk/engine/APIProxy.h": "goldsrc/client_api.h",
+    "dep/NclNitroApi/dep/ncl-hl1-source-sdk/engine/cdll_int.h": "goldsrc/client_api.h",
+    "dep/NclNitroApi/dep/ncl-hl1-source-sdk/engine/eiface.h": "goldsrc/server_api.h",
+    "dep/NclNitroApi/dep/ncl-hl1-source-sdk/engine/edict.h": "goldsrc/server_api.h",
+    "dep/NclNitroApi/dep/ncl-hl1-source-sdk/engine/progdefs.h": "goldsrc/server_api.h",
+    "dep/NclNitroApi/dep/ncl-hl1-source-sdk/common/r_studioint.h": "goldsrc/studio_api.h",
+    "dep/NclNitroApi/dep/ncl-hl1-source-sdk/common/triangleapi.h": "goldsrc/triangle_api.h",
+    "dep/NclNitroApi/dep/ncl-hl1-source-sdk/common/r_efx.h": "goldsrc/efx_api.h",
+    "dep/NclNitroApi/dep/ncl-hl1-source-sdk/common/dlight.h": "goldsrc/efx_api.h",
+    "dep/NclNitroApi/dep/ncl-hl1-source-sdk/common/event_api.h": "goldsrc/event_api.h",
+    "dep/NclNitroApi/dep/ncl-hl1-source-sdk/common/event_args.h": "goldsrc/event_api.h",
+    "dep/NclNitroApi/dep/ncl-hl1-source-sdk/common/ivoicetweak.h": "goldsrc/voice_tweak.h",
+    "dep/NclNitroApi/dep/ncl-hl1-source-sdk/common/ref_int.h": "goldsrc/view.h",
+    "dep/NclNitroApi/dep/ncl-hl1-source-sdk/common/ref_params.h": "goldsrc/view.h",
+    "dep/NclNitroApi/dep/ncl-hl1-source-sdk/common/screenfade.h": "goldsrc/view.h",
+    "dep/NclNitroApi/dep/ncl-hl1-source-sdk/engine/Sequence.h": "goldsrc/sequence.h",
+    "dep/NclNitroApi/dep/ncl-hl1-source-sdk/engine/keys.h": "goldsrc/keys.h",
+    "dep/NclNitroApi/dep/ncl-hl1-source-sdk/engine/studio.h": "goldsrc/format/studio.h",
+    "dep/NclNitroApi/dep/ncl-hl1-source-sdk/common/studio_event.h": "goldsrc/format/studio.h",
+    "dep/NclNitroApi/dep/ncl-hl1-source-sdk/engine/spritegn.h": "goldsrc/format/sprite.h",
+    "dep/NclNitroApi/dep/ncl-hl1-source-sdk/engine/modelgen.h": "goldsrc/format/sprite.h",
+    "dep/NclNitroApi/dep/ncl-hl1-source-sdk/engine/bspfile.h": "goldsrc/format/bsp.h",
+    "nextclient/engine_mini/src/graphics/wad_format.h": "goldsrc/format/wad.h",
+    "dep/NclNitroApi/dep/ncl-hl1-source-sdk/engine/client.h": "goldsrc/engine/client_state.h",
+    "dep/NclNitroApi/dep/ncl-hl1-source-sdk/engine/consistency.h": "goldsrc/engine/client_state.h",
+    "dep/NclNitroApi/dep/ncl-hl1-source-sdk/engine/delta_packet.h": "goldsrc/engine/client_state.h",
+    "dep/NclNitroApi/dep/ncl-hl1-source-sdk/engine/inst_baseline.h": "goldsrc/engine/client_state.h",
+    "dep/NclNitroApi/dep/ncl-hl1-source-sdk/engine/server.h": "goldsrc/engine/server_state.h",
+    "dep/NclNitroApi/dep/ncl-hl1-source-sdk/engine/net.h": "goldsrc/engine/net.h",
+    "dep/NclNitroApi/dep/ncl-hl1-source-sdk/engine/common.h": "goldsrc/engine/net.h",
+    "dep/NclNitroApi/dep/ncl-hl1-source-sdk/common/enums.h": "goldsrc/engine/net.h",
+    "dep/NclNitroApi/dep/ncl-hl1-source-sdk/public/tier1/netadr.h": "goldsrc/engine/net.h",
+    "dep/NclNitroApi/dep/ncl-hl1-source-sdk/engine/model.h": "goldsrc/engine/model.h",
+    "dep/NclNitroApi/dep/ncl-hl1-source-sdk/engine/custom.h": "goldsrc/engine/resource.h",
+    "dep/NclNitroApi/dep/ncl-hl1-source-sdk/engine/cmd.h": "goldsrc/engine/cmd.h",
+    "dep/NclNitroApi/dep/ncl-hl1-source-sdk/engine/event.h": "goldsrc/engine/event.h",
+    "dep/NclNitroApi/dep/ncl-hl1-source-sdk/engine/progs.h": "goldsrc/engine/event.h",
+    "dep/NclNitroApi/dep/ncl-hl1-source-sdk/engine/sound.h": "goldsrc/engine/sound.h",
+    "dep/NclNitroApi/include/nitroapi/modules/engine/structs.h": "goldsrc/engine/user_msg.h",
+    "dep/NclNitroApi/include/nitroapi/modules/engine/voice.h": "goldsrc/engine/voice.h",
+    "dep/NclNitroApi/dep/ncl-hl1-source-sdk/dlls/weapons.h": "goldsrc/cstrike/weapons.h",
+    "dep/NclNitroApi/dep/ncl-hl1-source-sdk/dlls/weapontype.h": "goldsrc/cstrike/weapons.h",
+    "dep/NclNitroApi/include/nitroapi/modules/client/cl_dll/hud.h": "goldsrc/cstrike/hud.h",
+    "dep/NclNitroApi/include/nitroapi/modules/client/cl_dll/health.h": "goldsrc/cstrike/hud_elements.h",
+    "dep/NclNitroApi/include/nitroapi/modules/client/cl_dll/ammo.h": "goldsrc/cstrike/hud_elements.h",
+    "dep/NclNitroApi/include/nitroapi/modules/client/cl_dll/hud_spectator.h": "goldsrc/cstrike/spectator.h",
+    "dep/NclNitroApi/include/nitroapi/modules/client/cl_dll/interpolation.h": "goldsrc/cstrike/spectator.h"
+  },
+  "declarations": [
+    {
+      "name": "color24",
+      "header": "goldsrc/types.h"
+    },
+    {
+      "name": "colorVec",
+      "header": "goldsrc/types.h"
+    },
+    {
+      "name": "qboolean",
+      "header": "goldsrc/types.h"
+    },
+    {
+      "name": "pfnUserMsgHook",
+      "header": "goldsrc/client_api.h"
+    },
+    {
+      "name": "trace_s",
+      "header": "goldsrc/pmove.h"
+    },
+    {
+      "name": "nitroapi::viddef_s",
+      "header": "goldsrc/engine/video.h"
+    },
+    {
+      "name": "nitroapi::VidTypes",
+      "header": "goldsrc/engine/video.h"
+    },
+    {
+      "name": "nitroapi::transObjRef",
+      "header": "goldsrc/engine/video.h"
+    },
+    {
+      "name": "CHudAmmo",
+      "header": "goldsrc/cstrike/hud_elements.h",
+      "completeness": "prefix"
+    },
+    {
+      "name": "CHudAmmoSecondary",
+      "header": "goldsrc/cstrike/hud_elements.h",
+      "completeness": "prefix"
+    },
+    {
+      "name": "CHudStatusBar",
+      "header": "goldsrc/cstrike/hud_elements.h",
+      "completeness": "prefix"
+    },
+    {
+      "name": "CHudMessage",
+      "header": "goldsrc/cstrike/hud_elements.h",
+      "completeness": "prefix"
+    },
+    {
+      "name": "CHudStatusIcons",
+      "header": "goldsrc/cstrike/hud_elements.h",
+      "completeness": "prefix"
+    },
+    {
+      "name": "CHudGeiger",
+      "header": "goldsrc/cstrike/hud_elements.h"
+    },
+    {
+      "name": "CHudTrain",
+      "header": "goldsrc/cstrike/hud_elements.h"
+    },
+    {
+      "name": "CHudDeathNotice",
+      "header": "goldsrc/cstrike/hud_elements.h"
+    },
+    {
+      "name": "CHudMenu",
+      "header": "goldsrc/cstrike/hud_elements.h"
+    },
+    {
+      "name": "CHudSayText",
+      "header": "goldsrc/cstrike/hud_elements.h"
+    },
+    {
+      "name": "CHudBattery",
+      "header": "goldsrc/cstrike/hud_elements.h"
+    },
+    {
+      "name": "CHudFlashlight",
+      "header": "goldsrc/cstrike/hud_elements.h"
+    },
+    {
+      "name": "CHudTextMessage",
+      "header": "goldsrc/cstrike/hud_elements.h"
+    },
+    {
+      "name": "CHudAccountBalance",
+      "header": "goldsrc/cstrike/hud_elements.h"
+    },
+    {
+      "name": "CHudNightVision",
+      "header": "goldsrc/cstrike/hud_elements.h"
+    },
+    {
+      "name": "CHudScenarioStatus",
+      "header": "goldsrc/cstrike/hud_elements.h"
+    },
+    {
+      "name": "CHudSniperScope",
+      "header": "goldsrc/cstrike/hud_elements.h"
+    },
+    {
+      "name": "CHudVGUI2Print",
+      "header": "goldsrc/cstrike/hud_elements.h"
+    },
+    {
+      "name": "message_parms_t",
+      "header": "goldsrc/cstrike/hud_elements.h"
+    },
+    {
+      "name": "hostage_info_t",
+      "header": "goldsrc/cstrike/hud_elements.h"
+    },
+    {
+      "name": "gamehud_t",
+      "exclude": true,
+      "reason": "a NitroApi type of pointers into client.dll data, not a stock layout"
+    },
+    {
+      "name": "Queue",
+      "exclude": true,
+      "reason": "a NitroApi helper class with its own implementation"
+    },
+    {
+      "name": "Element",
+      "exclude": true,
+      "reason": "a NitroApi helper class with its own implementation"
+    },
+    {
+      "name": "lumpinfo_s",
+      "header": "goldsrc/format/wad.h",
+      "rename": "lumpinfo_t"
+    },
+    {
+      "name": "IBaseSystem",
+      "exclude": true,
+      "reason": "an HLTV interface the fork carries over unchanged in public/HLTV"
+    },
+    {
+      "name": "IDemoPlayer",
+      "exclude": true,
+      "reason": "an HLTV interface the fork carries over unchanged in public/HLTV"
+    },
+    {
+      "name": "IEngineWrapper",
+      "exclude": true,
+      "reason": "an HLTV interface the fork carries over unchanged in public/HLTV"
+    },
+    {
+      "name": "IObjectContainer",
+      "exclude": true,
+      "reason": "an HLTV interface the fork carries over unchanged in public/HLTV"
+    },
+    {
+      "name": "ISystemModule",
+      "exclude": true,
+      "reason": "an HLTV interface the fork carries over unchanged in public/HLTV"
+    },
+    {
+      "name": "IVGuiModule",
+      "exclude": true,
+      "reason": "an HLTV interface the fork carries over unchanged in public/HLTV"
+    },
+    {
+      "key": "dep/NclNitroApi/dep/ncl-hl1-source-sdk/public/HLTV/IDemoPlayer.h:93:1",
+      "exclude": true,
+      "reason": "the director signal enum of an HLTV interface the fork carries over unchanged in public/HLTV"
+    },
+    {
+      "name": "CVOXFILESENTENCEMAX",
+      "header": "goldsrc/engine/sound.h"
+    },
+    {
+      "name": "MAX_SPRITE_NAME_LENGTH",
+      "header": "goldsrc/cstrike/hud.h"
+    }
+  ],
+  "macros": {
+    "families": [
+      {
+        "prefix": "K_",
+        "file": "dep/NclNitroApi/dep/ncl-hl1-source-sdk/engine/keydefs.h",
+        "header": "goldsrc/keys.h"
+      },
+      {
+        "prefix": "FCVAR_",
+        "file": "dep/NclNitroApi/dep/ncl-hl1-source-sdk/common/cvardef.h",
+        "header": "goldsrc/cvar.h",
+        "base": "hex"
+      },
+      {
+        "prefix": "DRC_CMD_",
+        "file": "dep/NclNitroApi/dep/ncl-hl1-source-sdk/HLTV/common/hltv.h",
+        "header": "goldsrc/hltv.h"
+      },
+      {
+        "prefix": "DRC_FLAG_",
+        "file": "dep/NclNitroApi/dep/ncl-hl1-source-sdk/HLTV/common/hltv.h",
+        "header": "goldsrc/hltv.h",
+        "base": "hex"
+      },
+      {
+        "prefix": "TYPE_",
+        "file": "dep/NclNitroApi/dep/ncl-hl1-source-sdk/HLTV/common/hltv.h",
+        "header": "goldsrc/hltv.h"
+      },
+      {
+        "prefix": "HLTV_",
+        "file": "dep/NclNitroApi/dep/ncl-hl1-source-sdk/HLTV/common/hltv.h",
+        "header": "goldsrc/hltv.h"
+      },
+      {
+        "prefix": "SVC_",
+        "file": "dep/NclNitroApi/include/nitroapi/modules/engine/structs.h",
+        "header": "goldsrc/protocol.h"
+      },
+      {
+        "prefix": "FL_",
+        "file": "dep/NclNitroApi/dep/ncl-hl1-source-sdk/common/const.h",
+        "header": "goldsrc/entity.h",
+        "base": "hex"
+      },
+      {
+        "prefix": "EF_",
+        "file": "dep/NclNitroApi/dep/ncl-hl1-source-sdk/common/const.h",
+        "header": "goldsrc/entity.h",
+        "base": "hex"
+      },
+      {
+        "prefix": "MOVETYPE_",
+        "file": "dep/NclNitroApi/dep/ncl-hl1-source-sdk/common/const.h",
+        "header": "goldsrc/entity.h"
+      },
+      {
+        "prefix": "CHAN_",
+        "file": "dep/NclNitroApi/dep/ncl-hl1-source-sdk/common/const.h",
+        "header": "goldsrc/engine/sound.h"
+      },
+      {
+        "prefix": "HISTORY_",
+        "file": "dep/NclNitroApi/dep/ncl-hl1-source-sdk/common/cl_entity.h",
+        "header": "goldsrc/entity.h"
+      },
+      {
+        "prefix": "MAX_",
+        "file": "dep/NclNitroApi/dep/ncl-hl1-source-sdk/common/qlimits.h",
+        "header": "goldsrc/limits.h"
+      },
+      {
+        "prefix": "TRI_",
+        "file": "dep/NclNitroApi/dep/ncl-hl1-source-sdk/common/triangleapi.h",
+        "header": "goldsrc/triangle_api.h"
+      },
+      {
+        "prefix": "STUDIO_",
+        "file": "dep/NclNitroApi/dep/ncl-hl1-source-sdk/engine/model.h",
+        "header": "goldsrc/studio_api.h",
+        "base": "hex"
+      },
+      {
+        "prefix": "SURF_",
+        "file": "dep/NclNitroApi/dep/ncl-hl1-source-sdk/engine/model.h",
+        "header": "goldsrc/engine/model.h",
+        "base": "hex"
+      },
+      {
+        "prefix": "MAX_KNOWN_MODELS",
+        "file": "dep/NclNitroApi/dep/ncl-hl1-source-sdk/engine/model.h",
+        "header": "goldsrc/engine/model.h"
+      },
+      {
+        "prefix": "IDPOLYHEADER",
+        "file": "dep/NclNitroApi/dep/ncl-hl1-source-sdk/engine/model.h",
+        "header": "goldsrc/engine/model.h"
+      },
+      {
+        "prefix": "STUDIO_CACHE_SIZE",
+        "file": "dep/NclNitroApi/dep/ncl-hl1-source-sdk/engine/studio.h",
+        "header": "goldsrc/format/studio.h"
+      },
+      {
+        "prefix": "STUDIO_MOUTH",
+        "file": "dep/NclNitroApi/dep/ncl-hl1-source-sdk/engine/studio.h",
+        "header": "goldsrc/format/studio.h"
+      },
+      {
+        "prefix": "STUDIO_NUM_",
+        "file": "dep/NclNitroApi/dep/ncl-hl1-source-sdk/engine/studio.h",
+        "header": "goldsrc/format/studio.h"
+      },
+      {
+        "prefix": "STUDIO_TO_RAD",
+        "file": "dep/NclNitroApi/dep/ncl-hl1-source-sdk/engine/studio.h",
+        "header": "goldsrc/format/studio.h"
+      },
+      {
+        "prefix": "STUDIO_",
+        "file": "dep/NclNitroApi/dep/ncl-hl1-source-sdk/engine/studio.h",
+        "header": "goldsrc/format/studio.h",
+        "base": "hex"
+      },
+      {
+        "prefix": "MAXSTUDIOSKINS",
+        "file": "dep/NclNitroApi/dep/ncl-hl1-source-sdk/engine/studio.h",
+        "header": "goldsrc/format/studio.h"
+      },
+      {
+        "prefix": "SPRITE_VERSION",
+        "file": "dep/NclNitroApi/dep/ncl-hl1-source-sdk/engine/spritegn.h",
+        "header": "goldsrc/format/sprite.h"
+      },
+      {
+        "prefix": "IDSPRITEHEADER",
+        "file": "dep/NclNitroApi/dep/ncl-hl1-source-sdk/engine/spritegn.h",
+        "header": "goldsrc/format/sprite.h"
+      },
+      {
+        "prefix": "HLBSP_VERSION",
+        "file": "dep/NclNitroApi/dep/ncl-hl1-source-sdk/engine/bspfile.h",
+        "header": "goldsrc/format/bsp.h"
+      },
+      {
+        "prefix": "Q1BSP_VERSION",
+        "file": "dep/NclNitroApi/dep/ncl-hl1-source-sdk/engine/bspfile.h",
+        "header": "goldsrc/format/bsp.h"
+      },
+      {
+        "prefix": "RES_",
+        "file": "dep/NclNitroApi/dep/ncl-hl1-source-sdk/engine/custom.h",
+        "header": "goldsrc/engine/resource.h",
+        "base": "hex"
+      },
+      {
+        "prefix": "FCUST_",
+        "file": "dep/NclNitroApi/dep/ncl-hl1-source-sdk/engine/custom.h",
+        "header": "goldsrc/engine/resource.h",
+        "base": "hex"
+      },
+      {
+        "prefix": "MAX_RESOURCE_LIST",
+        "file": "dep/NclNitroApi/dep/ncl-hl1-source-sdk/engine/custom.h",
+        "header": "goldsrc/engine/resource.h"
+      },
+      {
+        "prefix": "SIZEBUF_",
+        "file": "dep/NclNitroApi/dep/ncl-hl1-source-sdk/engine/common.h",
+        "header": "goldsrc/engine/net.h",
+        "base": "hex"
+      },
+      {
+        "prefix": "COM_MAX_CMD_LINE",
+        "file": "dep/NclNitroApi/dep/ncl-hl1-source-sdk/engine/common.h",
+        "header": "goldsrc/engine/cmd.h"
+      },
+      {
+        "prefix": "NUM_SAFE_ARGVS",
+        "file": "dep/NclNitroApi/dep/ncl-hl1-source-sdk/engine/common.h",
+        "header": "goldsrc/engine/cmd.h"
+      },
+      {
+        "prefix": "PM_",
+        "file": "dep/NclNitroApi/dep/ncl-hl1-source-sdk/pm_shared/pm_defs.h",
+        "header": "goldsrc/pmove.h",
+        "base": "hex"
+      },
+      {
+        "prefix": "PM_CHECKSTUCK_MINTIME",
+        "file": "dep/NclNitroApi/dep/ncl-hl1-source-sdk/pm_shared/pm_shared.h",
+        "header": "goldsrc/pmove.h"
+      },
+      {
+        "prefix": "PM_DEAD_VIEWHEIGHT",
+        "file": "dep/NclNitroApi/dep/ncl-hl1-source-sdk/pm_shared/pm_shared.h",
+        "header": "goldsrc/pmove.h"
+      },
+      {
+        "prefix": "PM_PLAYER_",
+        "file": "dep/NclNitroApi/dep/ncl-hl1-source-sdk/pm_shared/pm_shared.h",
+        "header": "goldsrc/pmove.h"
+      },
+      {
+        "prefix": "PM_VEC_",
+        "file": "dep/NclNitroApi/dep/ncl-hl1-source-sdk/pm_shared/pm_shared.h",
+        "header": "goldsrc/pmove.h"
+      },
+      {
+        "prefix": "TEAM_",
+        "file": "dep/NclNitroApi/dep/ncl-hl1-source-sdk/dlls/cdll_dll.h",
+        "header": "goldsrc/cstrike/game.h"
+      },
+      {
+        "prefix": "HIDEHUD_",
+        "file": "dep/NclNitroApi/dep/ncl-hl1-source-sdk/dlls/cdll_dll.h",
+        "header": "goldsrc/cstrike/game.h",
+        "base": "hex"
+      },
+      {
+        "prefix": "WEAPON_SUIT",
+        "file": "dep/NclNitroApi/dep/ncl-hl1-source-sdk/dlls/cdll_dll.h",
+        "header": "goldsrc/cstrike/game.h"
+      },
+      {
+        "prefix": "DMG_",
+        "file": "dep/NclNitroApi/dep/ncl-hl1-source-sdk/dlls/regamedll_const.h",
+        "header": "goldsrc/cstrike/game.h",
+        "base": "hex"
+      },
+      {
+        "prefix": "WEAPON_IS_ONTARGET",
+        "file": "dep/NclNitroApi/dep/ncl-hl1-source-sdk/dlls/weapons.h",
+        "header": "goldsrc/cstrike/weapons.h",
+        "base": "hex"
+      },
+      {
+        "prefix": "DMG_IMAGE_",
+        "file": "dep/NclNitroApi/include/nitroapi/modules/client/cl_dll/health.h",
+        "header": "goldsrc/cstrike/hud.h"
+      },
+      {
+        "prefix": "NUM_DMG_TYPES",
+        "file": "dep/NclNitroApi/include/nitroapi/modules/client/cl_dll/health.h",
+        "header": "goldsrc/cstrike/hud.h"
+      },
+      {
+        "prefix": "DMG_",
+        "file": "dep/NclNitroApi/include/nitroapi/modules/client/cl_dll/health.h",
+        "header": "goldsrc/cstrike/game.h",
+        "base": "hex"
+      },
+      {
+        "prefix": "RGB_",
+        "file": "dep/NclNitroApi/include/nitroapi/modules/client/cl_dll/hud.h",
+        "header": "goldsrc/cstrike/hud.h"
+      },
+      {
+        "prefix": "MIN_ALPHA",
+        "file": "dep/NclNitroApi/include/nitroapi/modules/client/cl_dll/hud.h",
+        "header": "goldsrc/cstrike/hud.h"
+      },
+      {
+        "prefix": "FADE_TIME",
+        "file": "dep/NclNitroApi/include/nitroapi/modules/client/cl_dll/hud.h",
+        "header": "goldsrc/cstrike/hud.h"
+      },
+      {
+        "prefix": "DHN_",
+        "file": "dep/NclNitroApi/include/nitroapi/modules/client/cl_dll/hud.h",
+        "header": "goldsrc/cstrike/hud.h",
+        "base": "hex"
+      },
+      {
+        "prefix": "INSET_",
+        "file": "dep/NclNitroApi/include/nitroapi/modules/client/cl_dll/hud_spectator.h",
+        "header": "goldsrc/cstrike/spectator.h"
+      }
+    ],
+    "names": [
+      {
+        "name": "MAX_CLIENTS",
+        "file": "dep/NclNitroApi/dep/ncl-hl1-source-sdk/common/const.h",
+        "header": "goldsrc/limits.h"
+      },
+      {
+        "name": "MAX_MODEL_NAME",
+        "file": "dep/NclNitroApi/dep/ncl-hl1-source-sdk/engine/model.h",
+        "header": "goldsrc/engine/model.h"
+      },
+      {
+        "name": "MAX_NUM_ARGVS",
+        "file": "dep/NclNitroApi/dep/ncl-hl1-source-sdk/engine/common.h",
+        "header": "goldsrc/limits.h"
+      },
+      {
+        "name": "MAX_RESOURCE_LIST",
+        "file": "dep/NclNitroApi/dep/ncl-hl1-source-sdk/engine/server.h",
+        "header": "goldsrc/engine/resource.h"
+      },
+      {
+        "name": "OFF_SVC_MESSAGES_P",
+        "file": "dep/NclNitroApi/include/nitroapi/modules/engine/structs.h",
+        "header": "goldsrc/engine/user_msg.h"
+      }
+    ],
+    "exclude": [
+      {
+        "name": "DRC_CMD_BANNER",
+        "file": "dep/NclNitroApi/dep/ncl-hl1-source-sdk/common/hltv.h",
+        "reason": "the HLTV copy of this file carries the family; the facts do not evaluate this one"
+      },
+      {
+        "name": "DRC_CMD_CAMERA",
+        "file": "dep/NclNitroApi/dep/ncl-hl1-source-sdk/common/hltv.h",
+        "reason": "the HLTV copy of this file carries the family; the facts do not evaluate this one"
+      },
+      {
+        "name": "DRC_CMD_CAMPATH",
+        "file": "dep/NclNitroApi/dep/ncl-hl1-source-sdk/common/hltv.h",
+        "reason": "the HLTV copy of this file carries the family; the facts do not evaluate this one"
+      },
+      {
+        "name": "DRC_CMD_CHASE",
+        "file": "dep/NclNitroApi/dep/ncl-hl1-source-sdk/common/hltv.h",
+        "reason": "the HLTV copy of this file carries the family; the facts do not evaluate this one"
+      },
+      {
+        "name": "DRC_CMD_EVENT",
+        "file": "dep/NclNitroApi/dep/ncl-hl1-source-sdk/common/hltv.h",
+        "reason": "the HLTV copy of this file carries the family; the facts do not evaluate this one"
+      },
+      {
+        "name": "DRC_CMD_INEYE",
+        "file": "dep/NclNitroApi/dep/ncl-hl1-source-sdk/common/hltv.h",
+        "reason": "the HLTV copy of this file carries the family; the facts do not evaluate this one"
+      },
+      {
+        "name": "DRC_CMD_LAST",
+        "file": "dep/NclNitroApi/dep/ncl-hl1-source-sdk/common/hltv.h",
+        "reason": "the HLTV copy of this file carries the family; the facts do not evaluate this one"
+      },
+      {
+        "name": "DRC_CMD_MAP",
+        "file": "dep/NclNitroApi/dep/ncl-hl1-source-sdk/common/hltv.h",
+        "reason": "the HLTV copy of this file carries the family; the facts do not evaluate this one"
+      },
+      {
+        "name": "DRC_CMD_MESSAGE",
+        "file": "dep/NclNitroApi/dep/ncl-hl1-source-sdk/common/hltv.h",
+        "reason": "the HLTV copy of this file carries the family; the facts do not evaluate this one"
+      },
+      {
+        "name": "DRC_CMD_MODE",
+        "file": "dep/NclNitroApi/dep/ncl-hl1-source-sdk/common/hltv.h",
+        "reason": "the HLTV copy of this file carries the family; the facts do not evaluate this one"
+      },
+      {
+        "name": "DRC_CMD_NONE",
+        "file": "dep/NclNitroApi/dep/ncl-hl1-source-sdk/common/hltv.h",
+        "reason": "the HLTV copy of this file carries the family; the facts do not evaluate this one"
+      },
+      {
+        "name": "DRC_CMD_SOUND",
+        "file": "dep/NclNitroApi/dep/ncl-hl1-source-sdk/common/hltv.h",
+        "reason": "the HLTV copy of this file carries the family; the facts do not evaluate this one"
+      },
+      {
+        "name": "DRC_CMD_START",
+        "file": "dep/NclNitroApi/dep/ncl-hl1-source-sdk/common/hltv.h",
+        "reason": "the HLTV copy of this file carries the family; the facts do not evaluate this one"
+      },
+      {
+        "name": "DRC_CMD_STATUS",
+        "file": "dep/NclNitroApi/dep/ncl-hl1-source-sdk/common/hltv.h",
+        "reason": "the HLTV copy of this file carries the family; the facts do not evaluate this one"
+      },
+      {
+        "name": "DRC_CMD_STUFFTEXT",
+        "file": "dep/NclNitroApi/dep/ncl-hl1-source-sdk/common/hltv.h",
+        "reason": "the HLTV copy of this file carries the family; the facts do not evaluate this one"
+      },
+      {
+        "name": "DRC_CMD_TIMESCALE",
+        "file": "dep/NclNitroApi/dep/ncl-hl1-source-sdk/common/hltv.h",
+        "reason": "the HLTV copy of this file carries the family; the facts do not evaluate this one"
+      },
+      {
+        "name": "DRC_CMD_WAYPOINTS",
+        "file": "dep/NclNitroApi/dep/ncl-hl1-source-sdk/common/hltv.h",
+        "reason": "the HLTV copy of this file carries the family; the facts do not evaluate this one"
+      },
+      {
+        "name": "MAX_MODEL_NAME",
+        "file": "dep/NclNitroApi/dep/ncl-hl1-source-sdk/common/com_model.h",
+        "reason": "a redefinition guarded by engine/model.h, which the facts evaluate instead"
+      },
+      {
+        "name": "STUDIO_EVENTS",
+        "file": "dep/NclNitroApi/dep/ncl-hl1-source-sdk/common/com_model.h",
+        "reason": "a redefinition guarded by engine/model.h, which the facts evaluate instead"
+      },
+      {
+        "name": "STUDIO_RENDER",
+        "file": "dep/NclNitroApi/dep/ncl-hl1-source-sdk/common/com_model.h",
+        "reason": "a redefinition guarded by engine/model.h, which the facts evaluate instead"
+      },
+      {
+        "name": "SVC_CDTRACK",
+        "file": "dep/NclNitroApi/dep/ncl-hl1-source-sdk/dlls/util.h",
+        "reason": "duplicates the protocol constants of the engine message table"
+      },
+      {
+        "name": "SVC_DIRECTOR",
+        "file": "dep/NclNitroApi/dep/ncl-hl1-source-sdk/dlls/util.h",
+        "reason": "duplicates the protocol constants of the engine message table"
+      },
+      {
+        "name": "SVC_INTERMISSION",
+        "file": "dep/NclNitroApi/dep/ncl-hl1-source-sdk/dlls/util.h",
+        "reason": "duplicates the protocol constants of the engine message table"
+      },
+      {
+        "name": "SVC_NOP",
+        "file": "dep/NclNitroApi/dep/ncl-hl1-source-sdk/dlls/util.h",
+        "reason": "duplicates the protocol constants of the engine message table"
+      },
+      {
+        "name": "SVC_ROOMTYPE",
+        "file": "dep/NclNitroApi/dep/ncl-hl1-source-sdk/dlls/util.h",
+        "reason": "duplicates the protocol constants of the engine message table"
+      },
+      {
+        "name": "SVC_SOUND",
+        "file": "dep/NclNitroApi/dep/ncl-hl1-source-sdk/dlls/util.h",
+        "reason": "duplicates the protocol constants of the engine message table"
+      },
+      {
+        "name": "SVC_TEMPENTITY",
+        "file": "dep/NclNitroApi/dep/ncl-hl1-source-sdk/dlls/util.h",
+        "reason": "duplicates the protocol constants of the engine message table"
+      },
+      {
+        "name": "SVC_WEAPONANIM",
+        "file": "dep/NclNitroApi/dep/ncl-hl1-source-sdk/dlls/util.h",
+        "reason": "duplicates the protocol constants of the engine message table"
+      },
+      {
+        "name": "DEMOPLAYER_INTERFACE_VERSION",
+        "file": "dep/NclNitroApi/dep/ncl-hl1-source-sdk/public/HLTV/IDemoPlayer.h",
+        "reason": "belongs to an HLTV interface the fork carries over unchanged"
+      },
+      {
+        "name": "WIN32_LEAN_AND_MEAN",
+        "file": "dep/NclNitroApi/dep/ncl-hl1-source-sdk/common/SteamAppStartUp.cpp",
+        "reason": "a platform or service macro, not a fact of the ABI"
+      },
+      {
+        "name": "WIN32_LEAN_AND_MEAN",
+        "file": "dep/NclNitroApi/dep/ncl-hl1-source-sdk/common/TextConsoleWin32.h",
+        "reason": "a platform or service macro, not a fact of the ABI"
+      },
+      {
+        "name": "WIN32_LEAN_AND_MEAN",
+        "file": "dep/NclNitroApi/dep/ncl-hl1-source-sdk/common/port.h",
+        "reason": "a platform or service macro, not a fact of the ABI"
+      },
+      {
+        "name": "WIN32_LEAN_AND_MEAN",
+        "file": "dep/NclNitroApi/dep/ncl-hl1-source-sdk/dlls/extdll.h",
+        "reason": "a platform or service macro, not a fact of the ABI"
+      },
+      {
+        "name": "WIN32_LEAN_AND_MEAN",
+        "file": "dep/NclNitroApi/dep/ncl-hl1-source-sdk/engine/osconfig.h",
+        "reason": "a platform or service macro, not a fact of the ABI"
+      },
+      {
+        "name": "WIN32_LEAN_AND_MEAN",
+        "file": "dep/NclNitroApi/dep/ncl-hl1-source-sdk/game_shared/counter.h",
+        "reason": "a platform or service macro, not a fact of the ABI"
+      },
+      {
+        "name": "__cdecl",
+        "file": "dep/NclNitroApi/dep/ncl-hl1-source-sdk/common/port.h",
+        "reason": "a platform or service macro, not a fact of the ABI"
+      },
+      {
+        "name": "_snprintf",
+        "file": "dep/NclNitroApi/dep/ncl-hl1-source-sdk/common/port.h",
+        "reason": "a platform or service macro, not a fact of the ABI"
+      },
+      {
+        "name": "_CRT_SECURE_NO_WARNINGS",
+        "file": "dep/NclNitroApi/dep/ncl-hl1-source-sdk/common/parsemsg.cpp",
+        "reason": "a platform or service macro, not a fact of the ABI"
+      },
+      {
+        "name": "_CRT_SECURE_NO_WARNINGS",
+        "file": "dep/NclNitroApi/dep/ncl-hl1-source-sdk/engine/osconfig.h",
+        "reason": "a platform or service macro, not a fact of the ABI"
+      },
+      {
+        "name": "true",
+        "file": "dep/NclNitroApi/dep/ncl-hl1-source-sdk/common/parsemsg.cpp",
+        "reason": "a platform or service macro, not a fact of the ABI"
+      },
+      {
+        "name": "__func__",
+        "file": "dep/NclNitroApi/dep/ncl-hl1-source-sdk/engine/osconfig.h",
+        "reason": "a platform or service macro, not a fact of the ABI"
+      },
+      {
+        "name": "EXT_FUNC",
+        "file": "dep/NclNitroApi/dep/ncl-hl1-source-sdk/engine/osconfig.h",
+        "reason": "a platform or service macro, not a fact of the ABI"
+      },
+      {
+        "name": "X64BITS",
+        "file": "dep/NclNitroApi/dep/ncl-hl1-source-sdk/engine/archtypes.h",
+        "reason": "a platform or service macro, not a fact of the ABI"
+      },
+      {
+        "name": "BIT",
+        "file": "dep/NclNitroApi/dep/ncl-hl1-source-sdk/engine/maintypes.h",
+        "reason": "a platform or service macro, not a fact of the ABI"
+      },
+      {
+        "name": "ASSERT",
+        "file": "dep/NclNitroApi/dep/ncl-hl1-source-sdk/common/parsemsg.h",
+        "reason": "a platform or service macro, not a fact of the ABI"
+      },
+      {
+        "name": "g_engdstAddrs",
+        "file": "dep/NclNitroApi/dep/ncl-hl1-source-sdk/engine/cdll_int.h",
+        "reason": "names an engine global, which belongs to engine_mini and NitroApi"
+      },
+      {
+        "name": "DECLARE_MESSAGE_FUNC",
+        "file": "dep/NclNitroApi/include/nitroapi/modules/client/cl_dll/hud.h",
+        "reason": "a function-like macro of the old hud layer, not a constant"
+      },
+      {
+        "name": "DECLARE_USERCMD_FUNC",
+        "file": "dep/NclNitroApi/include/nitroapi/modules/client/cl_dll/hud.h",
+        "reason": "a function-like macro of the old hud layer, not a constant"
+      }
+    ]
+  },
+  "substitutes": {
+    "BOOL": {
+      "type": "int",
+      "reason": "a Windows type, not a fact of the engine ABI"
+    },
+    "FileHandle_t": {
+      "type": "void*",
+      "reason": "a Source SDK file system handle, out of scope"
+    },
+    "vgui2::HFont": {
+      "type": "unsigned long",
+      "reason": "a vgui2 font id, out of scope"
+    },
+    "Vector": {
+      "type": "vec3_t",
+      "reason": "a mathlib class; the layout matches, so such a field is compared by offset only"
+    },
+    "alight_s": {
+      "type": "alight_t",
+      "reason": "an engine type reached through a pointer only"
+    },
+    "con_nprint_s": {
+      "type": "con_nprint_t",
+      "reason": "an engine type reached through a pointer only"
+    },
+    "delta_s": {
+      "type": "delta_t",
+      "reason": "an engine type reached through a pointer only"
+    },
+    "demo_api_s": {
+      "type": "demo_api_t",
+      "reason": "an engine type reached through a pointer only"
+    },
+    "net_api_s": {
+      "type": "net_api_t",
+      "reason": "an engine type reached through a pointer only"
+    },
+    "movevars_t": {
+      "type": "movevars_s",
+      "reason": "pm_movevars.h's own alias of the record it declares above it, which the library declares under that tag name; public/HLTV/IWorld.h reaches it through a pointer only"
+    },
+    "UserMsg": {
+      "type": "UserMsg",
+      "reason": "usermsg.h's alias of the engine's user message record, which the library declares opaque under the same name from NitroApi's own copy of it; public/HLTV/IWorld.h reaches it through a pointer only"
+    }
+  },
+  "opaque": {
+    "alight_t": {
+      "tag": "struct",
+      "reason": "an engine type reached through a pointer only"
+    },
+    "con_nprint_t": {
+      "tag": "struct",
+      "reason": "an engine type reached through a pointer only"
+    },
+    "delta_t": {
+      "tag": "struct",
+      "reason": "an engine type reached through a pointer only"
+    },
+    "demo_api_t": {
+      "tag": "struct",
+      "reason": "an engine type reached through a pointer only"
+    },
+    "net_api_t": {
+      "tag": "struct",
+      "reason": "an engine type reached through a pointer only"
+    },
+    "tagPOINT": {
+      "tag": "struct",
+      "namespace": "::",
+      "reason": "a Windows type: declared at global scope, it is the very type windows.h declares, while one inside the library namespace would be another type"
+    },
+    "dma_t": {
+      "tag": "struct",
+      "old": "dma_t",
+      "consumer": "dep/NclNitroApi/include/nitroapi/modules/engine/EngineData.h",
+      "reason": "an engine sound type NitroApi reaches through a pointer only; no replaced header declares it"
+    },
+    "sfxcache_t": {
+      "tag": "struct",
+      "old": "sfxcache_t",
+      "consumer": "dep/NclNitroApi/include/nitroapi/modules/engine/EngineData.h",
+      "reason": "an engine sound type NitroApi reaches through a pointer only; no replaced header declares it"
+    },
+    "channel_t": {
+      "tag": "struct",
+      "old": "channel_t",
+      "consumer": "dep/NclNitroApi/include/nitroapi/modules/engine/EngineData.h",
+      "reason": "an engine sound type NitroApi reaches through a pointer only; no replaced header declares it"
+    },
+    "wavstream_t": {
+      "tag": "struct",
+      "old": "wavstream_t",
+      "consumer": "dep/NclNitroApi/include/nitroapi/modules/engine/EngineData.h",
+      "reason": "an engine sound type NitroApi reaches through a pointer only; no replaced header declares it"
+    }
+  }
+}

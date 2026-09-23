@@ -51,10 +51,15 @@ jobs:
           python-version: '3.12'
 
       - name: Test goldsrc_abi tools
-        run: python -m unittest discover -s dep/NclNitroApi/goldsrc_abi/tools -t dep/NclNitroApi/goldsrc_abi/tools -p "test_*.py"
+        run: python -m unittest discover -s nextclient/goldsrc_abi/tools -t nextclient/goldsrc_abi/tools -p "test_*.py"
 
+      - name: Build
+        run: cmake --build --preset vs2022-release --target BUILD_ALL
+
+      # After the build: the gate resolves the includes of every compiled source, and the cmrc
+      # sources of client_mini_rc and gui_app_core_rc are copied into place by a build rule.
       - name: Provenance gate
-        run: python dep/NclNitroApi/goldsrc_abi/tools/provenance.py --build-dir build/vs2022 --config Release --allowlist .github/provenance-allowlist.json --report build/provenance-report.json
+        run: python nextclient/goldsrc_abi/tools/provenance.py --build-dir build/vs2022 --config Release --allowlist .github/provenance-allowlist.json --report build/provenance-report.json
 
       - name: Upload provenance report
         if: always()
@@ -63,9 +68,6 @@ jobs:
           name: provenance-report-${{ github.sha }}
           path: build/provenance-report.json
           if-no-files-found: ignore
-
-      - name: Build
-        run: cmake --build --preset vs2022-release --target BUILD_ALL
 
       # Separate configure directory: BUILD_ALL is only declared when NEXTCLIENT_BUILD_TESTS
       # is off, so the tests cannot share the build above.

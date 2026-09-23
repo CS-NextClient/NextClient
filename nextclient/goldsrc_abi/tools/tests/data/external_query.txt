@@ -1,0 +1,45 @@
+
+Match #1:
+
+Binding for "root":
+TypedefDecl 0x2c68a312030 <C:\fixture\dep\NclNitroApi\dep\ncl-hl1-source-sdk\public\outside.h:3:1, col:25> col:15 referenced triple_t 'float[3]'
+`-ConstantArrayType 0x2c68a311fc0 'float[3]' 3 
+  `-BuiltinType 0x2c68a276ea0 'float'
+
+
+Match #2:
+
+Binding for "root":
+TypedefDecl 0x2c68a3120a8 <C:\fixture\dep\NclNitroApi\dep\ncl-hl1-source-sdk\public\outside.h:4:1, col:22> col:22 referenced handle32 'unsigned int'
+`-BuiltinType 0x2c68a276e40 'unsigned int'
+
+
+Match #3:
+
+Binding for "root":
+CXXRecordDecl 0x2c68a312108 <C:\fixture\dep\NclNitroApi\dep\ncl-hl1-source-sdk\public\outside.h:6:1, line:10:1> line:6:7 class OutsideIface definition
+|-DefinitionData polymorphic abstract literal has_constexpr_non_copy_move_ctor can_const_default_init
+| |-DefaultConstructor exists non_trivial constexpr needs_implicit defaulted_is_constexpr
+| |-CopyConstructor simple non_trivial has_const_param needs_implicit implicit_has_const_param
+| |-MoveConstructor exists simple non_trivial needs_implicit
+| |-CopyAssignment simple non_trivial has_const_param implicit_has_const_param
+| |-MoveAssignment exists simple non_trivial
+| `-Destructor simple irrelevant trivial constexpr
+|-CXXRecordDecl 0x2c68a313690 <col:1, col:7> col:7 implicit class OutsideIface
+|-AccessSpecDecl 0x2c68a313740 <line:8:1, col:7> col:1 public
+|-CXXMethodDecl 0x2c68a313830 <line:9:2, col:26> col:14 Version 'int () __attribute__((thiscall))' virtual pure
+|-CXXMethodDecl 0x2c68a313a00 <line:6:7> col:7 implicit constexpr operator= 'OutsideIface &(const OutsideIface &) __attribute__((thiscall))' inline default noexcept-unevaluated 0x2c68a313a00
+| `-ParmVarDecl 0x2c68a313b38 <col:7> col:7 'const OutsideIface &'
+|-CXXMethodDecl 0x2c68a313c18 <col:7> col:7 implicit constexpr operator= 'OutsideIface &(OutsideIface &&) __attribute__((thiscall))' inline default noexcept-unevaluated 0x2c68a313c18
+| `-ParmVarDecl 0x2c68a313d48 <col:7> col:7 'OutsideIface &&'
+`-CXXDestructorDecl 0x2c68a313dd8 <col:7> col:7 implicit constexpr ~OutsideIface 'void () __attribute__((thiscall))' inline default trivial noexcept-unevaluated 0x2c68a313dd8
+
+
+Match #4:
+
+Binding for "root":
+TypedefDecl 0x2c68a314340 <C:\fixture\dep\NclNitroApi\dep\ncl-hl1-source-sdk\public\outside.h:17:1, col:31> col:31 referenced outside_addr_t 'struct outside_addr_s'
+`-RecordType 0x2c68a3142f0 'struct outside_addr_s' struct
+  `-CXXRecord 0x2c68a313f48 'outside_addr_s'
+
+4 matches.

@@ -1,0 +1,145 @@
+
+*** Dumping AST Record Layout
+         0 | struct __NSConstantString_tag
+         0 |   const int * isa
+         4 |   int flags
+         8 |   const char * str
+        12 |   long length
+           | [sizeof=16, align=4,
+           |  nvsize=16, nvalign=4]
+
+*** Dumping AST Record Layout
+         0 | struct narrow_s
+     0:0-3 |   unsigned int low
+     0:4-6 |   unsigned int mid
+         4 |   int whole
+           | [sizeof=8, align=4,
+           |  nvsize=8, nvalign=4]
+
+*** Dumping AST Record Layout
+         0 | struct flagged_s
+         0 |   int invalid
+         4 |   int referenced
+           | [sizeof=8, align=4,
+           |  nvsize=8, nvalign=4]
+
+*** Dumping AST Record Layout
+         0 | class OutsideIface
+         0 |   (OutsideIface vftable pointer)
+           | [sizeof=4, align=4,
+           |  nvsize=4, nvalign=4]
+
+*** Dumping AST Record Layout
+         0 | struct outside_addr_s
+         0 |   unsigned char[4] ip
+         4 |   unsigned short port
+           | [sizeof=6, align=2,
+           |  nvsize=6, nvalign=2]
+
+*** Dumping AST Record Layout
+         0 | struct (unnamed at C:\fixture\dep\NclNitroApi\dep\ncl-hl1-source-sdk\common\shapes.h:5:9)
+         0 |   unsigned char r
+         1 |   unsigned char g
+         2 |   unsigned char b
+           | [sizeof=3, align=1,
+           |  nvsize=3, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct (unnamed at C:\fixture\dep\NclNitroApi\dep\ncl-hl1-source-sdk\common\shapes.h:10:9)
+         0 |   int count
+           | [sizeof=4, align=4,
+           |  nvsize=4, nvalign=4]
+
+*** Dumping AST Record Layout
+         0 | union packed_s::(unnamed at C:\fixture\dep\NclNitroApi\dep\ncl-hl1-source-sdk\common\shapes.h:25:2)
+         0 |   int as_int
+         0 |   float as_float
+           | [sizeof=4, align=1,
+           |  nvsize=4, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct packed_s::(unnamed at C:\fixture\dep\NclNitroApi\dep\ncl-hl1-source-sdk\common\shapes.h:30:2)
+         0 |   short x
+         2 |   short y
+           | [sizeof=4, align=1,
+           |  nvsize=4, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct packed_s
+         0 |   char tag
+         1 |   int whole
+         5 |   tint24 tint
+         5 |     unsigned char r
+         6 |     unsigned char g
+         7 |     unsigned char b
+         8 |   triple_t spot
+        20 |   struct outside_addr_s addr
+        20 |     unsigned char[4] ip
+        24 |     unsigned short port
+        26 |   union packed_s::(anonymous at C:\fixture\dep\NclNitroApi\dep\ncl-hl1-source-sdk\common\shapes.h:25:2) 
+        26 |     int as_int
+        26 |     float as_float
+        30 |   struct packed_s::(unnamed at C:\fixture\dep\NclNitroApi\dep\ncl-hl1-source-sdk\common\shapes.h:30:2) pos
+        30 |     short x
+        32 |     short y
+        34 |   struct later_s * later
+        38 |   struct fresh_s * fresh
+           | [sizeof=42, align=1,
+           |  nvsize=42, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | class IProbeModule
+         0 |   (IProbeModule vftable pointer)
+           | [sizeof=4, align=4,
+           |  nvsize=4, nvalign=4]
+
+*** Dumping AST Record Layout
+         0 | struct IProbeHost::slot_s
+         0 |   slot_index_t index
+         4 |   char[8] name
+           | [sizeof=12, align=4,
+           |  nvsize=12, nvalign=4]
+
+*** Dumping AST Record Layout
+         0 | class IProbeHost
+         0 |   class OutsideIface (primary base)
+         0 |     (OutsideIface vftable pointer)
+         4 |   (IProbeHost vbtable pointer)
+         8 |   int m_count
+        12 |   Phase m_phase
+        16 |   slot_s[4] m_slots
+        64 |   class IProbeModule (virtual base)
+        64 |     (IProbeModule vftable pointer)
+           | [sizeof=68, align=4,
+           |  nvsize=64, nvalign=4]
+
+*** Dumping AST Record Layout
+         0 | struct later_s
+         0 |   int ready
+           | [sizeof=4, align=4,
+           |  nvsize=4, nvalign=4]
+
+*** Dumping AST Record Layout
+         0 | struct nitroapi::Beacon
+         0 |   int id
+         4 |   BeaconKind kind
+           | [sizeof=8, align=4,
+           |  nvsize=8, nvalign=4]
+
+*** Dumping AST Record Layout
+         0 | struct nitroapi::detail::DeepThing
+         0 |   short depth
+           | [sizeof=2, align=2,
+           |  nvsize=2, nvalign=2]
+
+*** Dumping AST Record Layout
+         0 | struct c_linked_s
+         0 |   int value
+           | [sizeof=4, align=4,
+           |  nvsize=4, nvalign=4]
+
+*** Dumping AST Record Layout
+         0 | struct holder_s<int>
+         0 |   int value
+           | [sizeof=4, align=4,
+           |  nvsize=4, nvalign=4]

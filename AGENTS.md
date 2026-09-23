@@ -15,7 +15,9 @@ required.
 | `nextclient/filesystem_proxy` | `FileSystem_Proxy.dll` | filesystem interposer |
 | `nextclient/steam_api_proxy` | `steam_api.dll` | Steam API interposer |
 | `nextclient/packages` | static libs | shared code: `ncl_math`, `ncl_utils`, `ncl_gl`, `task_coro`, `data_*`, `hwid_collector` |
-| `dep/NclNitroApi` | `nitro_api2.dll`, `vgui2.dll` | engine address and hook layer, plus the HL1 SDK fork it carries |
+| `nextclient/nitro_api` | `nitro_api2.dll` | engine address and hook layer |
+| `nextclient/goldsrc_abi` | headers only | clean-room declarations of the stock engine ABI, namespace `goldsrc` |
+| `dep/ncl-hl1-source-sdk` | `vgui2.dll` | HL1 SDK fork: `tier1`, `tier2`, `vgui2`, `mathlib`, `cef`, HLTV |
 | `assets/` | copied into the game directory | resources, schemes, localisation, shaders |
 | `tools/` | not shipped | offline test harnesses (`radar_tests`, `studio_tests`) |
 

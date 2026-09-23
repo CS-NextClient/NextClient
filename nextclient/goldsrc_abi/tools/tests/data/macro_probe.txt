@@ -1,0 +1,277 @@
+Dumping goldsrc_abi_probe:
+NamespaceDecl 0x2cce79cb490 <probe.cpp:3:1, line:5:1> line:3:11 goldsrc_abi_probe
+|-FunctionDecl 0x2cce79cb630 <line:4:1, col:92> col:24 used constexpr bits 'unsigned int (float)' implicit-inline
+| |-ParmVarDecl 0x2cce79cb538 <col:29, col:35> col:35 used value 'float'
+| `-CompoundStmt 0x2cce79cb768 <col:42, col:92>
+|   `-ReturnStmt 0x2cce79cb758 <col:44, col:89>
+|     `-BuiltinBitCastExpr 0x2cce79cb730 <col:51, col:89> 'unsigned int' <LValueToRValueBitCast>
+|       `-DeclRefExpr 0x2cce79cb6f8 <col:84> 'float' lvalue ParmVar 0x2cce79cb538 'value' 'float'
+|-FunctionDecl 0x2cce79cb8a0 <col:94, col:198> col:123 used constexpr bits 'unsigned long long (double)' implicit-inline
+| |-ParmVarDecl 0x2cce79cb7a0 <col:128, col:135> col:135 used value 'double'
+| `-CompoundStmt 0x2cce79cb9e8 <col:142, col:198>
+|   `-ReturnStmt 0x2cce79cb9d8 <col:144, col:195>
+|     `-BuiltinBitCastExpr 0x2cce79cb9b0 <col:151, col:195> 'unsigned long long' <LValueToRValueBitCast>
+|       `-DeclRefExpr 0x2cce79cb978 <col:190> 'double' lvalue ParmVar 0x2cce79cb7a0 'value' 'double'
+`-FunctionTemplateDecl 0x2cce79cbcd8 <col:200, col:261> col:231 bits
+  |-TemplateTypeParmDecl 0x2cce79cba08 <col:210, col:216> col:216 referenced class depth 0 index 0 T
+  |-FunctionDecl 0x2cce79cbc28 <col:219, col:261> col:231 constexpr bits 'T (T)' implicit-inline
+  | |-ParmVarDecl 0x2cce79cbaf8 <col:236, col:238> col:238 referenced value 'T'
+  | `-CompoundStmt 0x2cce79cbe10 <col:245, col:261>
+  |   `-ReturnStmt 0x2cce79cbe00 <col:247, col:254>
+  |     `-ImplicitCastExpr 0x2cce79cbde8 <col:254> 'T' xvalue <NoOp>
+  |       `-DeclRefExpr 0x2cce79cbdc8 <col:254> 'T' lvalue ParmVar 0x2cce79cbaf8 'value' 'T'
+  |-FunctionDecl 0x2cce79cc3c8 <col:219, col:261> col:231 used constexpr bits 'int (int)' implicit_instantiation implicit-inline instantiated_from 0x2cce79cbc28
+  | |-TemplateArgument type 'int'
+  | | `-BuiltinType 0x2cce79249a0 'int'
+  | |-ParmVarDecl 0x2cce79cc2a8 <col:236, col:238> col:238 used value 'int'
+  | `-CompoundStmt 0x2cce79ceba0 <col:245, col:261>
+  |   `-ReturnStmt 0x2cce79ceb90 <col:247, col:254>
+  |     `-ImplicitCastExpr 0x2cce79ceb78 <col:254> 'int' <LValueToRValue>
+  |       `-ImplicitCastExpr 0x2cce79ceb60 <col:254> 'int' xvalue <NoOp>
+  |         `-DeclRefExpr 0x2cce79ceb28 <col:254> 'int' lvalue ParmVar 0x2cce79cc2a8 'value' 'int'
+  |-FunctionDecl 0x2cce79cf898 <col:219, col:261> col:231 used constexpr bits 'const char *(const char *)' implicit_instantiation implicit-inline instantiated_from 0x2cce79cbc28
+  | |-TemplateArgument type 'const char *'
+  | | `-PointerType 0x2cce7925470 'const char *'
+  | |   `-QualType 0x2cce7924941 'const char' const
+  | |     `-BuiltinType 0x2cce7924940 'char'
+  | |-ParmVarDecl 0x2cce79cf778 <col:236, col:238> col:238 used value 'const char *'
+  | `-CompoundStmt 0x2cce79cfa60 <col:245, col:261>
+  |   `-ReturnStmt 0x2cce79cfa50 <col:247, col:254>
+  |     `-ImplicitCastExpr 0x2cce79cfa38 <col:254> 'const char *' <LValueToRValue>
+  |       `-ImplicitCastExpr 0x2cce79cfa20 <col:254> 'const char *' xvalue <NoOp>
+  |         `-DeclRefExpr 0x2cce79cf9e8 <col:254> 'const char *' lvalue ParmVar 0x2cce79cf778 'value' 'const char *'
+  |-FunctionDecl 0x2cce79f0218 <col:219, col:261> col:231 used constexpr bits 'unsigned int (unsigned int)' implicit_instantiation implicit-inline instantiated_from 0x2cce79cbc28
+  | |-TemplateArgument type 'unsigned int'
+  | | `-BuiltinType 0x2cce7924a40 'unsigned int'
+  | |-ParmVarDecl 0x2cce79f00f8 <col:236, col:238> col:238 used value 'unsigned int'
+  | `-CompoundStmt 0x2cce79f03e0 <col:245, col:261>
+  |   `-ReturnStmt 0x2cce79f03d0 <col:247, col:254>
+  |     `-ImplicitCastExpr 0x2cce79f03b8 <col:254> 'unsigned int' <LValueToRValue>
+  |       `-ImplicitCastExpr 0x2cce79f03a0 <col:254> 'unsigned int' xvalue <NoOp>
+  |         `-DeclRefExpr 0x2cce79f0368 <col:254> 'unsigned int' lvalue ParmVar 0x2cce79f00f8 'value' 'unsigned int'
+  |-FunctionDecl 0x2cce79f0ad8 <col:219, col:261> col:231 used constexpr bits 'char (char)' implicit_instantiation implicit-inline instantiated_from 0x2cce79cbc28
+  | |-TemplateArgument type 'char'
+  | | `-BuiltinType 0x2cce7924940 'char'
+  | |-ParmVarDecl 0x2cce79f09b8 <col:236, col:238> col:238 used value 'char'
+  | `-CompoundStmt 0x2cce79f0ca0 <col:245, col:261>
+  |   `-ReturnStmt 0x2cce79f0c90 <col:247, col:254>
+  |     `-ImplicitCastExpr 0x2cce79f0c78 <col:254> 'char' <LValueToRValue>
+  |       `-ImplicitCastExpr 0x2cce79f0c60 <col:254> 'char' xvalue <NoOp>
+  |         `-DeclRefExpr 0x2cce79f0c28 <col:254> 'char' lvalue ParmVar 0x2cce79f09b8 'value' 'char'
+  `-FunctionDecl 0x2cce79f5148 <col:219, col:261> col:231 used constexpr bits 'const char (*(const char (*)[3]))[3]' implicit_instantiation implicit-inline instantiated_from 0x2cce79cbc28
+    |-TemplateArgument type 'const char (*)[3]'
+    | `-PointerType 0x2cce79f4bb0 'const char (*)[3]'
+    |   `-QualType 0x2cce79f4b11 'const char[3]' const
+    |     `-ConstantArrayType 0x2cce79f4b10 'char[3]' 3 
+    |       `-BuiltinType 0x2cce7924940 'char'
+    |-ParmVarDecl 0x2cce79f5028 <col:236, col:238> col:238 used value 'const char (*)[3]'
+    `-CompoundStmt 0x2cce79f5310 <col:245, col:261>
+      `-ReturnStmt 0x2cce79f5300 <col:247, col:254>
+        `-ImplicitCastExpr 0x2cce79f52e8 <col:254> 'const char (*)[3]' <LValueToRValue>
+          `-ImplicitCastExpr 0x2cce79f52d0 <col:254> 'const char (*)[3]' xvalue <NoOp>
+            `-DeclRefExpr 0x2cce79f5298 <col:254> 'const char (*)[3]' lvalue ParmVar 0x2cce79f5028 'value' 'const char (*)[3]'
+
+Dumping goldsrc_abi_macro_0:
+VarDecl 0x2cce79cbe90 <probe.cpp:7:1, col:45> col:16 goldsrc_abi_macro_0 'const int' constexpr cinit
+|-value: Int 512
+`-ParenExpr 0x2cce79cbf70 <col:38, col:45> 'int'
+  `-IntegerLiteral 0x2cce79cbf48 <.\header.h:1:16> 'int' 512
+
+Dumping goldsrc_abi_bits_0:
+VarDecl 0x2cce79cc100 <probe.cpp:8:1, col:67> col:16 goldsrc_abi_bits_0 'int const':'const int' constexpr cinit
+|-value: Int 512
+`-CallExpr 0x2cce79cec38 <col:37, col:67> 'int'
+  |-ImplicitCastExpr 0x2cce79cec20 <col:37, col:56> 'int (*)(int)' <FunctionToPointerDecay>
+  | `-DeclRefExpr 0x2cce79cead8 <col:37, col:56> 'int (int)' lvalue Function 0x2cce79cc3c8 'bits' 'int (int)' (FunctionTemplate 0x2cce79cbcd8 'bits')
+  |   `-NestedNameSpecifier Namespace 0x2cce79cb490 'goldsrc_abi_probe'
+  `-IntegerLiteral 0x2cce79cc1e0 <.\header.h:1:16> 'int' 512
+
+Dumping goldsrc_abi_macro_1:
+VarDecl 0x2cce79cedd0 <probe.cpp:9:1, col:46> col:16 goldsrc_abi_macro_1 'const int' constexpr cinit
+|-value: Int 4
+`-ParenExpr 0x2cce79cee60 <col:38, col:46> 'int'
+  `-IntegerLiteral 0x2cce79cee38 <.\header.h:2:17> 'int' 4
+
+Dumping goldsrc_abi_bits_1:
+VarDecl 0x2cce79cefc0 <probe.cpp:10:1, col:68> col:16 goldsrc_abi_bits_1 'int const':'const int' constexpr cinit
+|-value: Int 4
+`-CallExpr 0x2cce79cf170 <col:37, col:68> 'int'
+  |-ImplicitCastExpr 0x2cce79cf158 <col:37, col:56> 'int (*)(int)' <FunctionToPointerDecay>
+  | `-DeclRefExpr 0x2cce79cf120 <col:37, col:56> 'int (int)' lvalue Function 0x2cce79cc3c8 'bits' 'int (int)' (FunctionTemplate 0x2cce79cbcd8 'bits')
+  |   `-NestedNameSpecifier Namespace 0x2cce79cb490 'goldsrc_abi_probe'
+  `-IntegerLiteral 0x2cce79cf0a0 <.\header.h:2:17> 'int' 4
+
+Dumping goldsrc_abi_macro_2:
+VarDecl 0x2cce79cf2e0 <probe.cpp:11:1, col:45> col:16 goldsrc_abi_macro_2 'const char *const' constexpr cinit
+|-value: LValue Base=StringLiteral  0x2cce79cf3d0, Null=0, Offset=0, HasPath=1, PathLength=1, Path=(0)
+`-ImplicitCastExpr 0x2cce79cf530 <col:38, col:45> 'const char *' <ArrayToPointerDecay>
+  `-ParenExpr 0x2cce79cf3f8 <col:38, col:45> 'const char[15]' lvalue
+    `-StringLiteral 0x2cce79cf3d0 <.\header.h:3:16> 'const char[15]' lvalue "probe_iface_v2"
+
+Dumping goldsrc_abi_bits_2:
+VarDecl 0x2cce79cf5c8 <probe.cpp:12:1, col:67> col:16 goldsrc_abi_bits_2 'const char *const' constexpr cinit
+|-value: LValue Base=StringLiteral  0x2cce79cf6a8, Null=0, Offset=0, HasPath=1, PathLength=1, Path=(0)
+`-CallExpr 0x2cce79cc708 <col:37, col:67> 'const char *'
+  |-ImplicitCastExpr 0x2cce79cc6f0 <col:37, col:56> 'const char *(*)(const char *)' <FunctionToPointerDecay>
+  | `-DeclRefExpr 0x2cce79cf998 <col:37, col:56> 'const char *(const char *)' lvalue Function 0x2cce79cf898 'bits' 'const char *(const char *)' (FunctionTemplate 0x2cce79cbcd8 'bits')
+  |   `-NestedNameSpecifier Namespace 0x2cce79cb490 'goldsrc_abi_probe'
+  `-ImplicitCastExpr 0x2cce79cc738 <.\header.h:3:16> 'const char *' <ArrayToPointerDecay>
+    `-StringLiteral 0x2cce79cf6a8 <col:16> 'const char[15]' lvalue "probe_iface_v2"
+
+Dumping goldsrc_abi_macro_3:
+VarDecl 0x2cce79cc8c0 <probe.cpp:13:1, col:46> col:16 goldsrc_abi_macro_3 'const float' constexpr cinit
+|-value: Float 1.725000e+01
+`-ParenExpr 0x2cce79cc950 <col:38, col:46> 'float'
+  `-FloatingLiteral 0x2cce79cc928 <.\header.h:4:17> 'float' 1.725000e+01
+
+Dumping goldsrc_abi_bits_3:
+VarDecl 0x2cce79ccae0 <probe.cpp:14:1, col:68> col:16 goldsrc_abi_bits_3 'const unsigned int' constexpr cinit
+|-value: Int 1099563008
+`-CallExpr 0x2cce79ccc68 <col:37, col:68> 'unsigned int'
+  |-ImplicitCastExpr 0x2cce79ccc50 <col:37, col:56> 'unsigned int (*)(float)' <FunctionToPointerDecay>
+  | `-DeclRefExpr 0x2cce79ccbe8 <col:37, col:56> 'unsigned int (float)' lvalue Function 0x2cce79cb630 'bits' 'unsigned int (float)'
+  |   `-NestedNameSpecifier Namespace 0x2cce79cb490 'goldsrc_abi_probe'
+  `-FloatingLiteral 0x2cce79ccbc0 <.\header.h:4:17> 'float' 1.725000e+01
+
+Dumping goldsrc_abi_macro_4:
+VarDecl 0x2cce79cce00 <probe.cpp:15:1, col:45> col:16 goldsrc_abi_macro_4 'const double' constexpr cinit
+|-value: Float 1.000000e-01
+`-ParenExpr 0x2cce79cce90 <col:38, col:45> 'double'
+  `-FloatingLiteral 0x2cce79cce68 <.\header.h:5:16> 'double' 1.000000e-01
+
+Dumping goldsrc_abi_bits_4:
+VarDecl 0x2cce79cd020 <probe.cpp:16:1, col:67> col:16 goldsrc_abi_bits_4 'const unsigned long long' constexpr cinit
+|-value: Int 4591870180066957722
+`-CallExpr 0x2cce79cd1a8 <col:37, col:67> 'unsigned long long'
+  |-ImplicitCastExpr 0x2cce79cd190 <col:37, col:56> 'unsigned long long (*)(double)' <FunctionToPointerDecay>
+  | `-DeclRefExpr 0x2cce79cd128 <col:37, col:56> 'unsigned long long (double)' lvalue Function 0x2cce79cb8a0 'bits' 'unsigned long long (double)'
+  |   `-NestedNameSpecifier Namespace 0x2cce79cb490 'goldsrc_abi_probe'
+  `-FloatingLiteral 0x2cce79cd100 <.\header.h:5:16> 'double' 1.000000e-01
+
+Dumping goldsrc_abi_macro_5:
+VarDecl 0x2cce79cd340 <probe.cpp:17:1, col:44> col:16 goldsrc_abi_macro_5 'const unsigned int' constexpr cinit
+|-value: Int 3000000000
+`-ParenExpr 0x2cce79cd3d0 <col:38, col:44> 'unsigned int'
+  `-IntegerLiteral 0x2cce79cd3a8 <.\header.h:6:15> 'unsigned int' 3000000000
+
+Dumping goldsrc_abi_bits_5:
+VarDecl 0x2cce79cd530 <probe.cpp:18:1, col:66> col:16 goldsrc_abi_bits_5 'unsigned int const':'const unsigned int' constexpr cinit
+|-value: Int 3000000000
+`-CallExpr 0x2cce79f0478 <col:37, col:66> 'unsigned int'
+  |-ImplicitCastExpr 0x2cce79f0460 <col:37, col:56> 'unsigned int (*)(unsigned int)' <FunctionToPointerDecay>
+  | `-DeclRefExpr 0x2cce79f0318 <col:37, col:56> 'unsigned int (unsigned int)' lvalue Function 0x2cce79f0218 'bits' 'unsigned int (unsigned int)' (FunctionTemplate 0x2cce79cbcd8 'bits')
+  |   `-NestedNameSpecifier Namespace 0x2cce79cb490 'goldsrc_abi_probe'
+  `-IntegerLiteral 0x2cce79cd610 <.\header.h:6:15> 'unsigned int' 3000000000
+
+Dumping goldsrc_abi_macro_6:
+VarDecl 0x2cce79f0610 <probe.cpp:19:1, col:44> col:16 goldsrc_abi_macro_6 'const char' constexpr cinit
+|-value: Int 120
+`-ParenExpr 0x2cce79f0690 <col:38, col:44> 'char'
+  `-CharacterLiteral 0x2cce79f0678 <.\header.h:7:15> 'char' 120
+
+Dumping goldsrc_abi_bits_6:
+VarDecl 0x2cce79f0820 <probe.cpp:20:1, col:66> col:16 goldsrc_abi_bits_6 'char const':'const char' constexpr cinit
+|-value: Int 120
+`-CallExpr 0x2cce79f0d38 <col:37, col:66> 'char'
+  |-ImplicitCastExpr 0x2cce79f0d20 <col:37, col:56> 'char (*)(char)' <FunctionToPointerDecay>
+  | `-DeclRefExpr 0x2cce79f0bd8 <col:37, col:56> 'char (char)' lvalue Function 0x2cce79f0ad8 'bits' 'char (char)' (FunctionTemplate 0x2cce79cbcd8 'bits')
+  |   `-NestedNameSpecifier Namespace 0x2cce79cb490 'goldsrc_abi_probe'
+  `-CharacterLiteral 0x2cce79f0900 <.\header.h:7:15> 'char' 120
+
+Dumping goldsrc_abi_macro_7:
+VarDecl 0x2cce79f0ed0 <probe.cpp:21:1, col:44> col:16 goldsrc_abi_macro_7 'const int' constexpr cinit
+|-value: Int -3
+`-ParenExpr 0x2cce79f0f98 <col:38, col:44> 'int'
+  `-ParenExpr 0x2cce79f0f78 <.\header.h:8:15, col:18> 'int'
+    `-UnaryOperator 0x2cce79f0f60 <col:16, col:17> 'int' prefix '-'
+      `-IntegerLiteral 0x2cce79f0f38 <col:17> 'int' 3
+
+Dumping goldsrc_abi_bits_7:
+VarDecl 0x2cce79f3708 <probe.cpp:22:1, col:66> col:16 goldsrc_abi_bits_7 'int const':'const int' constexpr cinit
+|-value: Int -3
+`-CallExpr 0x2cce79f38f0 <col:37, col:66> 'int'
+  |-ImplicitCastExpr 0x2cce79f38d8 <col:37, col:56> 'int (*)(int)' <FunctionToPointerDecay>
+  | `-DeclRefExpr 0x2cce79f38a0 <col:37, col:56> 'int (int)' lvalue Function 0x2cce79cc3c8 'bits' 'int (int)' (FunctionTemplate 0x2cce79cbcd8 'bits')
+  |   `-NestedNameSpecifier Namespace 0x2cce79cb490 'goldsrc_abi_probe'
+  `-ParenExpr 0x2cce79f3828 <.\header.h:8:15, col:18> 'int'
+    `-UnaryOperator 0x2cce79f3810 <col:16, col:17> 'int' prefix '-'
+      `-IntegerLiteral 0x2cce79f37e8 <col:17> 'int' 3
+
+Dumping goldsrc_abi_macro_8:
+VarDecl 0x2cce79f3a60 <probe.cpp:23:1, col:16> col:16 invalid goldsrc_abi_macro_8 'const auto' constexpr
+
+Dumping goldsrc_abi_bits_8:
+VarDecl 0x2cce79f3b20 <probe.cpp:24:1, col:69> col:16 invalid goldsrc_abi_bits_8 'const auto' constexpr cinit
+`-RecoveryExpr 0x2cce79f3c00 <col:37, col:69> '<dependent type>' contains-errors lvalue
+  `-UnresolvedLookupExpr 0x2cce79f3ba8 <col:37, col:56> '<overloaded function type>' lvalue (no ADL) = 'bits' 0x2cce79cb630 0x2cce79cb8a0 0x2cce79cbcd8
+
+Dumping goldsrc_abi_macro_9:
+VarDecl 0x2cce79f3c48 <probe.cpp:25:1, col:47> col:16 goldsrc_abi_macro_9 'const char *const' constexpr cinit
+|-value: LValue Base=StringLiteral  0x2cce79f3d30, Null=0, Offset=0, HasPath=1, PathLength=1, Path=(0)
+`-ImplicitCastExpr 0x2cce79f3e90 <col:38, col:47> 'const char *' <ArrayToPointerDecay>
+  `-ParenExpr 0x2cce79f3d50 <col:38, col:47> 'const char[6]' lvalue
+    `-StringLiteral 0x2cce79f3d30 <.\header.h:10:18> 'const char[6]' lvalue "a\"b\\c"
+
+Dumping goldsrc_abi_bits_9:
+VarDecl 0x2cce79f3f28 <probe.cpp:26:1, col:69> col:16 goldsrc_abi_bits_9 'const char *const' constexpr cinit
+|-value: LValue Base=StringLiteral  0x2cce79f4008, Null=0, Offset=0, HasPath=1, PathLength=1, Path=(0)
+`-CallExpr 0x2cce79f40d8 <col:37, col:69> 'const char *'
+  |-ImplicitCastExpr 0x2cce79f40c0 <col:37, col:56> 'const char *(*)(const char *)' <FunctionToPointerDecay>
+  | `-DeclRefExpr 0x2cce79f4088 <col:37, col:56> 'const char *(const char *)' lvalue Function 0x2cce79cf898 'bits' 'const char *(const char *)' (FunctionTemplate 0x2cce79cbcd8 'bits')
+  |   `-NestedNameSpecifier Namespace 0x2cce79cb490 'goldsrc_abi_probe'
+  `-ImplicitCastExpr 0x2cce79f4108 <.\header.h:10:18> 'const char *' <ArrayToPointerDecay>
+    `-StringLiteral 0x2cce79f4008 <col:18> 'const char[6]' lvalue "a\"b\\c"
+
+Dumping goldsrc_abi_macro_10:
+VarDecl 0x2cce79f4260 <probe.cpp:27:1, col:49> col:16 goldsrc_abi_macro_10 'const char *const' constexpr cinit
+|-value: LValue Base=StringLiteral  0x2cce79f4350, Null=0, Offset=0, HasPath=1, PathLength=1, Path=(0)
+`-ImplicitCastExpr 0x2cce79f44b0 <col:39, col:49> 'const char *' <ArrayToPointerDecay>
+  `-ParenExpr 0x2cce79f4378 <col:39, col:49> 'const char[16]' lvalue
+    `-StringLiteral 0x2cce79f4350 <.\header.h:11:19> 'const char[16]' lvalue "\0017\a\b\f\v\t\n\r\000x\177\351\033!"
+
+Dumping goldsrc_abi_bits_10:
+VarDecl 0x2cce79f4548 <probe.cpp:28:1, col:71> col:16 goldsrc_abi_bits_10 'const char *const' constexpr cinit
+|-value: LValue Base=StringLiteral  0x2cce79f4628, Null=0, Offset=0, HasPath=1, PathLength=1, Path=(0)
+`-CallExpr 0x2cce79f4918 <col:38, col:71> 'const char *'
+  |-ImplicitCastExpr 0x2cce79f4900 <col:38, col:57> 'const char *(*)(const char *)' <FunctionToPointerDecay>
+  | `-DeclRefExpr 0x2cce79f48c8 <col:38, col:57> 'const char *(const char *)' lvalue Function 0x2cce79cf898 'bits' 'const char *(const char *)' (FunctionTemplate 0x2cce79cbcd8 'bits')
+  |   `-NestedNameSpecifier Namespace 0x2cce79cb490 'goldsrc_abi_probe'
+  `-ImplicitCastExpr 0x2cce79f4948 <.\header.h:11:19> 'const char *' <ArrayToPointerDecay>
+    `-StringLiteral 0x2cce79f4628 <col:19> 'const char[16]' lvalue "\0017\a\b\f\v\t\n\r\000x\177\351\033!"
+
+Dumping goldsrc_abi_macro_11:
+VarDecl 0x2cce79f4aa0 <probe.cpp:29:1, col:49> col:16 goldsrc_abi_macro_11 'const char (*const)[3]' constexpr cinit
+|-value: LValue Base=StringLiteral  0x2cce79f4b90, Null=0, Offset=0, HasPath=1, PathLength=0, Path=()
+`-ParenExpr 0x2cce79f4cb0 <col:39, col:49> 'const char (*)[3]'
+  `-ParenExpr 0x2cce79f4c90 <.\header.h:12:19, col:25> 'const char (*)[3]'
+    `-UnaryOperator 0x2cce79f4c10 <col:20, col:21> 'const char (*)[3]' prefix '&' cannot overflow
+      `-StringLiteral 0x2cce79f4b90 <col:21> 'const char[3]' lvalue "pq"
+
+Dumping goldsrc_abi_bits_11:
+VarDecl 0x2cce79f4e40 <probe.cpp:30:1, col:71> col:16 goldsrc_abi_bits_11 'const char (*const)[3]' constexpr cinit
+|-value: LValue Base=StringLiteral  0x2cce79f4f20, Null=0, Offset=0, HasPath=1, PathLength=0, Path=()
+`-CallExpr 0x2cce79f53a8 <col:38, col:71> 'const char (*)[3]'
+  |-ImplicitCastExpr 0x2cce79f5390 <col:38, col:57> 'const char (*(*)(const char (*)[3]))[3]' <FunctionToPointerDecay>
+  | `-DeclRefExpr 0x2cce79f5248 <col:38, col:57> 'const char (*(const char (*)[3]))[3]' lvalue Function 0x2cce79f5148 'bits' 'const char (*(const char (*)[3]))[3]' (FunctionTemplate 0x2cce79cbcd8 'bits')
+  |   `-NestedNameSpecifier Namespace 0x2cce79cb490 'goldsrc_abi_probe'
+  `-ParenExpr 0x2cce79f4f58 <.\header.h:12:19, col:25> 'const char (*)[3]'
+    `-UnaryOperator 0x2cce79f4f40 <col:20, col:21> 'const char (*)[3]' prefix '&' cannot overflow
+      `-StringLiteral 0x2cce79f4f20 <col:21> 'const char[3]' lvalue "pq"
+
+Dumping goldsrc_abi_macro_12:
+VarDecl 0x2cce79f5540 <probe.cpp:31:1, col:48> col:16 goldsrc_abi_macro_12 'const char *const' constexpr cinit
+|-value: LValue Base=StringLiteral  0x2cce79f5630, Null=0, Offset=0, HasPath=1, PathLength=1, Path=(0)
+`-ImplicitCastExpr 0x2cce79f5790 <col:39, col:48> 'const char *' <ArrayToPointerDecay>
+  `-ParenExpr 0x2cce79f5650 <col:39, col:48> 'const char[9]' lvalue
+    `-StringLiteral 0x2cce79f5630 <.\header.h:13:18> 'const char[9]' lvalue "a  b   c"
+
+Dumping goldsrc_abi_bits_12:
+VarDecl 0x2cce79f5a90 <probe.cpp:32:1, col:70> col:16 goldsrc_abi_bits_12 'const char *const' constexpr cinit
+|-value: LValue Base=StringLiteral  0x2cce79f5b70, Null=0, Offset=0, HasPath=1, PathLength=1, Path=(0)
+`-CallExpr 0x2cce79f5c40 <col:38, col:70> 'const char *'
+  |-ImplicitCastExpr 0x2cce79f5c28 <col:38, col:57> 'const char *(*)(const char *)' <FunctionToPointerDecay>
+  | `-DeclRefExpr 0x2cce79f5bf0 <col:38, col:57> 'const char *(const char *)' lvalue Function 0x2cce79cf898 'bits' 'const char *(const char *)' (FunctionTemplate 0x2cce79cbcd8 'bits')
+  |   `-NestedNameSpecifier Namespace 0x2cce79cb490 'goldsrc_abi_probe'
+  `-ImplicitCastExpr 0x2cce79f5c70 <.\header.h:13:18> 'const char *' <ArrayToPointerDecay>
+    `-StringLiteral 0x2cce79f5b70 <col:18> 'const char[9]' lvalue "a  b   c"
+
