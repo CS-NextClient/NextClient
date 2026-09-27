@@ -239,11 +239,7 @@ ClientLauncher::EngineSessionResult ClientLauncher::RunEngine()
     if (client_mini == nullptr)
         return EngineSessionResult::Exit;
 
-#ifdef _WIN32
-    auto [gameui_next, gameui_next_module] = LoadModule<IGameUINext>("cstrike/cl_dlls/GameUI.dll", GAMEUI_NEXT_INTERFACE_VERSION);
-#else
-    auto [gameui_next, gameui_next_module] = LoadModule<IGameUINext>("cstrike/cl_dlls/gameui.so", GAMEUI_NEXT_INTERFACE_VERSION);
-#endif
+    auto [gameui_next, gameui_next_module] = LoadModule<IGameUINext>(kGameUiDll, GAMEUI_NEXT_INTERFACE_VERSION);
     if (gameui_next == nullptr)
         return EngineSessionResult::Exit;
 
@@ -302,6 +298,17 @@ ClientLauncher::EngineSessionResult ClientLauncher::RunEngine()
                 if (hwnd)
                     SetTaskbarIcon(hwnd);
             }
+        }
+    );
+#else
+    // The Windows engine finds cl_dlls/GameUI.dll through the filesystem, so the
+    // mod's copy wins. hw.so hardcodes Valve's one instead - point it at ours.
+    unsubscribers.emplace_back(
+        nitro_api->GetEngineData()->Sys_LoadModule |= [](const char* module_name, const auto& next) {
+            if (std::string_view(module_name) == "valve/cl_dlls/gameui.so")
+                return next->Invoke(kGameUiDll);
+
+            return next->Invoke(module_name);
         }
     );
 #endif

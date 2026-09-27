@@ -47,11 +47,10 @@ private:
 
 #ifdef _WIN32
     static constexpr char kEngineDll[] = "hw.dll";
+    static constexpr char kGameUiDll[] = "cstrike/cl_dlls/GameUI.dll";
 #else
-    // Placeholder - the real Half-Life engine binary's Linux name needs verifying
-    // against an actual Linux GoldSrc install once this is runtime-tested; nothing
-    // runs yet regardless.
     static constexpr char kEngineDll[] = "hw.so";
+    static constexpr char kGameUiDll[] = "cstrike/cl_dlls/gameui.so";
 #endif
     static constexpr char kErrorTitle[] = "Counter-Strike Launcher";
     static constexpr char kNextClientRegistry[] = "Software\\Valve\\Half-Life\\nextclient";
