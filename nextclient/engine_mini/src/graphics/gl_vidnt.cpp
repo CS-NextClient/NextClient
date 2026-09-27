@@ -8,6 +8,7 @@
 #endif
 #include <common/cvar.h>
 #include <glad/glad.h>
+#include <nitro_utils/platform.h>
 
 #include "common/cmd.h"
 #include "common/sys_dll.h"
@@ -259,12 +260,14 @@ void GL_Config()
 // CheckMultiTextureExtensions(), which searches gl_extensions for
 // "GL_ARB_multitexture ". Patching data_arb_multitexture with a fake string
 // is the way to prevent the engine's own copy from enabling multitexture.
+// On Linux the string lives in .rodata, hence the SetProtect.
 void GL_Init()
 {
     g_DisableMultitexture = g_UserConfig->get_value_int("disable_multitexture", 0);
 
     if (g_DisableMultitexture)
     {
+        nitro_utils::SetProtect(*eng()->data_arb_multitexture, sizeof(*eng()->data_arb_multitexture), nitro_utils::ProtectMode::PROTECT_RW);
         V_strcpy_safe(*eng()->data_arb_multitexture, "fake_extension 0000 ");
     }
 
