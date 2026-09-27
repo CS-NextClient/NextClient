@@ -13,8 +13,9 @@ const char* kSayTextLinePatternWin32 = "[66 39 1D ? ? ? ? 55 +3]&";
 
 const int kCGameConsoleDialogCompColorPad = 292;
 #else
-const int kChatPrintConsoleAddressLinux = 0x117145;
-const int kSayTextLineAddressLinux = 0x2393A0;
+// Offsets into ScrollTextUp() of Steam's client.so; the instruction bytes are checked before use
+const int kScrollTextUpSayTextLineRef = 0xA;     // 8B 3D <addr>: mov g_sayTextLine, %edi
+const int kScrollTextUpConsolePrintCall = 0x1E6; // second byte of FF 15: call *gEngfuncs.pfnConsolePrint
 
 const int kCGameConsoleDialogCompColorPad = 292;
 #endif
@@ -68,8 +69,20 @@ void ColorChatInConsolePatch()
 #else
     MemoryModule module("cstrike/cl_dlls/client.so");
 
-    uint32_t printConsoleAddress = module.Start() + kChatPrintConsoleAddressLinux;
-    uint32_t sayTextLineAddress = module.Start() + kSayTextLineAddressLinux;
+    auto scrollTextUp = (uint8_t*)dlsym(module.Module(), "_Z12ScrollTextUpv");
+    if (!scrollTextUp)
+        return;
+
+    uint8_t* sayTextLineRef = scrollTextUp + kScrollTextUpSayTextLineRef;
+    uint8_t* printConsoleCall = scrollTextUp + kScrollTextUpConsolePrintCall;
+    if (sayTextLineRef[0] != 0x8B || sayTextLineRef[1] != 0x3D || printConsoleCall[-1] != 0xFF || printConsoleCall[0] != 0x15)
+    {
+        gEngfuncs.Con_DPrintf("ColorChatInConsolePatch: unknown client.so build, colored chat in console disabled\n");
+        return;
+    }
+
+    uint32_t printConsoleAddress = (uint32_t)printConsoleCall;
+    uint32_t sayTextLineAddress = *(uint32_t*)(sayTextLineRef + 2);
 #endif
 
     pg_sayTextLine = reinterpret_cast<decltype(pg_sayTextLine)>(sayTextLineAddress);
