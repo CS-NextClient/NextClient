@@ -1,6 +1,14 @@
 cmake_minimum_required(VERSION 3.21)
 project(gameui VERSION 2.4.0)
-set(OUTPUT_NAME "GameUI")
+if (WIN32)
+    set(OUTPUT_NAME "GameUI")
+    set(OUTPUT_SUFFIX ".dll")
+else ()
+    # hw.so loads cl_dlls/gameui.so through the game's search paths, so this name
+    # is what makes cstrike/cl_dlls override valve/cl_dlls' stock GameUI
+    set(OUTPUT_NAME "gameui")
+    set(OUTPUT_SUFFIX ".so")
+endif ()
 
 find_package(concurrencpp CONFIG REQUIRED)
 
@@ -91,8 +99,9 @@ endif()
 set_target_properties(${PROJECT_NAME} PROPERTIES
         PREFIX ""
         RUNTIME_OUTPUT_DIRECTORY "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/$<CONFIG>/cstrike/cl_dlls"
+        LIBRARY_OUTPUT_DIRECTORY "${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/$<CONFIG>/cstrike/cl_dlls"
         OUTPUT_NAME ${OUTPUT_NAME}
-        SUFFIX ".dll"
+        SUFFIX ${OUTPUT_SUFFIX}
         PDB_NAME ${OUTPUT_NAME}
 )
 

@@ -326,7 +326,11 @@ static void OnGameInitializing(void* mainwindow, HDC* pmaindc, HGLRC* pbaseRC, c
     v.Assign(cl, GET_VARIABLE_NAME(cl), eng()->client_state);
     v.Assign(cls, GET_VARIABLE_NAME(cls), eng()->client_static);
 
+#ifdef _WIN32
     CreateInterfaceFn gameui_factory = Sys_GetFactory("gameui.dll");
+#else
+    CreateInterfaceFn gameui_factory = Sys_GetFactory("gameui.so");
+#endif
     v.Assign(g_pGameUi, GET_VARIABLE_NAME(g_pGameUi), (IGameUI*)InitializeInterface(GAMEUI_INTERFACE_VERSION_GS, &gameui_factory, 1));
     v.Assign(g_GameConsoleNext, GET_VARIABLE_NAME(g_GameConsoleNext), (IGameConsoleNext*)InitializeInterface(GAMECONSOLE_NEXT_INTERFACE_VERSION, &gameui_factory, 1));
     v.Assign(g_GameConsole, GET_VARIABLE_NAME(g_GameConsole), (IGameConsole*)InitializeInterface(GAMECONSOLE_INTERFACE_VERSION_GS, &gameui_factory, 1));
@@ -589,7 +593,11 @@ static void OnGameInitialized()
 {
     nitro_utils::PtrValidator v;
 
+#ifdef _WIN32
     CreateInterfaceFn vgui2_factory = Sys_GetFactory("vgui2.dll");
+#else
+    CreateInterfaceFn vgui2_factory = Sys_GetFactory("vgui2.so");
+#endif
     g_pLocalize = v.Validate((vgui2::ILocalize*)InitializeInterface(VGUI_LOCALIZE_INTERFACE_VERSION, &vgui2_factory, 1), GET_VARIABLE_NAME(localize));
     g_pLocalize->AddFile(g_pFileSystem, "resource/nextclient_%language%.txt");
 

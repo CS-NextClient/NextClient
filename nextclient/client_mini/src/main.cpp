@@ -67,7 +67,7 @@ static void HUD_InitPost()
 #ifdef _WIN32
         "cstrike\\cl_dlls\\gameui.dll"
 #else
-        "cl_dlls/gameui.so"  // in linux version we have only original gameui under valve folder
+        "gameui.so"
 #endif
         );
 

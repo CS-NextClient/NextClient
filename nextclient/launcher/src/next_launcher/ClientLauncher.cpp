@@ -239,7 +239,11 @@ ClientLauncher::EngineSessionResult ClientLauncher::RunEngine()
     if (client_mini == nullptr)
         return EngineSessionResult::Exit;
 
+#ifdef _WIN32
     auto [gameui_next, gameui_next_module] = LoadModule<IGameUINext>("cstrike/cl_dlls/GameUI.dll", GAMEUI_NEXT_INTERFACE_VERSION);
+#else
+    auto [gameui_next, gameui_next_module] = LoadModule<IGameUINext>("cstrike/cl_dlls/gameui.so", GAMEUI_NEXT_INTERFACE_VERSION);
+#endif
     if (gameui_next == nullptr)
         return EngineSessionResult::Exit;
 
