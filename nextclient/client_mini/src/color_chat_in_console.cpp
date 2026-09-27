@@ -66,7 +66,7 @@ void ColorChatInConsolePatch()
     uint32_t printConsoleAddress = scanner.FindPattern2(kChatPrintConsolePatternWin32);
     uint32_t sayTextLineAddress = scanner.FindPattern2(kSayTextLinePatternWin32);
 #else
-    MemoryModule module("client.so");
+    MemoryModule module("cstrike/cl_dlls/client.so");
 
     uint32_t printConsoleAddress = module.Start() + kChatPrintConsoleAddressLinux;
     uint32_t sayTextLineAddress = module.Start() + kSayTextLineAddressLinux;
