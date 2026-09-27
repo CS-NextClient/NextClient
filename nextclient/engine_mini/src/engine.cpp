@@ -456,6 +456,12 @@ static void OnGameInitializing(void* mainwindow, HDC* pmaindc, HGLRC* pbaseRC, c
     g_Unsubs.emplace_back(eng()->Mod_ValidateCRC             |= [](const char* name, CRC32_t crc, const auto& next)                    { return Mod_ValidateCRC(name, crc); });
     g_Unsubs.emplace_back(eng()->Mod_NeedCRC                 |= [](const char* name, qboolean needCRC, const auto& next)               { Mod_NeedCRC(name, needCRC); });
     g_Unsubs.emplace_back(eng()->Mod_LoadModel               |= [](model_t* mod, qboolean crash, qboolean trackCRC, const auto& next)  { return Mod_LoadModel(mod, crash, trackCRC); });
+#ifndef _WIN32
+    // GCC split hw.so's Mod_LoadModel into a Mod_LoadModel.part.2 clone that these two jump
+    // into directly, skipping the hooked entry and handing our mod_known entries to the engine's loader
+    g_Unsubs.emplace_back(eng()->Mod_ForName                 |= [](const char* name, qboolean crash, qboolean trackCRC, const auto& next) { return Mod_ForName(name, crash, trackCRC); });
+    g_Unsubs.emplace_back(eng()->Mod_Extradata               |= [](model_t* mod, const auto& next)                                     { return Mod_Extradata(mod); });
+#endif
     g_Unsubs.emplace_back(eng()->SPR_Init                    |= [](const auto& next)                                                   { return SPR_Init(); });
     g_Unsubs.emplace_back(eng()->SPR_Shutdown                |= [](const auto& next)                                                   { return SPR_Shutdown(); });
     g_Unsubs.emplace_back(eng()->SPR_Shutdown_NoModelFree    |= [](const auto& next)                                                   { return SPR_Shutdown_NoModelFree(); });
@@ -494,6 +500,10 @@ static void OnGameInitializing(void* mainwindow, HDC* pmaindc, HGLRC* pbaseRC, c
     g_Unsubs.emplace_back(eng()->DT_SetRenderState           |= [](int diffuseId, const auto& next)                                    { return DT_SetRenderState(diffuseId); });
     g_Unsubs.emplace_back(eng()->DT_LoadDetailTexture        |= [](const char *diffuseName, int diffuseId, const auto& next)           { DT_LoadDetailTexture(diffuseName, diffuseId); });
     g_Unsubs.emplace_back(eng()->R_ForceCVars                |= [](qboolean mp, const auto& next)                                      { R_ForceCVars(mp); });
+#ifndef _WIN32
+    // R_Clear and R_SetupFrame call this split-out body directly, and only in multiplayer
+    g_Unsubs.emplace_back(eng()->R_ForceCVars_part           |= [](const auto& next)                                                   { R_ForceCVars(true); });
+#endif
 
     //
     // The rest of the hooks and subscribers
