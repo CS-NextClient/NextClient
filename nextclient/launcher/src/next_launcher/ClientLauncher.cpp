@@ -311,6 +311,15 @@ ClientLauncher::EngineSessionResult ClientLauncher::RunEngine()
             return next->Invoke(module_name);
         }
     );
+
+    // steamclient.so sets LC_ALL=C in SteamAPI_Init and the engine's font code then picks it
+    // up, after which hw.so's VGUI2_DrawString drops every non-ASCII char as unprintable.
+    // Only the character classes come back: LC_NUMERIC has to stay C for the engine's atof.
+    unsubscribers.emplace_back(
+        nitro_api->GetEngineData()->Sys_InitGame += [](char* lpOrgCmdLine, char* pBaseDir, void* pwnd, int bIsDedicated, bool ret) {
+            setlocale(LC_CTYPE, "C.UTF-8");
+        }
+    );
 #endif
 
     auto [engine, engine_module] = LoadModule<IEngineAPI>(kEngineDll, VENGINE_LAUNCHER_API_VERSION);
