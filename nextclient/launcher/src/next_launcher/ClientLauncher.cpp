@@ -323,9 +323,17 @@ ClientLauncher::EngineSessionResult ClientLauncher::RunEngine()
     LOG(INFO) << "IEngineAPI::Run";
     analytics_->AddBreadcrumb("Info", "IEngineAPI::Run");
 
+#ifdef _WIN32
+    std::string base_dir;
+#else
+    // Unlike hw.dll, hw.so doesn't work out the game directory by itself; Valve's
+    // own hl_linux passes it in here
+    std::string base_dir = GetCurrentProcessDirectoryAbsoulute().string();
+#endif
+
     EngineRunResult engine_run_result = engine->Run(
         module_instance_,
-        "",
+        base_dir.c_str(),
         cmd_line_->GetCmdLine(),
         post_restart_cmd_line,
         Sys_GetFactoryThis(),
