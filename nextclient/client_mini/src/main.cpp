@@ -181,9 +181,9 @@ static void UserMsg_InitHUDPost(const char* name, int size, void* data, int resu
 static int UserMsg_TextMsgHandler(const char* name, int size, void* data, UserMsg_TextMsgNext next)
 {
     static const std::string hiddenServerCmds[] = {
-        "client_chat_open\n",
-        "client_chat_team_open\n",
-        "client_chat_close\n",
+        "client_chat_open",
+        "client_chat_team_open",
+        "client_chat_close",
     };
 
     BEGIN_READ(data, size);
@@ -194,7 +194,11 @@ static int UserMsg_TextMsgHandler(const char* name, int size, void* data, UserMs
         std::string message = READ_STRING();
         if (message == "#Game_unknown_command")
         {
+            // the Linux cs.so sends the bare command, other servers with a newline after it
             std::string command = READ_STRING();
+            while (!command.empty() && (command.back() == '\n' || command.back() == '\r'))
+                command.pop_back();
+
             if (std::ranges::contains(hiddenServerCmds, command))
             {
                 return 1;
