@@ -200,20 +200,29 @@ namespace tex
     {
         OPTICK_EVENT();
 
+        // Textures no longer have to be powers of two, so either side can be odd or 1: the
+        // level is then floor(size / 2) but at least 1, and the last column or row pairs with
+        // itself instead of reading into the next one. Safe in place, every pixel is written
+        // at or before where it's read from.
         int row_bytes = width << 2;
-        int out_height = height >> 1;
+        int out_width = std::max(1, width >> 1);
+        int out_height = std::max(1, height >> 1);
 
-        for (int y = 0; y < out_height; ++y, data += row_bytes * 2)
+        for (int y = 0; y < out_height; ++y)
         {
-            const uint8_t* in_row = data;
-            const uint8_t* next_row = data + row_bytes;
+            const uint8_t* in_row = data + (y * 2) * row_bytes;
+            const uint8_t* next_row = data + std::min(y * 2 + 1, height - 1) * row_bytes;
 
-            for (int x = 0; x < row_bytes; x += 8, in_row += 8, next_row += 8, data_out += 4)
+            for (int x = 0; x < out_width; ++x, data_out += 4)
             {
-                data_out[0] = (in_row[0] + in_row[4] + next_row[0] + next_row[4]) >> 2;
-                data_out[1] = (in_row[1] + in_row[5] + next_row[1] + next_row[5]) >> 2;
-                data_out[2] = (in_row[2] + in_row[6] + next_row[2] + next_row[6]) >> 2;
-                data_out[3] = (in_row[3] + in_row[7] + next_row[3] + next_row[7]) >> 2;
+                int left = (x * 2) << 2;
+                int right = std::min(x * 2 + 1, width - 1) << 2;
+
+                for (int channel = 0; channel < 4; ++channel)
+                {
+                    data_out[channel] = (in_row[left + channel] + in_row[right + channel] +
+                                         next_row[left + channel] + next_row[right + channel]) >> 2;
+                }
             }
         }
 
