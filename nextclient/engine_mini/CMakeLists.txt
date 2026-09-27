@@ -140,6 +140,6 @@ target_include_directories(engine_mini_export INTERFACE
         include
 )
 
-if (NEXTCLIENT_BUILD_TESTS AND WIN32)
+if (NEXTCLIENT_BUILD_TESTS)
     add_subdirectory(tests)
 endif ()
