@@ -410,7 +410,13 @@ static void OnGameInitializing(void* mainwindow, HDC* pmaindc, HGLRC* pbaseRC, c
     v.Assign(p_gHostSpawnCount, GET_VARIABLE_NAME(p_gHostSpawnCount), eng()->gHostSpawnCount);
     v.Assign(p_net_local_adr, GET_VARIABLE_NAME(p_net_local_adr), eng()->net_local_adr);
     v.Assign(p_ip_sockets, GET_VARIABLE_NAME(p_ip_sockets), eng()->ip_sockets);
+#ifdef _WIN32
     v.Assign(p_ipx_sockets, GET_VARIABLE_NAME(p_ipx_sockets), eng()->ipx_sockets);
+#else
+    // The Linux engine has no IPX support at all, so these sockets are never open
+    static int no_ipx_sockets[NS_MAX]{};
+    p_ipx_sockets = no_ipx_sockets;
+#endif
     v.Assign(p_g_GameServerAddress, GET_VARIABLE_NAME(p_g_GameServerAddress), eng()->g_GameServerAddress);
     v.Assign(p_g_LastScreenUpdateTime, GET_VARIABLE_NAME(p_g_LastScreenUpdateTime), eng()->g_LastScreenUpdateTime);
     v.Assign(p_maxTransObjs, GET_VARIABLE_NAME(p_maxTransObjs), eng()->maxTransObjs);
