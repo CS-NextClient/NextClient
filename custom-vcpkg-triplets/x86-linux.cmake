@@ -10,3 +10,11 @@ set(VCPKG_CMAKE_SYSTEM_NAME Linux)
 set(VCPKG_C_FLAGS "-m32 -march=pentium4")
 set(VCPKG_CXX_FLAGS "-m32 -march=pentium4")
 set(VCPKG_LINKER_FLAGS "-m32")
+
+# engine_mini has to share the engine's own libSDL2-2.0.so.0 (the one hw.so uses),
+# the same way it shares SDL2.dll on Windows - a static copy is a separate,
+# never-initialized SDL instance. Only the SONAME matters here; at runtime the
+# game directory's library is picked up through LD_LIBRARY_PATH.
+if (PORT STREQUAL "sdl2")
+    set(VCPKG_LIBRARY_LINKAGE dynamic)
+endif ()
