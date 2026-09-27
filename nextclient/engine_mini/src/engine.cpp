@@ -170,6 +170,10 @@ static void EngineMiniUninitialize()
     JSAPI_Shutdown();
 #endif
 
+    // MultiSourceQuery's thread only exits once its owner is destroyed, and
+    // TaskCoro::UnInitialize waits for every thread it runs
+    g_pMatchmakingServers = nullptr;
+
     taskcoro::TaskCoro::UnInitialize();
     g_pTaskCoroImpl = nullptr;
 
@@ -409,10 +413,12 @@ static void OnGameInitializing(void* mainwindow, HDC* pmaindc, HGLRC* pbaseRC, c
 
     if (v.HasNullPtr())
     {
+        std::string error = std::format(BREADCRUMBS_TAG " OnGameInitializing: PtrValidator failed: {}", nitro_utils::join(v.GetNullPtrNames().cbegin(), v.GetNullPtrNames().cend(), ", "));
+        nitroapi::NitroApiInterface* nitro_api = g_NitroApi;
+
         EngineMiniUninitialize();
 
-        std::string error = std::format(BREADCRUMBS_TAG " OnGameInitializing: PtrValidator failed: {}", nitro_utils::join(v.GetNullPtrNames().cbegin(), v.GetNullPtrNames().cend(), ", "));
-        g_NitroApi->GetEngineData()->Sys_Error.InvokeChained(error.c_str());
+        nitro_api->GetEngineData()->Sys_Error.InvokeChained(error.c_str());
         return;
     }
 
@@ -616,10 +622,12 @@ static void OnGameInitialized()
 
     if (v.HasNullPtr())
     {
+        std::string error = std::format(BREADCRUMBS_TAG " OnGameInitialize: PtrValidator failed: {}", nitro_utils::join(v.GetNullPtrNames().cbegin(), v.GetNullPtrNames().cend(), ", "));
+        nitroapi::NitroApiInterface* nitro_api = g_NitroApi;
+
         EngineMiniUninitialize();
 
-        std::string error = std::format(BREADCRUMBS_TAG " OnGameInitialize: PtrValidator failed: {}", nitro_utils::join(v.GetNullPtrNames().cbegin(), v.GetNullPtrNames().cend(), ", "));
-        g_NitroApi->GetEngineData()->Sys_Error.InvokeChained(error.c_str());
+        nitro_api->GetEngineData()->Sys_Error.InvokeChained(error.c_str());
         return;
     }
 
@@ -686,8 +694,6 @@ public:
     {
         if (g_Analytics)
             g_Analytics->AddBreadcrumb("info", BREADCRUMBS_TAG " EngineMini::Uninitialize");
-
-        g_pMatchmakingServers = nullptr;
 
         for (auto &unsubscriber : unsubs_)
             unsubscriber->Unsubscribe();
