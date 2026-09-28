@@ -84,6 +84,18 @@ TEST(SettingsCode, IsShortAndStable)
     EXPECT_EQ(code, Encode(SomeValues(), kAllSections));
 }
 
+TEST(SettingsCode, DiffersForDifferentValues)
+{
+    for (int i = 0; i < kFieldCount; i++)
+    {
+        Values values = SomeValues();
+        Values changed = values;
+        changed[i] = values[i] == kFields[i].min ? kFields[i].max : kFields[i].min;
+
+        EXPECT_NE(Encode(values, kAllSections), Encode(changed, kAllSections)) << kFields[i].cvar << " (field " << i << ")";
+    }
+}
+
 TEST(SettingsCode, ClampsValuesOutOfRange)
 {
     Values values = SomeValues();
