@@ -26,6 +26,11 @@ namespace settings_code
 
     inline constexpr uint8_t kAllSections = (1 << kSectionCount) - 1;
 
+    // by Section, as the console commands take them
+    inline constexpr const char* kSectionNames[] = {"crosshair", "bobbing", "model", "inertia", "camera"};
+
+    static_assert(std::size(kSectionNames) == kSectionCount);
+
     enum FieldId
     {
         kCrosshairType,
