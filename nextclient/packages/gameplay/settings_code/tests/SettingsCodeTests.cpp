@@ -79,6 +79,7 @@ TEST(SettingsCode, IsShortAndStable)
     std::string code = Encode(SomeValues(), kAllSections);
 
     EXPECT_TRUE(code.starts_with("NCL-"));
+    EXPECT_EQ(code.find_first_of("+/="), std::string::npos);
     EXPECT_LE(code.size(), 40u);
     EXPECT_EQ(code, Encode(SomeValues(), kAllSections));
 }

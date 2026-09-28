@@ -8,7 +8,8 @@
 
 // Layout, bit by bit, most significant bit first:
 //   version (4) | section mask (5) | fields of the sections in the mask | zero padding to a byte
-// followed by one CRC-8 byte over everything before it, then base64 without the '=' padding.
+// followed by one CRC-8 byte over everything before it. The bytes go out as "NCL-" and
+// URL-safe base64 without the '=' padding, so a code is only letters, digits, '-' and '_'.
 namespace settings_code
 {
     namespace
@@ -141,6 +142,14 @@ namespace settings_code
         while (!code.empty() && code.back() == '=')
             code.pop_back();
 
+        for (char& c : code)
+        {
+            if (c == '+')
+                c = '-';
+            else if (c == '/')
+                c = '_';
+        }
+
         return std::string(kPrefix) + code;
     }
 
@@ -152,13 +161,18 @@ namespace settings_code
         code.remove_prefix(kPrefix.size());
 
         // base64_decode stops at the first character it doesn't know instead of failing
-        for (char c : code)
+        std::string base64(code);
+        for (char& c : base64)
         {
-            if (!std::isalnum(static_cast<unsigned char>(c)) && c != '+' && c != '/')
+            if (c == '-')
+                c = '+';
+            else if (c == '_')
+                c = '/';
+            else if (!std::isalnum(static_cast<unsigned char>(c)))
                 return std::nullopt;
         }
 
-        std::vector<uint8_t> bytes = base64_decode(std::string(code));
+        std::vector<uint8_t> bytes = base64_decode(base64);
         if (bytes.size() < 2)
             return std::nullopt;
 
