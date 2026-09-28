@@ -53,6 +53,7 @@ class COptionsSubGame : public vgui2::PropertyPage, public CColorPickerDialog::I
 
 private:
     vgui2::Button* defaults_button_{};
+    vgui2::Button* share_button_{};
     vgui2::Label* presets_caption_{};
     std::array<vgui2::Button*, 4> preset_buttons_{};
 

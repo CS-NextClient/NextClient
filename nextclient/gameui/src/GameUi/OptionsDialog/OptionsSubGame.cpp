@@ -14,6 +14,7 @@
 #include <vgui_controls/Tooltip.h>
 
 #include "Controls/PixelPanel.h"
+#include "ShareSettingsDialog.h"
 
 namespace
 {
@@ -178,6 +179,9 @@ void COptionsSubGame::BuildShell()
 
     defaults_button_ = new vgui2::Button(this, "Defaults", "#GameUI_ViewDefaultsBtn");
     defaults_button_->SetCommand("Defaults");
+
+    share_button_ = new vgui2::Button(this, "ShareSettings", "#GameUI_ShareSettingsBtn");
+    share_button_->SetCommand("ShareSettings");
 
     tabs_ = new vgui2::PropertySheet(this, "GameTabs");
 }
@@ -557,6 +561,10 @@ void COptionsSubGame::PerformLayout()
     int defaults_wide, defaults_caption_tall;
     defaults_button_->GetContentSize(defaults_wide, defaults_caption_tall);
     defaults_button_->SetBounds(kMargin, defaults_y, defaults_wide + kButtonPadding, kDefaultsTall);
+
+    int share_wide, share_caption_tall;
+    share_button_->GetContentSize(share_wide, share_caption_tall);
+    share_button_->SetBounds(kMargin + defaults_wide + kButtonPadding + kGap, defaults_y, share_wide + kButtonPadding, kDefaultsTall);
 }
 
 // The page is not rebuilt when the video mode changes under it, and the preview is shaped
@@ -723,6 +731,13 @@ void COptionsSubGame::OnCommand(const char* command)
     if (!stricmp(command, "Defaults"))
     {
         SetDefaults();
+        return;
+    }
+
+    if (!stricmp(command, "ShareSettings"))
+    {
+        CShareSettingsDialog* dialog = new CShareSettingsDialog(this, [this] { OnApplyChanges(); }, [this] { OnResetData(); });
+        dialog->Activate();
         return;
     }
 
