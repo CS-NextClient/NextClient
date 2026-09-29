@@ -533,8 +533,10 @@ static void OnGameInitializing(void* mainwindow, HDC* pmaindc, HGLRC* pbaseRC, c
     g_Unsubs.emplace_back(eng()->Cbuf_AddText += [](const char *text, sizebuf_t *buf, char* result) {
         // for cases when client downloading files through dlfile
         // give him a chance to use http download again
+        // called directly: pfnClientCmd adds a command and its "\n" in two Cbuf_AddText calls and
+        // this runs in between, so a queued "httpstop" glued onto the console's "disconnect"
         if (std::strncmp(text, "disconnect", 10) == 0)
-            gEngfuncs.pfnClientCmd("httpstop");
+            CL_HTTPStop_f();
     });
 
     g_Unsubs.emplace_back(eng()->Sys_InitGame += [](char *pOrgCmdLine, char *pBaseDir, void *pwnd, int bIsDedicated, bool ret) {
