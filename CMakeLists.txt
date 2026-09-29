@@ -166,6 +166,7 @@ if (NOT NEXTCLIENT_BUILD_TESTS)
                 COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:nitro_api> ${NEXTCLIENT_INSTALL_DIR}/nitro_api2.dll
                 COMMAND ${CMAKE_COMMAND} -DVGUI2_PATH=${NEXTCLIENT_INSTALL_DIR}/vgui2.so -P ${NEXTCLIENT_ROOT}/cmake/BackupValveVgui2.cmake
                 COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:vgui2> ${NEXTCLIENT_INSTALL_DIR}/vgui2.so
+                COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/nextclient/launcher/linux/nextclient.sh ${NEXTCLIENT_INSTALL_DIR}/nextclient.sh
                 COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_CURRENT_SOURCE_DIR}/assets ${NEXTCLIENT_INSTALL_DIR}
         )
     endif ()
