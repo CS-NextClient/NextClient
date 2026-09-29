@@ -413,6 +413,10 @@ void ClientLauncher::PrepareEngineCommandLine()
 
     if (!cmd_line_->CheckParm("-num_edicts"))
         cmd_line_->AppendParm("-num_edicts", "4096");
+
+    // otherwise the engine turns on Steam's breakpad and our crash dumps go to Valve
+    if (!cmd_line_->CheckParm("-nobreakpad"))
+        cmd_line_->AppendParm("-nobreakpad", nullptr);
 }
 
 #ifdef UPDATER_ENABLE
