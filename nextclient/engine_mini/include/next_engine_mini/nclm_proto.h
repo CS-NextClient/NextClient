@@ -20,8 +20,8 @@ constexpr size_t NCLM_HWID_SIGNATURE_SIZE          = NCLM_VERIF_ENCRYPTED_PAYLOA
 
 enum class NCLM_PLATFORM : uint8_t
 {
-    PLATFORM_WINDOWS = 0,
-    PLATFORM_LINUX = 1,
+    Windows = 0,
+    Linux = 1,
 };
 
 enum class NCLM_C2S

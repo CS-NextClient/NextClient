@@ -77,9 +77,9 @@ namespace
     void SendClientPlatform(sizebuf_t* msgbuf)
     {
 #if defined(_WIN32)
-        const NCLM_PLATFORM platform = NCLM_PLATFORM::PLATFORM_WINDOWS;
+        const NCLM_PLATFORM platform = NCLM_PLATFORM::Windows;
 #elif defined(__linux__)
-        const NCLM_PLATFORM platform = NCLM_PLATFORM::PLATFORM_LINUX;
+        const NCLM_PLATFORM platform = NCLM_PLATFORM::Linux;
 #else
 #error "Unknown platform for CLIENT_PLATFORM"
 #endif
