@@ -73,6 +73,25 @@ namespace
         }
         writer.Send();
     }
+
+    void SendClientPlatform(sizebuf_t* msgbuf)
+    {
+#if defined(_WIN32)
+        const NCLM_PLATFORM platform = NCLM_PLATFORM::PLATFORM_WINDOWS;
+#elif defined(__linux__)
+        const NCLM_PLATFORM platform = NCLM_PLATFORM::PLATFORM_LINUX;
+#else
+#error "Unknown platform for CLIENT_PLATFORM"
+#endif
+
+        MSG_WriteByte(msgbuf, clc_ncl_message);
+        MSG_WriteLong(msgbuf, NCLM_HEADER);
+
+        NclmBodyWriter writer(msgbuf);
+        writer.WriteByte(static_cast<uint8_t>(NCLM_C2S::CLIENT_PLATFORM));
+        writer.WriteByte(static_cast<uint8_t>(platform));
+        writer.Send();
+    }
 } // namespace
 
 void SetCareerAudioState(int state)
@@ -351,6 +370,8 @@ void CL_ConnectClient()
         writer.WriteString(va("%d.%d.%d", g_NextClientVersion.major, g_NextClientVersion.minor, g_NextClientVersion.patch));
         writer.Send();
     }
+
+    SendClientPlatform(msgbuf);
 
     MSG_WriteByte(msgbuf, clc_stringcmd);
     MSG_WriteString(msgbuf, "new\n");

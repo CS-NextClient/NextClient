@@ -18,6 +18,12 @@ constexpr size_t NCLM_HWID_NONCE_BINDING_SIZE      = 32; // Recoverable signed m
 constexpr size_t NCLM_HWID_SIGNED_MESSAGE_SIZE     = NCLM_HWID_SIZE + NCLM_HWID_NONCE_BINDING_SIZE;
 constexpr size_t NCLM_HWID_SIGNATURE_SIZE          = NCLM_VERIF_ENCRYPTED_PAYLOAD_SIZE;
 
+enum class NCLM_PLATFORM : uint8_t
+{
+    PLATFORM_WINDOWS = 0,
+    PLATFORM_LINUX = 1,
+};
+
 enum class NCLM_C2S
 {
     /*
@@ -52,6 +58,17 @@ enum class NCLM_C2S
      * The server validates the signature and recovers the message from it.
      */
     HARDWARE_ID,
+
+    /*
+     * Tells the server which OS the client is running on.
+     * Sent right after VERIFICATION_REQUEST / DECLARE_VERSION_REQUEST.
+     * The value is not verified and can be forged by the player.
+     *
+     * Payload:
+     *   byte       Message header (this opcode = 0x05)
+     *   byte       Platform: 0 = Windows, 1 = Linux
+     */
+    CLIENT_PLATFORM,
 };
 
 enum class NCLM_S2C
