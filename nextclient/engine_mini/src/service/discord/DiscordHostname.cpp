@@ -34,7 +34,7 @@ void DiscordHostname_Shutdown()
 
 void DiscordHostname_Update()
 {
-    if (!g_SourceQuery || cls->state != ca_active || cls->netchan.remote_address.IsLoopback())
+    if (!g_SourceQuery || cls->state != ca_active || cls->demoplayback || cls->netchan.remote_address.IsLoopback())
     {
         g_HasQueriedAddress = false;
         g_Hostname.clear();

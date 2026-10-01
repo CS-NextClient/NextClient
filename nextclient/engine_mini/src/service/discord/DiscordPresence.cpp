@@ -121,46 +121,62 @@ static tao::json::value BuildActivity()
     tao::json::value button = { { "label", "Get NextClient" }, { "url", "https://nextclient.ru/" } };
     tao::json::value buttons = tao::json::value::array({ button });
 
-    if (cls->state != ca_active)
+    tao::json::value activity = {
+        { "details", "Counter-Strike 1.6" },
+        { "assets", assets },
+        { "timestamps", { { "start", g_StartTime } } }
+    };
+
+    if (cls->state == ca_disconnected)
     {
-        return {
-            { "details", "Counter-Strike 1.6" },
-            { "state", "In main menu" },
-            { "assets", assets },
-            { "buttons", buttons },
-            { "timestamps", { { "start", g_StartTime } } }
-        };
+        activity["state"] = "In main menu";
+        activity["buttons"] = buttons;
+        return activity;
     }
 
     char map[64];
     GetMapName(cl->levelname, map, sizeof(map));
 
-    bool is_local = strcmp(cls->servername, "local") == 0;
-
-    tao::json::value activity = {
-        { "details", static_cast<const char*>(map) },
-        { "state", "On a server" },
-        { "party", {
-            { "size", tao::json::value::array({ CountPlayers(), cl->maxclients }) }
-        }},
-        { "assets", assets },
-        { "timestamps", { { "start", g_StartTime } } }
-    };
-
-    if (!is_local)
+    if (!cls->demoplayback)
     {
-        const std::string& hostname = DiscordHostname_Get();
-        if (!hostname.empty() && IsValidUtf8(hostname))
+        if (cls->state == ca_connecting || cls->state == ca_connected || cls->state == ca_uninitialized)
         {
-            size_t size = GeoIp_GetUtf8PrefixSize(hostname, 128);
-            activity["state"] = hostname.substr(0, size);
+            activity["state"] = "Connecting...";
+            activity["buttons"] = buttons;
+            return activity;
         }
 
-        activity["party"]["id"] = std::string("party-") + static_cast<const char*>(cls->servername);
-        activity["secrets"] = { { "join", static_cast<const char*>(cls->servername) } };
+        if (cls->state == ca_active)
+        {
+            bool is_local = strcmp(cls->servername, "local") == 0;
+
+            if (is_local)
+            {
+                activity["state"] = "Local game";
+                activity["buttons"] = buttons;
+            }
+            else
+            {
+                const std::string& hostname = DiscordHostname_Get();
+                if (!hostname.empty() && IsValidUtf8(hostname))
+                {
+                    size_t size = GeoIp_GetUtf8PrefixSize(hostname, 128);
+                    activity["state"] = hostname.substr(0, size);
+                }
+                else activity["state"] = "On a server";
+
+                activity["party"]["id"] = std::string("party-") + static_cast<const char*>(cls->servername);
+                activity["secrets"] = { { "join", static_cast<const char*>(cls->servername) } };
+            }
+
+            activity["details"] = static_cast<const char*>(map);
+            activity["party"]["size"] = tao::json::value::array({ CountPlayers(), cl->maxclients });
+        }
     }
     else
     {
+        activity["details"] = static_cast<const char*>(map);
+        activity["state"] = "Watching a demo";
         activity["buttons"] = buttons;
     }
 
