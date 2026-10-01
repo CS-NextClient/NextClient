@@ -11,6 +11,7 @@
 #include <nitro_utils/string_utils.h>
 #include <service/matchmaking/MatchmakingService.h>
 #include <service/matchmaking/MatchmakingSteamComp.h>
+#include <service/discord/DiscordPresence.h>
 #include <taskcoro/TaskCoro.h>
 #include <taskcoro/impl/TaskCoroImpl.h>
 #include <tier2/tier2.h>
@@ -304,6 +305,7 @@ static void OnGameUninitializing()
     Preview_Shutdown();
     PreviewModel_RestoreStudioApi();
 
+    DiscordPresence_Shutdown();
     PROTECTOR_Shutdown();
     CL_CvarsSandboxShutdown();
     CL_StringRegistryShutdown();
@@ -672,6 +674,7 @@ static void OnGameInitialized()
     CL_NclEntitySyncRegisterType(static_cast<uint8_t>(ncl_entity::EntityTypeId::Weapon), std::make_unique<WeaponSyncSystem>());
     CL_NclEntitySyncOverlayInit();
     PROTECTOR_Init(g_SettingGuard);
+    DiscordPresence_Init();
 }
 
 class EngineMini : public EngineMiniInterface
