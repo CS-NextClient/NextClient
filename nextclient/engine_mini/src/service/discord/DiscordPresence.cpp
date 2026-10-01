@@ -3,6 +3,7 @@
 #include "engine.h"
 #include "console/console.h"
 #include "DiscordIpc.h"
+#include "DiscordHostname.h"
 
 #ifdef _WIN32
 #include <process.h>
@@ -10,6 +11,8 @@
 #include <unistd.h>
 #endif
 
+#include <service/geoip/GeoIpCountryDatabase.h>
+#include <common/utf8.h>
 #include <cvars/cvar_defaults.h>
 #include <tao/json.hpp>
 #include <cstring>
@@ -53,6 +56,41 @@ static bool IsSafeServerAddress(const char* address)
 
         if (!isalnum(c) && c != '.' && c != ':' && c != '-')
             return false;
+    }
+
+    return true;
+}
+
+static bool IsValidUtf8(const std::string& text)
+{
+    if (text.size() == 0)
+        return false;
+
+    size_t i = 0;
+
+    while (i < text.size())
+    {
+        unsigned char c = text[i];
+        int length;
+
+        if ((c & 0x80) == 0x00) length = 1;
+        else if ((c & 0xE0) == 0xC0) length = 2;
+        else if ((c & 0xF0) == 0xE0) length = 3;
+        else if ((c & 0xF8) == 0xF0) length = 4;
+        else return false;
+
+        if (i + length > text.size())
+            return false;
+
+        for (int k = 1; k < length; k++)
+        {
+            unsigned char next = text[i + k];
+
+            if ((next & kUtf8ContinuationMask) != kUtf8ContinuationBits)
+                return false;
+        }
+
+        i += length;
     }
 
     return true;
@@ -111,10 +149,17 @@ static tao::json::value BuildActivity()
 
     if (!is_local)
     {
+        const std::string& hostname = DiscordHostname_Get();
+        if (!hostname.empty() && IsValidUtf8(hostname))
+        {
+            size_t size = GeoIp_GetUtf8PrefixSize(hostname, 128);
+            activity["state"] = hostname.substr(0, size);
+        }
+
         activity["party"]["id"] = std::string("party-") + static_cast<const char*>(cls->servername);
         activity["secrets"] = { { "join", static_cast<const char*>(cls->servername) } };
     }
-    else 
+    else
     {
         activity["buttons"] = buttons;
     }
@@ -128,12 +173,15 @@ static cvar_t* g_DiscordRpcCvar = nullptr;
 
 void DiscordPresence_Init()
 {
+    DiscordHostname_Init();
+
     g_StartTime = static_cast<int64_t>(time(nullptr));
     g_DiscordRpcCvar = gEngfuncs.pfnRegisterVariable(cvars::kDiscordRpc.name, cvars::kDiscordRpc.value, FCVAR_ARCHIVE);
 }
 
 void DiscordPresence_Shutdown()
 {
+    DiscordHostname_Shutdown();
     g_DiscordIpc.Close();
 }
 
@@ -159,6 +207,8 @@ void DiscordPresence_Frame()
         return;
     
     g_NextUpdateTime = *realtime + 1.0;
+
+    DiscordHostname_Update();
     
     if (!g_DiscordIpc.is_open())
     {
