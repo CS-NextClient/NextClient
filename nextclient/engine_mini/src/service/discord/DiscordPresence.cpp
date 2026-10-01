@@ -10,6 +10,7 @@
 #include <unistd.h>
 #endif
 
+#include <cvars/cvar_defaults.h>
 #include <tao/json.hpp>
 #include <cstring>
 #include <cstdio>
@@ -84,10 +85,12 @@ static tao::json::value BuildActivity()
 
 static DiscordIpc g_DiscordIpc;
 static const char* const kHandshake = R"({"v":1,"client_id":"1538460768503070771"})";
+static cvar_t* g_DiscordRpcCvar = nullptr;
 
 void DiscordPresence_Init()
 {
     g_StartTime = static_cast<int64_t>(time(nullptr));
+    g_DiscordRpcCvar = gEngfuncs.pfnRegisterVariable(cvars::kDiscordRpc.name, cvars::kDiscordRpc.value, FCVAR_ARCHIVE);
 }
 
 void DiscordPresence_Shutdown()
@@ -106,6 +109,13 @@ static int g_Nonce = 0;
 
 void DiscordPresence_Frame()
 {
+    if (g_DiscordRpcCvar->value == 0)
+    {
+        g_NextConnectTime = 0;
+        g_DiscordIpc.Close();
+        return;
+    }
+
     if (*realtime < g_NextUpdateTime)
         return;
     
