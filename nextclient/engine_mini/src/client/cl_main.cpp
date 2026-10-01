@@ -371,8 +371,6 @@ void CL_ConnectClient()
         writer.Send();
     }
 
-    SendClientPlatform(msgbuf);
-
     MSG_WriteByte(msgbuf, clc_stringcmd);
     MSG_WriteString(msgbuf, "new\n");
 
@@ -530,6 +528,9 @@ void CL_HandleNclMessage()
         case NCLM_S2C::SERVER_HELLO:
             {
                 ParseNextClientVersion(body.ReadString(), g_ServerModuleVersion);
+
+                sizebuf_t* msgbuf = &cls->netchan.message;
+                SendClientPlatform(msgbuf);
                 break;
             }
 

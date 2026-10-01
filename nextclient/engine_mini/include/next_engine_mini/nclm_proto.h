@@ -61,7 +61,7 @@ enum class NCLM_C2S
 
     /*
      * Tells the server which OS the client is running on.
-     * Sent right after VERIFICATION_REQUEST / DECLARE_VERSION_REQUEST.
+     * Sent in reply to SERVER_HELLO, so servers without the nclm module never see it.
      * The value is not verified and can be forged by the player.
      *
      * Payload:
