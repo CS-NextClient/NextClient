@@ -4,6 +4,23 @@
 #include "console/console.h"
 #include "DiscordIpc.h"
 
+#ifdef _WIN32
+#include <process.h>
+#else
+#include <unistd.h>
+#endif
+
+#include <tao/json.hpp>
+
+static int GetCurrentPid()
+{
+#ifdef _WIN32
+    return _getpid();
+#else
+    return getpid();
+#endif
+}
+
 static DiscordIpc g_DiscordIpc;
 
 static void DiscordTest_f()
@@ -24,6 +41,37 @@ static void DiscordTest_f()
 
     DiscordOpcode opcode;
     std::string reply;
+
+    if (!g_DiscordIpc.Read(opcode, reply))
+    {
+        Con_Printf("Discord: no reply\n");
+        return;
+    }
+
+    tao::json::value activity = {
+        { "cmd", "SET_ACTIVITY"},
+        { "nonce", "1" },
+        { "args", {
+            { "pid", GetCurrentPid() },
+            { "activity", {
+                { "details", "Counter-Strike 1.6" },
+                { "state", "In main menu" },
+                { "assets", {
+                    { "large_image", "logo" },
+                    { "large_text", "NextClient" }
+                }}
+            }}
+        }}
+    };
+
+    std::string payload = tao::json::to_string(activity);
+    Con_Printf("Discord: %s\n", payload.c_str());
+
+    if (!g_DiscordIpc.Write(DiscordOpcode::Frame, payload))
+    {
+        Con_Printf("Discord: frame failed\n");
+        return;
+    }
 
     if (!g_DiscordIpc.Read(opcode, reply))
     {
