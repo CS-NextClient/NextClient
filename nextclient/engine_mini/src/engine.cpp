@@ -602,6 +602,8 @@ static void OnGameInitializing(void* mainwindow, HDC* pmaindc, HGLRC* pbaseRC, c
         {
             g_pTaskCoroImpl->Update();
         }
+
+        DiscordPresence_Frame();
     });
 
     g_Unsubs.emplace_back(eng()->S_StartDynamicSound |= S_StartDynamicSoundHook);

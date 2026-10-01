@@ -13,6 +13,7 @@
 #include <tao/json.hpp>
 #include <cstring>
 #include <cstdio>
+#include <ctime>
 
 static int GetCurrentPid()
 {
@@ -48,6 +49,8 @@ static int CountPlayers()
     return players;
 }
 
+static int64_t g_StartTime = 0;
+
 static tao::json::value BuildActivity()
 {
     tao::json::value assets = {
@@ -60,7 +63,8 @@ static tao::json::value BuildActivity()
         return {
             { "details", "Counter-Strike 1.6" },
             { "state", "In main menu" },
-            { "assets", assets }
+            { "assets", assets },
+            { "timestamps", { { "start", g_StartTime } } }
         };
     }
 
@@ -73,70 +77,108 @@ static tao::json::value BuildActivity()
         { "party", {
             { "size", tao::json::value::array({ CountPlayers(), cl->maxclients }) }
         }},
-        { "assets", assets }
+        { "assets", assets },
+        { "timestamps", { { "start", g_StartTime } } }
     };
 }
 
 static DiscordIpc g_DiscordIpc;
+static const char* const kHandshake = R"({"v":1,"client_id":"1538460768503070771"})";
 
-static void DiscordTest_f()
+void DiscordPresence_Init()
 {
-    if (!g_DiscordIpc.Open())
-    {
-        Con_Printf("Discord: client not found\n");
-        return;
-    }
+    g_StartTime = static_cast<int64_t>(time(nullptr));
+}
 
-    const char* handshake = R"({"v":1,"client_id":"1538460768503070771"})";
-    
-    if (!g_DiscordIpc.Write(DiscordOpcode::Handshake, handshake))
-    {
-        Con_Printf("Discord: handshake failed\n");
+void DiscordPresence_Shutdown()
+{
+    g_DiscordIpc.Close();
+}
+
+static bool g_DiscordReady = false;
+
+static double g_NextUpdateTime = 0;
+static double g_NextConnectTime = 0;
+static double g_NextActivityTime = 0;
+
+static std::string g_LastActivity;
+static int g_Nonce = 0;
+
+void DiscordPresence_Frame()
+{
+    if (*realtime < g_NextUpdateTime)
         return;
+    
+    g_NextUpdateTime = *realtime + 1.0;
+    
+    if (!g_DiscordIpc.is_open())
+    {
+        g_LastActivity.clear();
+        g_DiscordReady = false;
+
+        if (*realtime < g_NextConnectTime)
+            return;
+        
+        g_NextConnectTime = *realtime + 15.0;
+
+        if (!g_DiscordIpc.Open())
+            return;
+
+        if (!g_DiscordIpc.Write(DiscordOpcode::Handshake, kHandshake))
+            return;
     }
 
     DiscordOpcode opcode;
-    std::string reply;
+    std::string message;
 
-    if (!g_DiscordIpc.Read(opcode, reply))
+    while (g_DiscordIpc.Poll(opcode, message))
     {
-        Con_Printf("Discord: no reply\n");
-        return;
+        if (opcode == DiscordOpcode::Frame && !g_DiscordReady)
+        {
+            g_DiscordReady = true;
+            Con_Printf("Discord: ready!\n");
+        }
+        else if (opcode == DiscordOpcode::Ping)
+        {
+            if (!g_DiscordIpc.Write(DiscordOpcode::Pong, message))
+                Con_Printf("Discord: pong failed\n");
+        }
+        else if (opcode == DiscordOpcode::Close)
+        {
+            Con_Printf("Discord: close %s\n", message.c_str());
+            g_DiscordIpc.Close();
+        }
     }
 
-    tao::json::value activity = {
-        { "cmd", "SET_ACTIVITY"},
-        { "nonce", "1" },
+    if (!g_DiscordIpc.is_open() || !g_DiscordReady)
+        return;
+
+    tao::json::value activity = BuildActivity();
+    std::string activity_str = tao::json::to_string(activity);
+
+    if (activity_str == g_LastActivity)
+        return;
+
+    if (*realtime < g_NextActivityTime)
+        return;
+
+    g_NextActivityTime = *realtime + 5.0;
+    
+    tao::json::value command = {
+        { "cmd", "SET_ACTIVITY" },
+        { "nonce", std::to_string(++g_Nonce) },
         { "args", {
             { "pid", GetCurrentPid() },
-            { "activity", BuildActivity() }
+            { "activity", activity }
         }}
     };
 
-    std::string payload = tao::json::to_string(activity);
-    Con_Printf("Discord: %s\n", payload.c_str());
-
+    std::string payload = tao::json::to_string(command);
     if (!g_DiscordIpc.Write(DiscordOpcode::Frame, payload))
     {
         Con_Printf("Discord: frame failed\n");
         return;
     }
 
-    if (!g_DiscordIpc.Read(opcode, reply))
-    {
-        Con_Printf("Discord: no reply\n");
-        return;
-    }
-
-    Con_Printf("Discord: %s\n", reply.c_str());
-}
-
-void DiscordPresence_Init()
-{
-    gEngfuncs.pfnAddCommand("discord_test", DiscordTest_f);
-}
-
-void DiscordPresence_Shutdown()
-{
-    g_DiscordIpc.Close();
+    g_LastActivity = activity_str;
 }

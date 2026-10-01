@@ -1,5 +1,6 @@
 #include "DiscordIpc.h"
 
+#include <chrono>
 #include <cstdio>
 #include <cstdlib>
 
@@ -7,6 +8,8 @@
 #include <windows.h>
 #else
 #include <cerrno>
+#include <fcntl.h>
+#include <poll.h>
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <unistd.h>
@@ -17,6 +20,11 @@ static constexpr int kMaxPipeNumber = 10;
 
 // Discord's own messages are a few KB; anything far bigger means the stream is out of sync
 static constexpr uint32_t kMaxPayloadSize = 64 * 1024;
+
+static constexpr size_t kHeaderSize = 8;
+
+// Our messages are tiny, so a full send buffer means Discord stopped reading
+static constexpr int kWriteTimeoutMs = 100;
 
 static void WriteUint32Le(uint8_t* out, uint32_t value)
 {
@@ -38,30 +46,64 @@ DiscordIpc::~DiscordIpc()
 
 bool DiscordIpc::Write(DiscordOpcode opcode, std::string_view payload)
 {
-    uint8_t header[8];
+    uint8_t header[kHeaderSize];
     WriteUint32Le(header, static_cast<uint32_t>(opcode));
     WriteUint32Le(header + 4, static_cast<uint32_t>(payload.size()));
 
     return WriteBytes(header, sizeof(header)) && WriteBytes(payload.data(), payload.size());
 }
 
-bool DiscordIpc::Read(DiscordOpcode& opcode, std::string& payload)
+bool DiscordIpc::TakeMessage(DiscordOpcode& opcode, std::string& payload)
 {
-    uint8_t header[8];
-    if (!ReadBytes(header, sizeof(header)))
+    if (recv_buf_.size() < kHeaderSize)
         return false;
 
+    const auto* header = reinterpret_cast<const uint8_t*>(recv_buf_.data());
     uint32_t size = ReadUint32Le(header + 4);
+
     if (size > kMaxPayloadSize)
     {
         Close();
         return false;
     }
 
-    opcode = static_cast<DiscordOpcode>(ReadUint32Le(header));
-    payload.resize(size);
+    if (recv_buf_.size() < kHeaderSize + size)
+        return false;
 
-    return ReadBytes(payload.data(), size);
+    opcode = static_cast<DiscordOpcode>(ReadUint32Le(header));
+    payload.assign(recv_buf_, kHeaderSize, size);
+    recv_buf_.erase(0, kHeaderSize + size);
+
+    return true;
+}
+
+bool DiscordIpc::Poll(DiscordOpcode& opcode, std::string& payload)
+{
+    if (!is_open())
+        return false;
+
+    // An earlier read may have brought in more than one message
+    if (TakeMessage(opcode, payload))
+        return true;
+
+    return ReceiveAvailable() && TakeMessage(opcode, payload);
+}
+
+bool DiscordIpc::Read(DiscordOpcode& opcode, std::string& payload, int timeout_ms)
+{
+    auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(timeout_ms);
+
+    while (!Poll(opcode, payload))
+    {
+        if (!is_open())
+            return false;
+
+        auto left = std::chrono::duration_cast<std::chrono::milliseconds>(deadline - std::chrono::steady_clock::now());
+        if (left.count() <= 0 || !WaitReadable(static_cast<int>(left.count())))
+            return false;
+    }
+
+    return true;
 }
 
 #ifdef _WIN32
@@ -93,6 +135,8 @@ void DiscordIpc::Close()
         CloseHandle(pipe_);
         pipe_ = nullptr;
     }
+
+    recv_buf_.clear();
 }
 
 bool DiscordIpc::is_open() const
@@ -120,24 +164,55 @@ bool DiscordIpc::WriteBytes(const void* data, size_t size)
     return true;
 }
 
-bool DiscordIpc::ReadBytes(void* data, size_t size)
+bool DiscordIpc::ReceiveAvailable()
 {
-    auto* bytes = static_cast<uint8_t*>(data);
-
-    while (size > 0)
+    // ReadFile on a pipe blocks until data arrives, so only ask for what is already there
+    DWORD available = 0;
+    if (!PeekNamedPipe(pipe_, nullptr, 0, nullptr, &available, nullptr))
     {
+        Close();
+        return false;
+    }
+
+    while (available > 0)
+    {
+        char chunk[4096];
         DWORD read = 0;
-        if (!pipe_ || !ReadFile(pipe_, bytes, static_cast<DWORD>(size), &read, nullptr) || read == 0)
+
+        if (!ReadFile(pipe_, chunk, available < sizeof(chunk) ? available : static_cast<DWORD>(sizeof(chunk)), &read, nullptr) || read == 0)
         {
             Close();
             return false;
         }
 
-        bytes += read;
-        size -= read;
+        recv_buf_.append(chunk, read);
+        available -= read;
     }
 
     return true;
+}
+
+bool DiscordIpc::WaitReadable(int timeout_ms)
+{
+    // Pipes opened without FILE_FLAG_OVERLAPPED have nothing to wait on, so poll the byte count
+    auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(timeout_ms);
+
+    do
+    {
+        DWORD available = 0;
+        if (!PeekNamedPipe(pipe_, nullptr, 0, nullptr, &available, nullptr))
+        {
+            Close();
+            return false;
+        }
+
+        if (available > 0)
+            return true;
+
+        Sleep(1);
+    } while (std::chrono::steady_clock::now() < deadline);
+
+    return false;
 }
 
 #else
@@ -172,7 +247,9 @@ bool DiscordIpc::Open()
         if (fd == -1)
             return false;
 
-        if (connect(fd, reinterpret_cast<sockaddr*>(&addr), sizeof(addr)) == 0)
+        // A local connect finishes at once, so only switch to non-blocking once it is through
+        if (connect(fd, reinterpret_cast<sockaddr*>(&addr), sizeof(addr)) == 0 &&
+            fcntl(fd, F_SETFL, fcntl(fd, F_GETFL) | O_NONBLOCK) == 0)
         {
             fd_ = fd;
             return true;
@@ -191,6 +268,8 @@ void DiscordIpc::Close()
         close(fd_);
         fd_ = -1;
     }
+
+    recv_buf_.clear();
 }
 
 bool DiscordIpc::is_open() const
@@ -206,43 +285,60 @@ bool DiscordIpc::WriteBytes(const void* data, size_t size)
     {
         // MSG_NOSIGNAL: a write after Discord quits would otherwise raise SIGPIPE and kill the game
         ssize_t written = fd_ == -1 ? -1 : send(fd_, bytes, size, MSG_NOSIGNAL);
-        if (written <= 0)
+        if (written > 0)
         {
-            if (written == -1 && errno == EINTR)
-                continue;
-
-            Close();
-            return false;
+            bytes += written;
+            size -= written;
+            continue;
         }
 
-        bytes += written;
-        size -= written;
+        if (written == -1 && errno == EINTR)
+            continue;
+
+        if (written == -1 && (errno == EAGAIN || errno == EWOULDBLOCK))
+        {
+            pollfd pfd{ fd_, POLLOUT, 0 };
+            if (poll(&pfd, 1, kWriteTimeoutMs) > 0)
+                continue;
+        }
+
+        Close();
+        return false;
     }
 
     return true;
 }
 
-bool DiscordIpc::ReadBytes(void* data, size_t size)
+bool DiscordIpc::ReceiveAvailable()
 {
-    auto* bytes = static_cast<uint8_t*>(data);
-
-    while (size > 0)
+    for (;;)
     {
-        ssize_t read = fd_ == -1 ? -1 : recv(fd_, bytes, size, 0);
-        if (read <= 0)
-        {
-            if (read == -1 && errno == EINTR)
-                continue;
+        char chunk[4096];
+        ssize_t read = recv(fd_, chunk, sizeof(chunk), 0);
 
-            Close();
-            return false;
+        if (read > 0)
+        {
+            recv_buf_.append(chunk, read);
+            continue;
         }
 
-        bytes += read;
-        size -= read;
-    }
+        if (read == -1 && errno == EINTR)
+            continue;
 
-    return true;
+        // Drained everything there was; the connection is still fine
+        if (read == -1 && (errno == EAGAIN || errno == EWOULDBLOCK))
+            return true;
+
+        // 0 means Discord closed its end
+        Close();
+        return false;
+    }
+}
+
+bool DiscordIpc::WaitReadable(int timeout_ms)
+{
+    pollfd pfd{ fd_, POLLIN, 0 };
+    return poll(&pfd, 1, timeout_ms) > 0;
 }
 
 #endif
