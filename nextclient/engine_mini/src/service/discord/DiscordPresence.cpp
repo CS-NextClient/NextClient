@@ -80,12 +80,16 @@ static tao::json::value BuildActivity()
         { "large_text", "NextClient" }
     };
 
+    tao::json::value button = { { "label", "Get NextClient" }, { "url", "https://nextclient.ru/" } };
+    tao::json::value buttons = tao::json::value::array({ button });
+
     if (cls->state != ca_active)
     {
         return {
             { "details", "Counter-Strike 1.6" },
             { "state", "In main menu" },
             { "assets", assets },
+            { "buttons", buttons },
             { "timestamps", { { "start", g_StartTime } } }
         };
     }
@@ -109,6 +113,10 @@ static tao::json::value BuildActivity()
     {
         activity["party"]["id"] = std::string("party-") + static_cast<const char*>(cls->servername);
         activity["secrets"] = { { "join", static_cast<const char*>(cls->servername) } };
+    }
+    else 
+    {
+        activity["buttons"] = buttons;
     }
 
     return activity;
