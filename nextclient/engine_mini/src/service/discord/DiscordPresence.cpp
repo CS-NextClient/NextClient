@@ -28,10 +28,10 @@ static int GetCurrentPid()
 #endif
 }
 
-static void GetMapName(const char* levelname, char* out, size_t out_size)
+static void GetFileBaseName(const char* path, char* out, size_t out_size)
 {
-    const char* slash = strrchr(levelname, '/');
-    const char* start = slash ? slash + 1 : levelname;
+    const char* slash = strrchr(path, '/');
+    const char* start = slash ? slash + 1 : path;
 
     snprintf(out, out_size, "%s", start);
 
@@ -78,9 +78,6 @@ static tao::json::value BuildActivity()
         return activity;
     }
 
-    char map[64];
-    GetMapName(cl->levelname, map, sizeof(map));
-
     if (!cls->demoplayback)
     {
         if (cls->state == ca_connecting || cls->state == ca_connected || cls->state == ca_uninitialized)
@@ -96,7 +93,7 @@ static tao::json::value BuildActivity()
 
             if (is_local)
             {
-                activity["state"] = "Local game";
+                activity["state"] = "Single-player";
                 activity["buttons"] = buttons;
             }
             else
@@ -105,23 +102,34 @@ static tao::json::value BuildActivity()
                 if (!hostname.empty() && IsValidUtf8(hostname))
                 {
                     size_t size = GeoIp_GetUtf8PrefixSize(hostname, 128);
-                    activity["state"] = hostname.substr(0, size);
+                    activity["details"] = hostname.substr(0, size);
                 }
-                else activity["state"] = "On a server";
+                else activity["details"] = "On a server";
 
+                activity["state"] = "Multiplayer";
                 activity["party"]["id"] = std::string("party-") + static_cast<const char*>(cls->servername);
                 activity["secrets"] = { { "join", static_cast<const char*>(cls->servername) } };
             }
 
-            activity["details"] = static_cast<const char*>(map);
             activity["party"]["size"] = tao::json::value::array({ CountPlayers(), cl->maxclients });
         }
     }
     else
     {
-        activity["details"] = static_cast<const char*>(map);
-        activity["state"] = "Watching a demo";
         activity["buttons"] = buttons;
+
+        if (cls->timedemo)
+        {
+            activity["state"] = "Running a benchmark";
+            return activity;
+        }
+
+        char map[64];
+        GetFileBaseName(cl->levelname, map, sizeof(map));
+
+        activity["details"] = "Watching a demo";
+        activity["state"] = std::string(map) + " (" + std::to_string(CountPlayers()) + "/" + std::to_string(cl->maxclients) + ")";
+        activity["type"] = 3;
     }
 
     return activity;
