@@ -14,6 +14,7 @@
 #include <tao/json.hpp>
 #include <cstring>
 #include <cstdio>
+#include <cctype>
 #include <ctime>
 
 static int GetCurrentPid()
@@ -35,6 +36,26 @@ static void GetMapName(const char* levelname, char* out, size_t out_size)
     char* dot = strrchr(out, '.');
     if (dot)
         *dot = '\0';
+}
+
+static bool IsSafeServerAddress(const char* address)
+{
+    if (address == nullptr)
+        return false;
+
+    size_t length = strlen(address);
+    if (length == 0 || length > 63)
+        return false;
+
+    for (size_t i = 0; i < length; i++)
+    {
+        unsigned char c = address[i];
+
+        if (!isalnum(c) && c != '.' && c != ':' && c != '-')
+            return false;
+    }
+
+    return true;
 }
 
 static int CountPlayers()
@@ -72,7 +93,9 @@ static tao::json::value BuildActivity()
     char map[64];
     GetMapName(cl->levelname, map, sizeof(map));
 
-    return {
+    bool is_local = strcmp(cls->servername, "local") == 0;
+
+    tao::json::value activity = {
         { "details", static_cast<const char*>(map) },
         { "state", "On a server" },
         { "party", {
@@ -81,6 +104,14 @@ static tao::json::value BuildActivity()
         { "assets", assets },
         { "timestamps", { { "start", g_StartTime } } }
     };
+
+    if (!is_local)
+    {
+        activity["party"]["id"] = std::string("party-") + static_cast<const char*>(cls->servername);
+        activity["secrets"] = { { "join", static_cast<const char*>(cls->servername) } };
+    }
+
+    return activity;
 }
 
 static DiscordIpc g_DiscordIpc;
@@ -147,6 +178,60 @@ void DiscordPresence_Frame()
         {
             g_DiscordReady = true;
             Con_Printf("Discord: ready!\n");
+
+            tao::json::value subscribe = {
+                { "cmd", "SUBSCRIBE" },
+                { "evt", "ACTIVITY_JOIN" },
+                { "nonce", std::to_string(++g_Nonce) }
+            };
+            g_DiscordIpc.Write(DiscordOpcode::Frame, tao::json::to_string(subscribe));
+        }
+        else if (opcode == DiscordOpcode::Frame)
+        {
+            tao::json::value json;
+
+            try
+            {
+                json = tao::json::from_string(message);
+            }
+            catch(const std::exception& e)
+            {
+                Con_Printf("Discord: bad message: %s\n", e.what());
+                continue;
+            }
+
+            const tao::json::value* evt = json.find("evt");
+            if (evt == nullptr || !evt->is_string())
+                continue;
+            
+            if (evt->get_string() == "ERROR")
+            {
+                Con_Printf("Discord: error %s\n", message.c_str());
+            }
+            else if (evt->get_string() == "ACTIVITY_JOIN")
+            {
+                const tao::json::value* data = json.find("data");
+                if (data == nullptr || !data->is_object())
+                    continue;
+                
+                const tao::json::value* secret = data->find("secret");
+                if (secret == nullptr || !secret->is_string())
+                    continue;
+                
+                const std::string& address = secret->get_string();
+
+                if (!IsSafeServerAddress(address.c_str()))
+                {
+                    Con_Printf("Discord: rejected join address\n");
+                    continue;
+                }
+
+                char command[96];
+                snprintf(command, sizeof(command), "connect %s\n", address.c_str());
+                gEngfuncs.pfnClientCmd(command);
+
+                Con_Printf("Discord: join %s\n", address.c_str());
+            }
         }
         else if (opcode == DiscordOpcode::Ping)
         {
