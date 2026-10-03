@@ -3,4 +3,4 @@
 	url = https://github.com/microsoft/vcpkg
 [submodule "dep/NclNitroApi"]
 	path = dep/NclNitroApi
-	url = https://github.com/KotyaraKryt/NclNitroApi
+	url = https://github.com/CS-NextClient/NclNitroApi
