@@ -5,13 +5,17 @@ CRegistry::CRegistry(std::string context) :
     m_context(std::move(context))
 {
     m_bValid = false;
+#ifdef _WIN32
     m_hKey = 0;
+#endif
 }
 
 CRegistry::~CRegistry()
 {
     CRegistry::Shutdown();
 }
+
+#ifdef _WIN32
 
 int CRegistry::ReadInt(const char* key, int defaultValue)
 {
@@ -78,7 +82,6 @@ void CRegistry::WriteString(const char* key, const char* value)
     RegSetValueExA(m_hKey, key, 0, REG_SZ, (LPBYTE)value, dwSize);
 }
 
-
 void CRegistry::Init()
 {
     LONG lResult;
@@ -110,3 +113,75 @@ void CRegistry::DeleteKey(const char *key)
 
     RegDeleteKeyA(m_hKey, key);
 }
+
+#else
+
+int CRegistry::ReadInt(const char* key, int defaultValue)
+{
+    if (!m_bValid)
+        return defaultValue;
+
+    std::optional<std::string> value = m_config->get_value(m_context, key);
+    if (!value)
+        return defaultValue;
+
+    try
+    {
+        return std::stoi(*value);
+    }
+    catch (...)
+    {
+        return defaultValue;
+    }
+}
+
+void CRegistry::WriteInt(const char* key, int value)
+{
+    if (!m_bValid)
+        return;
+
+    m_config->set_value(m_context, key, std::to_string(value), true);
+}
+
+const char* CRegistry::ReadString(const char* key, const char* defaultValue)
+{
+    if (!m_bValid)
+        return defaultValue;
+
+    std::optional<std::string> value = m_config->get_value(m_context, key);
+    if (!value)
+        return defaultValue;
+
+    m_szBuffer = *value;
+    return m_szBuffer.c_str();
+}
+
+void CRegistry::WriteString(const char* key, const char* value)
+{
+    if (!m_bValid)
+        return;
+
+    m_config->set_value(m_context, key, value, true);
+}
+
+void CRegistry::Init()
+{
+    m_config = std::make_unique<nitro_utils::FileConfigProvider>("registry.ini");
+    m_bValid = true;
+}
+
+void CRegistry::Shutdown(void)
+{
+    if (!m_bValid)
+        return;
+
+    m_bValid = false;
+    m_config = nullptr;
+}
+
+void CRegistry::DeleteKey(const char* key)
+{
+    // unused - no callers anywhere in the codebase
+}
+
+#endif

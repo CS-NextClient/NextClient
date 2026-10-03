@@ -32,7 +32,9 @@
 #include "LogoFile.h"
 
 #include <csetjmp>
+#ifdef _WIN32
 #include <io.h>
+#endif
 
 #include "ImageLib/LoadBMP.h"
 
@@ -245,7 +247,11 @@ void COptionsSubMultiplayer::ColorForName(char const *pszColorName, int &r, int 
     }
 }
 
+#ifdef _WIN32
 #include <Windows.h>
+#else
+#include "utils/bmp_compat.h"
+#endif
 void COptionsSubMultiplayer::RemapLogoPalette(char *filename, int r, int g, int b)
 {
     char infile[256];

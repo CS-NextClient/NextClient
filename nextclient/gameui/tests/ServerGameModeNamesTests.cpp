@@ -22,11 +22,37 @@ namespace
         return std::string(std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>());
     }
 
-    // The UTF-8 text of a localization file, which is UTF-16 with a byte order mark
+    // The UTF-8 text of a localization file, which is UTF-16LE with a byte
+    // order mark. Decoded by hand instead of reinterpret_cast<wchar_t*>:
+    // wchar_t is 2 bytes on Windows (matching UTF-16) but 4 on Linux, so
+    // that cast only produces the right answer on one of the two platforms.
     std::string ReadUtf16File(const char* path)
     {
         std::string bytes = ReadFile(path);
-        std::wstring wide(reinterpret_cast<const wchar_t*>(bytes.data()), bytes.size() / sizeof(wchar_t));
+
+        size_t start = (bytes.size() >= 2 &&
+                         static_cast<unsigned char>(bytes[0]) == 0xFF &&
+                         static_cast<unsigned char>(bytes[1]) == 0xFE)
+                            ? 2
+                            : 0;
+
+        std::wstring wide;
+        for (size_t i = start; i + 1 < bytes.size(); i += 2)
+        {
+            char32_t unit = static_cast<unsigned char>(bytes[i]) | (static_cast<unsigned char>(bytes[i + 1]) << 8);
+
+            if (unit >= 0xD800 && unit <= 0xDBFF && i + 3 < bytes.size())
+            {
+                char32_t low = static_cast<unsigned char>(bytes[i + 2]) | (static_cast<unsigned char>(bytes[i + 3]) << 8);
+                if (low >= 0xDC00 && low <= 0xDFFF)
+                {
+                    unit = 0x10000 + ((unit - 0xD800) << 10) + (low - 0xDC00);
+                    i += 2;
+                }
+            }
+
+            wide.push_back(static_cast<wchar_t>(unit));
+        }
 
         return nitro_utils::wide_to_utf8(wide);
     }

@@ -4,10 +4,10 @@
 
 class FileMasterClient : public MasterClientCacheInterface
 {
-    std::wstring file_name_{};
+    std::string file_name_{};
 
 public:
-    explicit FileMasterClient(std::wstring file_name);
+    explicit FileMasterClient(std::string file_name);
 
     concurrencpp::result<std::vector<MasterServerEntry>> GetServerListAsync(
         std::function<void(const MasterServerEntry&)> entry_received_callback,
@@ -17,10 +17,10 @@ public:
     void Save(const std::vector<MasterServerEntry>& server_list) override;
 
 private:
-    static std::vector<MasterServerEntry> ReadFromFile(const std::wstring& file_name);
-    static void WriteToFile(const std::wstring& file_name, const std::vector<MasterServerEntry>& server_list);
+    static std::vector<MasterServerEntry> ReadFromFile(const std::string& file_name);
+    static void WriteToFile(const std::string& file_name, const std::vector<MasterServerEntry>& server_list);
 
-    static std::wstring GetSaveFilePath(const std::wstring& file_name);
-    static std::wstring GetSaveDirectoryPath();
+    static std::string GetSaveFilePath(const std::string& file_name);
+    static std::string GetSaveDirectoryPath();
 };
 

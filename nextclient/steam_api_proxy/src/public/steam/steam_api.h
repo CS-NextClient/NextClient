@@ -29,6 +29,10 @@
 #endif
 
 // Steam API export macro
+#ifndef EXT_FUNC
+#define EXT_FUNC
+#endif
+
 #if defined( _WIN32 ) && !defined( _X360 )
 	#if defined( STEAM_API_EXPORTS )
 	#define S_API extern "C" __declspec( dllexport )

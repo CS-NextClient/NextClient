@@ -29,12 +29,19 @@ jobs:
           name: NextClient-pdb-${{ github.sha }}
           path: dist/pdb
 
+      - name: Download Linux build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: NextClient-linux-${{ github.sha }}
+          path: dist/linux
+
       - name: Package release archives
         env:
           TAG: ${{ github.event.release.tag_name }}
         run: |
           (cd dist/nextclient && zip -r "$GITHUB_WORKSPACE/NextClient-$TAG.zip" .)
           (cd dist/pdb && zip -r "$GITHUB_WORKSPACE/NextClient-$TAG-pdb.zip" .)
+          mv dist/linux/NextClient-linux.tar.gz "NextClient-$TAG-linux.tar.gz"
 
       - name: Attest build provenance
         uses: actions/attest-build-provenance@v2
@@ -42,9 +49,10 @@ jobs:
           subject-path: |
             NextClient-${{ github.event.release.tag_name }}.zip
             NextClient-${{ github.event.release.tag_name }}-pdb.zip
+            NextClient-${{ github.event.release.tag_name }}-linux.tar.gz
 
       - name: Upload assets to release
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ github.event.release.tag_name }}
-        run: gh release upload "$TAG" "NextClient-$TAG.zip" "NextClient-$TAG-pdb.zip" --clobber --repo "$GITHUB_REPOSITORY"
+        run: gh release upload "$TAG" "NextClient-$TAG.zip" "NextClient-$TAG-pdb.zip" "NextClient-$TAG-linux.tar.gz" --clobber --repo "$GITHUB_REPOSITORY"

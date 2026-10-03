@@ -5,6 +5,9 @@
   "vcpkg-configuration": {
     "overlay-ports": [
       "./custom-vcpkg-ports"
+    ],
+    "overlay-triplets": [
+      "./custom-vcpkg-triplets"
     ]
   },
   "dependencies" : [ {
@@ -15,20 +18,24 @@
     "version>=" : "7.24.2"
   }, {
     "name" : "uwebsockets",
-    "version>=" : "20.74.0"
+    "version>=" : "20.74.0",
+    "platform": "windows"
   }, {
     "name" : "gtest",
     "version>=" : "1.17.0"
   }, {
     "name" : "sentry-native",
     "version>=" : "0.11.3",
-    "features": ["compression"]
+    "features": ["compression"],
+    "platform": "windows"
   }, {
     "name" : "glfw3",
-    "version>=" : "3.4"
+    "version>=" : "3.4",
+    "platform": "windows"
   }, {
     "name" : "cmakerc",
-    "version>=" : "2023-07-24"
+    "version>=" : "2023-07-24",
+    "platform": "windows"
   }, {
     "name" : "taocpp-json"
   }, {
@@ -36,7 +43,8 @@
     "version>=" : "0.1.7"
   }, {
     "name": "zlib",
-    "version>=": "1.3.1"
+    "version>=": "1.3.1",
+    "platform": "windows"
   }, {
     "name": "imageinfo",
     "version>=": "2024-12-02#0"
@@ -49,6 +57,18 @@
   }, {
     "name": "libmaxminddb",
     "version>=": "1.13.3"
+  }, {
+    "name": "sdl2",
+    "version>=": "2.30.9",
+    "platform": "!windows",
+    "default-features": false,
+    "features": ["x11"]
+  }, {
+    "name": "openssl",
+    "platform": "!windows"
+  }, {
+    "name": "curl",
+    "platform": "!windows"
   }],
   "overrides": [ {
     "name": "taocpp-json",

@@ -1,4 +1,5 @@
 #include "GameUINext.h"
+#include <cstdio>
 #include <vgui_controls/MessageBox.h>
 #include <library_config.h>
 #include "../ServerBrowser/ServerBrowserDialog.h"
@@ -31,7 +32,11 @@ void CGameUINext::GetVersion(int* major, int* minor, int* patch, char* buffer, i
         *patch = GAME_UI_VERSION_PATCH;
 
     if (buffer != nullptr)
+#ifdef _WIN32
         strcpy_s(buffer, size, GAME_UI_VERSION);
+#else
+        snprintf(buffer, size, "%s", GAME_UI_VERSION);
+#endif
 }
 
 void CGameUINext::GetInternetFilterState(FilterState *out)

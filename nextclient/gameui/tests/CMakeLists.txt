@@ -13,15 +13,20 @@ add_executable(${TARGET_NAME}
 )
 
 target_compile_definitions(${TARGET_NAME} PRIVATE
-        _WIN32
-        WIN32
-        _WIN32_WINNT=0x0600
-        WINVER=0x0600
-        NOMINMAX
-        _UNICODE
-        WIN32_LEAN_AND_MEAN
         NEXTCLIENT_ASSETS_DIR="${NEXTCLIENT_ROOT}/assets"
 )
+
+if (WIN32)
+        target_compile_definitions(${TARGET_NAME} PRIVATE
+                _WIN32
+                WIN32
+                _WIN32_WINNT=0x0600
+                WINVER=0x0600
+                NOMINMAX
+                _UNICODE
+                WIN32_LEAN_AND_MEAN
+        )
+endif()
 
 target_link_libraries(${TARGET_NAME} PRIVATE
         GTest::gtest

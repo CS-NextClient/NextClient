@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <algorithm>
 #include "ScriptObject.h"
 #include "GameUi.h"
 #include <vgui_controls/Label.h>
@@ -302,10 +303,10 @@ void CScriptObject::WriteToFile(FileHandle_t fp)
             fVal = fcurValue;
 
             if (fMin != -1.0)
-                fVal = __max(fVal, fMin);
+                fVal = std::max(fVal, fMin);
 
             if (fMax != -1.0)
-                fVal = __min(fVal, fMax);
+                fVal = std::min(fVal, fMax);
 
             g_pFullFileSystem->FPrintf(fp, "\"%f\"\r\n", fVal);
             break;
@@ -370,10 +371,10 @@ void CScriptObject::WriteToConfig(void)
             fVal = fcurValue;
 
             if (fMin != -1.0)
-                fVal = __max(fVal, fMin);
+                fVal = std::max(fVal, fMin);
 
             if (fMax != -1.0)
-                fVal = __min(fVal, fMax);
+                fVal = std::min(fVal, fMax);
 
             Q_snprintf(szValue, sizeof(szValue), "%s", CleanFloat(fVal));
             break;

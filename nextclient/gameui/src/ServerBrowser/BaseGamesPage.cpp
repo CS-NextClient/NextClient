@@ -35,7 +35,13 @@
 
 #include <nitro_utils/string_utils.h>
 
+#ifdef _WIN32
 #include <Windows.h>
+#else
+#ifndef MAX_PATH
+#define MAX_PATH 260
+#endif
+#endif
 
 using namespace vgui2;
 
@@ -937,7 +943,11 @@ void CBaseGamesPage::UpdateRefreshStatusText()
         wchar_t header[256];
         wchar_t count[128];
 
+#ifdef _WIN32
         _itow(m_pGameList->GetItemCount(), count, 10);
+#else
+        swprintf(count, sizeof(count) / sizeof(count[0]), L"%d", m_pGameList->GetItemCount());
+#endif
         g_pVGuiLocalize->ConstructString(header, sizeof(header), g_pVGuiLocalize->Find("#ServerBrowser_ServersCount"), 1, count);
 
         if (m_ColumnsMap.contains(GameListColumnType::ServerName))
@@ -1348,6 +1358,7 @@ std::wstring CBaseGamesPage::FormatUnixTime(const char* format, uint32_t unix_ti
     ss.imbue(std::locale(setlocale(LC_TIME, nullptr)));
     ss << std::put_time(date, format);
 
+#ifdef _WIN32
     std::wstring wstr_time;
     int convert_result = MultiByteToWideChar(CP_ACP, 0, ss.str().c_str(), ss.str().size(), NULL, 0);
     if (convert_result != 0)
@@ -1355,6 +1366,9 @@ std::wstring CBaseGamesPage::FormatUnixTime(const char* format, uint32_t unix_ti
         wstr_time.resize(convert_result);
         MultiByteToWideChar(CP_ACP, 0, ss.str().c_str(), ss.str().size(), wstr_time.data(), (int)wstr_time.size());
     }
+#else
+    std::wstring wstr_time = nitro_utils::utf8_to_wide(ss.str());
+#endif
 
     return wstr_time;
 }

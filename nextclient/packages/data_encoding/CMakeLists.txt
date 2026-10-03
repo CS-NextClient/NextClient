@@ -5,6 +5,7 @@ add_library(data_encoding STATIC
         src/aes.cpp
         src/base64.cpp
         src/md5.cpp
+        src/sha256.cpp
 )
 add_library(data_encoding::data_encoding ALIAS data_encoding)
 

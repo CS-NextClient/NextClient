@@ -1,5 +1,6 @@
 #include "engine.h"
 #include "cl_main.h"
+#include "client.h"
 
 #include <optick.h>
 #include <next_engine_mini/nclm_proto.h>
@@ -70,6 +71,25 @@ namespace
         {
             writer.WriteBuf(salted_hwid, salted_size);
         }
+        writer.Send();
+    }
+
+    void SendClientPlatform(sizebuf_t* msgbuf)
+    {
+#if defined(_WIN32)
+        const NCLM_PLATFORM platform = NCLM_PLATFORM::Windows;
+#elif defined(__linux__)
+        const NCLM_PLATFORM platform = NCLM_PLATFORM::Linux;
+#else
+#error "Unknown platform for CLIENT_PLATFORM"
+#endif
+
+        MSG_WriteByte(msgbuf, clc_ncl_message);
+        MSG_WriteLong(msgbuf, NCLM_HEADER);
+
+        NclmBodyWriter writer(msgbuf);
+        writer.WriteByte(static_cast<uint8_t>(NCLM_C2S::CLIENT_PLATFORM));
+        writer.WriteByte(static_cast<uint8_t>(platform));
         writer.Send();
     }
 } // namespace
@@ -508,6 +528,9 @@ void CL_HandleNclMessage()
         case NCLM_S2C::SERVER_HELLO:
             {
                 ParseNextClientVersion(body.ReadString(), g_ServerModuleVersion);
+
+                sizebuf_t* msgbuf = &cls->netchan.message;
+                SendClientPlatform(msgbuf);
                 break;
             }
 

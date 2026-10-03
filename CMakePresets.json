@@ -46,6 +46,17 @@
         "value": "x86",
         "strategy": "external"
       }
+    },
+
+    {
+      "name": "linux",
+      "inherits": "base",
+      "generator": "Ninja Multi-Config",
+      "cacheVariables": {
+        "VCPKG_TARGET_TRIPLET": "x86-linux",
+        "CMAKE_C_FLAGS": "-m32 -march=pentium4 -mfpmath=sse",
+        "CMAKE_CXX_FLAGS": "-m32 -march=pentium4 -mfpmath=sse"
+      }
     }
   ],
 
@@ -83,6 +94,18 @@
     {
       "name": "ninja-debug",
       "configurePreset": "ninja",
+      "configuration": "Debug"
+    },
+
+    {
+      "name": "linux-release",
+      "configurePreset": "linux",
+      "configuration": "Release"
+    },
+
+    {
+      "name": "linux-debug",
+      "configurePreset": "linux",
       "configuration": "Debug"
     }
   ]

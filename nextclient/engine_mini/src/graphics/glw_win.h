@@ -30,11 +30,12 @@
 
 #pragma once
 
-#ifndef _WIN32
-    #error "You should not be including this file on this platform!"
+#ifdef _WIN32
+    #include <Windows.h>
+#else
+    #include <port.h>
 #endif
 
-#include <Windows.h>
 #include "hlsdk.h"
 
 struct glwstate_t

@@ -5,7 +5,16 @@
 #include <format>
 #include <optick.h>
 
-#include <winsock2.h>
+#ifdef _WIN32
+    #include <winsock2.h>
+#else
+    #include <cerrno>
+    #include <sys/socket.h>
+    #include <unistd.h>
+    #define INVALID_SOCKET (-1)
+    #define closesocket close
+    #define WSAGetLastError() errno
+#endif
 #include <service/matchmaking/sourcequery/source_query_constants.h>
 #include <steam/steam_api.h>
 #include <ncl_utils/scope_exit.h>

@@ -58,7 +58,7 @@ std::shared_ptr<MasterClientCacheInterface> MasterClientFactory::CreateCacheClie
         return std::make_shared<NullCacheMasterClient>();
     }
 
-    return std::make_shared<FileMasterClient>(L"internet_cache.dat");
+    return std::make_shared<FileMasterClient>("internet_cache.dat");
 }
 
 void MasterClientFactory::LoadConfigIfNeeded()

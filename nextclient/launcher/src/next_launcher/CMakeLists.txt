@@ -15,6 +15,12 @@ file(GLOB_RECURSE LAUNCHER_SOURCES
         "app.manifest"
 )
 
+if (NOT WIN32)
+    # taskbar_icon.* sets the Windows taskbar progress icon (Shell API) - no
+    # equivalent concept outside Windows.
+    list(FILTER LAUNCHER_SOURCES EXCLUDE REGEX "taskbar_icon\\.(cpp|h)$")
+endif ()
+
 add_executable(${TARGET_NAME} WIN32
         ${LAUNCHER_SOURCES}
 )
@@ -38,8 +44,13 @@ target_link_libraries(${TARGET_NAME} PRIVATE
         cpr::cpr
         CURL::libcurl
         ZLIB::ZLIB
-        Dbghelp.lib
 )
+
+if (WIN32)
+    target_link_libraries(${TARGET_NAME} PRIVATE
+            Dbghelp.lib
+    )
+endif ()
 
 target_compile_definitions(${TARGET_NAME} PRIVATE
         MAX_LOGFILE_SIZE=524288 #bytes

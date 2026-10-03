@@ -1,6 +1,11 @@
 #include <taskcoro/TaskCoro.h>
 #include <chrono>
 
+#ifndef _WIN32
+    #include <cerrno>
+    #include <sys/ioctl.h>
+#endif
+
 using namespace concurrencpp;
 using namespace taskcoro;
 
@@ -55,7 +60,13 @@ namespace taskcoro::async_io
 
             timeval tv_remain = timeout_to_timeval(slice);
 
+            // Windows' select() ignores its first argument; POSIX requires it to be the
+            // highest fd in any of the sets, plus one.
+#ifdef _WIN32
             int ready = select(0, &set, nullptr, nullptr, &tv_remain);
+#else
+            int ready = select(sock + 1, &set, nullptr, nullptr, &tv_remain);
+#endif
             if (ready == 0)
             {
                 continue;
@@ -66,26 +77,43 @@ namespace taskcoro::async_io
                 return std::make_tuple(SendAndRecvStatus::Error, ByteBuffer{});
             }
 
+            // ioctlsocket() is a Winsock-only wrapper; plain ioctl() does the same job on POSIX.
+#ifdef _WIN32
             u_long pending = 0;
             bool pending_ok = ioctlsocket(sock, FIONREAD, &pending) == 0;
+#else
+            int pending = 0;
+            bool pending_ok = ioctl(sock, FIONREAD, &pending) == 0;
+#endif
             size_t recv_capacity = 65535;
 
             if (pending_ok && pending > 0)
             {
-                recv_capacity = (size_t)std::min<u_long>(pending, 65535);
+                recv_capacity = std::min<size_t>((size_t)pending, 65535);
             }
 
             ByteBuffer recv_buffer(recv_capacity);
             recv_buffer.Seek(0);
 
             sockaddr_in from_addr{};
+#ifdef _WIN32
             int from_len = sizeof(from_addr);
+#else
+            socklen_t from_len = sizeof(from_addr);
+#endif
 
-            int bytes_received = recvfrom(sock, (char*)recv_buffer.GetBuffer(), (int)recv_buffer.Size(), 0, (SOCKADDR*)&from_addr, &from_len);
+            int bytes_received = recvfrom(sock, (char*)recv_buffer.GetBuffer(), (int)recv_buffer.Size(), 0, (sockaddr*)&from_addr, &from_len);
             if (bytes_received < 0)
             {
+                // Winsock keeps socket errors separate from errno behind WSAGetLastError();
+                // POSIX sockets just set the regular libc errno like any other syscall.
+#ifdef _WIN32
                 const int err = WSAGetLastError();
                 if (err == WSAEWOULDBLOCK || err == WSAEINTR)
+#else
+                const int err = errno;
+                if (err == EWOULDBLOCK || err == EAGAIN || err == EINTR)
+#endif
                 {
                     continue;
                 }

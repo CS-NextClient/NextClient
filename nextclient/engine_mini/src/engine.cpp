@@ -166,7 +166,13 @@ static void EngineMiniUninitialize()
     CL_DeleteHttpDownloadManager();
     KV_UninitializeKeyValuesSystem();
 
+#ifdef _WIN32
     JSAPI_Shutdown();
+#endif
+
+    // MultiSourceQuery's thread only exits once its owner is destroyed, and
+    // TaskCoro::UnInitialize waits for every thread it runs
+    g_pMatchmakingServers = nullptr;
 
     taskcoro::TaskCoro::UnInitialize();
     g_pTaskCoroImpl = nullptr;
@@ -320,7 +326,11 @@ static void OnGameInitializing(void* mainwindow, HDC* pmaindc, HGLRC* pbaseRC, c
     v.Assign(cl, GET_VARIABLE_NAME(cl), eng()->client_state);
     v.Assign(cls, GET_VARIABLE_NAME(cls), eng()->client_static);
 
+#ifdef _WIN32
     CreateInterfaceFn gameui_factory = Sys_GetFactory("gameui.dll");
+#else
+    CreateInterfaceFn gameui_factory = Sys_GetFactory("gameui.so");
+#endif
     v.Assign(g_pGameUi, GET_VARIABLE_NAME(g_pGameUi), (IGameUI*)InitializeInterface(GAMEUI_INTERFACE_VERSION_GS, &gameui_factory, 1));
     v.Assign(g_GameConsoleNext, GET_VARIABLE_NAME(g_GameConsoleNext), (IGameConsoleNext*)InitializeInterface(GAMECONSOLE_NEXT_INTERFACE_VERSION, &gameui_factory, 1));
     v.Assign(g_GameConsole, GET_VARIABLE_NAME(g_GameConsole), (IGameConsole*)InitializeInterface(GAMECONSOLE_INTERFACE_VERSION_GS, &gameui_factory, 1));
@@ -400,17 +410,25 @@ static void OnGameInitializing(void* mainwindow, HDC* pmaindc, HGLRC* pbaseRC, c
     v.Assign(p_gHostSpawnCount, GET_VARIABLE_NAME(p_gHostSpawnCount), eng()->gHostSpawnCount);
     v.Assign(p_net_local_adr, GET_VARIABLE_NAME(p_net_local_adr), eng()->net_local_adr);
     v.Assign(p_ip_sockets, GET_VARIABLE_NAME(p_ip_sockets), eng()->ip_sockets);
+#ifdef _WIN32
     v.Assign(p_ipx_sockets, GET_VARIABLE_NAME(p_ipx_sockets), eng()->ipx_sockets);
+#else
+    // The Linux engine has no IPX support at all, so these sockets are never open
+    static int no_ipx_sockets[NS_MAX]{};
+    p_ipx_sockets = no_ipx_sockets;
+#endif
     v.Assign(p_g_GameServerAddress, GET_VARIABLE_NAME(p_g_GameServerAddress), eng()->g_GameServerAddress);
     v.Assign(p_g_LastScreenUpdateTime, GET_VARIABLE_NAME(p_g_LastScreenUpdateTime), eng()->g_LastScreenUpdateTime);
     v.Assign(p_maxTransObjs, GET_VARIABLE_NAME(p_maxTransObjs), eng()->maxTransObjs);
 
     if (v.HasNullPtr())
     {
+        std::string error = std::format(BREADCRUMBS_TAG " OnGameInitializing: PtrValidator failed: {}", nitro_utils::join(v.GetNullPtrNames().cbegin(), v.GetNullPtrNames().cend(), ", "));
+        nitroapi::NitroApiInterface* nitro_api = g_NitroApi;
+
         EngineMiniUninitialize();
 
-        std::string error = std::format(BREADCRUMBS_TAG " OnGameInitializing: PtrValidator failed: {}", nitro_utils::join(v.GetNullPtrNames().cbegin(), v.GetNullPtrNames().cend(), ", "));
-        g_NitroApi->GetEngineData()->Sys_Error.InvokeChained(error.c_str());
+        nitro_api->GetEngineData()->Sys_Error.InvokeChained(error.c_str());
         return;
     }
 
@@ -438,6 +456,12 @@ static void OnGameInitializing(void* mainwindow, HDC* pmaindc, HGLRC* pbaseRC, c
     g_Unsubs.emplace_back(eng()->Mod_ValidateCRC             |= [](const char* name, CRC32_t crc, const auto& next)                    { return Mod_ValidateCRC(name, crc); });
     g_Unsubs.emplace_back(eng()->Mod_NeedCRC                 |= [](const char* name, qboolean needCRC, const auto& next)               { Mod_NeedCRC(name, needCRC); });
     g_Unsubs.emplace_back(eng()->Mod_LoadModel               |= [](model_t* mod, qboolean crash, qboolean trackCRC, const auto& next)  { return Mod_LoadModel(mod, crash, trackCRC); });
+#ifndef _WIN32
+    // GCC split hw.so's Mod_LoadModel into a Mod_LoadModel.part.2 clone that these two jump
+    // into directly, skipping the hooked entry and handing our mod_known entries to the engine's loader
+    g_Unsubs.emplace_back(eng()->Mod_ForName                 |= [](const char* name, qboolean crash, qboolean trackCRC, const auto& next) { return Mod_ForName(name, crash, trackCRC); });
+    g_Unsubs.emplace_back(eng()->Mod_Extradata               |= [](model_t* mod, const auto& next)                                     { return Mod_Extradata(mod); });
+#endif
     g_Unsubs.emplace_back(eng()->SPR_Init                    |= [](const auto& next)                                                   { return SPR_Init(); });
     g_Unsubs.emplace_back(eng()->SPR_Shutdown                |= [](const auto& next)                                                   { return SPR_Shutdown(); });
     g_Unsubs.emplace_back(eng()->SPR_Shutdown_NoModelFree    |= [](const auto& next)                                                   { return SPR_Shutdown_NoModelFree(); });
@@ -476,6 +500,10 @@ static void OnGameInitializing(void* mainwindow, HDC* pmaindc, HGLRC* pbaseRC, c
     g_Unsubs.emplace_back(eng()->DT_SetRenderState           |= [](int diffuseId, const auto& next)                                    { return DT_SetRenderState(diffuseId); });
     g_Unsubs.emplace_back(eng()->DT_LoadDetailTexture        |= [](const char *diffuseName, int diffuseId, const auto& next)           { DT_LoadDetailTexture(diffuseName, diffuseId); });
     g_Unsubs.emplace_back(eng()->R_ForceCVars                |= [](qboolean mp, const auto& next)                                      { R_ForceCVars(mp); });
+#ifndef _WIN32
+    // R_Clear and R_SetupFrame call this split-out body directly, and only in multiplayer
+    g_Unsubs.emplace_back(eng()->R_ForceCVars_part           |= [](const auto& next)                                                   { R_ForceCVars(true); });
+#endif
 
     //
     // The rest of the hooks and subscribers
@@ -505,8 +533,10 @@ static void OnGameInitializing(void* mainwindow, HDC* pmaindc, HGLRC* pbaseRC, c
     g_Unsubs.emplace_back(eng()->Cbuf_AddText += [](const char *text, sizebuf_t *buf, char* result) {
         // for cases when client downloading files through dlfile
         // give him a chance to use http download again
+        // called directly: pfnClientCmd adds a command and its "\n" in two Cbuf_AddText calls and
+        // this runs in between, so a queued "httpstop" glued onto the console's "disconnect"
         if (std::strncmp(text, "disconnect", 10) == 0)
-            gEngfuncs.pfnClientCmd("httpstop");
+            CL_HTTPStop_f();
     });
 
     g_Unsubs.emplace_back(eng()->Sys_InitGame += [](char *pOrgCmdLine, char *pBaseDir, void *pwnd, int bIsDedicated, bool ret) {
@@ -581,7 +611,11 @@ static void OnGameInitialized()
 {
     nitro_utils::PtrValidator v;
 
+#ifdef _WIN32
     CreateInterfaceFn vgui2_factory = Sys_GetFactory("vgui2.dll");
+#else
+    CreateInterfaceFn vgui2_factory = Sys_GetFactory("vgui2.so");
+#endif
     g_pLocalize = v.Validate((vgui2::ILocalize*)InitializeInterface(VGUI_LOCALIZE_INTERFACE_VERSION, &vgui2_factory, 1), GET_VARIABLE_NAME(localize));
     g_pLocalize->AddFile(g_pFileSystem, "resource/nextclient_%language%.txt");
 
@@ -614,10 +648,12 @@ static void OnGameInitialized()
 
     if (v.HasNullPtr())
     {
+        std::string error = std::format(BREADCRUMBS_TAG " OnGameInitialize: PtrValidator failed: {}", nitro_utils::join(v.GetNullPtrNames().cbegin(), v.GetNullPtrNames().cend(), ", "));
+        nitroapi::NitroApiInterface* nitro_api = g_NitroApi;
+
         EngineMiniUninitialize();
 
-        std::string error = std::format(BREADCRUMBS_TAG " OnGameInitialize: PtrValidator failed: {}", nitro_utils::join(v.GetNullPtrNames().cbegin(), v.GetNullPtrNames().cend(), ", "));
-        g_NitroApi->GetEngineData()->Sys_Error.InvokeChained(error.c_str());
+        nitro_api->GetEngineData()->Sys_Error.InvokeChained(error.c_str());
         return;
     }
 
@@ -626,7 +662,9 @@ static void OnGameInitialized()
     Preview_Init();
 
     CL_CreateHttpDownloadManager(g_pGameUi, g_pLocalize, g_SettingGuard);
+#ifdef _WIN32
     JSAPI_Init();
+#endif
     CL_CvarsSandboxInit();
     CL_StringRegistryInit();
     CL_NclEntitySyncInit();
@@ -683,8 +721,6 @@ public:
         if (g_Analytics)
             g_Analytics->AddBreadcrumb("info", BREADCRUMBS_TAG " EngineMini::Uninitialize");
 
-        g_pMatchmakingServers = nullptr;
-
         for (auto &unsubscriber : unsubs_)
             unsubscriber->Unsubscribe();
         unsubs_.clear();
@@ -695,7 +731,7 @@ public:
     void GetVersion(char* buffer, int size) override
     {
         if (buffer != nullptr)
-            strcpy_s(buffer, size,  ENGINE_MINI_INTERFACE_VERSION ", " __DATE__ " " __TIME__);
+            snprintf(buffer, size, "%s", ENGINE_MINI_INTERFACE_VERSION ", " __DATE__ " " __TIME__);
     }
 
     HttpDownloadManagerInterface* GetHttpDownloadManager() override

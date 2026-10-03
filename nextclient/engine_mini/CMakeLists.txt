@@ -31,6 +31,12 @@ file(GLOB_RECURSE ENGINE_MINI_SOURCES
         "src/*.hpp"
         "src/*.h")
 
+if (NOT WIN32)
+    # src/binding/jsapi is the CEF-based in-game browser's JS API - real CEF isn't
+    # ported to Linux here (see the ncl-hl1-source-sdk fork), so it's excluded for now.
+    list(FILTER ENGINE_MINI_SOURCES EXCLUDE REGEX "/binding/jsapi/")
+endif ()
+
 add_library(${PROJECT_NAME} ${LIBRARY_BUILD_TYPE}
         ${ENGINE_MINI_SOURCES}
 )
@@ -65,12 +71,17 @@ target_link_libraries(${PROJECT_NAME} ${TARGET_LIBRARIES_SCOPE}
         EASTL
         unordered_dense::unordered_dense
         maxminddb::maxminddb
-        crypt32
-        advapi32
-        wbemuuid
-        ole32
-        oleaut32
 )
+
+if (WIN32)
+    target_link_libraries(${PROJECT_NAME} ${TARGET_LIBRARIES_SCOPE}
+            crypt32
+            advapi32
+            wbemuuid
+            ole32
+            oleaut32
+    )
+endif ()
 
 if (MSVC)
     target_compile_options(${PROJECT_NAME} PRIVATE

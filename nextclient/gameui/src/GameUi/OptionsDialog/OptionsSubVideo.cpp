@@ -3,7 +3,7 @@
 #include "OptionsSubVideo.h"
 #include "CvarSlider.h"
 #include "CvarToggleCheckButton.h"
-#include "igameuifuncs.h"
+#include "IGameUIFuncs.h"
 //#include "modes.h"
 #include "ModInfo.h"
 #include "KeyToggleCheckButton.h"

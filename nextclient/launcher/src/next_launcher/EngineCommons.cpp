@@ -77,10 +77,18 @@ void EngineCommons::VersionCmd()
 
 void EngineCommons::InitializeInternal()
 {
+#ifdef _WIN32
     CreateInterfaceFn vgui2_factory = Sys_GetFactory("vgui2.dll");
+#else
+    CreateInterfaceFn vgui2_factory = Sys_GetFactory("vgui2.so");
+#endif
     localize_ = (vgui2::ILocalize*)(InitializeInterface(VGUI_LOCALIZE_INTERFACE_VERSION, &vgui2_factory, 1));
 
+#ifdef _WIN32
     CreateInterfaceFn gameui_factory = Sys_GetFactory("cstrike\\cl_dlls\\gameui.dll");
+#else
+    CreateInterfaceFn gameui_factory = Sys_GetFactory("gameui.so");
+#endif
     game_console_next_ = (IGameConsoleNext*)(InitializeInterface(GAMECONSOLE_NEXT_INTERFACE_VERSION, &gameui_factory, 1));
 
     cl_enginefunc()->pfnAddCommand("branch", BranchCmdStatic);
