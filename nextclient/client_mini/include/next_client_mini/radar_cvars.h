@@ -19,7 +19,6 @@ inline constexpr RadarCvarDef kRadarCvarDefs[] = {
     {"hud_radar_names", "0", 0.0f, 1.0f},
     {"hud_radar_health", "0", 0.0f, 1.0f},
     {"hud_radar_tracks", "0", 0.0f, 1.0f},
-    {"hud_radar_objectives", "1", 0.0f, 1.0f},
     {"hud_radar_map_mode", "1", 1.0f, 6.0f},
     {"hud_radar_map_mask", "1", 0.0f, 1.0f},
     {"hud_radar_bg", "0", 0.0f, 1.0f},

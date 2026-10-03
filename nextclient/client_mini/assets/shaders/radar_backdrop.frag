@@ -4,8 +4,8 @@ uniform vec2 uCenter;
 uniform float uRadius;
 uniform float uFeather;
 uniform float uSquare;
-uniform float uLod;
-uniform float uStep;
+uniform vec2 uDirection;
+uniform float uFilterPass;
 uniform float uDarken;
 uniform float uAlpha;
 uniform vec3 uFadeColor;
@@ -15,16 +15,24 @@ varying vec2 vScreen;
 void main()
 {
     vec2 uv = gl_TexCoord[0].xy;
-    vec3 rgb = vec3(0.0);
-
-    for (int y = -1; y <= 1; y++)
+    if (uFilterPass > 0.5)
     {
-        for (int x = -1; x <= 1; x++)
+        vec3 sum = vec3(0.0);
+        float total = 0.0;
+
+        for (int i = -16; i <= 16; i++)
         {
-            rgb += texture2D(uTex, uv + vec2(float(x), float(y)) * uStep, uLod).rgb;
+            float offset = float(i);
+            float weight = exp(-offset * offset / 72.0);
+            sum += texture2D(uTex, uv + uDirection * offset).rgb * weight;
+            total += weight;
         }
+
+        gl_FragColor = vec4(sum / total, 1.0);
+        return;
     }
-    rgb = rgb / 9.0 * uDarken;
+
+    vec3 rgb = texture2D(uTex, uv).rgb * uDarken;
 
     vec2 dd = abs(vScreen - uCenter);
     float d = (uSquare > 0.5) ? max(dd.x, dd.y) : length(dd);

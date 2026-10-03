@@ -15,10 +15,6 @@
 
 namespace
 {
-    // How long a dot outlives the sight of it. Distinct from RadarVisibility's enemy spot memory.
-    constexpr float kSightMemory = 1.5f; // seconds
-    constexpr float kSightHold = 0.4f; // seconds, inside kSightMemory
-
     // CHostage reports a moved hostage once a second, walks at up to 400 u/s, and its message
     // index is a spawn counter with no relation to the edict the snapshot carries.
     constexpr MarkerFeed::Params kFeedParams{
@@ -41,7 +37,6 @@ void HostageMarkers::Reset()
 {
     spots_.fill(Spot{});
     feed_.ResetMotion();
-    pass_ = Pass::None;
 }
 
 void HostageMarkers::OnLevelChange()
@@ -49,7 +44,7 @@ void HostageMarkers::OnLevelChange()
     feed_.Reset();
 }
 
-void HostageMarkers::SetPass(Pass pass)
+void HostageMarkers::SetPass(HostageSource pass)
 {
     if (pass == pass_)
     {
@@ -143,13 +138,13 @@ void HostageMarkers::DrawBySight(const RadarFrame& frame, const ObjectiveEntitie
 
         float age = frame.time - spot.last_seen;
 
-        if (age < 0.0f || age > kSightMemory)
+        if (age < 0.0f || age > kObjectiveSightMemory)
         {
             spot.valid = false;
             continue;
         }
 
-        float fade = ncl_math::HoldLinear(age, kSightHold, kSightMemory);
+        float fade = ncl_math::HoldLinear(age, kObjectiveSightHold, kObjectiveSightMemory);
         DrawDot(frame, spot.pos, dot, (int)(255.0f * fade));
     }
 
@@ -216,7 +211,7 @@ void HostageMarkers::DrawServerMarkers(const RadarFrame& frame, int size)
             continue;
         }
 
-        spots_[slot].pos = broadcast[i].pos;
+        spots_[slot].pos = ServerMarker_Ease(spots_[slot].pos, broadcast[i].pos, frame.dt);
         spots_[slot].visible = true;
     }
 
@@ -244,23 +239,21 @@ void HostageMarkers::DrawServerMarkers(const RadarFrame& frame, int size)
 
 void HostageMarkers::Draw(const RadarFrame& frame, const ObjectiveEntities& entities, int dot)
 {
-    if (policy_.get_hostage_intent() == HostageIntent::Marker)
+    HostageSource source = ObjectiveSource_ChooseHostages(
+        policy_.get_hostage_intent(), {frame.ctx.local_team, frame.ctx.spectating}, policy_.are_hostages_revealed());
+
+    SetPass(source);
+
+    switch (source)
     {
-        SetPass(Pass::ServerMarker);
-        DrawServerMarkers(frame, dot);
-        return;
+        case HostageSource::ServerMarker:
+            DrawServerMarkers(frame, dot);
+            break;
+        case HostageSource::Sight:
+            DrawBySight(frame, entities, dot);
+            break;
+        case HostageSource::Revealed:
+            DrawRevealed(frame, entities, dot);
+            break;
     }
-
-    // Terrorists are never sent hostage positions, nor is a CT whose server withholds the broadcast.
-    bool los_gated = !frame.ctx.spectating && (frame.ctx.local_team == RadarTeam::Terrorist || !policy_.are_hostages_revealed());
-
-    if (los_gated)
-    {
-        SetPass(Pass::Sight);
-        DrawBySight(frame, entities, dot);
-        return;
-    }
-
-    SetPass(Pass::Revealed);
-    DrawRevealed(frame, entities, dot);
 }

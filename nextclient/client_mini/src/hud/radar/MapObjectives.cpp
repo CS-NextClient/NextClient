@@ -17,6 +17,9 @@
 
 namespace
 {
+    // CHostage::Precache gives a hostage this model when its map entity names none.
+    constexpr char kHostageDefaultModel[] = "models/scientist.mdl";
+
     // overviews/radar_ab.txt holds "mapname" "letters" pairs; letters map to sites in world-X order.
     bool LoadAbOverride(const char* base_map, std::span<char> out)
     {
@@ -65,6 +68,7 @@ void RadarMapObjectives::EnsureLoaded()
     {
         site_count_ = 0;
         hostage_count_ = 0;
+        hostage_models_.clear();
         loaded_map_[0] = '\0';
         return;
     }
@@ -78,6 +82,7 @@ void RadarMapObjectives::EnsureLoaded()
 
     site_count_ = 0;
     hostage_count_ = 0;
+    hostage_models_.clear();
     Parse(world);
 }
 
@@ -214,6 +219,14 @@ void RadarMapObjectives::Parse(goldsrc::model_t* world)
         if (!std::strcmp(keys.classname, "hostage_entity") || !std::strcmp(keys.classname, "monster_scientist"))
         {
             hostage_count_++;
+
+            const char* model = keys.model[0] ? keys.model : kHostageDefaultModel;
+
+            if (std::ranges::find(hostage_models_, model) == hostage_models_.end())
+            {
+                hostage_models_.emplace_back(model);
+            }
+
             continue;
         }
 

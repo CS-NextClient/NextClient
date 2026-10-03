@@ -464,6 +464,11 @@
         "header": "goldsrc/entity.h"
       },
       {
+        "prefix": "SOLID_",
+        "file": "dep/NclNitroApi/dep/ncl-hl1-source-sdk/common/const.h",
+        "header": "goldsrc/entity.h"
+      },
+      {
         "prefix": "CHAN_",
         "file": "dep/NclNitroApi/dep/ncl-hl1-source-sdk/common/const.h",
         "header": "goldsrc/engine/sound.h"

@@ -33,7 +33,22 @@ public:
         ncl_math::Vector2 pos;
         std::uint32_t seq; // a value the feed bumps per message, so a repeat still reads as new
     };
+    
+private:
+    struct Entry
+    {
+        bool used{};
+        int index{};
+        int ent = -1;
+        std::uint32_t seq{}; // last observation accounted for
+        int strikes{};
+    };
 
+private:
+    Params params_;
+    std::array<Entry, kRadarMaxMarkers> entries_{};
+    
+public:
     explicit MarkerIdentity(const Params& params);
 
     void Update(std::span<const Entity> entities, std::span<const Observation> observations);
@@ -46,19 +61,6 @@ public:
     void Reset();
 
 private:
-    struct Entry
-    {
-        bool used{};
-        int index{};
-        int ent = -1;
-        std::uint32_t seq{}; // last observation accounted for
-        int strikes{};
-    };
-
-    Params params_;
-
-    std::array<Entry, kRadarMaxMarkers> entries_{};
-
     Entry* AcquireEntry(int index);
 
     bool is_ent_paired(int ent) const;

@@ -75,7 +75,7 @@ jobs:
         run: cmake --preset vs2022-tests "-DNEXTCLIENT_INSTALL_DIR=${{ github.workspace }}\install-tests"
 
       - name: Build tests
-        run: cmake --build --preset vs2022-tests-release --target client_mini-tests
+        run: cmake --build --preset vs2022-tests-release
 
       - name: Run tests
         run: ctest --test-dir build/vs2022-tests -C Release --output-on-failure

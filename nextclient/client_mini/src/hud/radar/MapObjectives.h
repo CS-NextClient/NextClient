@@ -1,5 +1,9 @@
 #pragma once
 
+#include <span>
+#include <string>
+#include <vector>
+
 #include <ncl_math/vec3.h>
 #include <goldsrc/fwd.h>
 
@@ -16,6 +20,7 @@ class RadarMapObjectives
     BombSite sites_[kMaxSites]{};
     int site_count_{};
     int hostage_count_{};
+    std::vector<std::string> hostage_models_;
     char loaded_map_[64]{};
 
 public:
@@ -27,6 +32,11 @@ public:
     int get_hostage_count() const
     {
         return hostage_count_;
+    }
+    // The models the map's hostage entities wear, each once.
+    std::span<const std::string> get_hostage_models() const
+    {
+        return hostage_models_;
     }
     const BombSite& get_site(int i) const
     {

@@ -221,6 +221,38 @@ TEST_F(RadarPolicyTest, BombTravellingTooFarForTooLongIsAMarker)
     EXPECT_TRUE(LogContains("travelled"));
 }
 
+TEST_F(RadarPolicyTest, ThrownBombThatComesToRestStaysABomb)
+{
+    policy.SetMapObjectives(2, 0);
+
+    // The drop reports the thrower's origin, then the landing spot repeats once a second.
+    policy.ObserveBomb({1, true, {0.0f, 0.0f, 0.0f}, false, 10.0f}, 10.0f);
+
+    for (int i = 1; i <= 4; i++)
+    {
+        float time = 10.0f + (float)i;
+        policy.ObserveBomb({(std::uint32_t)(i + 1), true, {230.0f, 0.0f, 0.0f}, false, time}, time);
+    }
+
+    EXPECT_EQ(policy.get_bomb_intent(), BombIntent::Bomb);
+}
+
+TEST_F(RadarPolicyTest, BombFallingThroughOneReportStaysABomb)
+{
+    policy.SetMapObjectives(2, 0);
+
+    policy.ObserveBomb({1, true, {0.0f, 0.0f, 0.0f}, false, 10.0f}, 10.0f);
+    policy.ObserveBomb({2, true, {150.0f, 0.0f, 0.0f}, false, 11.0f}, 11.0f);
+
+    for (int i = 2; i <= 4; i++)
+    {
+        float time = 10.0f + (float)i;
+        policy.ObserveBomb({(std::uint32_t)(i + 1), true, {230.0f, 0.0f, 0.0f}, false, time}, time);
+    }
+
+    EXPECT_EQ(policy.get_bomb_intent(), BombIntent::Bomb);
+}
+
 TEST_F(RadarPolicyTest, MarkerClassificationHoldsForTheRestOfTheMap)
 {
     policy.SetMapObjectives(0, 0);

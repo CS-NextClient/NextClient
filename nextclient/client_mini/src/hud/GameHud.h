@@ -33,7 +33,8 @@ public:
     void Init();
     void VidInit();
     void Draw(float time);
-    void DrawRadar(float time);   // advanced radar, drawn under the stock HUD
+    void DrawRadar(float time);
+    void PrepareRadar();
     void Think(float time);
     void Reset();
     void InitHUDData();		// called every time a server is connected to

@@ -62,6 +62,11 @@ namespace goldsrc
     inline constexpr int MOVETYPE_BOUNCEMISSILE = 11;
     inline constexpr int MOVETYPE_FOLLOW = 12;
     inline constexpr int MOVETYPE_PUSHSTEP = 13;
+    inline constexpr int SOLID_NOT = 0;
+    inline constexpr int SOLID_TRIGGER = 1;
+    inline constexpr int SOLID_BBOX = 2;
+    inline constexpr int SOLID_SLIDEBOX = 3;
+    inline constexpr int SOLID_BSP = 4;
 
     enum
     {

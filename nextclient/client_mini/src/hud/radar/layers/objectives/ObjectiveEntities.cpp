@@ -7,14 +7,15 @@
 
 #include "main.h"
 
-#include "hud/radar/RadarConfig.h"
+#include "hud/radar/MapObjectives.h"
+#include "hud/radar/RadarUtil.h"
 
 void ObjectiveEntities::OnVidInit()
 {
     model_kind_.clear(); // model pointers are only stable within a level
 }
 
-ObjectiveEntities::ModelKind ObjectiveEntities::ClassifyModel(const goldsrc::model_t* model)
+ObjectiveEntities::ModelKind ObjectiveEntities::ClassifyModel(const goldsrc::model_t* model, const RadarMapObjectives& map)
 {
     auto it = model_kind_.find(model);
 
@@ -23,10 +24,10 @@ ObjectiveEntities::ModelKind ObjectiveEntities::ClassifyModel(const goldsrc::mod
         return it->second;
     }
 
-    // Substring, not exact match, so custom hostage/bomb model paths still classify.
+    // Substring, not exact match, so custom bomb model paths still classify.
     ModelKind kind = ModelKind::Other;
 
-    if (std::strstr(model->name, "hostage"))
+    if (RadarUtil_IsHostageModel(model->name, map.get_hostage_models()))
     {
         kind = ModelKind::Hostage;
     }
@@ -43,7 +44,7 @@ ObjectiveEntities::ModelKind ObjectiveEntities::ClassifyModel(const goldsrc::mod
     return kind;
 }
 
-void ObjectiveEntities::CollectEntities(const RadarFrame& frame)
+void ObjectiveEntities::CollectEntities(const RadarFrame& frame, const RadarMapObjectives& map)
 {
     test_due_ = (frame.time - last_test_ >= kTestInterval) || frame.time < last_test_;
 
@@ -65,12 +66,12 @@ void ObjectiveEntities::CollectEntities(const RadarFrame& frame)
     int message_num = local->curstate.messagenum;
 
     auto consider = [&](int i, goldsrc::cl_entity_t* ent) {
-        if (!ent || !ent->model || ent->curstate.messagenum != message_num)
+        if (!ent || !ent->model || ent->curstate.messagenum != message_num || (ent->curstate.effects & goldsrc::EF_NODRAW))
         {
             return false;
         }
 
-        ModelKind kind = ClassifyModel(ent->model);
+        ModelKind kind = ClassifyModel(ent->model, map);
 
         if (kind == ModelKind::Other)
         {
@@ -79,6 +80,13 @@ void ObjectiveEntities::CollectEntities(const RadarFrame& frame)
 
         if (kind == ModelKind::Hostage)
         {
+            // CHostage leaves a killed hostage's body in the snapshot until the round restarts and
+            // makes it non-solid; a living one is SOLID_SLIDEBOX, a rescued one is not sent at all.
+            if (ent->curstate.solid == goldsrc::SOLID_NOT)
+            {
+                return false;
+            }
+
             if (hostage_count_ < kRadarMaxHostages)
             {
                 HostageEnt& h = hostages_[hostage_count_++];
@@ -105,7 +113,7 @@ void ObjectiveEntities::CollectEntities(const RadarFrame& frame)
     {
         // GetMaxClients()+1, not goldsrc::cstrike::MAX_PLAYERS+1: fewer slots puts objectives at or below goldsrc::cstrike::MAX_PLAYERS.
         objective_ents_.clear();
-        
+
         for (int i = gEngfuncs.GetMaxClients() + 1; goldsrc::cl_entity_t* ent = gEngfuncs.GetEntityByIndex(i); i++)
         {
             if (consider(i, ent))

@@ -36,7 +36,7 @@ namespace
 
             if (factory)
             {
-                EngineMiniInterface* engine = (EngineMiniInterface*)factory(ENGINE_MINI_INTERFACE_VERSION, nullptr);
+                EngineMiniInterface* engine = static_cast<EngineMiniInterface*>(factory(ENGINE_MINI_INTERFACE_VERSION, nullptr));
 
                 if (engine)
                 {
@@ -84,7 +84,7 @@ namespace
             return nullptr;
         }
 
-        vgui2::ISchemeManager* schemes = (vgui2::ISchemeManager*)factory(VGUI_SCHEME_INTERFACE_VERSION_GS, nullptr);
+        vgui2::ISchemeManager* schemes = static_cast<vgui2::ISchemeManager*>(factory(VGUI_SCHEME_INTERFACE_VERSION_GS, nullptr));
 
         if (!schemes)
         {

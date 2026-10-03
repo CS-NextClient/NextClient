@@ -1,5 +1,7 @@
 #include "text_surface.h"
 
+#include <unordered_map>
+
 #include <Windows.h>
 #include <glad/glad.h>
 #include <interface.h>
@@ -25,6 +27,35 @@ namespace
         float v;
         unsigned char rgba[4];
     };
+
+    struct SurfaceFont
+    {
+        unsigned long original{};
+        bool custom{};
+        bool native_only{};
+    };
+
+    std::unordered_map<unsigned long, SurfaceFont> g_Fonts;
+    void* g_OriginalSlots[90];
+
+    template <class Result, class... Args>
+    Result CallOriginal(int slot, void* self, void* edx, Args... args)
+    {
+        auto function = reinterpret_cast<Result(__fastcall*)(void*, void*, Args...)>(g_OriginalSlots[slot]);
+        return function(self, edx, args...);
+    }
+
+    unsigned long NativeFont(unsigned long font)
+    {
+        auto it = g_Fonts.find(font);
+        return it != g_Fonts.end() ? it->second.original : font;
+    }
+
+    bool IsCustomFont(unsigned long font)
+    {
+        auto it = g_Fonts.find(font);
+        return it != g_Fonts.end() && it->second.custom;
+    }
 
     TextFont_t g_CurrentFont;
     int g_TextX;
@@ -447,84 +478,171 @@ namespace
     // Stock client.dll resolves VGUI_Surface026 itself and the engine draws through a pointer of its
     // own, so only replacing the shared object's slots reaches them. The slots are __thiscall;
     // __fastcall absorbs ECX=this, EDX=unused.
-    unsigned long __fastcall Hook_CreateFont(void*, void*)
+    unsigned long __fastcall Hook_CreateFont(void* self, void* edx)
     {
-        return g_TextSurface.CreateEmptyFont();
+        unsigned long font = g_TextSurface.CreateEmptyFont();
+        unsigned long native_font = CallOriginal<unsigned long>(59, self, edx);
+        g_Fonts.emplace(font, SurfaceFont{native_font, false});
+        return font;
     }
 
-    bool __fastcall Hook_AddGlyphSetToFont(void*, void*, unsigned long font, const char* name, int tall, int weight, int /*blur*/, int /*scanlines*/, int flags, int /*low*/, int /*high*/)
+    bool __fastcall Hook_AddGlyphSetToFont(
+        void* self,
+        void* edx,
+        unsigned long font,
+        const char* name,
+        int tall,
+        int weight,
+        int blur,
+        int scanlines,
+        int flags,
+        int low,
+        int high
+    )
     {
-        return g_TextSurface.AddGlyphSetToFont(font, name, tall, weight, flags);
+        bool added = CallOriginal<bool>(60, self, edx, NativeFont(font), name, tall, weight, blur, scanlines, flags, low, high);
+        auto it = g_Fonts.find(font);
+
+        if (it == g_Fonts.end())
+        {
+            return added;
+        }
+
+        // Preserve the native font contract for effects and ranges the atlas service cannot represent.
+        bool supported = !(flags & ~(kFontFlagAntialias | kFontFlagDropShadow)) && blur == 0 && scanlines == 0 && low == 0 &&
+                         (high == 0 || high == 0xFFFF);
+        it->second.native_only = it->second.native_only || !supported;
+        it->second.custom = added && !it->second.native_only && g_TextSurface.AddGlyphSetToFont(font, name, tall, weight, flags);
+        return added;
     }
 
-    int __fastcall Hook_GetFontTall(void*, void*, unsigned long font)
+    int __fastcall Hook_GetFontTall(void* self, void* edx, unsigned long font)
     {
+        if (!IsCustomFont(font))
+        {
+            return CallOriginal<int>(62, self, edx, NativeFont(font));
+        }
+
         return g_TextSurface.GetFontTall(font);
     }
 
-    void __fastcall Hook_GetCharABCwide(void*, void*, unsigned long font, int ch, int* a, int* b, int* c)
+    void __fastcall Hook_GetCharABCwide(void* self, void* edx, unsigned long font, int ch, int* a, int* b, int* c)
     {
-        g_TextSurface.GetCharABCwide(font, ch, a, b, c);
+        if (!IsCustomFont(font))
+        {
+            return CallOriginal<void>(63, self, edx, NativeFont(font), ch, a, b, c);
+        }
+
+        return g_TextSurface.GetCharABCwide(font, ch, a, b, c);
     }
 
-    int __fastcall Hook_GetCharacterWidth(void*, void*, unsigned long font, int ch)
+    int __fastcall Hook_GetCharacterWidth(void* self, void* edx, unsigned long font, int ch)
     {
+        if (!IsCustomFont(font))
+        {
+            return CallOriginal<int>(64, self, edx, NativeFont(font), ch);
+        }
+
         return g_TextSurface.GetCharacterWidth(font, ch);
     }
 
-    void __fastcall Hook_GetTextSize(void*, void*, unsigned long font, const wchar_t* text, int* wide, int* tall)
+    void __fastcall Hook_GetTextSize(void* self, void* edx, unsigned long font, const wchar_t* text, int* wide, int* tall)
     {
-        g_TextSurface.GetTextSize(font, text, wide, tall);
+        if (!IsCustomFont(font))
+        {
+            return CallOriginal<void>(65, self, edx, NativeFont(font), text, wide, tall);
+        }
+
+        return g_TextSurface.GetTextSize(font, text, wide, tall);
     }
 
-    int __fastcall Hook_GetFontAscent(void*, void*, unsigned long font, wchar_t ch)
+    int __fastcall Hook_GetFontAscent(void* self, void* edx, unsigned long font, wchar_t ch)
     {
+        if (!IsCustomFont(font))
+        {
+            return CallOriginal<int>(89, self, edx, NativeFont(font), ch);
+        }
+
         return g_TextSurface.GetFontAscent(font, ch);
     }
 
-    void __fastcall Hook_DrawSetTextFont(void*, void*, unsigned long font)
+    void __fastcall Hook_DrawSetTextFont(void* self, void* edx, unsigned long font)
     {
+        CallOriginal<void>(13, self, edx, NativeFont(font));
         g_TextSurface.DrawSetTextFont(font);
     }
 
-    void __fastcall Hook_DrawSetTextColor_i(void*, void*, int r, int g, int b, int a)
+    void __fastcall Hook_DrawSetTextColor_i(void* self, void* edx, int r, int g, int b, int a)
     {
+        CallOriginal<void>(15, self, edx, r, g, b, a);
         g_TextSurface.DrawSetTextColor(r, g, b, a);
     }
 
-    void __fastcall Hook_DrawSetTextColor_c(void*, void*, VguiColor col)
+    void __fastcall Hook_DrawSetTextColor_c(void* self, void* edx, VguiColor col)
     {
+        CallOriginal<void>(14, self, edx, col);
         g_TextSurface.DrawSetTextColor(col.rgba[0], col.rgba[1], col.rgba[2], col.rgba[3]);
     }
 
-    void __fastcall Hook_DrawSetTextPos(void*, void*, int x, int y)
+    void __fastcall Hook_DrawSetTextPos(void* self, void* edx, int x, int y)
     {
+        CallOriginal<void>(16, self, edx, x, y);
         g_TextSurface.DrawSetTextPos(x, y);
     }
 
-    void __fastcall Hook_DrawGetTextPos(void*, void*, int* x, int* y)
+    void __fastcall Hook_DrawGetTextPos(void* self, void* edx, int* x, int* y)
     {
+        if (!IsCustomFont(g_CurrentFont))
+        {
+            return CallOriginal<void>(17, self, edx, x, y);
+        }
+
         g_TextSurface.DrawGetTextPos(x, y);
     }
 
-    void __fastcall Hook_DrawPrintText(void*, void*, const wchar_t* text, int text_len)
+    void __fastcall Hook_DrawPrintText(void* self, void* edx, const wchar_t* text, int text_len)
     {
+        if (!IsCustomFont(g_CurrentFont))
+        {
+            CallOriginal<void>(18, self, edx, text, text_len);
+            CallOriginal<void>(17, self, edx, &g_TextX, &g_TextY);
+            return;
+        }
+
         g_TextSurface.DrawPrintText(text, text_len);
+        CallOriginal<void>(16, self, edx, g_TextX, g_TextY);
     }
 
-    void __fastcall Hook_DrawUnicodeChar(void*, void*, wchar_t ch)
+    void __fastcall Hook_DrawUnicodeChar(void* self, void* edx, wchar_t ch)
     {
+        if (!IsCustomFont(g_CurrentFont))
+        {
+            CallOriginal<void>(19, self, edx, ch);
+            CallOriginal<void>(17, self, edx, &g_TextX, &g_TextY);
+            return;
+        }
+
         g_TextSurface.DrawUnicodeChar(ch);
+        CallOriginal<void>(16, self, edx, g_TextX, g_TextY);
     }
 
-    void __fastcall Hook_DrawUnicodeCharAdd(void*, void*, wchar_t ch)
+    void __fastcall Hook_DrawUnicodeCharAdd(void* self, void* edx, wchar_t ch)
     {
+        if (!IsCustomFont(g_CurrentFont))
+        {
+            CallOriginal<void>(20, self, edx, ch);
+            CallOriginal<void>(17, self, edx, &g_TextX, &g_TextY);
+            return;
+        }
+
         g_TextSurface.DrawUnicodeCharAdd(ch);
+        CallOriginal<void>(16, self, edx, g_TextX, g_TextY);
     }
 
-    void __fastcall Hook_DrawFlushText(void*, void*)
+    void __fastcall Hook_DrawFlushText(void* self, void* edx)
     {
         g_TextSurface.DrawFlushText();
+        CallOriginal<void>(21, self, edx);
     }
 
     // The paint bracket must keep the engine's implementation: it sets the modelview and the scissor
@@ -542,7 +660,7 @@ namespace
 
             if (factory)
             {
-                panels = (vgui2::IPanel*)factory(VGUI_PANEL_INTERFACE_VERSION_GS, nullptr);
+                panels = static_cast<vgui2::IPanel*>(factory(VGUI_PANEL_INTERFACE_VERSION_GS, nullptr));
             }
         }
 
@@ -618,6 +736,7 @@ namespace
     void* Patch(void** vt, int index, void* hook)
     {
         void* previous = PatchVtableEntry(vt, index, hook);
+        g_OriginalSlots[index] = previous;
 
         if (g_PatchedCount < (int)(sizeof(g_Patched) / sizeof(g_Patched[0])))
         {
@@ -685,6 +804,7 @@ void TextSurface_Uninstall()
         PatchVtableEntry(g_SurfaceVtable, g_Patched[i].index, g_Patched[i].original);
     }
 
+    g_Fonts.clear();
     g_PatchedCount = 0;
     g_SurfaceVtable = nullptr;
     g_OrigPushMakeCurrent = nullptr;

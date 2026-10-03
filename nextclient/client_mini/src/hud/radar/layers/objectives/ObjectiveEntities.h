@@ -12,6 +12,13 @@
 #include "hud/radar/RadarFrame.h"
 #include "hud/radar/RadarLimits.h"
 
+class RadarMapObjectives;
+
+// How long an objective marker outlives the sight of it, and how much of that it stays opaque.
+// Distinct from RadarVisibility's enemy spot memory.
+inline constexpr float kObjectiveSightMemory = 1.5f; // seconds
+inline constexpr float kObjectiveSightHold = 0.4f; // seconds, inside kObjectiveSightMemory
+
 // The bomb and hostage entities the radar draws from, resolved once a frame. The edict sweep is
 // throttled and its result cached, so most frames only re-read the entities found last time.
 class ObjectiveEntities
@@ -55,7 +62,7 @@ private:
     static constexpr float kTestInterval = 0.05f;
 
 public:
-    void CollectEntities(const RadarFrame& frame);
+    void CollectEntities(const RadarFrame& frame, const RadarMapObjectives& map);
 
     void OnVidInit();
 
@@ -76,5 +83,5 @@ public:
     }
 
 private:
-    ModelKind ClassifyModel(const goldsrc::model_t* model);
+    ModelKind ClassifyModel(const goldsrc::model_t* model, const RadarMapObjectives& map);
 };

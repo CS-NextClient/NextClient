@@ -80,6 +80,8 @@ add_library(${PROJECT_NAME} SHARED
         src/hud/radar/RadarPalette.h
         src/hud/radar/RadarPolicy.cpp
         src/hud/radar/RadarPolicy.h
+        src/hud/radar/ObjectiveSource.cpp
+        src/hud/radar/ObjectiveSource.h
         src/hud/radar/ServerMarker.cpp
         src/hud/radar/ServerMarker.h
         src/hud/radar/Overview.cpp
@@ -98,6 +100,7 @@ add_library(${PROJECT_NAME} SHARED
         src/hud/radar/MarkerIdentity.h
         src/hud/radar/MarkerFeed.cpp
         src/hud/radar/MarkerFeed.h
+        src/hud/radar/HudTextBuffer.cpp
         src/hud/radar/HudTextZone.cpp
         src/hud/radar/HudTextZone.h
         src/hud/radar/RadarHooks.cpp

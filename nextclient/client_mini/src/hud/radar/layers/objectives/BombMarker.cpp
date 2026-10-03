@@ -7,9 +7,12 @@
 
 #include <ncl_math/scalar.h>
 #include <goldsrc/client_api.h>
+#include <goldsrc/cstrike/game.h>
+#include <goldsrc/cstrike/hud.h>
 #include <goldsrc/cvar.h>
 #include <goldsrc/entity.h>
 
+#include "hud/radar/ObjectiveSource.h"
 #include "hud/radar/RadarBroadcast.h"
 #include "hud/radar/RadarDraw.h"
 #include "hud/radar/RadarPalette.h"
@@ -21,27 +24,7 @@ namespace
 {
     constexpr float kBombPulsePeriod = 4.4f; // seconds
 
-    // How long the marker outlives the sight of it. Distinct from RadarVisibility's enemy spot memory.
-    constexpr float kSightMemory = 1.5f; // seconds
-    constexpr float kSightHold = 0.4f; // seconds, inside kSightMemory
-
-    constexpr float kEaseRate = 16.0f; // 1/s
-    constexpr float kSnapDist = 200.0f; // world units
-
     constexpr int kHistoryMask = goldsrc::HISTORY_MAX - 1;
-
-    // Snaps instead of easing past kSnapDist, so a re-purposed message does not sweep across the map.
-    ncl_math::Vector2 EaseMarker(ncl_math::Vector2 pos, ncl_math::Vector2 target, float dt)
-    {
-        ncl_math::Vector2 dir = target - pos;
-
-        if (dir.LengthSqr() > kSnapDist * kSnapDist)
-        {
-            return target;
-        }
-
-        return pos + dir * ncl_math::SmoothingFactor(kEaseRate, dt);
-    }
 
     // Mirrors the engine's CL_InterpolateModel; ent->origin alone steps at the server update rate.
     bool InterpEntityXY(goldsrc::cl_entity_t* ent, float target, ncl_math::Vector2& out)
@@ -177,8 +160,28 @@ void BombMarker::DrawMarker(const RadarFrame& frame, ncl_math::Vector2 world, in
 void BombMarker::DrawFromBroadcast(const RadarFrame& frame, const ObjectiveEntities& entities, int size, float interp_lag)
 {
     const RadarBroadcast::Bomb& bomb = broadcast_.get_bomb();
+    const ObjectiveEntities::BombEnt& live = entities.get_bomb();
 
-    if (!bomb.active)
+    bool reported = bomb.active && ObjectiveSource_IsBombReportCurrent(bomb.planted, frame.time - bomb.time, frame.ctx.spectating);
+
+    if (frame.ctx.spectating && !(live.found && live.planted) && !(reported && bomb.planted))
+    {
+        int max_clients = std::min(kRadarMaxPlayers, gEngfuncs.GetMaxClients());
+
+        for (int i = 1; i <= max_clients; i++)
+        {
+            const goldsrc::cstrike::extra_player_info_t& player = client()->g_PlayerExtraInfo[i];
+
+            if (!player.dead && player.teamnumber == goldsrc::cstrike::TEAM_TERRORIST && player.has_c4)
+            {
+                pulse_start_ = -1.0f;
+                appear_time_ = -1.0f;
+                return;
+            }
+        }
+    }
+
+    if (!reported && !live.found)
     {
         pulse_start_ = -1.0f;
         appear_time_ = -1.0f;
@@ -190,21 +193,21 @@ void BombMarker::DrawFromBroadcast(const RadarFrame& frame, const ObjectiveEntit
         appear_time_ = frame.time;
     }
 
-    // Hold a dropped bomb for ex_interp so its position history fills, else it jerks to catch up.
-    if (!bomb.planted && frame.time - appear_time_ < interp_lag)
-    {
-        return;
-    }
-
     ncl_math::Vector2 bomb_xy{bomb.pos.x, bomb.pos.y};
     bool planted = bomb.planted;
-    const ObjectiveEntities::BombEnt& live = entities.get_bomb();
 
+    // The snapshot outranks the report: it is current, and for a spectator it is the only news of a drop.
     if (live.found)
     {
         bomb_xy = live.pos;
         InterpEntityXY(live.ent, gEngfuncs.GetClientTime() - interp_lag, bomb_xy);
         planted = live.planted;
+    }
+
+    // Hold a dropped bomb for ex_interp so its position history fills, else it jerks to catch up.
+    if (!planted && frame.time - appear_time_ < interp_lag)
+    {
+        return;
     }
 
     UpdatePulse(planted, frame.time);
@@ -245,7 +248,7 @@ void BombMarker::DrawFromSight(const RadarFrame& frame, const ObjectiveEntities&
 
     float age = frame.time - spot_.last_seen;
 
-    if (age < 0.0f || age > kSightMemory)
+    if (age < 0.0f || age > kObjectiveSightMemory)
     {
         spot_.valid = false;
         pulse_start_ = -1.0f;
@@ -253,7 +256,7 @@ void BombMarker::DrawFromSight(const RadarFrame& frame, const ObjectiveEntities&
     }
 
     UpdatePulse(spot_.planted, frame.time);
-    DrawMarker(frame, spot_.pos, size, spot_.planted, ncl_math::HoldLinear(age, kSightHold, kSightMemory));
+    DrawMarker(frame, spot_.pos, size, spot_.planted, ncl_math::HoldLinear(age, kObjectiveSightHold, kObjectiveSightMemory));
 }
 
 // A re-purposed bomb message: never gated by line of sight, since the reveal is the server's own
@@ -272,7 +275,7 @@ void BombMarker::DrawServerMarker(const RadarFrame& frame, int size)
 
     if (marker_valid_)
     {
-        marker_pos_ = EaseMarker(marker_pos_, target, std::clamp(frame.dt, 0.0f, 0.1f));
+        marker_pos_ = ServerMarker_Ease(marker_pos_, target, frame.dt);
     }
     else
     {
@@ -288,26 +291,23 @@ void BombMarker::DrawServerMarker(const RadarFrame& frame, int size)
 
 void BombMarker::Draw(const RadarFrame& frame, const ObjectiveEntities& entities, int size)
 {
-    if (policy_.get_bomb_intent() == BombIntent::Marker)
+    BombSource source = ObjectiveSource_ChooseBomb(policy_.get_bomb_intent(), {frame.ctx.local_team, frame.ctx.spectating});
+
+    if (source == BombSource::ServerMarker)
     {
         DrawServerMarker(frame, size);
         return;
     }
 
-    // Kept above the audience dispatch: inside a branch, a Terrorist frame leaves this stale and a
+    // Kept above the source dispatch: inside a branch, a Terrorist frame leaves this stale and a
     // later mode flip snaps the marker across the map.
     marker_valid_ = false;
 
-    // Spectators read the broadcast too: BombDrop goes to everyone, and the line-of-sight path
-    // cannot serve them (RadarVisibility keeps no viewers while spectating).
-    if (frame.ctx.local_team == RadarTeam::Terrorist || frame.ctx.spectating)
+    if (source == BombSource::Broadcast)
     {
         DrawFromBroadcast(frame, entities, size, ComputeInterpLag());
-        return;
     }
-
-    // Counter-Terrorists get no bomb message.
-    if (frame.ctx.local_team == RadarTeam::CounterTerrorist)
+    else if (source == BombSource::Sight)
     {
         DrawFromSight(frame, entities, size, ComputeInterpLag());
     }

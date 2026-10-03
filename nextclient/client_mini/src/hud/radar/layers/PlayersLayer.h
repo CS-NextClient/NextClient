@@ -74,6 +74,7 @@ public:
 
 private:
     void DrawPlayers(const RadarFrame& frame);
+    void DrawCamera(const RadarFrame& frame);
     void DrawDeaths(const RadarFrame& frame);
     
     float ComputeHighlightConeSpread(const RadarFrame& frame);

@@ -109,6 +109,65 @@ TEST(MarkerFeedMotion, AJumpBeyondReachIsPlacedNotWalked)
     EXPECT_FLOAT_EQ(feed.get_markers()[0].pos.x, 5000.0f);
 }
 
+TEST(MarkerFeedMotion, AThingLeavingTheSnapshotHoldsWhereTheSnapshotLastShowedIt)
+{
+    MarkerFeed feed(kParams);
+
+    MarkerIdentity::Observation report[] = {{3, {0.0f, 0.0f}, 1}};
+    MarkerIdentity::Entity at_report[] = {{40, {0.0f, 0.0f}}};
+    MarkerIdentity::Entity walked_on[] = {{40, {100.0f, 0.0f}}};
+
+    feed.Update(at_report, report, 10.0f);
+    ASSERT_EQ(feed.get_entity(3), 40);
+
+    feed.Update(walked_on, report, 10.5f);
+
+    // The only report is half a second older than the position the snapshot last drew.
+    feed.Update(NoEntities(), report, 10.6f);
+
+    ASSERT_EQ(feed.get_markers().size(), 1u);
+    EXPECT_FLOAT_EQ(feed.get_markers()[0].pos.x, 100.0f);
+}
+
+TEST(MarkerFeedMotion, TheReportAfterLeavingWalksOnFromTheHeldPosition)
+{
+    MarkerFeed feed(kParams);
+
+    MarkerIdentity::Observation first[] = {{3, {0.0f, 0.0f}, 1}};
+    MarkerIdentity::Observation next[] = {{3, {200.0f, 0.0f}, 2}};
+    MarkerIdentity::Entity at_report[] = {{40, {0.0f, 0.0f}}};
+    MarkerIdentity::Entity walked_on[] = {{40, {100.0f, 0.0f}}};
+
+    feed.Update(at_report, first, 10.0f);
+    feed.Update(walked_on, first, 10.5f);
+    feed.Update(NoEntities(), first, 10.6f);
+
+    feed.Update(NoEntities(), next, 11.0f); // one second after the previous report
+    EXPECT_FLOAT_EQ(feed.get_markers()[0].pos.x, 100.0f);
+
+    feed.Update(NoEntities(), next, 11.5f);
+    EXPECT_FLOAT_EQ(feed.get_markers()[0].pos.x, 150.0f);
+}
+
+TEST(MarkerFeedMotion, AReportTakenWhileCarriedDoesNotPullTheMarkerBack)
+{
+    MarkerFeed feed(kParams);
+
+    MarkerIdentity::Observation first[] = {{3, {0.0f, 0.0f}, 1}};
+    MarkerIdentity::Observation lagging[] = {{3, {80.0f, 0.0f}, 2}};
+    MarkerIdentity::Entity at_report[] = {{40, {0.0f, 0.0f}}};
+    MarkerIdentity::Entity ahead[] = {{40, {100.0f, 0.0f}}};
+
+    feed.Update(at_report, first, 10.0f);
+    feed.Update(ahead, lagging, 11.0f);
+
+    feed.Update(NoEntities(), lagging, 11.2f);
+    EXPECT_FLOAT_EQ(feed.get_markers()[0].pos.x, 100.0f);
+
+    feed.Update(NoEntities(), lagging, 12.0f);
+    EXPECT_FLOAT_EQ(feed.get_markers()[0].pos.x, 100.0f);
+}
+
 TEST(MarkerFeedMotion, ResetMotionPlacesTheNextReport)
 {
     MarkerFeed feed(kParams);

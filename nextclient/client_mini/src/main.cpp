@@ -111,34 +111,41 @@ static void HUD_InitPost()
 
 static int HUD_RedrawHandler(float flTime, int iIntermission, HUD_RedrawNext next)
 {
-    // Draw the advanced radar before the stock HUD so weapon selection and any
-    // server-side HUD drawn by the original client render on top of it instead of
-    // being covered by the larger radar. The radar publishes its zone here; only
-    // text drawn by the stock client (between the two passthrough toggles) is
-    // pushed out from under it, never NextClient's own HUD text.
+    // The scope mask covers the radar corner, so zoomed frames draw the radar after the stock HUD.
     goldsrc::SCREENINFO screen;
     screen.iSize = sizeof(screen);
     gEngfuncs.pfnGetScreenInfo(&screen);
     HudTextZone_BeginFrame(screen.iWidth, screen.iHeight);
 
     HudTextZone_ClearZone();
+    bool scoped = gHUD->m_iFOV && *gHUD->m_iFOV > 0 && *gHUD->m_iFOV < 90;
 
     if (hud_draw->value != 0.0)
     {
         HudTextZone_SetPassthrough(true);
-        g_GameHud->DrawRadar(flTime);
+        g_GameHud->PrepareRadar();
+
+        if (!scoped)
+        {
+            g_GameHud->DrawRadar(flTime);
+        }
+
         HudTextZone_SetPassthrough(false);
     }
 
     int result = next->Invoke(flTime, iIntermission);
 
-    // The stock HUD has drawn; emit the glyph lines buffered from under the radar,
-    // shifted as whole lines now that their widths are known.
+    // Resolve shared text anchors once the stock HUD has supplied every row.
     RadarHooks_FlushText();
 
     HudTextZone_SetPassthrough(true);
     if (hud_draw->value != 0.0)
     {
+        if (scoped)
+        {
+            g_GameHud->DrawRadar(flTime);
+        }
+
         g_GameHud->Draw(flTime);
     }
 

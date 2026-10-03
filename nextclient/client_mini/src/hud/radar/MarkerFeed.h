@@ -13,7 +13,7 @@
 // entities the local snapshot carries and the positions the server broadcasts for everything else.
 // A thing both feeds carry is reported once, from the snapshot, and a broadcast position is played
 // back over the interval its messages arrive at, so a marker outside the PVS walks instead of
-// stepping.
+// stepping. A thing leaving the snapshot starts from where the snapshot last showed it.
 class MarkerFeed
 {
 public:
@@ -65,7 +65,8 @@ public:
     void Reset();
 
 private:
-    // The segment between the last two reported positions of one index.
+    // The segment between the last two reported positions of one index, collapsed onto the snapshot
+    // position while the snapshot carries the thing.
     struct Motion
     {
         bool used;
@@ -86,5 +87,9 @@ private:
     std::array<Marker, kRadarMaxMarkers * 2> markers_{};
     int marker_count_{};
 
+    // nullptr when every slot is taken.
+    Motion* AcquireMotion(int index, ncl_math::Vector2 pos, std::uint32_t seq, float time);
+
+    void PinMotion(int index, ncl_math::Vector2 pos, std::uint32_t seq, float time);
     ncl_math::Vector2 Interpolate(int index, ncl_math::Vector2 pos, std::uint32_t seq, float time);
 };

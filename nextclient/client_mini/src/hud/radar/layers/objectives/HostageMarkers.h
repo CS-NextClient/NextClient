@@ -1,11 +1,11 @@
 #pragma once
 
 #include <array>
-#include <cstdint>
 
 #include <ncl_math/vec3.h>
 
 #include "hud/radar/MarkerFeed.h"
+#include "hud/radar/ObjectiveSource.h"
 #include "hud/radar/RadarFrame.h"
 #include "hud/radar/RadarLimits.h"
 #include "ObjectiveEntities.h"
@@ -17,16 +17,6 @@ class RadarBroadcast;
 // The hostages, drawn by whichever pass the policy and the local player's team leave available.
 class HostageMarkers
 {
-    // Which draw owns spots_ this frame. Revealed means the server hands out every hostage
-    // position, so both feeds serve at once and MarkerFeed resolves them instead.
-    enum class Pass : std::uint8_t
-    {
-        None,
-        Sight,
-        Revealed,
-        ServerMarker,
-    };
-
     // A remembered hostage position. The key is the edict index in the sight pass and the message
     // index in the server-marker pass, so a change of pass drops the whole set.
     struct Spot
@@ -45,7 +35,10 @@ class HostageMarkers
     MarkerFeed feed_;
 
     std::array<Spot, kRadarMaxHostages> spots_{};
-    Pass pass_{};
+
+    // Which draw owns spots_. Revealed means the server hands out every hostage position, so both
+    // feeds serve at once and MarkerFeed resolves them instead.
+    HostageSource pass_{};
 
 public:
     explicit HostageMarkers(RadarVisibility& visibility, const RadarPolicy& policy, const RadarBroadcast& broadcast);
@@ -58,7 +51,7 @@ public:
     void OnLevelChange();
 
 private:
-    void SetPass(Pass pass);
+    void SetPass(HostageSource pass);
 
     void ClearVisibility();
 

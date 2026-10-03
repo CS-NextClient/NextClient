@@ -1,9 +1,7 @@
 #include "RadarHooks.h"
 
 #include <cmath>
-#include <cstdint>
 #include <cstring>
-#include <unordered_map>
 #include <vector>
 
 #include "main.h"
@@ -14,207 +12,54 @@
 #include <goldsrc/event_api.h>
 
 #include "RadarBroadcast.h"
-#include "HudTextZone.h"
+#include "HudTextBuffer.h"
 #include "SmokeRegistry.h"
 
 namespace
 {
-    goldsrc::pfnEngSrc_pfnDrawConsoleString_t g_OrigDrawConsoleString;
-    goldsrc::pfnEngSrc_pfnDrawConsoleStringLen_t g_OrigDrawConsoleStringLen;
-    goldsrc::pfnEngSrc_pfnDrawString_t g_OrigDrawString;
-    goldsrc::pfnEngSrc_pfnDrawCharacter_t g_OrigDrawCharacter;
-    goldsrc::pfnEngSrc_pfnVGUI2DrawCharacter_t g_OrigVGUI2DrawCharacter;
-    goldsrc::pfnEngSrc_pfnVGUI2DrawCharacterAdd_t g_OrigVGUI2DrawCharacterAdd;
-    goldsrc::pfnEngSrc_pfnDrawSetTextColor_t g_OrigDrawSetTextColor;
+    HudTextBuffer g_TextBuffer;
+    goldsrc::cl_enginefunc_t g_OriginalTextTable;
     goldsrc::cl_enginefunc_t* g_PatchedEngTable;
 
-    // VGUI2DrawCharacter takes no colour argument: it draws in the engine's ambient colour,
-    // set by DrawSetTextColor. Track it so a buffered glyph replays in its own colour.
-    int g_TextR = 255, g_TextG = 255, g_TextB = 255;
-
-    int MeasureTextWidth(const char* string)
+    void SetEngineTextColor(int r, int g, int b)
     {
-        int width = 0, height = 0;
-
-        if (g_OrigDrawConsoleStringLen)
-        {
-            g_OrigDrawConsoleStringLen(string, &width, &height);
-        }
-
-        return width;
+        g_NitroApi->GetEngineData()->VGUI2_Draw_SetTextColor(r, g, b);
     }
 
-    // Glyph text arrives one glyph at a time, so a line's width is known only after its
-    // last glyph: an in-zone line is buffered and drawn as one shifted line later. The
-    // advance a hook returns is measured off-screen; the engine's width is position-independent.
-    constexpr int kOffscreen = -10000;
-
-    enum GlyphKind
+    void VGUI2_Draw_SetTextColorHandler(int r, int g, int b, nitroapi::NextHandlerInterface<void, int, int, int>* next)
     {
-        kGlyphConsole,
-        kGlyphVgui2,
-        kGlyphVgui2Add,
-    };
-
-    struct BufGlyph
-    {
-        GlyphKind kind;
-        int x, y, ch;
-        int r, g, b;
-        unsigned int font;
-    };
-
-    std::vector<BufGlyph> g_GlyphLine;
-    int g_LineY;
-    int g_LineFirstX;
-    int g_LineLastX;
-    int g_LineRight;
-
-    // Glyph advance depends only on (kind, char, font) and changes only when fonts are rebuilt.
-    std::unordered_map<std::uint64_t, int> g_GlyphWidth;
-
-    template <class Measure>
-    int MeasureGlyphWidth(GlyphKind kind, int ch, unsigned int font, Measure measure)
-    {
-        std::uint64_t key = ((std::uint64_t)font << 32) | ((std::uint64_t)(std::uint32_t)ch << 8) | (std::uint32_t)kind;
-        auto it = g_GlyphWidth.find(key);
-
-        if (it != g_GlyphWidth.end())
-        {
-            return it->second;
-        }
-
-        int width = measure();
-        g_GlyphWidth.emplace(key, width);
-        return width;
-    }
-
-    void FlushGlyphLine()
-    {
-        if (g_GlyphLine.empty())
-        {
-            return;
-        }
-
-        int dx = 0, dy = 0;
-        HudTextZone_ComputeLineShift(g_LineFirstX, g_LineY, g_LineRight - g_LineFirstX, dx, dy);
-
-        for (const BufGlyph& g : g_GlyphLine)
-        {
-            int gx = g.x + dx, gy = g.y + dy;
-
-            switch (g.kind)
-            {
-                case kGlyphConsole:
-                    g_OrigDrawCharacter(gx, gy, g.ch, g.r, g.g, g.b);
-                    break;
-                case kGlyphVgui2:
-                    if (g_OrigDrawSetTextColor)
-                    {
-                        g_OrigDrawSetTextColor(g.r / 255.0f, g.g / 255.0f, g.b / 255.0f);
-                    }
-
-                    g_OrigVGUI2DrawCharacter(gx, gy, g.ch, g.font);
-                    break;
-                case kGlyphVgui2Add:
-                    g_OrigVGUI2DrawCharacterAdd(gx, gy, g.ch, g.r, g.g, g.b, g.font);
-                    break;
-            }
-        }
-
-        // Leave the ambient colour as the caller last set it, so the line that triggered
-        // a mid-frame flush keeps its own colour.
-        if (g_OrigDrawSetTextColor)
-        {
-            g_OrigDrawSetTextColor(g_TextR / 255.0f, g_TextG / 255.0f, g_TextB / 255.0f);
-        }
-
-        g_GlyphLine.clear();
-    }
-
-    void BufferGlyph(GlyphKind kind, int x, int y, int ch, int r, int g, int b, unsigned int font, int width)
-    {
-        if (!g_GlyphLine.empty() && (y != g_LineY || x < g_LineLastX))
-        {
-            FlushGlyphLine();
-        }
-
-        if (g_GlyphLine.empty())
-        {
-            g_LineY = y;
-            g_LineFirstX = x;
-            g_LineRight = x;
-        }
-
-        g_LineLastX = x;
-        g_GlyphLine.push_back({kind, x, y, ch, r, g, b, font});
-
-        if (x + width > g_LineRight)
-        {
-            g_LineRight = x + width;
-        }
+        g_TextBuffer.SetColor(r, g, b);
+        next->Invoke(r, g, b);
     }
 
     int Hooked_DrawConsoleString(int x, int y, char* string)
     {
-        HudTextZone_ShiftString(x, y, HudTextZone_IsRowInZone(y) ? MeasureTextWidth(string) : 0);
-        return g_OrigDrawConsoleString(x, y, string);
+        return g_TextBuffer.DrawConsoleString(x, y, string);
     }
 
     int Hooked_DrawString(int x, int y, const char* string, int r, int g, int b)
     {
-        HudTextZone_ShiftString(x, y, HudTextZone_IsRowInZone(y) ? MeasureTextWidth(string) : 0);
-        return g_OrigDrawString(x, y, string, r, g, b);
+        return g_TextBuffer.DrawString(x, y, string, r, g, b);
     }
 
-    int Hooked_DrawCharacter(int x, int y, int number, int r, int g, int b)
+    int Hooked_DrawStringReverse(int x, int y, const char* string, int r, int g, int b)
     {
-        if (!HudTextZone_IsRowInZone(y))
-        {
-            return g_OrigDrawCharacter(x, y, number, r, g, b);
-        }
+        return g_TextBuffer.DrawStringReverse(x, y, string, r, g, b);
+    }
 
-        int width = MeasureGlyphWidth(kGlyphConsole, number, 0, [&] {
-            return g_OrigDrawCharacter(kOffscreen, kOffscreen, number, r, g, b);
-        });
-        BufferGlyph(kGlyphConsole, x, y, number, r, g, b, 0, width);
-        return width;
+    int Hooked_DrawCharacter(int x, int y, int ch, int r, int g, int b)
+    {
+        return g_TextBuffer.DrawCharacter(x, y, ch, r, g, b);
     }
 
     int Hooked_VGUI2DrawCharacter(int x, int y, int ch, unsigned int font)
     {
-        if (!HudTextZone_IsRowInZone(y))
-        {
-            return g_OrigVGUI2DrawCharacter(x, y, ch, font);
-        }
-
-        int width = MeasureGlyphWidth(kGlyphVgui2, ch, font, [&] {
-            return g_OrigVGUI2DrawCharacter(kOffscreen, kOffscreen, ch, font);
-        });
-        BufferGlyph(kGlyphVgui2, x, y, ch, g_TextR, g_TextG, g_TextB, font, width);
-        return width;
-    }
-
-    void Hooked_DrawSetTextColor(float r, float g, float b)
-    {
-        g_TextR = (int)(r * 255.0f + 0.5f);
-        g_TextG = (int)(g * 255.0f + 0.5f);
-        g_TextB = (int)(b * 255.0f + 0.5f);
-        g_OrigDrawSetTextColor(r, g, b);
+        return g_TextBuffer.VGUI2DrawCharacter(x, y, ch, font);
     }
 
     int Hooked_VGUI2DrawCharacterAdd(int x, int y, int ch, int r, int g, int b, unsigned int font)
     {
-        if (!HudTextZone_IsRowInZone(y))
-        {
-            return g_OrigVGUI2DrawCharacterAdd(x, y, ch, r, g, b, font);
-        }
-
-        int width = MeasureGlyphWidth(kGlyphVgui2Add, ch, font, [&] {
-            return g_OrigVGUI2DrawCharacterAdd(kOffscreen, kOffscreen, ch, r, g, b, font);
-        });
-        BufferGlyph(kGlyphVgui2Add, x, y, ch, r, g, b, font, width);
-        return width;
+        return g_TextBuffer.VGUI2DrawCharacterAdd(x, y, ch, r, g, b, font);
     }
 
     RadarSinks g_Sinks;
@@ -330,49 +175,36 @@ void RadarHooks_PatchHudText()
 {
     goldsrc::cl_enginefunc_t* ef = g_NitroApi->GetClientData()->gEngfuncs;
 
-    if (!ef || g_OrigDrawConsoleString)
+    if (!ef || g_PatchedEngTable)
     {
         return;
     }
 
-    g_OrigDrawConsoleStringLen = ef->pfnDrawConsoleStringLen; // measure only, not hooked
-    g_OrigDrawConsoleString = ef->pfnDrawConsoleString;
-    g_OrigDrawString = ef->pfnDrawString;
-    g_OrigDrawCharacter = ef->pfnDrawCharacter;
-    g_OrigVGUI2DrawCharacter = ef->pfnVGUI2DrawCharacter;
-    g_OrigVGUI2DrawCharacterAdd = ef->pfnVGUI2DrawCharacterAdd;
-    g_OrigDrawSetTextColor = ef->pfnDrawSetTextColor;
+    g_OriginalTextTable = *ef;
+    g_TextBuffer.Initialize(*ef, SetEngineTextColor);
     ef->pfnDrawConsoleString = Hooked_DrawConsoleString;
     ef->pfnDrawString = Hooked_DrawString;
+    ef->pfnDrawStringReverse = Hooked_DrawStringReverse;
     ef->pfnDrawCharacter = Hooked_DrawCharacter;
     ef->pfnVGUI2DrawCharacter = Hooked_VGUI2DrawCharacter;
     ef->pfnVGUI2DrawCharacterAdd = Hooked_VGUI2DrawCharacterAdd;
-    ef->pfnDrawSetTextColor = Hooked_DrawSetTextColor;
     g_PatchedEngTable = ef;
 }
 
 void RadarHooks_UnpatchHudText()
 {
-    if (g_PatchedEngTable && g_OrigDrawConsoleString)
+    if (g_PatchedEngTable)
     {
-        g_PatchedEngTable->pfnDrawConsoleString = g_OrigDrawConsoleString;
-        g_PatchedEngTable->pfnDrawString = g_OrigDrawString;
-        g_PatchedEngTable->pfnDrawCharacter = g_OrigDrawCharacter;
-        g_PatchedEngTable->pfnVGUI2DrawCharacter = g_OrigVGUI2DrawCharacter;
-        g_PatchedEngTable->pfnVGUI2DrawCharacterAdd = g_OrigVGUI2DrawCharacterAdd;
-        g_PatchedEngTable->pfnDrawSetTextColor = g_OrigDrawSetTextColor;
+        g_PatchedEngTable->pfnDrawConsoleString = g_OriginalTextTable.pfnDrawConsoleString;
+        g_PatchedEngTable->pfnDrawString = g_OriginalTextTable.pfnDrawString;
+        g_PatchedEngTable->pfnDrawStringReverse = g_OriginalTextTable.pfnDrawStringReverse;
+        g_PatchedEngTable->pfnDrawCharacter = g_OriginalTextTable.pfnDrawCharacter;
+        g_PatchedEngTable->pfnVGUI2DrawCharacter = g_OriginalTextTable.pfnVGUI2DrawCharacter;
+        g_PatchedEngTable->pfnVGUI2DrawCharacterAdd = g_OriginalTextTable.pfnVGUI2DrawCharacterAdd;
     }
 
-    g_GlyphLine.clear();
-    g_GlyphWidth.clear();
+    g_TextBuffer.Reset();
     g_PatchedEngTable = nullptr;
-    g_OrigDrawConsoleString = nullptr;
-    g_OrigDrawConsoleStringLen = nullptr;
-    g_OrigDrawString = nullptr;
-    g_OrigDrawCharacter = nullptr;
-    g_OrigVGUI2DrawCharacter = nullptr;
-    g_OrigVGUI2DrawCharacterAdd = nullptr;
-    g_OrigDrawSetTextColor = nullptr;
 }
 
 void RadarHooks_SetSinks(const RadarSinks& sinks)
@@ -387,17 +219,18 @@ void RadarHooks_ClearSinks()
 
 void RadarHooks_FlushText()
 {
-    FlushGlyphLine();
+    g_TextBuffer.Flush();
 }
 
 void RadarHooks_InvalidateGlyphMetrics()
 {
-    g_GlyphWidth.clear();
+    g_TextBuffer.InvalidateGlyphMetrics();
 }
 
 void RadarHooks_Subscribe(nitroapi::NitroApiInterface* nitro_api, std::vector<std::shared_ptr<nitroapi::Unsubscriber>>& unsub)
 {
     nitroapi::ClientData* client_data = nitro_api->GetClientData();
+    unsub.emplace_back(nitro_api->GetEngineData()->VGUI2_Draw_SetTextColor |= VGUI2_Draw_SetTextColorHandler);
     unsub.emplace_back(nitro_api->GetEngineData()->CL_HookEvent |= CL_HookEventHandler);
     unsub.emplace_back(client_data->UserMsg_BombDrop |= UserMsg_BombDropHandler);
     unsub.emplace_back(client_data->UserMsg_BombPickup |= UserMsg_BombPickupHandler);

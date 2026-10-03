@@ -59,8 +59,16 @@ namespace
     };
 
     constexpr const char* kBlurUniforms[radar_draw::kBlurCount] = {
-        "uCenter", "uRadius", "uFeather", "uSquare", "uLod", "uStep",
-        "uDarken", "uAlpha", "uFadeColor", "uFadeAmt",
+        "uCenter",
+        "uRadius",
+        "uFeather",
+        "uSquare",
+        "uDirection",
+        "uFilterPass",
+        "uDarken",
+        "uAlpha",
+        "uFadeColor",
+        "uFadeAmt",
     };
 
     static_assert(radar_draw::kMaskCount <= ncl_gl::kMaxUniforms && kPrimCount <= ncl_gl::kMaxUniforms &&

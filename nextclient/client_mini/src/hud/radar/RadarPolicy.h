@@ -43,8 +43,10 @@ public:
 
     // Past the coordinate quantisation: a planted bomb cannot move at all.
     static constexpr float kPlantedMoveDist = 64.0f;
-    // A dropped bomb only moves while it is in the air.
-    static constexpr int kMoveMessages = 3;
+    // A dropped bomb only moves while it is in the air, which the once-a-second report catches in one
+    // or two messages however far the throw carries it; a marker that follows a player keeps moving.
+    static constexpr int kMoveMessages = 3; // messages that moved, not messages in total
+    static constexpr float kMoveStepDist = 1.0f; // a shorter step repeats the last spot
     static constexpr float kMoveDist = 200.0f;
     static constexpr float kMoveWindow = 3.0f;
 
@@ -130,6 +132,7 @@ private:
         ncl_math::Vector3 pos;
         bool planted{};
         int messages{};
+        int moving_messages{};
         float moved{};
         float first_time{};
         float last_time{};

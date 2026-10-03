@@ -11,9 +11,9 @@ under this directory is the machinery it drives.
 | Frame model and projection | `RadarView.*` (box, shape, transform), `RadarFrame.h`, `RadarTeam.h` |
 | Drawing | `RadarDraw.*` (GL prims, shaders, clip) with `RadarDrawEffects.cpp` (blur capture, mask) behind `RadarDrawInternal.h`, `RadarText.*` and `RadarLabel.*` (labels), `RadarPalette.h`, `ServerMarker.*`, `RadarFade.*`, `HudTextZone.*` |
 | Map sources | `Overview.*` (BSP overview sprite), `MapRender.*` (runtime generated map), `MapObjectives.*` (bomb sites, A/B letters) |
-| Per-frame contents | `layers/BackdropLayer.*` (box, map, smoke, rim), `layers/PlayersLayer.*` over `layers/players/*`, `layers/ObjectivesLayer.*` (sites plus the dispatch) over `layers/objectives/*` (`ObjectiveEntities.*`, `BombMarker.*`, `HostageMarkers.*`, each marker picking its own feed) |
+| Per-frame contents | `layers/BackdropLayer.*` (box, map, smoke, rim), `layers/PlayersLayer.*` over `layers/players/*`, `layers/ObjectivesLayer.*` (sites plus the dispatch) over `layers/objectives/*` (`ObjectiveEntities.*`, `BombMarker.*`, `HostageMarkers.*`, each marker picking its own feed through `ObjectiveSource.*`) |
 | State that outlives a frame | `layers/players/PlayerTracks.*` (trails), `layers/players/DeathMarks.*`, the remembered spots inside the two marker units, `MarkerFeed.*` over `MarkerIdentity.*` (the snapshot and broadcast feeds of one feature, resolved into one marker set), `SmokeRegistry.*`, `RadarBroadcast.*` (server-sent markers), `RadarText.*` (layout cache, font memo) |
-| Rules and plumbing | `RadarPolicy.*` (what may be revealed), `Visibility.*` (line of sight), `RadarConfig.*` (cvars), `RadarHooks.*` (engine hooks), `RadarDebug.*`, `RadarUtil.h`, `RadarLimits.h` |
+| Rules and plumbing | `RadarPolicy.*` (what may be revealed), `ObjectiveSource.*` (which feed serves whom), `Visibility.*` (line of sight), `RadarConfig.*` (cvars), `RadarHooks.*` (engine hooks), `RadarDebug.*`, `RadarUtil.h`, `RadarLimits.h` |
 
 Cvar definitions do not live here: `include/next_client_mini/radar_cvars.h` is the single table the
 client registration and the GameUI dialog both read. Adding a cvar means editing that table, the
@@ -46,10 +46,6 @@ because a virtual list would bury the order that this file calls load-bearing.
 - **GL state around the prim batches is load-bearing.** `RadarDraw` forces texture unit 0 and
   restores the binding, the current colour and the blend state. Both were once real HUD defects
   (garbled number sprites, a white flashing timer digit), not caution.
-- **The objectives gate stays inside each draw function.** `ObjectivesLayer::CollectEntities`
-  advances the throttled line-of-sight cadence before the per-function guard; hoisting the
-  `hud_radar_objectives` check into `Draw` freezes that timestamp and fires a full edict rescan with
-  a stale one when objectives come back on.
 - **Player and hostage tables are sized from `RadarLimits.h`.** The bounds are restated once there
   and tied to `goldsrc::cstrike::MAX_PLAYERS` and `MAX_HOSTAGES` by the static_asserts beside them.
   A local copy of either number is how a table silently ends up one size and its writer another.
@@ -70,8 +66,14 @@ because a virtual list would bury the order that this file calls load-bearing.
   describe (hostages today, players and anything custom later) hands both spans to `MarkerFeed` and
   draws what it returns: it pairs the ids, reports a thing the snapshot carries once, and plays the
   broadcast positions back over the interval they arrive at, which is what keeps a marker outside
-  the PVS from stepping once a second. Merging the two feeds inside a marker unit is how the
-  duplicate and the stutter come back.
+  the PVS from stepping once a second. A thing that leaves the PVS holds where the snapshot last
+  showed it until a newer message arrives: the message at hand is up to a second older and would
+  roll the marker back. Merging the two feeds inside a marker unit is how the duplicate, the
+  stutter and the rollback come back.
+- **Which feed serves whom is decided in `ObjectiveSource`.** Who receives a message is the
+  server's rule: a dropped bomb and its pickup reach living Terrorists only, while the plant and
+  its clears reach everyone. A spectator therefore takes the bomb from the snapshot first, and a
+  drop message that stopped repeating is stale rather than a bomb still lying there.
 - **`RadarPolicy` owns reveal decisions.** Game modes re-purpose the stock messages (free-for-all
   zeroes the Radar origin rather than withholding it; a plant arrives as a broadcast BombDrop), and
   the rules are unit-tested. Do not spread mode sniffing into the layers.
@@ -107,9 +109,9 @@ and here it lands as:
   lifetime. A unit keeps its own remembered state: the hostage slots and the bomb's last sighting sit
   in the markers that draw them, one class per file.
 - **`Module_Function` free functions** for the pure helpers (`RadarView`, `RadarUtil`, `RadarLabel`,
-  `RadarFade`) and for the singletons a C callback or an engine table has to reach: `RadarDraw` (GL
-  programs), `RadarHooks` (the patched client.dll table), `RadarConfig` (cvar pointers), `RadarDebug`,
-  `HudTextZone`. `namespace RadarConfig` is closed anyway: `struct RadarConfig` holds the name.
+  `RadarFade`, `ObjectiveSource`) and for the singletons a C callback or an engine table has to
+  reach: `RadarDraw` (GL programs), `RadarHooks` (the patched client.dll table), `RadarConfig` (cvar
+  pointers), `RadarDebug`, `HudTextZone`. `namespace RadarConfig` is closed anyway: `struct RadarConfig` holds the name.
 - **A namespace** for the marker palette (`RadarPalette`); the bounds in `RadarLimits.h` read
   unambiguously on their own and stay at file scope.
 - **Types at file scope**: `RadarBox`, `RadarShape`, `RadarTransform`, `RadarFrame`, `FrameContext`,
@@ -149,7 +151,7 @@ build/ninja-local-tests/out/bin/Debug/client_mini-tests.exe
 
 The unit tests cover the parts that can run without the engine: `RadarViewTests` (projection and
 clamping, including the rotated basis), `RadarPolicyTests`, `RadarFadeTests`, `PlayerTracksTests`,
-`MarkerIdentityTests`, `MarkerFeedTests`, `RadarUtilTests`. Anything touching projection, clamping or reveal rules should leave them green.
+`MarkerIdentityTests`, `MarkerFeedTests`, `ObjectiveSourceTests`, `RadarUtilTests`. Anything touching projection, clamping or reveal rules should leave them green.
 
 Do not launch the game to check a change. A build plus the unit tests is the loop; the developer runs
 the game. Deploying (`--target BUILD_ALL`) installs into the user's game directory, so do it only when
@@ -165,6 +167,7 @@ reference instead, the way `RadarVisibility` and the layers do.
 ## The test harness lives on another branch
 
 `RadarDump`, `RadarShot`, `RadarTestPlan` and `tools/radar_tests` are not part of this directory: they
-sit on `feature/radar-harness`, which is this branch plus one commit. When you add a marker kind or
-change a draw path, that branch carries the matching dump call and will conflict on the next rebase.
+are one commit on `feature/radar-harness`, rebased onto this branch when the harness is needed. When
+you add a marker kind or change a draw path, that commit carries the matching dump call and will
+conflict on the next rebase.
 Build it too when you touch these files: a local that is dead here can be live there.

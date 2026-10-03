@@ -28,10 +28,10 @@ public:
     void CollectEntities(const RadarFrame& frame);
 
     void Draw(const RadarFrame& frame);
-    
+
     void OnPlayerRespawn();
     void OnVidInit();
-    
+
     // Parses the entity lump on the first call of a level.
     const RadarMapObjectives& get_map_objectives();
 
@@ -39,6 +39,6 @@ private:
     void DrawBomb(const RadarFrame& frame);
     void DrawSites(const RadarFrame& frame);
     void DrawHostages(const RadarFrame& frame);
-    
+
     int ComputeSiteHeightPx(const RadarFrame& frame);
 };

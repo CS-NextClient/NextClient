@@ -74,6 +74,24 @@ void PlayersLayer::Draw(const RadarFrame& frame)
 {
     DrawPlayers(frame);
     DrawDeaths(frame);
+    DrawCamera(frame);
+}
+
+void PlayersLayer::DrawCamera(const RadarFrame& frame)
+{
+    if (!frame.ctx.spectating || g_iUser1 != goldsrc::OBS_ROAMING)
+    {
+        return;
+    }
+
+    int dot = std::max(2, (int)(frame.box.marker_px * kPlayerDotScale));
+    ncl_math::Vector2 pos = frame.shape.Clamp(dot, frame.t.WorldToScreen({g_MainViewOrigin[0], g_MainViewOrigin[1]}));
+    ncl_math::Vector2 dir = frame.t.MarkerDirection(g_MainViewAngles[1]);
+
+    RadarDraw_BeginPrims();
+    RadarDraw_DrawCone(pos, dir, dot * 6.5f, ComputeHighlightConeSpread(frame), RadarPalette::kHighlight, 0.65f);
+    DrawMarker(pos, dir, dot, RadarPalette::kHighlight);
+    RadarDraw_EndPrims();
 }
 
 void PlayersLayer::OnPlayerRespawn()
@@ -237,7 +255,8 @@ float PlayersLayer::ComputeHighlightConeSpread(const RadarFrame& frame)
         fov = (float)*gHUD->m_iFOV;
     }
 
-    if (frame.ctx.spectating && gHUD && gHUD->m_pPlayerFOV && frame.ctx.highlight_idx >= 1 && frame.ctx.highlight_idx < 64)
+    if (frame.ctx.spectating && g_iUser1 != goldsrc::OBS_ROAMING && gHUD && gHUD->m_pPlayerFOV && frame.ctx.highlight_idx >= 1 &&
+        frame.ctx.highlight_idx < 64)
     {
         int pf = (*gHUD->m_pPlayerFOV)[frame.ctx.highlight_idx];
 
@@ -275,7 +294,7 @@ bool PlayersLayer::ResolvePlayerSpot(const RadarFrame& frame, int i, bool is_sel
         facing_yaw = g_MainViewAngles[1];
         has_dir = true;
     }
-    else if (is_ally)
+    else if (is_ally && !frame.ctx.spectating)
     {
         if (live)
         {

@@ -6,7 +6,6 @@
 
 #include "main.h"
 
-#include "hud/radar/RadarConfig.h"
 #include "hud/radar/RadarDraw.h"
 #include "hud/radar/RadarLabel.h"
 #include "hud/radar/RadarPalette.h"
@@ -59,14 +58,14 @@ const RadarMapObjectives& ObjectivesLayer::get_map_objectives()
 
 void ObjectivesLayer::CollectEntities(const RadarFrame& frame)
 {
-    objective_entities_.CollectEntities(frame);
+    objective_entities_.CollectEntities(frame, get_map_objectives());
 }
 
 void ObjectivesLayer::Draw(const RadarFrame& frame)
 {
     DrawBomb(frame);
     DrawSites(frame);
-    DrawHostages(frame);    
+    DrawHostages(frame);
 }
 
 void ObjectivesLayer::DrawBomb(const RadarFrame& frame)

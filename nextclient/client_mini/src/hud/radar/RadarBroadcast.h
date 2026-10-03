@@ -6,8 +6,9 @@
 
 #include <ncl_math/vec3.h>
 
-// Fed by the user messages that carry positions outside the local PVS: BombDrop/BombPickup
-// (Terrorists) and HostagePos/HostageK (Counter-Terrorists).
+// Fed by the user messages that carry positions outside the local PVS: BombDrop/BombPickup (living
+// Terrorists, except the plant and the clears, which reach everyone) and HostagePos/HostageK (living
+// Counter-Terrorists).
 class RadarBroadcast
 {
 public:

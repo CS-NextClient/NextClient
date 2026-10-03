@@ -252,16 +252,6 @@
 		"tall"			"22"
 		"labelText"		"#GameUI_HudRadar_Tracks"
 	}
-	"Objectives"
-	{
-		"ControlName"		"CCvarToggleCheckButton"
-		"fieldName"		"Objectives"
-		"xpos"			"200"
-		"ypos"			"352"
-		"wide"			"170"
-		"tall"			"22"
-		"labelText"		"#GameUI_HudRadar_Objectives"
-	}
 
 	"LabelNameSize"
 	{

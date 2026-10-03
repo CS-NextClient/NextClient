@@ -7,6 +7,7 @@ include(GoogleTest)
 add_executable(${TARGET_NAME}
         #CmdCheckerBindTests.cpp
         CmdCheckerTests.cpp
+        TextSurfaceTests.cpp
         mocks/CmdCheckerConfigProviderMock.h
         mocks/LoggerMock.h
 )

@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
 
 #include <string>
+#include <vector>
 
 #include "RadarUtil.h"
 
@@ -53,6 +54,40 @@ TEST(RadarUtilSiteLetter, WholeName)
 {
     EXPECT_EQ(RadarUtil_DetectSiteLetter("a"), 'A');
     EXPECT_EQ(RadarUtil_DetectSiteLetter("B"), 'B');
+}
+
+TEST(RadarUtilHostageModel, AModelTheMapGivesItsHostagesIsAHostage)
+{
+    // cs_italy and cs_militia give every hostage the Half-Life scientist.
+    std::vector<std::string> map_models{"models/scientist.mdl"};
+
+    EXPECT_TRUE(RadarUtil_IsHostageModel("models/scientist.mdl", map_models));
+}
+
+TEST(RadarUtilHostageModel, TheEngineMayKeepAnotherSpelling)
+{
+    std::vector<std::string> map_models{"models/Scientist.mdl"};
+
+    EXPECT_TRUE(RadarUtil_IsHostageModel("models/scientist.mdl", map_models));
+}
+
+TEST(RadarUtilHostageModel, AModelSharingAPrefixIsNotAHostage)
+{
+    std::vector<std::string> map_models{"models/scientist.mdl"};
+
+    EXPECT_FALSE(RadarUtil_IsHostageModel("models/scientist2.mdl", map_models));
+    EXPECT_FALSE(RadarUtil_IsHostageModel("models/scient.mdl", map_models));
+}
+
+TEST(RadarUtilHostageModel, AHostageNamedModelNeedsNoMapEntry)
+{
+    // A server running CZ hostages swaps in models/hostageA.mdl..hostageD.mdl whatever the map says.
+    EXPECT_TRUE(RadarUtil_IsHostageModel("models/hostageA.mdl", {}));
+}
+
+TEST(RadarUtilHostageModel, AScientistOffTheMapsListIsAProp)
+{
+    EXPECT_FALSE(RadarUtil_IsHostageModel("models/scientist.mdl", {}));
 }
 
 TEST(RadarUtilSiteLetter, NoneWhenAbsent)

@@ -365,6 +365,11 @@ void RadarPolicy::ClassifyBombMessage(const BombObservation& obs)
     track_.pos = obs.pos;
     track_.planted = obs.planted;
 
+    if (step >= kMoveStepDist)
+    {
+        track_.moving_messages++;
+    }
+
     // A declared hint wins over the heuristics, and Marker latches for the rest of the map.
     if (bomb_hint_ != MessageHint::None || bomb_intent_ == BombIntent::Marker)
     {
@@ -385,7 +390,7 @@ void RadarPolicy::ClassifyBombMessage(const BombObservation& obs)
 
     float span = track_.last_time - track_.first_time;
 
-    if (track_.messages >= kMoveMessages && track_.moved >= kMoveDist && span >= kMoveWindow)
+    if (track_.moving_messages >= kMoveMessages && track_.moved >= kMoveDist && span >= kMoveWindow)
     {
         SetBombIntent(BombIntent::Marker, BombReason::Moved, track_.moved, span);
         return;

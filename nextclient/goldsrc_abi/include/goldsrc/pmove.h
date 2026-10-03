@@ -8,6 +8,14 @@
 
 namespace goldsrc
 {
+    inline constexpr int OBS_NONE = 0;
+    inline constexpr int OBS_CHASE_LOCKED = 1;
+    inline constexpr int OBS_CHASE_FREE = 2;
+    inline constexpr int OBS_ROAMING = 3;
+    inline constexpr int OBS_IN_EYE = 4;
+    inline constexpr int OBS_MAP_FREE = 5;
+    inline constexpr int OBS_MAP_CHASE = 6;
+
     inline constexpr int PM_NORMAL = 0x00000000;
     inline constexpr int PM_TRACELINE_PHYSENTSONLY = 0x00000000;
     inline constexpr int PM_STUDIO_IGNORE = 0x00000001;

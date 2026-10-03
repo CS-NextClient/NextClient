@@ -55,10 +55,15 @@ void GameHud::Draw(float time)
     for (auto& item : all_hud_) {
         if (item == radar_advanced_)
         {
-            continue;   // drawn earlier, under the stock HUD, via DrawRadar
+            continue; // drawn separately via DrawRadar
         }
         item->Draw(time);
     }
+}
+
+void GameHud::PrepareRadar()
+{
+    radar_advanced_->PrepareHudTextZone();
 }
 
 void GameHud::DrawRadar(float time)

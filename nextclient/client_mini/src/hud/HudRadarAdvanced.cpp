@@ -11,6 +11,7 @@
 #include <goldsrc/cstrike/game.h>
 #include <goldsrc/cstrike/hud.h>
 #include <goldsrc/cstrike/hud_elements.h>
+#include <goldsrc/cstrike/spectator.h>
 #include <goldsrc/cvar.h>
 #include <goldsrc/engine/model.h>
 #include <goldsrc/entity.h>
@@ -171,7 +172,9 @@ bool HudRadarAdvanced::ShouldDraw()
 
     if (spectating)
     {
-        return true;
+        float inset = cl_enginefunc()->pfnGetCvarFloat("spec_pip");
+        return g_iUser1 != goldsrc::OBS_MAP_FREE && g_iUser1 != goldsrc::OBS_MAP_CHASE && inset != goldsrc::cstrike::INSET_MAP_FREE &&
+               inset != goldsrc::cstrike::INSET_MAP_CHASE;
     }
 
     if (m_iHideHUDDisplay & goldsrc::cstrike::HIDEHUD_HEALTH)
@@ -207,8 +210,8 @@ void HudRadarAdvanced::UpdateFrameContext(bool spectating, float flTime)
         ctx_.local = local;
         ctx_.self_idx = local->index;
         ctx_.highlight_idx = local->index;
-        
-        if (ctx_.spectating && IsValidClientIndex(g_iUser2))
+
+        if (ctx_.spectating && g_iUser1 != goldsrc::OBS_ROAMING && IsValidClientIndex(g_iUser2))
         {
             ctx_.highlight_idx = g_iUser2;
         }
@@ -293,6 +296,25 @@ void HudRadarAdvanced::UpdatePolicy(float flTime)
 
         policy_.ObserveAlly(i, live, live_pos, ncl_math::Vector3::Ref(ext.origin));
     }
+}
+
+void HudRadarAdvanced::PrepareHudTextZone()
+{
+    g_MapUnavailable = false;
+
+    if (!RadarConfig_CheckAdvancedActive() || !ShouldDraw())
+    {
+        return;
+    }
+
+    if (!backdrop_.EnsureMap())
+    {
+        g_MapUnavailable = true;
+        return;
+    }
+
+    RadarBox box = ComputeBox(g_iUser1 != 0 || cl_enginefunc()->IsSpectateOnly());
+    HudTextZone_SetZone(box.x, box.y, box.size);
 }
 
 void HudRadarAdvanced::Draw(float flTime)

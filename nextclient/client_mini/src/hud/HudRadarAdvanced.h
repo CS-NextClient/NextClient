@@ -46,6 +46,7 @@ public:
     void InitHUDData() override;
     void Reset() override;
     void Draw(float flTime) override;
+    void PrepareHudTextZone();
 
     // True only when this frame had no map source at all (no overview sprite, no runtime
     // render). The advanced radar draws first, so the classic one reads this to take over.

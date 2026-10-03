@@ -19,14 +19,14 @@ using namespace radar_draw;
 
 namespace
 {
-    // A multisample resolve blit must be 1:1, so the scene resolves into g_BgTex at capture
-    // size and is downsampled into g_BgSmall, which alone is mipmapped and sampled.
-    constexpr int kBlurDownscale = 4;
-    constexpr float kBlurSampleLod = 3.0f; // 5.0 (full-size LOD) - log2(kBlurDownscale)
+    // Multisample resolve must be 1:1; filtering runs on separate half-resolution targets.
+    constexpr int kBlurDownscale = 2;
     GLuint g_BgTex;
     GLuint g_BgFbo;
     GLuint g_BgSmall;
     GLuint g_BgSmallFbo;
+    GLuint g_BgTemp;
+    GLuint g_BgTempFbo;
     int g_BgTexW, g_BgTexH;
 } // namespace
 
@@ -36,12 +36,14 @@ namespace radar_draw
     {
         // A GL 2.x driver exposing only EXT_framebuffer_object leaves these null under
         // glad, so the blur capture cannot run: fall back to the plain backdrop.
-        if (glGenFramebuffers && glBindFramebuffer && glFramebufferTexture2D && glBlitFramebuffer && glGenerateMipmap)
+        if (glGenFramebuffers && glBindFramebuffer && glFramebufferTexture2D && glBlitFramebuffer)
         {
             glGenTextures(1, &g_BgTex);
             glGenFramebuffers(1, &g_BgFbo);
             glGenTextures(1, &g_BgSmall);
             glGenFramebuffers(1, &g_BgSmallFbo);
+            glGenTextures(1, &g_BgTemp);
+            glGenFramebuffers(1, &g_BgTempFbo);
             return;
         }
 
@@ -71,12 +73,24 @@ namespace radar_draw
             {
                 glDeleteFramebuffers(1, &g_BgSmallFbo);
             }
+
+            if (g_BgTemp)
+            {
+                glDeleteTextures(1, &g_BgTemp);
+            }
+
+            if (g_BgTempFbo)
+            {
+                glDeleteFramebuffers(1, &g_BgTempFbo);
+            }
         }
 
         g_BgTex = 0;
         g_BgFbo = 0;
         g_BgSmall = 0;
         g_BgSmallFbo = 0;
+        g_BgTemp = 0;
+        g_BgTempFbo = 0;
         g_BgTexW = 0;
         g_BgTexH = 0;
     }
@@ -194,10 +208,19 @@ bool RadarDraw_DrawBlurBackground(
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, small_w, small_h, 0, GL_RGB, GL_UNSIGNED_BYTE, nullptr);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
         glBindFramebuffer(GL_FRAMEBUFFER, g_BgSmallFbo);
         glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, g_BgSmall, 0);
+
+        glBindTexture(GL_TEXTURE_2D, g_BgTemp);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, small_w, small_h, 0, GL_RGB, GL_UNSIGNED_BYTE, nullptr);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glBindFramebuffer(GL_FRAMEBUFFER, g_BgTempFbo);
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, g_BgTemp, 0);
 
         glBindTexture(GL_TEXTURE_2D, 0);
         g_BgTexW = cap_w;
@@ -217,21 +240,63 @@ bool RadarDraw_DrawBlurBackground(
     glBindFramebuffer(GL_DRAW_FRAMEBUFFER, g_BgSmallFbo);
     glBlitFramebuffer(0, 0, cap_w, cap_h, 0, 0, small_w, small_h, GL_COLOR_BUFFER_BIT, GL_LINEAR);
 
+    GLint prev_matrix_mode = GL_MODELVIEW;
+    glGetIntegerv(GL_MATRIX_MODE, &prev_matrix_mode);
+    glPushAttrib(GL_VIEWPORT_BIT | GL_ENABLE_BIT | GL_COLOR_BUFFER_BIT);
+    glDisable(GL_BLEND);
+    glDisable(GL_SCISSOR_TEST);
+    glDisable(GL_DEPTH_TEST);
+    glDisable(GL_ALPHA_TEST);
+    glDisable(GL_CULL_FACE);
+    glDisable(GL_STENCIL_TEST);
+    glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+    glViewport(0, 0, small_w, small_h);
+    glMatrixMode(GL_PROJECTION);
+    glPushMatrix();
+    glLoadIdentity();
+    glOrtho(0.0, 1.0, 0.0, 1.0, -1.0, 1.0);
+    glMatrixMode(GL_MODELVIEW);
+    glPushMatrix();
+    glLoadIdentity();
+
+    UseProgram(blur.prog);
+    glUniform1f(blur.loc[kBlurFilterPass], 1.0f);
+
+    for (int pass = 0; pass < 2; pass++)
+    {
+        glBindFramebuffer(GL_DRAW_FRAMEBUFFER, pass == 0 ? g_BgTempFbo : g_BgSmallFbo);
+        glBindTexture(GL_TEXTURE_2D, pass == 0 ? g_BgSmall : g_BgTemp);
+        glUniform2f(blur.loc[kBlurDirection], pass == 0 ? 1.0f / small_w : 0.0f, pass == 0 ? 0.0f : 1.0f / small_h);
+        glBegin(GL_QUADS);
+        glTexCoord2f(0.0f, 0.0f);
+        glVertex2f(0.0f, 0.0f);
+        glTexCoord2f(1.0f, 0.0f);
+        glVertex2f(1.0f, 0.0f);
+        glTexCoord2f(1.0f, 1.0f);
+        glVertex2f(1.0f, 1.0f);
+        glTexCoord2f(0.0f, 1.0f);
+        glVertex2f(0.0f, 1.0f);
+        glEnd();
+    }
+
+    UseProgram(0);
+    glPopMatrix();
+    glMatrixMode(GL_PROJECTION);
+    glPopMatrix();
+    glMatrixMode(prev_matrix_mode);
+    glPopAttrib();
     glBindFramebuffer(GL_READ_FRAMEBUFFER, prev_read_fb);
     glBindFramebuffer(GL_DRAW_FRAMEBUFFER, prev_draw_fb);
 
     glBindTexture(GL_TEXTURE_2D, g_BgSmall);
-    glGenerateMipmap(GL_TEXTURE_2D);
-
     UseProgram(blur.prog);
+    glUniform1f(blur.loc[kBlurFilterPass], 0.0f);
     SetBlend(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
     glUniform2f(blur.loc[kBlurCenter], box_x + box_size * 0.5f, box_y + box_size * 0.5f);
     glUniform1f(blur.loc[kBlurRadius], box_size * 0.5f);
     glUniform1f(blur.loc[kBlurFeather], 1.5f);
     glUniform1f(blur.loc[kBlurSquare], square ? 1.0f : 0.0f);
-    glUniform1f(blur.loc[kBlurLod], kBlurSampleLod);
-    glUniform1f(blur.loc[kBlurStep], 0.09f);
     glUniform1f(blur.loc[kBlurDarken], darken);
     glUniform1f(blur.loc[kBlurAlpha], alpha);
     ApplyFade(blur.loc[kBlurFadeColor], blur.loc[kBlurFadeAmt]);

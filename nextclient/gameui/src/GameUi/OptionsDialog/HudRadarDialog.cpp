@@ -38,7 +38,6 @@ namespace
         {"Names", "hud_radar_names"},
         {"Health", "hud_radar_health"},
         {"Tracks", "hud_radar_tracks"},
-        {"Objectives", "hud_radar_objectives"},
         {"BlurBackground", "hud_radar_bg"},
     };
 

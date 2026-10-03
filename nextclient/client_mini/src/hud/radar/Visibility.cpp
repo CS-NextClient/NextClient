@@ -29,7 +29,8 @@ namespace
     constexpr float kDuckEyeZ = goldsrc::PM_VEC_DUCK_VIEW;
     // The second trace point on a target, just above eye level.
     // (the standing hull reaches +36, and testing its top would spot a player whose head is still behind cover)
-    constexpr float kEnemyHeadZ = kEyeZ + 5.0f;
+    constexpr float kHeadEyeOffset = 5.0f;
+    constexpr float kEnemyHeadZ = kEyeZ + kHeadEyeOffset;
     // m_iFOV is the 4:3 horizontal FOV and the cone is tested against a single point per
     // target, so both a wider aspect and a target at the screen edge fall outside fov/2.
     constexpr float kLocalFovPadDeg = 10.0f;
@@ -275,7 +276,7 @@ void RadarVisibility::SpotEnemies(const SweepContext& ctx, const RadarPolicy& po
         ncl_math::Vector3 target_points[2];
         target_points[0] = ncl_math::Vector3::Ref(ent->origin);
         target_points[1] = target_points[0];
-        target_points[1].z += kEnemyHeadZ;
+        target_points[1].z += ent->curstate.usehull == kDuckHull ? kDuckEyeZ + kHeadEyeOffset : kEnemyHeadZ;
 
         if (AnyViewerSees(target_points, time, 0.0f))
         {
