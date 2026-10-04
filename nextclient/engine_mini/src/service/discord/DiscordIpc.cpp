@@ -93,23 +93,6 @@ bool DiscordIpc::Poll(DiscordOpcode& opcode, std::string& payload)
     return ReceiveAvailable() && TakeMessage(opcode, payload);
 }
 
-bool DiscordIpc::Read(DiscordOpcode& opcode, std::string& payload, int timeout_ms)
-{
-    auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(timeout_ms);
-
-    while (!Poll(opcode, payload))
-    {
-        if (!is_open())
-            return false;
-
-        auto left = std::chrono::duration_cast<std::chrono::milliseconds>(deadline - std::chrono::steady_clock::now());
-        if (left.count() <= 0 || !WaitReadable(static_cast<int>(left.count())))
-            return false;
-    }
-
-    return true;
-}
-
 #ifdef _WIN32
 
 bool DiscordIpc::Open()
@@ -196,7 +179,7 @@ bool DiscordIpc::ReceiveAvailable()
     return true;
 }
 
-bool DiscordIpc::WaitReadable(int timeout_ms)
+bool DiscordIpc::Wait(int timeout_ms)
 {
     // Pipes opened without FILE_FLAG_OVERLAPPED have nothing to wait on, so poll the byte count
     auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(timeout_ms);
@@ -339,7 +322,7 @@ bool DiscordIpc::ReceiveAvailable()
     }
 }
 
-bool DiscordIpc::WaitReadable(int timeout_ms)
+bool DiscordIpc::Wait(int timeout_ms)
 {
     pollfd pfd{ fd_, POLLIN, 0 };
     return poll(&pfd, 1, timeout_ms) > 0;

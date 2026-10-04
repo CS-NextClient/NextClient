@@ -2,16 +2,9 @@
 
 #include "engine.h"
 #include "console/console.h"
-#include "DiscordIpc.h"
 #include "DiscordHostname.h"
-#include "DiscordValidation.h"
 #include "DiscordUrlScheme.h"
-
-#ifdef _WIN32
-#include <process.h>
-#else
-#include <unistd.h>
-#endif
+#include "DiscordWorker.h"
 
 #include <service/geoip/GeoIpCountryDatabase.h>
 #include <cvars/cvar_defaults.h>
@@ -22,32 +15,20 @@
 #include <cwchar>
 #include <ctime>
 
-#define DISCORD_APP_ID "1538460768503070771"
-static const char* const kHandshake = R"({"v":1,"client_id":")" DISCORD_APP_ID R"("})";
+namespace
+{
+    constexpr const char* kDiscordAppId = "1538460768503070771";
+}
 
 static cvar_t* g_DiscordRpcCvar = nullptr;
 static cvar_t* g_DiscordRpcServerCvar = nullptr;
 static cvar_t* g_DiscordRpcJoinCvar = nullptr;
 
-static DiscordIpc g_DiscordIpc;
-static bool g_DiscordReady = false;
-static int g_Nonce = 0;
+static DiscordWorker g_DiscordWorker(kDiscordAppId);
 static std::string g_LastActivity;
 static int64_t g_StartTime = 0;
 
 static double g_NextUpdateTime = 0;
-static double g_NextConnectTime = 0;
-static double g_NextActivityTime = 0;
-static double g_ReadyDeadline = 0;
-
-static int GetCurrentPid()
-{
-#ifdef _WIN32
-    return _getpid();
-#else
-    return getpid();
-#endif
-}
 
 static void GetFileBaseName(const char* path, char* out, size_t out_size)
 {
@@ -87,10 +68,14 @@ static std::string Localized(const char* token, const char* english)
     return utf8;
 }
 
-static bool JsonFieldIs(const tao::json::value& json, const char* key, const char* expected)
+// What Discord gets when it keeps rejecting the full activity: nothing taken from the server
+static tao::json::value BuildFallbackActivity()
 {
-    const tao::json::value* field = json.find(key);
-    return field != nullptr && field->is_string() && field->get_string() == expected;
+    return {
+        { "details", "Counter-Strike 1.6" },
+        { "assets", { { "large_image", "logo" }, { "large_text", "NextClient" } } },
+        { "timestamps", { { "start", g_StartTime } } }
+    };
 }
 
 static tao::json::value BuildActivity()
@@ -190,7 +175,7 @@ static tao::json::value BuildActivity()
 
 void DiscordPresence_Init()
 {
-    DiscordUrlScheme_Register(DISCORD_APP_ID);
+    DiscordUrlScheme_Register(kDiscordAppId);
 
     g_StartTime = static_cast<int64_t>(time(nullptr));
     g_DiscordRpcCvar = gEngfuncs.pfnRegisterVariable(cvars::kDiscordRpc.name, cvars::kDiscordRpc.value, FCVAR_ARCHIVE);
@@ -200,175 +185,48 @@ void DiscordPresence_Init()
 
 void DiscordPresence_Shutdown()
 {
+    g_DiscordWorker.Stop();
     DiscordHostname_Shutdown();
-    g_DiscordIpc.Close();
 }
 
 void DiscordPresence_Frame()
 {
     if (g_DiscordRpcCvar->value == 0)
     {
-        g_NextConnectTime = 0;
-        g_DiscordIpc.Close();
+        g_DiscordWorker.Stop();
+        g_LastActivity.clear();
         DiscordHostname_Shutdown();
         return;
     }
 
+    g_DiscordWorker.Start();
+
+    for (const DiscordEvent& event : g_DiscordWorker.TakeEvents())
+    {
+        if (event.type == DiscordEvent::Type::Join)
+        {
+            // The session only lets through a.b.c.d:port, so nothing else can get into the command
+            char command[64];
+            snprintf(command, sizeof(command), "connect %s\n", event.text.c_str());
+            gEngfuncs.pfnClientCmd(command);
+        }
+
+        Con_Printf("Discord: %s%s\n", event.type == DiscordEvent::Type::Join ? "join " : "", event.text.c_str());
+    }
+
     if (*realtime < g_NextUpdateTime)
+    {
         return;
-    
+    }
+
     g_NextUpdateTime = *realtime + 1.0;
 
     DiscordHostname_Update();
-    
-    if (!g_DiscordIpc.is_open())
+
+    std::string activity = tao::json::to_string(BuildActivity());
+    if (activity != g_LastActivity)
     {
-        g_LastActivity.clear();
-        g_DiscordReady = false;
-
-        if (*realtime < g_NextConnectTime)
-            return;
-        
-        g_NextConnectTime = *realtime + 15.0;
-
-        if (!g_DiscordIpc.Open())
-            return;
-
-        if (!g_DiscordIpc.Write(DiscordOpcode::Handshake, kHandshake))
-            return;
-
-        g_ReadyDeadline = *realtime + 10.0;
+        g_LastActivity = activity;
+        g_DiscordWorker.SetActivity(std::move(activity), tao::json::to_string(BuildFallbackActivity()));
     }
-
-    DiscordOpcode opcode;
-    std::string message;
-
-    while (g_DiscordIpc.Poll(opcode, message))
-    {
-        switch (opcode)
-        {
-            case DiscordOpcode::Frame:
-            {
-                tao::json::value json;
-
-                try
-                {
-                    json = tao::json::from_string(message);
-                }
-                catch(const std::exception& e)
-                {
-                    Con_Printf("Discord: bad message: %s\n", e.what());
-                    continue;
-                }
-
-                if (!g_DiscordReady)
-                {
-                    if (JsonFieldIs(json, "cmd", "DISPATCH") && JsonFieldIs(json, "evt", "READY"))
-                    {
-                        g_DiscordReady = true;
-                        Con_Printf("Discord: ready!\n");
-
-                        tao::json::value subscribe = {
-                            { "cmd", "SUBSCRIBE" },
-                            { "evt", "ACTIVITY_JOIN" },
-                            { "nonce", std::to_string(++g_Nonce) }
-                        };
-                        g_DiscordIpc.Write(DiscordOpcode::Frame, tao::json::to_string(subscribe));
-                    }
-                    else
-                    {
-                        Con_Printf("Discord: handshake failed %s\n", message.c_str());
-                        g_DiscordIpc.Close();
-                    }
-                    continue;
-                }
-
-                if (JsonFieldIs(json, "evt", "ERROR"))
-                {
-                    Con_Printf("Discord: error %s\n", message.c_str());
-                }
-                else if (JsonFieldIs(json, "evt", "ACTIVITY_JOIN"))
-                {
-                    const tao::json::value* data = json.find("data");
-                    if (data == nullptr || !data->is_object())
-                        continue;
-                    
-                    const tao::json::value* secret = data->find("secret");
-                    if (secret == nullptr || !secret->is_string())
-                        continue;
-                    
-                    const std::string& address = secret->get_string();
-
-                    if (!Discord_IsSafeJoinAddress(address.c_str()))
-                    {
-                        Con_Printf("Discord: rejected join address\n");
-                        continue;
-                    }
-
-                    char command[96];
-                    snprintf(command, sizeof(command), "connect %s\n", address.c_str());
-                    gEngfuncs.pfnClientCmd(command);
-                }
-
-                break;
-            }
-
-            case DiscordOpcode::Ping:
-            {
-                if (!g_DiscordIpc.Write(DiscordOpcode::Pong, message))
-                {
-                    Con_Printf("Discord: pong failed\n");
-                }
-
-                break;
-            }
-
-            case DiscordOpcode::Close:
-            {
-                Con_Printf("Discord: close %s\n", message.c_str());
-                g_DiscordIpc.Close();
-                break;
-            }
-
-            default: { break; }
-        }
-    }
-
-    if (g_DiscordIpc.is_open() && !g_DiscordReady && *realtime > g_ReadyDeadline)
-    {
-        Con_Printf("Discord: no READY from Discord\n");
-        g_DiscordIpc.Close();
-    }
-
-    if (!g_DiscordIpc.is_open() || !g_DiscordReady)
-        return;
-
-    tao::json::value activity = BuildActivity();
-    std::string activity_str = tao::json::to_string(activity);
-
-    if (activity_str == g_LastActivity)
-        return;
-
-    if (*realtime < g_NextActivityTime)
-        return;
-
-    g_NextActivityTime = *realtime + 5.0;
-    
-    tao::json::value command = {
-        { "cmd", "SET_ACTIVITY" },
-        { "nonce", std::to_string(++g_Nonce) },
-        { "args", {
-            { "pid", GetCurrentPid() },
-            { "activity", activity }
-        }}
-    };
-
-    std::string payload = tao::json::to_string(command);
-    if (!g_DiscordIpc.Write(DiscordOpcode::Frame, payload))
-    {
-        Con_Printf("Discord: frame failed\n");
-        return;
-    }
-
-    g_LastActivity = activity_str;
 }
