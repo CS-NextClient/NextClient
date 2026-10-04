@@ -35,6 +35,8 @@ namespace cvars
     // registered by engine_mini
     inline constexpr CvarDefault kViewmodelFov{"viewmodel_fov", "90.000000"};
     inline constexpr CvarDefault kDiscordRpc{"cl_discordrpc", "1"};
+    inline constexpr CvarDefault kDiscordRpcServer{"cl_discordrpc_server", "1"};
+    inline constexpr CvarDefault kDiscordRpcJoin{"cl_discordrpc_join", "1"};
 
     // registered by the game's own client dll with these values, which the settings UI
     // resets to
@@ -66,6 +68,8 @@ namespace cvars
         kCrosshairType,
         kViewmodelFov,
         kDiscordRpc,
+        kDiscordRpcServer,
+        kDiscordRpcJoin,
         kBob,
         kBobCycle,
         kBobUp,

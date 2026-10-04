@@ -22,6 +22,23 @@
 #include <cwchar>
 #include <ctime>
 
+#define DISCORD_APP_ID "1538460768503070771"
+static const char* const kHandshake = R"({"v":1,"client_id":")" DISCORD_APP_ID R"("})";
+
+static cvar_t* g_DiscordRpcCvar = nullptr;
+static cvar_t* g_DiscordRpcServerCvar = nullptr;
+static cvar_t* g_DiscordRpcJoinCvar = nullptr;
+
+static DiscordIpc g_DiscordIpc;
+static bool g_DiscordReady = false;
+static int g_Nonce = 0;
+static std::string g_LastActivity;
+static int64_t g_StartTime = 0;
+
+static double g_NextUpdateTime = 0;
+static double g_NextConnectTime = 0;
+static double g_NextActivityTime = 0;
+
 static int GetCurrentPid()
 {
 #ifdef _WIN32
@@ -69,8 +86,6 @@ static std::string Localized(const char* token, const char* english)
     return utf8;
 }
 
-static int64_t g_StartTime = 0;
-
 static tao::json::value BuildActivity()
 {
     tao::json::value assets = {
@@ -115,7 +130,7 @@ static tao::json::value BuildActivity()
             else
             {
                 const std::string& hostname = DiscordHostname_Get();
-                if (!hostname.empty() && IsValidUtf8(hostname))
+                if (!hostname.empty() && IsValidUtf8(hostname) && g_DiscordRpcServerCvar->value != 0)
                 {
                     size_t size = GeoIp_GetUtf8PrefixSize(hostname, 128);
                     activity["details"] = hostname.substr(0, size);
@@ -123,8 +138,13 @@ static tao::json::value BuildActivity()
                 else activity["details"] = Localized("#NextClient_Discord_OnServer", "On a server");
 
                 activity["state"] = Localized("#NextClient_Discord_Multiplayer", "Multiplayer");
-                activity["party"]["id"] = std::string("party-") + static_cast<const char*>(cls->servername);
-                activity["secrets"] = { { "join", static_cast<const char*>(cls->servername) } };
+
+                if (g_DiscordRpcServerCvar->value != 0 && g_DiscordRpcJoinCvar->value != 0)
+                {
+                    activity["party"]["id"] = std::string("party-") + static_cast<const char*>(cls->servername);
+                    activity["secrets"] = { { "join", static_cast<const char*>(cls->servername) } };
+                }
+                else activity["buttons"] = buttons;
             }
 
             activity["party"]["size"] = tao::json::value::array({ CountPlayers(), cl->maxclients });
@@ -151,12 +171,6 @@ static tao::json::value BuildActivity()
     return activity;
 }
 
-static DiscordIpc g_DiscordIpc;
-#define DISCORD_APP_ID "1538460768503070771"
-
-static const char* const kHandshake = R"({"v":1,"client_id":")" DISCORD_APP_ID R"("})";
-static cvar_t* g_DiscordRpcCvar = nullptr;
-
 void DiscordPresence_Init()
 {
     DiscordHostname_Init();
@@ -164,6 +178,8 @@ void DiscordPresence_Init()
 
     g_StartTime = static_cast<int64_t>(time(nullptr));
     g_DiscordRpcCvar = gEngfuncs.pfnRegisterVariable(cvars::kDiscordRpc.name, cvars::kDiscordRpc.value, FCVAR_ARCHIVE);
+    g_DiscordRpcServerCvar = gEngfuncs.pfnRegisterVariable(cvars::kDiscordRpcServer.name, cvars::kDiscordRpcServer.value, FCVAR_ARCHIVE);
+    g_DiscordRpcJoinCvar = gEngfuncs.pfnRegisterVariable(cvars::kDiscordRpcJoin.name, cvars::kDiscordRpcJoin.value, FCVAR_ARCHIVE);
 }
 
 void DiscordPresence_Shutdown()
@@ -171,15 +187,6 @@ void DiscordPresence_Shutdown()
     DiscordHostname_Shutdown();
     g_DiscordIpc.Close();
 }
-
-static bool g_DiscordReady = false;
-
-static double g_NextUpdateTime = 0;
-static double g_NextConnectTime = 0;
-static double g_NextActivityTime = 0;
-
-static std::string g_LastActivity;
-static int g_Nonce = 0;
 
 void DiscordPresence_Frame()
 {
