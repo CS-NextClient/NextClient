@@ -1,5 +1,4 @@
 #pragma once
 
-// Whether a join secret from Discord is safe to put into a "connect" command:
-// letters, digits, '.', ':' and '-' only, 1-63 characters
-bool IsSafeServerAddress(const char* address);
+// Whether a join secret from Discord is an IPv4 address with a port, the only form we publish
+bool Discord_IsSafeJoinAddress(const char* address);

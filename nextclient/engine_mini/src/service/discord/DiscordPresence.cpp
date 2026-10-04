@@ -299,7 +299,7 @@ void DiscordPresence_Frame()
                     
                     const std::string& address = secret->get_string();
 
-                    if (!IsSafeServerAddress(address.c_str()))
+                    if (!Discord_IsSafeJoinAddress(address.c_str()))
                     {
                         Con_Printf("Discord: rejected join address\n");
                         continue;

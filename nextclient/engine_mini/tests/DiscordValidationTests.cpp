@@ -1,35 +1,48 @@
-#include <string>
 
 #include <gtest/gtest.h>
 #include <strtools.h>
 
 #include "service/discord/DiscordValidation.h"
 
-TEST(DiscordValidationTest, AcceptsIpAndHostnameAddresses)
+TEST(DiscordValidationTest, AcceptsIpWithPort)
 {
-    EXPECT_TRUE(IsSafeServerAddress("46.174.50.220:27015"));
-    EXPECT_TRUE(IsSafeServerAddress("cs.example-server.ru:27015"));
+    EXPECT_TRUE(Discord_IsSafeJoinAddress("46.174.50.220:27015"));
+    EXPECT_TRUE(Discord_IsSafeJoinAddress("0.0.0.0:0"));
+    EXPECT_TRUE(Discord_IsSafeJoinAddress("255.255.255.255:65535"));
 }
 
 TEST(DiscordValidationTest, RejectsAddressesThatInjectCommands)
 {
-    EXPECT_FALSE(IsSafeServerAddress("1.2.3.4:27015;quit"));
-    EXPECT_FALSE(IsSafeServerAddress("1.2.3.4:27015\nquit"));
-    EXPECT_FALSE(IsSafeServerAddress("1.2.3.4 27015"));
-    EXPECT_FALSE(IsSafeServerAddress("\"1.2.3.4\""));
+    EXPECT_FALSE(Discord_IsSafeJoinAddress("1.2.3.4:27015;quit"));
+    EXPECT_FALSE(Discord_IsSafeJoinAddress("1.2.3.4:27015\nquit"));
+    EXPECT_FALSE(Discord_IsSafeJoinAddress("1.2.3.4 27015"));
+    EXPECT_FALSE(Discord_IsSafeJoinAddress("\"1.2.3.4:27015\""));
 }
 
-TEST(DiscordValidationTest, RejectsMissingEmptyAndOverlongAddresses)
+TEST(DiscordValidationTest, RejectsAnythingButIpWithPort)
 {
-    EXPECT_FALSE(IsSafeServerAddress(nullptr));
-    EXPECT_FALSE(IsSafeServerAddress(""));
-    EXPECT_TRUE(IsSafeServerAddress(std::string(63, 'a').c_str()));
-    EXPECT_FALSE(IsSafeServerAddress(std::string(64, 'a').c_str()));
+    EXPECT_FALSE(Discord_IsSafeJoinAddress(nullptr));
+    EXPECT_FALSE(Discord_IsSafeJoinAddress(""));
+    EXPECT_FALSE(Discord_IsSafeJoinAddress("::::"));
+    EXPECT_FALSE(Discord_IsSafeJoinAddress("cs.example-server.ru:27015"));
+    EXPECT_FALSE(Discord_IsSafeJoinAddress("1.2.3.4"));
+    EXPECT_FALSE(Discord_IsSafeJoinAddress("1.2.3.4:"));
+    EXPECT_FALSE(Discord_IsSafeJoinAddress("1.2.3:27015"));
+    EXPECT_FALSE(Discord_IsSafeJoinAddress("1.2.3.4.5:27015"));
+    EXPECT_FALSE(Discord_IsSafeJoinAddress("1..3.4:27015"));
+}
+
+TEST(DiscordValidationTest, RejectsOutOfRangeNumbers)
+{
+    EXPECT_FALSE(Discord_IsSafeJoinAddress("256.1.1.1:27015"));
+    EXPECT_FALSE(Discord_IsSafeJoinAddress("1.2.3.4:65536"));
+    EXPECT_FALSE(Discord_IsSafeJoinAddress("1.2.3.4:4294967297"));
 }
 
 TEST(DiscordValidationTest, RejectsNonAsciiAddresses)
 {
-    EXPECT_FALSE(IsSafeServerAddress("\xD1\x81\xD0\xB5\xD1\x80\xD0\xB2\xD0\xB5\xD1\x80.\xD1\x80\xD1\x84:27015"));
+    EXPECT_FALSE(Discord_IsSafeJoinAddress("\xD1\x81\xD0\xB5\xD1\x80\xD0\xB2\xD0\xB5\xD1\x80.\xD1\x80\xD1\x84:27015"));
+    EXPECT_FALSE(Discord_IsSafeJoinAddress("\xD9\xA1.2.3.4:27015"));
 }
 
 TEST(DiscordValidationTest, AcceptsUtf8OfEveryLength)
