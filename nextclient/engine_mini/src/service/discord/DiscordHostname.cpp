@@ -16,25 +16,21 @@ static bool g_HasQueriedAddress = false;
 static netadr_t g_QueriedAddress;
 static std::string g_Hostname;
 
-void DiscordHostname_Init()
-{
-    g_SourceQuery = std::make_shared<MultiSourceQuery>(750, 3);
-    g_CancellationToken = CancellationToken::Create();
-}
-
 void DiscordHostname_Shutdown()
 {
     // A query still in flight holds its own references and finds the token cancelled
     if (g_CancellationToken)
         g_CancellationToken->SetCanceled();
 
+    g_HasQueriedAddress = false;
+    g_Hostname.clear();
     g_CancellationToken.reset();
     g_SourceQuery.reset();
 }
 
 void DiscordHostname_Update()
 {
-    if (!g_SourceQuery || cls->state != ca_active || cls->demoplayback || cls->netchan.remote_address.IsLoopback())
+    if (cls->state != ca_active || cls->demoplayback || cls->netchan.remote_address.IsLoopback())
     {
         g_HasQueriedAddress = false;
         g_Hostname.clear();
@@ -48,6 +44,12 @@ void DiscordHostname_Update()
     g_HasQueriedAddress = true;
     g_QueriedAddress = address;
     g_Hostname.clear();
+
+    if (!g_SourceQuery)
+    {
+        g_SourceQuery = std::make_shared<MultiSourceQuery>(750, 3);
+        g_CancellationToken = CancellationToken::Create();
+    }
 
     TaskCoro::RunInMainThread([query = g_SourceQuery, ct = g_CancellationToken, address]() -> concurrencpp::result<void>
     {

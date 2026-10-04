@@ -190,7 +190,6 @@ static tao::json::value BuildActivity()
 
 void DiscordPresence_Init()
 {
-    DiscordHostname_Init();
     DiscordUrlScheme_Register(DISCORD_APP_ID);
 
     g_StartTime = static_cast<int64_t>(time(nullptr));
@@ -211,6 +210,7 @@ void DiscordPresence_Frame()
     {
         g_NextConnectTime = 0;
         g_DiscordIpc.Close();
+        DiscordHostname_Shutdown();
         return;
     }
 
