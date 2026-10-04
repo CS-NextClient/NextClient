@@ -137,7 +137,7 @@ static tao::json::value BuildActivity()
             else
             {
                 const std::string& hostname = DiscordHostname_Get();
-                if (!hostname.empty() && IsValidUtf8(hostname) && g_DiscordRpcServerCvar->value != 0)
+                if (!hostname.empty() && Q_UnicodeValidate(hostname.c_str()) && g_DiscordRpcServerCvar->value != 0)
                 {
                     size_t size = GeoIp_GetUtf8PrefixSize(hostname, 128);
                     activity["details"] = hostname.substr(0, size);

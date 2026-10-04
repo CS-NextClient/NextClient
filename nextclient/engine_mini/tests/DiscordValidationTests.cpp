@@ -1,6 +1,7 @@
 #include <string>
 
 #include <gtest/gtest.h>
+#include <strtools.h>
 
 #include "service/discord/DiscordValidation.h"
 
@@ -33,22 +34,31 @@ TEST(DiscordValidationTest, RejectsNonAsciiAddresses)
 
 TEST(DiscordValidationTest, AcceptsUtf8OfEveryLength)
 {
-    EXPECT_TRUE(IsValidUtf8("[RU] Public 24/7"));
-    EXPECT_TRUE(IsValidUtf8("[RU] \xD0\x9F\xD0\xB0\xD0\xB1\xD0\xBB\xD0\xB8\xD0\xBA"));
-    EXPECT_TRUE(IsValidUtf8("\xE2\x82\xAC"));
-    EXPECT_TRUE(IsValidUtf8("Server \xF0\x9F\x94\xA5"));
+    EXPECT_TRUE(Q_UnicodeValidate("[RU] Public 24/7"));
+    EXPECT_TRUE(Q_UnicodeValidate("[RU] \xD0\x9F\xD0\xB0\xD0\xB1\xD0\xBB\xD0\xB8\xD0\xBA"));
+    EXPECT_TRUE(Q_UnicodeValidate("\xE2\x82\xAC"));
+    EXPECT_TRUE(Q_UnicodeValidate("Server \xF0\x9F\x94\xA5"));
 }
 
 TEST(DiscordValidationTest, RejectsCp1251Names)
 {
     // "[RU] Паблик" as the old Russian servers send it
-    EXPECT_FALSE(IsValidUtf8("[RU] \xCF\xE0\xE1\xEB\xE8\xEA"));
+    EXPECT_FALSE(Q_UnicodeValidate("[RU] \xCF\xE0\xE1\xEB\xE8\xEA"));
 }
 
 TEST(DiscordValidationTest, RejectsCutAndStrayBytes)
 {
-    EXPECT_FALSE(IsValidUtf8("abc\xD0"));
-    EXPECT_FALSE(IsValidUtf8("\xF0\x9F\x94"));
-    EXPECT_FALSE(IsValidUtf8("\x9F" "abc"));
-    EXPECT_FALSE(IsValidUtf8("\xFF"));
+    EXPECT_FALSE(Q_UnicodeValidate("abc\xD0"));
+    EXPECT_FALSE(Q_UnicodeValidate("\xF0\x9F\x94"));
+    EXPECT_FALSE(Q_UnicodeValidate("\x9F" "abc"));
+    EXPECT_FALSE(Q_UnicodeValidate("\xFF"));
+}
+
+TEST(DiscordValidationTest, RejectsInvalidCodePoints)
+{
+    EXPECT_FALSE(Q_UnicodeValidate("\xC0\xAF"));
+    EXPECT_FALSE(Q_UnicodeValidate("\xED\xA0\x80"));
+    EXPECT_FALSE(Q_UnicodeValidate("\xF4\x90\x80\x80"));
+    EXPECT_TRUE(Q_UnicodeValidate("\xEF\xBF\xBD"));
+    EXPECT_TRUE(Q_UnicodeValidate("\xF4\x8F\xBF\xBD"));
 }
