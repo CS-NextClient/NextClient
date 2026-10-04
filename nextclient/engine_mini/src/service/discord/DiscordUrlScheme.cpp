@@ -91,6 +91,43 @@ static bool RunXdgMime(std::string home, std::string desktop_name, std::string m
     return WIFEXITED(status) && WEXITSTATUS(status) == 0;
 }
 
+static std::string EscapeExecArgument(const std::string& text)
+{
+    std::string escaped;
+
+    for (char c : text)
+    {
+        switch (c)
+        {
+            case '"':
+            case '`':
+            case '$':
+            {
+                escaped += "\\\\";
+                escaped += c;
+                break;
+            }
+            case '\\':
+            {
+                escaped += "\\\\\\\\";
+                break;
+            }
+            case '%':
+            {
+                escaped += "%%";
+                break;
+            }
+            default:
+            {
+                escaped += c;
+                break;
+            }
+        }
+    }
+    
+    return escaped;
+}
+
 void DiscordUrlScheme_Register(const char* app_id)
 {
     char exe_path[4096];
@@ -130,7 +167,10 @@ void DiscordUrlScheme_Register(const char* app_id)
     fprintf(file, "Type=Application\n");
     fprintf(file, "Name=NextClient\n");
     fprintf(file, "NoDisplay=true\n");
-    fprintf(file, "Exec=\"%s/nextclient.sh\" %%u\n", game_dir.c_str());
+
+    std::string script = EscapeExecArgument(game_dir + "/nextclient.sh");
+    fprintf(file, "Exec=\"%s\" %%u\n", script.c_str());
+
     fprintf(file, "MimeType=x-scheme-handler/discord-%s;\n", app_id);
     fclose(file);
 
