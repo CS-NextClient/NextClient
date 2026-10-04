@@ -2,6 +2,7 @@
 
 #include <chrono>
 #include <cstdio>
+#include <cstring>
 #include <cstdlib>
 
 #ifdef _WIN32
@@ -46,11 +47,14 @@ DiscordIpc::~DiscordIpc()
 
 bool DiscordIpc::Write(DiscordOpcode opcode, std::string_view payload)
 {
-    uint8_t header[kHeaderSize];
-    WriteUint32Le(header, static_cast<uint32_t>(opcode));
-    WriteUint32Le(header + 4, static_cast<uint32_t>(payload.size()));
+    std::string frame(kHeaderSize + payload.size(), '\0');
+    auto* bytes = reinterpret_cast<uint8_t*>(frame.data());
 
-    return WriteBytes(header, sizeof(header)) && WriteBytes(payload.data(), payload.size());
+    WriteUint32Le(bytes, static_cast<uint32_t>(opcode));
+    WriteUint32Le(bytes + 4, static_cast<uint32_t>(payload.size()));
+    memcpy(bytes + kHeaderSize, payload.data(), payload.size());
+
+    return WriteBytes(bytes, frame.size());
 }
 
 bool DiscordIpc::TakeMessage(DiscordOpcode& opcode, std::string& payload)
