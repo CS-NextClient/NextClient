@@ -2,6 +2,7 @@
 
 #include <easylogging++.h>
 #include <optick.h>
+#include <algorithm>
 #include <ranges>
 
 #include <taskcoro/TaskCoro.h>
@@ -11,6 +12,17 @@
 #include "SourceQueryRules.h"
 #include "SourceQueryPlayers.h"
 #include "source_query_constants.h"
+
+#ifdef _WIN32
+    #include <winsock2.h>
+#else
+    #include <cerrno>
+    #include <sys/ioctl.h>
+    #include <sys/select.h>
+    #include <unistd.h>
+    #define closesocket close
+    #define WSAGetLastError() errno
+#endif
 
 using namespace std::chrono;
 using namespace concurrencpp;
@@ -358,12 +370,22 @@ void MultiSourceQuery::ReceiveAndAssembleBuffers()
     {
         fd_set set;
         FD_ZERO(&set);
+        SOCKET max_socket = 0;
         for (int i = 0; i < sockets_count; i++)
+        {
             FD_SET(sockets_[i].socket, &set);
+            max_socket = std::max(max_socket, sockets_[i].socket);
+        }
 
         timeval timeout {0, 0};
 
+        // Windows' select() ignores its first argument; POSIX requires it to be the
+        // highest fd in any of the sets, plus one.
+#ifdef _WIN32
         int ready_sockets = select(0, &set, nullptr, nullptr, &timeout);
+#else
+        int ready_sockets = select(max_socket + 1, &set, nullptr, nullptr, &timeout);
+#endif
         if (ready_sockets == 0 || ready_sockets == SOCKET_ERROR)
         {
             if (ready_sockets == SOCKET_ERROR)
@@ -381,15 +403,23 @@ void MultiSourceQuery::ReceiveAndAssembleBuffers()
                 continue;
 
             sockaddr from_addr {};
-            int from_len = sizeof(from_addr);
 
+            // ioctlsocket()/u_long is a Winsock-only wrapper; plain ioctl() with an int
+            // out-param does the same job on POSIX (also true of recvfrom()'s from_len).
+#ifdef _WIN32
+            int from_len = sizeof(from_addr);
             u_long pending = 0;
             bool pending_ok = ioctlsocket(socket, FIONREAD, &pending) == 0;
+#else
+            socklen_t from_len = sizeof(from_addr);
+            int pending = 0;
+            bool pending_ok = ioctl(socket, FIONREAD, &pending) == 0;
+#endif
             size_t recv_capacity = 65535;
 
             if (pending_ok && pending > 0)
             {
-                recv_capacity = (size_t)std::min<u_long>(pending, 65535);
+                recv_capacity = (size_t)std::min<decltype(pending)>(pending, 65535);
             }
 
             ByteBuffer recv_buffer(recv_capacity);
@@ -456,7 +486,11 @@ void MultiSourceQuery::CreateSocketIfNeeded(bool broadcast)
     if (!sockets_.empty())
     {
         int opt_broadcast;
+#ifdef _WIN32
         int opt_broadcast_len = sizeof(opt_broadcast);
+#else
+        socklen_t opt_broadcast_len = sizeof(opt_broadcast);
+#endif
 
         SOCKET s = sockets_.back().socket;
         if (getsockopt(s, SOL_SOCKET, SO_BROADCAST, (char*)&opt_broadcast, &opt_broadcast_len) != SOCKET_ERROR)

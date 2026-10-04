@@ -27,8 +27,12 @@
 #include "keydefs.h"
 #include "FileSystem.h"
 #include "LoadingDialog.h"
+#ifdef _WIN32
 #include <Windows.h>
 #include "Browser/ExtensionConsoleApi.h"
+#else
+#include <cstdlib>
+#endif
 #undef PostMessage
 
 // memdbgon must be the last include file in a .cpp file!!!
@@ -36,6 +40,33 @@
 
 //#include "Taskbar.h"
 //extern CTaskbar *g_pTaskbar;
+
+#ifndef _WIN32
+namespace
+{
+    // qsort_s (MSVC) and qsort_r (glibc) both take a context pointer, but the
+    // comparator's parameter order differs: MSVC puts the context first,
+    // glibc puts it last. Wrap glibc's version so callers can use the MSVC
+    // signature unchanged.
+    struct QsortSContext
+    {
+        int (*compare)(void*, const void*, const void*);
+        void* context;
+    };
+
+    int QsortSTrampoline(const void* a, const void* b, void* ctx)
+    {
+        auto* wrapped = static_cast<QsortSContext*>(ctx);
+        return wrapped->compare(wrapped->context, a, b);
+    }
+
+    void qsort_s(void* base, size_t num, size_t width, int (*compare)(void*, const void*, const void*), void* context)
+    {
+        QsortSContext wrapped{compare, context};
+        qsort_r(base, num, width, QsortSTrampoline, &wrapped);
+    }
+}
+#endif
 
 //-----------------------------------------------------------------------------
 // Purpose: forwards tab key presses up from the text entry so we can do autocomplete
@@ -232,7 +263,9 @@ CGameConsoleDialog::CGameConsoleDialog() : BaseClass(NULL, "GameConsole", false)
     m_bAutoCompleteMode = false;
     m_szPartialText[0] = 0;
 
-    browserExtensionConsoleApi = new ContainerExtensionConsoleApi(); 
+#ifdef _WIN32
+    browserExtensionConsoleApi = new ContainerExtensionConsoleApi();
+#endif
 }
 
 //-----------------------------------------------------------------------------
@@ -240,7 +273,9 @@ CGameConsoleDialog::CGameConsoleDialog() : BaseClass(NULL, "GameConsole", false)
 //-----------------------------------------------------------------------------
 CGameConsoleDialog::~CGameConsoleDialog()
 {
+#ifdef _WIN32
     delete browserExtensionConsoleApi;
+#endif
 }
 
 //-----------------------------------------------------------------------------
@@ -283,7 +318,9 @@ void CGameConsoleDialog::Print(const wchar_t *begin, const wchar_t *end)
 
 void CGameConsoleDialog::ColorPrint(Color color, const char *msg)
 {
+#ifdef _WIN32
     if (!browserExtensionConsoleApi->HandlePrint(color, std::string(msg)))
+#endif
     {
         m_pHistory->InsertColorChange(color);
         m_pHistory->InsertString(msg);
@@ -292,7 +329,9 @@ void CGameConsoleDialog::ColorPrint(Color color, const char *msg)
 
 void CGameConsoleDialog::ColorPrint(Color color, const char *begin, const char *end)
 {
+#ifdef _WIN32
     if (!browserExtensionConsoleApi->HandlePrint(color, std::string(begin, end)))
+#endif
     {
         m_pHistory->InsertColorChange(color);
         m_pHistory->InsertString(begin, end);
@@ -301,7 +340,9 @@ void CGameConsoleDialog::ColorPrint(Color color, const char *begin, const char *
 
 void CGameConsoleDialog::ColorPrint(Color color, const wchar_t *begin, const wchar_t *end)
 {
+#ifdef _WIN32
     if (!browserExtensionConsoleApi->HandlePrint(color, std::wstring(begin, end)))
+#endif
     {
         m_pHistory->InsertColorChange(color);
         m_pHistory->InsertString(begin, end);
@@ -579,11 +620,13 @@ void CGameConsoleDialog::OnKeyCodeTyped(vgui2::KeyCode code)
     bool bShiftPressed = vgui2::input()->IsKeyDown(vgui2::KEY_LSHIFT ) || vgui2::input()->IsKeyDown(vgui2::KEY_RSHIFT );
 
     // fix for russian keyboard layout
+#ifdef _WIN32
     if (code == vgui2::KEY_NONE && consolecode == vgui2::KEY_NONE && ::GetKeyState(VK_OEM_3) & 0x8000)
     {
         code = vgui2::KEY_BACKQUOTE;
         consolecode = vgui2::KEY_BACKQUOTE;
     }
+#endif
 
     // check for processing
     if (vgui2::input()->GetFocus() == m_pEntry->GetVPanel())

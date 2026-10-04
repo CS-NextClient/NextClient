@@ -19,29 +19,34 @@ namespace
     CommandSource g_CommandSource;
     bool g_Cbuf_AddText_called;
 
-    char* Cbuf_AddTextHandler(const char* text, sizebuf_t* buf, nitroapi::NextHandlerInterface<char*, const char*, sizebuf_t*>* next)
+    // the text to add after CmdChecker, nullptr when nothing of it may run
+    const char* FilterAddedText(const char* text)
     {
         g_Cbuf_AddText_called = true;
 
         if (text == nullptr || text[0] == '\0')
-        {
-            return next->Invoke(text, buf);
-        }
+            return text;
 
         std::string_view cmd = text;
         if (cmd.starts_with(kPrivateResourceMsgMarker))
-        {
-            return kEmpty;
-        }
+            return nullptr;
 
         g_CmdChecker->FilterCmd(cmd, g_CommandSource, g_FilteredCmd);
+        return g_FilteredCmd.empty() ? nullptr : g_FilteredCmd.c_str();
+    }
 
-        if (!g_FilteredCmd.empty())
-        {
-            return next->Invoke(g_FilteredCmd.c_str(), buf);
-        }
+    char* Cbuf_AddTextHandler(const char* text, sizebuf_t* buf, nitroapi::NextHandlerInterface<char*, const char*, sizebuf_t*>* next)
+    {
+        const char* filtered = FilterAddedText(text);
+        return filtered ? next->Invoke(filtered, buf) : kEmpty;
+    }
 
-        return kEmpty;
+    // Only the Linux hw.so has this one: its stufftext skips Cbuf_AddText, so without this
+    // hook server commands went past CmdChecker and every one of them was logged as blocked
+    void Cbuf_AddFilteredTextHandler(const char* text, nitroapi::NextHandlerInterface<void, const char*>* next)
+    {
+        if (const char* filtered = FilterAddedText(text))
+            next->Invoke(filtered);
     }
 
     void CL_ConnectionlessPacket(nitroapi::NextHandlerInterface<void>* next)
@@ -162,6 +167,7 @@ void PROTECTOR_Init(std::shared_ptr<nitro_utils::ConfigProviderInterface> config
     g_CmdChecker = std::make_unique<CmdChecker>(g_CmdLogger, config_provider);
 
     g_Unsubs.emplace_back(eng()->Cbuf_AddText |= Cbuf_AddTextHandler);
+    g_Unsubs.emplace_back(eng()->Cbuf_AddFilteredText |= Cbuf_AddFilteredTextHandler);
     g_Unsubs.emplace_back(eng()->CL_ConnectionlessPacket |= CL_ConnectionlessPacket);
     g_Unsubs.emplace_back(eng()->SVC_StuffText |= SVC_StufftextHandler);
     g_Unsubs.emplace_back(eng()->SVC_Director |= SVC_DirectorHandler);

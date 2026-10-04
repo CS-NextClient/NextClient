@@ -16,7 +16,7 @@
 #include <view/view_lag.h>
 
 #include <GameUi.h>
-#include "igameuifuncs.h"
+#include "IGameUIFuncs.h"
 
 namespace
 {

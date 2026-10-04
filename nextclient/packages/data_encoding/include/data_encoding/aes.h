@@ -3,6 +3,11 @@
 
 #include <stdint.h>
 
+// __cdecl is an MSVC calling-convention keyword; on Linux/x86 there is only one C
+// calling convention (System V ABI), so GCC/Clang don't define it at all.
+#ifndef _MSC_VER
+  #define __cdecl
+#endif
 
 // #define the macros below to 1/0 to enable/disable the mode of operation.
 //

@@ -1,4 +1,11 @@
-#include <Windows.h>
+#ifdef _WIN32
+    #include <Windows.h>
+#else
+    #include <cctype>
+    #include <cerrno>
+    #include <unistd.h>
+    #include <vector>
+#endif
 
 #include <format>
 #include <optional>
@@ -108,8 +115,67 @@ namespace
         LOG(INFO) << "Finishing launcher update: " << (updated ? "done" : "nothing to do");
     }
 
+#ifndef _WIN32
+    // Same whitespace/quote convention CCommandLine::CreateCmdLine(argc, argv) uses -
+    // argv[i] gets quoted only if it contains a space.
+    std::string BuildCommandLineString(int argc, char** argv)
+    {
+        std::string result;
+        for (int i = 0; i < argc; i++)
+        {
+            if (i > 0)
+                result += ' ';
+
+            std::string_view arg = argv[i];
+            if (arg.find(' ') != std::string_view::npos)
+                result += '"' + std::string(arg) + '"';
+            else
+                result += arg;
+        }
+
+        return result;
+    }
+
+    // execve() needs argv split back out, quotes stripped - simple space/quote
+    // tokenizer, not a full shell grammar (this only ever parses our own
+    // CCommandLine-built strings, never arbitrary user shell input).
+    std::vector<std::string> SplitCommandLine(const std::string& command_line)
+    {
+        std::vector<std::string> args;
+        std::string current;
+        bool in_quotes = false;
+
+        for (char c : command_line)
+        {
+            if (c == '"')
+            {
+                in_quotes = !in_quotes;
+                continue;
+            }
+
+            if (std::isspace((unsigned char)c) && !in_quotes)
+            {
+                if (!current.empty())
+                {
+                    args.push_back(current);
+                    current.clear();
+                }
+                continue;
+            }
+
+            current += c;
+        }
+
+        if (!current.empty())
+            args.push_back(current);
+
+        return args;
+    }
+#endif
+
     void SpawnProcess(const std::string& application, std::string command_line)
     {
+#ifdef _WIN32
         PROCESS_INFORMATION process_information;
         STARTUPINFOA startupinfo;
         ZeroMemory(&startupinfo, sizeof(startupinfo));
@@ -137,11 +203,37 @@ namespace
         {
             LOG(ERROR) << "Can't CreateProcessA: " << application << ". Error: " << GetWinErrorString(GetLastError());
         }
+#else
+        std::vector<std::string> args = SplitCommandLine(command_line);
+
+        std::vector<char*> argv;
+        argv.push_back(const_cast<char*>(application.c_str()));
+        for (std::string& arg : args)
+            argv.push_back(arg.data());
+        argv.push_back(nullptr);
+
+        pid_t pid = fork();
+        if (pid < 0)
+        {
+            LOG(ERROR) << "Can't fork: " << GetWinErrorString(errno);
+            return;
+        }
+
+        if (pid == 0)
+        {
+            execv(application.c_str(), argv.data());
+            _exit(127);
+        }
+#endif
     }
 } // namespace
 
 
+#ifdef _WIN32
 int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ PWSTR lpCmdLine, _In_ int nCmdShow)
+#else
+int main(int argc, char** argv)
+#endif
 {
     SetupLogger();
 
@@ -158,7 +250,12 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, 
 
     std::optional<ClientLauncher::NextProcess> next_process;
     {
+#ifdef _WIN32
         auto launcher = std::make_unique<ClientLauncher>(hInstance, GetCommandLineA());
+#else
+        std::string cmd_line = BuildCommandLineString(argc, argv);
+        auto launcher = std::make_unique<ClientLauncher>(nullptr, cmd_line.c_str());
+#endif
         launcher->Run();
 
         next_process = launcher->next_process();

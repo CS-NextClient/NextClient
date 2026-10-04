@@ -67,7 +67,11 @@ void CInternetGames::ServerResponded(serveritem_t &server)
         else if (percentDone > 99)
             percentDone = 100;
 
+#ifdef _WIN32
         itoa(percentDone, tempPercent, 10);
+#else
+        snprintf(tempPercent, sizeof(tempPercent), "%d", percentDone);
+#endif
         g_pVGuiLocalize->ConvertANSIToUnicode(tempPercent, unicodePercent, sizeof(unicodePercent));
         g_pVGuiLocalize->ConstructString(unicode, sizeof(unicode), g_pVGuiLocalize->Find("#ServerBrowser_RefreshingPercentDone"), 1, unicodePercent);
         ServerBrowserDialog().UpdateStatusText(unicode);

@@ -1,3 +1,6 @@
+#ifndef _WINDOWS
+#include <tier0/platform.h>
+#endif
 #include <steam/steam_api.h>
 #include <steam/steam_gameserver.h>
 #include <steam_api_proxy/next_steam_api_proxy.h>
@@ -13,7 +16,7 @@
 #include <execinfo.h>
 
 #include <nitroapi/NitroApiInterface.h>
-#include <client_mini/client_mini.h>
+#include <next_client_mini/client_mini.h>
 #undef GetProcAddress
 #include <nitro_utils/platform.h>
 #endif

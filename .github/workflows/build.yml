@@ -81,3 +81,71 @@ jobs:
 
       - name: Run tests
         run: ctest --test-dir build/vs2022-tests -C Release --output-on-failure
+
+  build-linux:
+    name: Build (linux, Release, x86)
+    runs-on: ubuntu-24.04
+    # the code needs GCC 15 (std::vector::append_range), 24.04 only goes up to 14
+    container: ubuntu:26.04
+
+    steps:
+      # before checkout: without git in the container it downloads a tarball with no submodules.
+      # GoldSrc is 32-bit only: multilib for -m32, i386 X11 and GL headers for SDL2 and OpenGL
+      - name: Install system packages
+        run: |
+          dpkg --add-architecture i386
+          apt-get update
+          apt-get install -y --no-install-recommends \
+            git git-lfs ca-certificates curl zip unzip tar cmake ninja-build pkg-config python3 \
+            build-essential gcc-multilib g++-multilib \
+            libgl-dev:i386 libx11-dev:i386 libxext-dev:i386 libxcursor-dev:i386 \
+            libxi-dev:i386 libxrandr-dev:i386 libxss-dev:i386 libxfixes-dev:i386 libxrender-dev:i386
+
+      - name: Checkout (with submodules)
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+          lfs: true
+
+      # github.workspace is the runner's path, the container sees the repo under another one
+      - name: Set up vcpkg binary cache
+        run: |
+          echo "VCPKG_DEFAULT_BINARY_CACHE=$GITHUB_WORKSPACE/vcpkg_bincache" >> "$GITHUB_ENV"
+          mkdir -p "$GITHUB_WORKSPACE/vcpkg_bincache"
+
+      - name: Cache vcpkg packages
+        uses: actions/cache@v4
+        with:
+          path: vcpkg_bincache
+          key: vcpkg-linux-ubuntu26.04-${{ hashFiles('vcpkg.json', 'custom-vcpkg-ports/**', 'custom-vcpkg-triplets/**') }}
+          restore-keys: vcpkg-linux-ubuntu26.04-
+
+      - name: Bootstrap vcpkg
+        run: ./vcpkg/bootstrap-vcpkg.sh -disableMetrics
+
+      - name: Configure
+        run: cmake --preset linux "-DNEXTCLIENT_INSTALL_DIR=$GITHUB_WORKSPACE/install"
+
+      - name: Build
+        run: cmake --build --preset linux-release --target BUILD_ALL
+
+      # upload-artifact drops the executable bit, nextclient.sh needs it
+      - name: Pack install directory
+        run: tar -czf NextClient-linux.tar.gz -C install .
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: NextClient-linux-${{ github.sha }}
+          path: NextClient-linux.tar.gz
+          if-no-files-found: error
+
+      - name: Configure tests
+        run: cmake --preset linux -B build/linux-tests -DNEXTCLIENT_BUILD_TESTS=ON
+
+      - name: Build tests
+        run: cmake --build build/linux-tests --config Release --target engine_mini-tests gameui-tests view-tests crosshair-tests
+
+      - name: Run tests
+        run: ctest --test-dir build/linux-tests -C Release --output-on-failure

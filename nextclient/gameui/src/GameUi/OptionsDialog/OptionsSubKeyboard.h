@@ -11,8 +11,8 @@
 #pragma once
 #endif
 
-#include "UtlVector.h"
-#include "UtlSymbol.h"
+#include "utlvector.h"
+#include "utlsymbol.h"
 
 #include <vgui_controls/PropertyPage.h>
 

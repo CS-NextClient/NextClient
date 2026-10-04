@@ -3,19 +3,28 @@ project(hwid_collector)
 
 set(CMAKE_CXX_STANDARD 23)
 
-add_library(${PROJECT_NAME} STATIC
-    src/hwid_collector.cpp
-)
+if (WIN32)
+    add_library(${PROJECT_NAME} STATIC
+        src/hwid_collector_windows.cpp
+    )
+    target_link_libraries(${PROJECT_NAME} PUBLIC
+            crypt32
+            advapi32
+            wbemuuid
+            ole32
+            oleaut32
+    )
+else ()
+    add_library(${PROJECT_NAME} STATIC
+        src/hwid_collector_linux.cpp
+    )
+    target_link_libraries(${PROJECT_NAME} PUBLIC
+            data_encoding::data_encoding
+    )
+endif ()
+
 add_library(hwid_collector::hwid_collector ALIAS ${PROJECT_NAME})
 
 target_include_directories(${PROJECT_NAME} PUBLIC
         include
-)
-
-target_link_libraries(${PROJECT_NAME} PUBLIC
-        crypt32
-        advapi32
-        wbemuuid
-        ole32
-        oleaut32
 )
