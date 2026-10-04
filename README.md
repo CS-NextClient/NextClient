@@ -18,6 +18,7 @@ NextClient has integrated some features from [csldr](https://github.com/mikkokko
  - Advanced crosshair settings - added new crosshair types: dot, T-shaped, circle
  - 2 GUI schemes with the ability to change them through the settings, and the ability to add your own schemes without deleting the old ones
  - HTML interface support in GameUI based on CEF (Chromium Embedded Framework) with a JS API for interacting with the client
+ - Native plugins with a [Rust and C++ SDK](sdk/README.md) to extend the client, managed through an in-game Plugins menu with permission approval and configurable load order
  - Display more than 255hp when using [server module](https://github.com/CS-NextClient/NextClientServerApi)
  - Display number and size of remaining files, total file size and upload speed when connected to the server
  - Color chat in console
@@ -111,6 +112,14 @@ The configuration file is located at the path `platform\config\MasterServer.vdf`
    }
 }
 ```
+
+## Plugins
+
+Native plugins can extend settings and player input using the [Rust and C++ SDK](sdk/README.md).
+Open **Plugins** to enable modules and set their order; **OK** saves and restarts only when changes are pending.
+
+The bundled **Life Stats** plugin reports damage taken, kills, and your killer in local chat and console after death or round end.
+Use `-noplugins` for recovery.
 
 ## Building
 Requirements:

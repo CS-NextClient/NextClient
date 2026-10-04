@@ -3,6 +3,7 @@ project(gameui VERSION 2.4.0)
 set(OUTPUT_NAME "GameUI")
 
 find_package(concurrencpp CONFIG REQUIRED)
+find_package(taocpp-json CONFIG REQUIRED)
 
 set(CMAKE_POLICY_DEFAULT_CMP0077 NEW)
 set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
@@ -46,6 +47,8 @@ target_include_directories(${PROJECT_NAME} PRIVATE
 )
 
 target_link_libraries(${PROJECT_NAME} PRIVATE
+        next_plugins
+        taocpp::json
         hl1_source_sdk::hl1_source_sdk
         NextClient::engine_mini
         nitro_utils::nitro_utils

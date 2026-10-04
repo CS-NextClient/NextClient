@@ -63,8 +63,21 @@ jobs:
       - name: Configure tests
         run: cmake --preset vs2022 -B build/vs2022-tests -DNEXTCLIENT_BUILD_TESTS=ON
 
+      - name: Build and test Rust SDK
+        shell: pwsh
+        run: |
+          rustup target add i686-pc-windows-msvc
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          cargo test --manifest-path sdk/rust/Cargo.toml --target i686-pc-windows-msvc
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Push-Location sdk/examples/rust-events
+          cargo build --release --locked
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Pop-Location
+          "NEXTCLIENT_RUST_EVENTS_DLL=$((Get-Location).Path)/sdk/examples/rust-events/target/i686-pc-windows-msvc/release/nextclient_rust_events.dll" >> $env:GITHUB_ENV
+
       - name: Build tests
-        run: cmake --build build/vs2022-tests --config Release --target engine_mini-tests gameui-tests view-tests crosshair-tests
+        run: cmake --build build/vs2022-tests --config Release --target engine_mini-tests gameui-tests plugin-tests plugin-bridge-tests view-tests crosshair-tests
 
       - name: Run tests
         run: ctest --test-dir build/vs2022-tests -C Release --output-on-failure

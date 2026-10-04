@@ -8,6 +8,9 @@ add_executable(${TARGET_NAME}
         ServerBrowserTextTests.cpp
         ServerFilterCountsTests.cpp
         ServerGameModeNamesTests.cpp
+        PluginsDialogStateTests.cpp
+        PluginTextTests.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/../src/GameUi/PluginText.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/../src/ServerBrowser/ServerBrowserText.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/../src/ServerBrowser/ServerFilterCounts.cpp
 )
@@ -29,7 +32,10 @@ target_link_libraries(${TARGET_NAME} PRIVATE
         hl1_source_sdk::hl1_source_sdk
         nitro_utils::nitro_utils
         NextClient::engine_mini
+        taocpp::json
 )
+
+set_source_files_properties(PluginTextTests.cpp PROPERTIES COMPILE_OPTIONS /utf-8)
 
 target_include_directories(${TARGET_NAME} PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/../src

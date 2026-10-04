@@ -1,5 +1,6 @@
 /out
 /build
+/sdk/**/target/
 
 # Visual Studio
 .vs

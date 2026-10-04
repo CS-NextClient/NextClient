@@ -3,6 +3,7 @@
 #include <sys/types.h>
 #include <direct.h>
 #include <filesystem>
+#include <nextclient/runtime.h>
 
 #include <tier1/tier1.h>
 #include <tier2/tier2.h>
@@ -24,6 +25,7 @@
 #include <format>
 
 #include "BasePanel.h"
+#include "PluginWindows.h"
 #include "ModInfo.h"
 #include "GameConsole.h"
 #include "LoadingDialog.h"
@@ -207,6 +209,7 @@ void CGameUI::Initialize(CreateInterfaceFn *factories, int count)
 void CGameUI::Start(cl_enginefuncs_s *engineFuncs, int interfaceVersion, void *system)
 {
     engine = engineFuncs;
+    nc_runtime_start();
     g_pBaseSystem = (IBaseSystem*)system;
 
     ModInfo().LoadCurrentGameInfo();
@@ -227,6 +230,8 @@ void CGameUI::Start(cl_enginefuncs_s *engineFuncs, int interfaceVersion, void *s
 
 void CGameUI::Shutdown(void)
 {
+    PluginWindowsShutdown();
+    nc_runtime_stop();
     vgui2::system()->SaveUserConfigFile();
 
     if (g_pServerBrowser)
@@ -294,6 +299,8 @@ void CGameUI::RunFrame(void)
     int wide, tall;
     vgui2::surface()->GetScreenSize(wide, tall);
     BasePanel()->SetSize(wide, tall);
+    nc_runtime_pump();
+    PluginWindowsFrame(g_pEngineVGui->GetPanel(PANEL_ROOT), BasePanel()->IsVisible());
 
     if (BasePanel()->IsVisible())
         BasePanel()->RunFrame();

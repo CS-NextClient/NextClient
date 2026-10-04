@@ -1,22 +1,24 @@
 #pragma once
 
-#include "vgui_controls/PropertyDialog.h"
+#include "Controls/OverflowPropertyDialog.h"
 #include "vgui_controls/KeyRepeat.h"
 #include "utldict.h"
+#include <vector>
 
-class COptionsDialog : public vgui2::PropertyDialog
+class COptionsDialog : public COverflowPropertyDialog
 {
-    DECLARE_CLASS_SIMPLE(COptionsDialog, vgui2::PropertyDialog);
+    DECLARE_CLASS_SIMPLE(COptionsDialog, COverflowPropertyDialog);
 
-    CUtlDict<vgui2::PropertyPage*> m_tabNames;
+    CUtlDict<vgui2::PropertyPage *> m_tabNames;
 
 public:
     COptionsDialog(vgui2::Panel *parent);
     ~COptionsDialog(void);
 
     void OnKeyCodeTyped(vgui2::KeyCode code) override;
-    void OpenTab(const char* tabName);
+    void OpenTab(const char *tabName);
     void OpenCrosshairSettings();
+    bool OnOK(bool applyOnly) override;
 
 public:
     void Activate(void);
@@ -30,6 +32,7 @@ public:
 private:
     class COptionsSubMultiplayer *m_pOptionsSubMultiplayer;
     class COptionsSubGame *m_pOptionsSubGame;
+    std::vector<class CPluginSettingsPage *> m_pluginPages;
     class COptionsSubKeyboard *m_pOptionsSubKeyboard;
     class COptionsSubMouse *m_pOptionsSubMouse;
     class COptionsSubAudio *m_pOptionsSubAudio;

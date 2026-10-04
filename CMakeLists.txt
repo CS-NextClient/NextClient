@@ -92,6 +92,8 @@ add_subdirectory(dep/stb)
 # NextClient sub-projects
 add_subdirectory(dep/NclNitroApi)
 add_subdirectory(nextclient/packages)
+add_subdirectory(nextclient/plugins)
+add_subdirectory(sdk/examples/cpp-life-stats)
 add_subdirectory(nextclient/launcher)
 add_subdirectory(nextclient/engine_mini)
 add_subdirectory(nextclient/filesystem_proxy)
@@ -126,6 +128,8 @@ endif ()
 if (NOT NEXTCLIENT_BUILD_TESTS)
     add_custom_target(BUILD_ALL ALL)
     add_dependencies(BUILD_ALL
+            next_plugins
+            plugin_life_stats
             next_launcher
             engine_mini
             filesystem_proxy
@@ -139,6 +143,9 @@ if (NOT NEXTCLIENT_BUILD_TESTS)
     if (NEXTCLIENT_INSTALL_DIR)
         add_custom_command(TARGET BUILD_ALL POST_BUILD
                 COMMENT "Installing libraries and assets to ${NEXTCLIENT_INSTALL_DIR}..."
+                COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:next_plugins> ${NEXTCLIENT_INSTALL_DIR}/next_plugins.dll
+                COMMAND ${CMAKE_COMMAND} -E make_directory ${NEXTCLIENT_INSTALL_DIR}/plugins
+                COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:plugin_life_stats> ${NEXTCLIENT_INSTALL_DIR}/plugins/life_stats.dll
                 COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:next_launcher> ${NEXTCLIENT_INSTALL_DIR}/cstrike.exe
                 COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:engine_mini> ${NEXTCLIENT_INSTALL_DIR}/next_engine_mini.dll
                 COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:filesystem_proxy> ${NEXTCLIENT_INSTALL_DIR}/FileSystem_Proxy.dll

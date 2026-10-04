@@ -1,4 +1,5 @@
 #include "GameHud.h"
+#include <nextclient/runtime.h>
 
 extern cl_enginefunc_t gEngfuncs;
 
@@ -46,7 +47,13 @@ void GameHud::VidInit()
 void GameHud::Draw(float time)
 {
     for (auto& item : all_hud_)
+    {
+        if ((item == health_ && nc_runtime_ui_hidden(NC_UI_HEALTH)) ||
+            (item == radar_ && nc_runtime_ui_hidden(NC_UI_RADAR)) ||
+            (item == death_notice_ && nc_runtime_ui_hidden(NC_UI_DEATH_NOTICES)))
+            continue;
         item->Draw(time);
+    }
 }
 
 void GameHud::Think(float time)

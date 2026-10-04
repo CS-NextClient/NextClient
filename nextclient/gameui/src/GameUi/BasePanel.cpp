@@ -32,6 +32,9 @@
 #include "ToolBar.h"
 #include "GameConsole.h"
 #include "PlayerListDialog.h"
+#include "PluginsDialog.h"
+#include "PluginLocalization.h"
+#include <nextclient/runtime.h>
 
 #include <keydefs.h>
 
@@ -39,6 +42,7 @@
 
 #include <algorithm>
 #include <vector>
+#include <set>
 #include <format>
 
 // undef windows stuff
@@ -747,14 +751,48 @@ CGameMenu *CBasePanel::RecursiveLoadGameMenu(vgui2::Panel *parent, KeyValues *da
 {
     CGameMenu *menu = new CGameMenu(parent, datafile->GetName());
 
+    // Add the Plugins entry if GameMenu.res does not provide one, sharing the
+    // menu items' layout, input and fades.
+    KeyValues* options = nullptr;
+    KeyValues* quit = nullptr;
+    bool hasPlugins = false;
+    for (KeyValues* dat = datafile->GetFirstSubKey(); dat; dat = dat->GetNextKey())
+    {
+        const char* command = dat->GetString("command", "");
+        if (!options && !Q_stricmp(command, "OpenOptionsDialog"))
+            options = dat;
+        if (!quit && !Q_stricmp(command, "Quit"))
+            quit = dat;
+        if (!Q_stricmp(command, "OpenPluginsDialog"))
+            hasPlugins = true;
+    }
+
+    auto addPlugins = [&](KeyValues* anchor) {
+        KeyValues::AutoDelete data("Plugins");
+        // Keep Plugins beside its anchor when the pause menu sorts its items.
+        // No visibility flags: this entry is available both in and out of game.
+        data->SetInt("InGameOrder", anchor ? anchor->GetInt("InGameOrder") : 0);
+        menu->AddMenuItem("Plugins", "#NextPlugins_Title", "OpenPluginsDialog", this, data);
+        hasPlugins = true;
+    };
+
     for (KeyValues *dat = datafile->GetFirstSubKey(); dat != NULL; dat = dat->GetNextKey())
     {
+        if (!hasPlugins && !options && dat == quit)
+            addPlugins(quit);
+
         const char *label = dat->GetString("label", "<unknown>");
         const char *cmd = dat->GetString("command", NULL);
         const char *name = dat->GetString("name", label);
 
         menu->AddMenuItem(name, label, cmd, this, dat);
+
+        if (!hasPlugins && dat == options)
+            addPlugins(options);
     }
+
+    if (!hasPlugins)
+        addPlugins(nullptr);
 
     return menu;
 }
@@ -963,6 +1001,10 @@ void CBasePanel::RunMenuCommand(const char *command)
     {
         OnOpenOptionsDialog();
     }
+    else if (!Q_stricmp(command, "OpenPluginsDialog"))
+    {
+        OnOpenPluginsDialog();
+    }
     else if (!Q_stricmp(command, "ResumeGame"))
     {
         engine->pfnClientCmd("cancelselect");
@@ -1032,7 +1074,38 @@ void CBasePanel::RunMenuCommand(const char *command)
 
 void CBasePanel::OnCommand(const char *command)
 {
+    if (!Q_strncmp(command, "PluginWindow:", 13))
+    {
+        nc_runtime_window_action(command + 13, "$open", "null");
+        return;
+    }
     RunMenuCommand(command);
+}
+
+void CBasePanel::OnOpenPluginsDialog()
+{
+    if (!m_hPluginsDialog.Get())
+        m_hPluginsDialog = new CPluginsDialog(this);
+    m_hPluginsDialog->Activate();
+    PositionDialog(m_hPluginsDialog.Get());
+}
+void CBasePanel::UpdatePluginMenus(const tao::json::value& windows)
+{
+    if (!m_pGameMenu) return;
+    std::set<std::string> current;
+    for (const auto& window : windows.get_array())
+        if (auto menu = window.find("menu"))
+        {
+            const auto id = window.at("handle").get_string();
+            current.insert(id);
+            if (!pluginMenuItems_.count(id))
+                pluginMenuItems_[id] = m_pGameMenu->AddMenuItem(("Plugin" + id).c_str(), PluginLocalized(*menu).c_str(),
+                    ("PluginWindow:" + id).c_str(), this);
+            m_pGameMenu->GetMenuItem(pluginMenuItems_[id])->SetText(PluginWide(PluginLocalized(*menu)).c_str());
+        }
+    for (auto it = pluginMenuItems_.begin(); it != pluginMenuItems_.end();)
+        if (!current.count(it->first)) { m_pGameMenu->DeleteItem(it->second); it = pluginMenuItems_.erase(it); }
+        else ++it;
 }
 
 void CBasePanel::RunAnimationWithCallback(vgui2::Panel *parent, const char *animName, KeyValues *msgFunc)

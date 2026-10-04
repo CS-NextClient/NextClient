@@ -13,6 +13,8 @@
 #include "OptionsDialog.h"
 #include "KeyValues.h"
 #include "utlvector.h"
+#include <tao/json.hpp>
+#include <map>
 
 #include "Browser/MainMenuBrowser.h"
 
@@ -141,6 +143,7 @@ public:
     void OnOpenQuitConfirmationDialog(void);
     void OnOpenOptionsDialog(const char* tabName = nullptr);
     void OnOpenPlayerListDialog();
+    void OnOpenPluginsDialog();
     void OnSizeChanged(int newWide, int newTall) override;
     void OnGameUIHidden(void);
 
@@ -202,8 +205,10 @@ private:
 
 public:
     void ApplyMultiplayerGameSettings();
+    void UpdatePluginMenus(const tao::json::value& windows);
 
 private:
+    std::map<std::string, int> pluginMenuItems_;
     virtual void OnCommand(const char *command);
     virtual void PerformLayout(void);
 
@@ -219,6 +224,7 @@ private:
     coord m_iGameMenuPos;
 
     vgui2::DHANDLE<COptionsDialog> m_hOptionsDialog;
+    vgui2::DHANDLE<vgui2::Frame> m_hPluginsDialog;
     vgui2::DHANDLE<CCreateMultiplayerGameDialog> m_hCreateMultiplayerGameDialog;
     vgui2::DHANDLE<vgui2::Frame> m_hPlayerListDialog;;
     vgui2::DHANDLE<vgui2::QueryBox> m_hQuitQueryBox;

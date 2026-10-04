@@ -2,19 +2,15 @@
 
 #include <GameUi.h>
 
-#include "vgui_controls/Button.h"
-#include "vgui_controls/CheckButton.h"
 #include "vgui_controls/PropertySheet.h"
-#include "vgui_controls/Label.h"
-#include "vgui_controls/QueryBox.h"
 
-#include "vgui/ILocalize.h"
-#include "vgui/ISurfaceNext.h"
-#include "vgui/ISystem.h"
-#include "vgui/IVGui.h"
 
 #include "OptionsSubMultiplayer.h"
 #include "OptionsSubGame.h"
+#include "PluginLocalization.h"
+#include "PluginSettingsPage.h"
+#include <nextclient/runtime.h>
+#include <vgui_controls/MessageBox.h>
 #include "OptionsSubKeyboard.h"
 #include "OptionsSubMouse.h"
 #include "OptionsSubAudio.h"
@@ -28,7 +24,8 @@
 
 #undef PostMessage
 
-COptionsDialog::COptionsDialog(vgui2::Panel *parent) : PropertyDialog(parent, "OptionsDialog")
+COptionsDialog::COptionsDialog(vgui2::Panel* parent) :
+    COverflowPropertyDialog(parent, "OptionsDialog")
 {
     SetBounds(0, 0, 599, 466);
     SetSizeable(false);
@@ -43,7 +40,8 @@ COptionsDialog::COptionsDialog(vgui2::Panel *parent) : PropertyDialog(parent, "O
     m_pOptionsSubVoice = NULL;
     m_pOptionsSubMiscellaneous = NULL;
 
-    if ((ModInfo().IsMultiplayerOnly() && !ModInfo().IsSinglePlayerOnly()) || (!ModInfo().IsMultiplayerOnly() && !ModInfo().IsSinglePlayerOnly()))
+    if ((ModInfo().IsMultiplayerOnly() && !ModInfo().IsSinglePlayerOnly()) ||
+        (!ModInfo().IsMultiplayerOnly() && !ModInfo().IsSinglePlayerOnly()))
         m_pOptionsSubMultiplayer = new COptionsSubMultiplayer(this);
 
     m_pOptionsSubGame = new COptionsSubGame(this);
@@ -59,30 +57,83 @@ COptionsDialog::COptionsDialog(vgui2::Panel *parent) : PropertyDialog(parent, "O
 
     m_pOptionsSubMiscellaneous = new OptionsSubMiscellaneous(this);
 
-    AddPage(m_pOptionsSubMultiplayer, "#GameUI_Multiplayer");
-    AddPage(m_pOptionsSubGame, "#GameUI_Game");
-    AddPage(m_pOptionsSubKeyboard, "#GameUI_Keyboard");
-    AddPage(m_pOptionsSubMouse, "#GameUI_Mouse");
-    AddPage(m_pOptionsSubAudio, "#GameUI_Audio");
-    AddPage(m_pOptionsSubVideo, "#GameUI_Video");
-    AddPage(m_pOptionsSubVoice, "#GameUI_Voice");
-    AddPage(m_pOptionsSubMiscellaneous, "#GameUI_Miscellaneous");
-
-    m_tabNames.Insert("multiplayer", m_pOptionsSubMultiplayer);
-    m_tabNames.Insert("game", m_pOptionsSubGame);
-    m_tabNames.Insert("keyboard", m_pOptionsSubKeyboard);
-    m_tabNames.Insert("mouse", m_pOptionsSubMouse);
-    m_tabNames.Insert("audio", m_pOptionsSubAudio);
-    m_tabNames.Insert("video", m_pOptionsSubVideo);
-    m_tabNames.Insert("voice", m_pOptionsSubVoice);
-    m_tabNames.Insert("miscellaneous", m_pOptionsSubMiscellaneous);
+    auto plugins = tao::json::from_string(nc_runtime_ui());
+    auto controlsFor = [&](const std::string& tab, const std::string& owner) {
+        tao::json::value controls = tao::json::empty_array;
+        for (const auto& p : plugins.get_array())
+            if (owner.empty() || p.at("id") == owner)
+                for (auto c : p.at("controls").get_array())
+                    if (c.at("tab") == tab)
+                    {
+                        c["owner"] = p.at("id");
+                        controls.push_back(std::move(c));
+                    }
+        return controls;
+    };
+    bool hasExtendedBuiltin = false;
+    auto builtin = [&](const char* id, vgui2::PropertyPage* page, const char* title) {
+        if (!page)
+            return;
+        auto controls = controlsFor(id, "");
+        if (!controls.get_array().empty())
+        {
+            auto* extended = new CPluginSettingsPage(this, controls, page);
+            m_pluginPages.push_back(extended);
+            page = extended;
+            hasExtendedBuiltin = true;
+        }
+        AddPage(page, title);
+        m_tabNames.Insert(id, page);
+    };
+    builtin("multiplayer", m_pOptionsSubMultiplayer, "#GameUI_Multiplayer");
+    builtin("game", m_pOptionsSubGame, "#GameUI_Game");
+    // Plugin-created tabs sit next to the built-in top-level settings tabs.
+    for (const auto& p : plugins.get_array())
+        for (const auto& t : p.at("tabs").get_array())
+        {
+            auto id = p.at("id").get_string() + "." + t.at("id").get_string();
+            auto* page = new CPluginSettingsPage(this, controlsFor(t.at("id").get_string(), p.at("id").get_string()));
+            m_pluginPages.push_back(page);
+            AddPage(page, PluginTitle(id, PluginLocalized(t)).c_str());
+            m_tabNames.Insert(id.c_str(), page);
+        }
+    builtin("keyboard", m_pOptionsSubKeyboard, "#GameUI_Keyboard");
+    builtin("mouse", m_pOptionsSubMouse, "#GameUI_Mouse");
+    builtin("audio", m_pOptionsSubAudio, "#GameUI_Audio");
+    builtin("video", m_pOptionsSubVideo, "#GameUI_Video");
+    builtin("voice", m_pOptionsSubVoice, "#GameUI_Voice");
+    builtin("miscellaneous", m_pOptionsSubMiscellaneous, "#GameUI_Miscellaneous");
+    if (hasExtendedBuiltin)
+        SetTall(GetTall() + 28);
 
     SetApplyButtonVisible(true);
     GetPropertySheet()->SetTabWidth(84);
+    InvalidateLayout(true);
+    FitPageNavigation();
 }
 
-COptionsDialog::~COptionsDialog(void)
+COptionsDialog::~COptionsDialog(void) {}
+
+bool COptionsDialog::OnOK(bool applyOnly)
 {
+    tao::json::value values = tao::json::empty_array;
+    const auto current = tao::json::from_string(nc_runtime_ui());
+    for (auto* page : m_pluginPages)
+        page->Collect(values, current);
+    if (!values.get_array().empty())
+    {
+        const char* error = nc_runtime_settings(tao::json::to_string(values).c_str());
+        if (*error)
+        {
+            auto* box = new vgui2::MessageBox(PluginToken("#NextPlugins_Title").c_str(), PluginWide(PluginDiagnostic(error)).c_str(), this);
+            box->DoModal();
+            return false;
+        }
+    }
+    const bool applied = BaseClass::OnOK(applyOnly);
+    if (applied)
+        FitPageNavigation();
+    return applied;
 }
 
 void COptionsDialog::OnKeyCodeTyped(vgui2::KeyCode code)
@@ -101,29 +152,30 @@ void COptionsDialog::Activate(void)
 {
     bool was_visible = IsVisible();
 
+    if (!was_visible)
+        FitPageNavigation();
     BaseClass::Activate();
 
     if (!was_visible)
     {
         if (m_pOptionsSubMultiplayer)
         {
-            if (GetActivePage() != m_pOptionsSubMultiplayer)
-                GetPropertySheet()->SetActivePage(m_pOptionsSubMultiplayer);
+            OpenTab("multiplayer");
         }
         else
         {
-            if (GetActivePage() != m_pOptionsSubKeyboard)
-                GetPropertySheet()->SetActivePage(m_pOptionsSubKeyboard);
+            OpenTab("keyboard");
         }
         ResetAllData();
         EnableApplyButton(false);
     }
 }
 
-void COptionsDialog::OpenTab(const char* tabName) {
+void COptionsDialog::OpenTab(const char* tabName)
+{
     int index = m_tabNames.Find(tabName);
-    
-    if(index != m_tabNames.InvalidIndex())
+
+    if (index != m_tabNames.InvalidIndex())
     {
         auto page = m_tabNames[index];
         if (GetActivePage() != page)
@@ -136,7 +188,14 @@ void COptionsDialog::OpenCrosshairSettings()
     OpenTab("game");
 
     if (m_pOptionsSubGame)
+    {
+        // Reveal every enclosing sheet, including the Standard section of an
+        // extended built-in page, before selecting its Crosshair subpage.
+        for (vgui2::Panel* page = m_pOptionsSubGame; page->GetParent(); page = page->GetParent())
+            if (auto* sheet = dynamic_cast<vgui2::PropertySheet*>(page->GetParent()))
+                sheet->SetActivePage(page);
         m_pOptionsSubGame->ShowCrosshairTab();
+    }
 }
 
 void COptionsDialog::OnClose(void)
@@ -148,7 +207,7 @@ void COptionsDialog::OnGameUIHidden(void)
 {
     for (int i = 0; i < GetChildCount(); i++)
     {
-        Panel *pChild = GetChild(i);
+        Panel* pChild = GetChild(i);
 
         if (pChild)
             PostMessage(pChild, new KeyValues("GameUIHidden"));

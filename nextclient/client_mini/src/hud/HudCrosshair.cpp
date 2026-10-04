@@ -5,6 +5,7 @@
 
 #include <crosshair/crosshair.h>
 #include <cvars/cvar_defaults.h>
+#include <nextclient/runtime.h>
 
 HudCrosshair::HudCrosshair(nitroapi::NitroApiInterface *nitro_api) :
     nitroapi::NitroApiHelper(nitro_api),
@@ -46,6 +47,8 @@ void HudCrosshair::VidInit()
 
 void HudCrosshair::DrawCrosshair(float flTime, int weaponid)
 {
+    if (nc_runtime_ui_hidden(NC_UI_CROSSHAIR))
+        return;
     int iDistance;
     int iDeltaDistance;
     float flCurTime = cl_enginefunc()->GetClientTime();
