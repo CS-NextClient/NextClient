@@ -146,12 +146,22 @@ static tao::json::value BuildActivity()
 
                 activity["state"] = Localized("#NextClient_Discord_Multiplayer", "Multiplayer");
 
-                if (g_DiscordRpcServerCvar->value != 0 && g_DiscordRpcJoinCvar->value != 0)
+                const netadr_t& remote = cls->netchan.remote_address;
+                bool can_join = g_DiscordRpcServerCvar->value != 0
+                    && g_DiscordRpcJoinCvar->value != 0
+                    && remote.GetType() == NA_IP
+                    && !remote.IsReservedAdr();
+
+                if (can_join)
                 {
-                    activity["party"]["id"] = std::string("party-") + static_cast<const char*>(cls->servername);
-                    activity["secrets"] = { { "join", static_cast<const char*>(cls->servername) } };
+                    std::string address = remote.ToString();
+                    activity["party"]["id"] = "party-" + address;
+                    activity["secrets"] = { { "join", address } };
                 }
-                else activity["buttons"] = buttons;
+                else
+                {
+                    activity["buttons"] = buttons;
+                }
             }
 
             activity["party"]["size"] = tao::json::value::array({ CountPlayers(), cl->maxclients });
