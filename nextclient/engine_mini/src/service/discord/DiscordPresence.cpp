@@ -38,6 +38,7 @@ static int64_t g_StartTime = 0;
 static double g_NextUpdateTime = 0;
 static double g_NextConnectTime = 0;
 static double g_NextActivityTime = 0;
+static double g_ReadyDeadline = 0;
 
 static int GetCurrentPid()
 {
@@ -84,6 +85,12 @@ static std::string Localized(const char* token, const char* english)
     V_UnicodeToUTF8(wide, utf8.data(), static_cast<int>(utf8.size()));
     utf8.resize(strlen(utf8.c_str()));
     return utf8;
+}
+
+static bool JsonFieldIs(const tao::json::value& json, const char* key, const char* expected)
+{
+    const tao::json::value* field = json.find(key);
+    return field != nullptr && field->is_string() && field->get_string() == expected;
 }
 
 static tao::json::value BuildActivity()
@@ -219,6 +226,8 @@ void DiscordPresence_Frame()
 
         if (!g_DiscordIpc.Write(DiscordOpcode::Handshake, kHandshake))
             return;
+
+        g_ReadyDeadline = *realtime + 10.0;
     }
 
     DiscordOpcode opcode;
@@ -226,75 +235,99 @@ void DiscordPresence_Frame()
 
     while (g_DiscordIpc.Poll(opcode, message))
     {
-        if (opcode == DiscordOpcode::Frame && !g_DiscordReady)
+        switch (opcode)
         {
-            g_DiscordReady = true;
-            Con_Printf("Discord: ready!\n");
-
-            tao::json::value subscribe = {
-                { "cmd", "SUBSCRIBE" },
-                { "evt", "ACTIVITY_JOIN" },
-                { "nonce", std::to_string(++g_Nonce) }
-            };
-            g_DiscordIpc.Write(DiscordOpcode::Frame, tao::json::to_string(subscribe));
-        }
-        else if (opcode == DiscordOpcode::Frame)
-        {
-            tao::json::value json;
-
-            try
+            case DiscordOpcode::Frame:
             {
-                json = tao::json::from_string(message);
-            }
-            catch(const std::exception& e)
-            {
-                Con_Printf("Discord: bad message: %s\n", e.what());
-                continue;
-            }
+                tao::json::value json;
 
-            const tao::json::value* evt = json.find("evt");
-            if (evt == nullptr || !evt->is_string())
-                continue;
-            
-            if (evt->get_string() == "ERROR")
-            {
-                Con_Printf("Discord: error %s\n", message.c_str());
-            }
-            else if (evt->get_string() == "ACTIVITY_JOIN")
-            {
-                const tao::json::value* data = json.find("data");
-                if (data == nullptr || !data->is_object())
-                    continue;
-                
-                const tao::json::value* secret = data->find("secret");
-                if (secret == nullptr || !secret->is_string())
-                    continue;
-                
-                const std::string& address = secret->get_string();
-
-                if (!IsSafeServerAddress(address.c_str()))
+                try
                 {
-                    Con_Printf("Discord: rejected join address\n");
+                    json = tao::json::from_string(message);
+                }
+                catch(const std::exception& e)
+                {
+                    Con_Printf("Discord: bad message: %s\n", e.what());
                     continue;
                 }
 
-                char command[96];
-                snprintf(command, sizeof(command), "connect %s\n", address.c_str());
-                gEngfuncs.pfnClientCmd(command);
+                if (!g_DiscordReady)
+                {
+                    if (JsonFieldIs(json, "cmd", "DISPATCH") && JsonFieldIs(json, "evt", "READY"))
+                    {
+                        g_DiscordReady = true;
+                        Con_Printf("Discord: ready!\n");
 
-                Con_Printf("Discord: join %s\n", address.c_str());
+                        tao::json::value subscribe = {
+                            { "cmd", "SUBSCRIBE" },
+                            { "evt", "ACTIVITY_JOIN" },
+                            { "nonce", std::to_string(++g_Nonce) }
+                        };
+                        g_DiscordIpc.Write(DiscordOpcode::Frame, tao::json::to_string(subscribe));
+                    }
+                    else
+                    {
+                        Con_Printf("Discord: handshake failed %s\n", message.c_str());
+                        g_DiscordIpc.Close();
+                    }
+                    continue;
+                }
+
+                if (JsonFieldIs(json, "evt", "ERROR"))
+                {
+                    Con_Printf("Discord: error %s\n", message.c_str());
+                }
+                else if (JsonFieldIs(json, "evt", "ACTIVITY_JOIN"))
+                {
+                    const tao::json::value* data = json.find("data");
+                    if (data == nullptr || !data->is_object())
+                        continue;
+                    
+                    const tao::json::value* secret = data->find("secret");
+                    if (secret == nullptr || !secret->is_string())
+                        continue;
+                    
+                    const std::string& address = secret->get_string();
+
+                    if (!IsSafeServerAddress(address.c_str()))
+                    {
+                        Con_Printf("Discord: rejected join address\n");
+                        continue;
+                    }
+
+                    char command[96];
+                    snprintf(command, sizeof(command), "connect %s\n", address.c_str());
+                    gEngfuncs.pfnClientCmd(command);
+                }
+
+                break;
             }
+
+            case DiscordOpcode::Ping:
+            {
+                if (!g_DiscordIpc.Write(DiscordOpcode::Pong, message))
+                {
+                    Con_Printf("Discord: pong failed\n");
+                }
+
+                break;
+            }
+
+            case DiscordOpcode::Close:
+            {
+                Con_Printf("Discord: close %s\n", message.c_str());
+                g_DiscordIpc.Close();
+                break;
+            }
+
+            default: { break; }
         }
-        else if (opcode == DiscordOpcode::Ping)
-        {
-            if (!g_DiscordIpc.Write(DiscordOpcode::Pong, message))
-                Con_Printf("Discord: pong failed\n");
-        }
-        else if (opcode == DiscordOpcode::Close)
-        {
-            Con_Printf("Discord: close %s\n", message.c_str());
-            g_DiscordIpc.Close();
-        }
+    }
+
+    if (g_DiscordIpc.is_open() && !g_DiscordReady && *realtime > g_ReadyDeadline)
+    {
+        Con_Printf("Discord: no READY from Discord\n");
+        g_DiscordIpc.Close();
     }
 
     if (!g_DiscordIpc.is_open() || !g_DiscordReady)
