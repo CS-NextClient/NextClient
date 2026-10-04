@@ -5,6 +5,7 @@
 #include "DiscordIpc.h"
 #include "DiscordHostname.h"
 #include "DiscordValidation.h"
+#include "DiscordUrlScheme.h"
 
 #ifdef _WIN32
 #include <process.h>
@@ -136,12 +137,15 @@ static tao::json::value BuildActivity()
 }
 
 static DiscordIpc g_DiscordIpc;
-static const char* const kHandshake = R"({"v":1,"client_id":"1538460768503070771"})";
+#define DISCORD_APP_ID "1538460768503070771"
+
+static const char* const kHandshake = R"({"v":1,"client_id":")" DISCORD_APP_ID R"("})";
 static cvar_t* g_DiscordRpcCvar = nullptr;
 
 void DiscordPresence_Init()
 {
     DiscordHostname_Init();
+    DiscordUrlScheme_Register(DISCORD_APP_ID);
 
     g_StartTime = static_cast<int64_t>(time(nullptr));
     g_DiscordRpcCvar = gEngfuncs.pfnRegisterVariable(cvars::kDiscordRpc.name, cvars::kDiscordRpc.value, FCVAR_ARCHIVE);
