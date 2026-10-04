@@ -16,8 +16,10 @@
 #include <service/geoip/GeoIpCountryDatabase.h>
 #include <cvars/cvar_defaults.h>
 #include <tao/json.hpp>
+#include <strtools.h>
 #include <cstring>
 #include <cstdio>
+#include <cwchar>
 #include <ctime>
 
 static int GetCurrentPid()
@@ -54,6 +56,19 @@ static int CountPlayers()
     return players;
 }
 
+static std::string Localized(const char* token, const char* english)
+{
+    const wchar_t* wide = g_pLocalize->Find(token);
+    if (wide == nullptr)
+        return english;
+
+    std::string utf8;
+    utf8.resize(wcslen(wide) * 4 + 1);
+    V_UnicodeToUTF8(wide, utf8.data(), static_cast<int>(utf8.size()));
+    utf8.resize(strlen(utf8.c_str()));
+    return utf8;
+}
+
 static int64_t g_StartTime = 0;
 
 static tao::json::value BuildActivity()
@@ -63,7 +78,7 @@ static tao::json::value BuildActivity()
         { "large_text", "NextClient" }
     };
 
-    tao::json::value button = { { "label", "Get NextClient" }, { "url", "https://nextclient.ru/" } };
+    tao::json::value button = { { "label", Localized("#NextClient_Discord_GetNextClient", "Get NextClient") }, { "url", "https://nextclient.ru/" } };
     tao::json::value buttons = tao::json::value::array({ button });
 
     tao::json::value activity = {
@@ -74,7 +89,7 @@ static tao::json::value BuildActivity()
 
     if (cls->state == ca_disconnected)
     {
-        activity["state"] = "In main menu";
+        activity["state"] = Localized("#NextClient_Discord_MainMenu", "In main menu");
         activity["buttons"] = buttons;
         return activity;
     }
@@ -83,7 +98,7 @@ static tao::json::value BuildActivity()
     {
         if (cls->state == ca_connecting || cls->state == ca_connected || cls->state == ca_uninitialized)
         {
-            activity["state"] = "Connecting...";
+            activity["state"] = Localized("#NextClient_Discord_Connecting", "Connecting...");
             activity["buttons"] = buttons;
             return activity;
         }
@@ -94,7 +109,7 @@ static tao::json::value BuildActivity()
 
             if (is_local)
             {
-                activity["state"] = "Single-player";
+                activity["state"] = Localized("#NextClient_Discord_SinglePlayer", "Single-player");
                 activity["buttons"] = buttons;
             }
             else
@@ -105,9 +120,9 @@ static tao::json::value BuildActivity()
                     size_t size = GeoIp_GetUtf8PrefixSize(hostname, 128);
                     activity["details"] = hostname.substr(0, size);
                 }
-                else activity["details"] = "On a server";
+                else activity["details"] = Localized("#NextClient_Discord_OnServer", "On a server");
 
-                activity["state"] = "Multiplayer";
+                activity["state"] = Localized("#NextClient_Discord_Multiplayer", "Multiplayer");
                 activity["party"]["id"] = std::string("party-") + static_cast<const char*>(cls->servername);
                 activity["secrets"] = { { "join", static_cast<const char*>(cls->servername) } };
             }
@@ -121,14 +136,14 @@ static tao::json::value BuildActivity()
 
         if (cls->timedemo)
         {
-            activity["state"] = "Running a benchmark";
+            activity["state"] = Localized("#NextClient_Discord_Benchmark", "Running a benchmark");
             return activity;
         }
 
         char map[64];
         GetFileBaseName(cl->levelname, map, sizeof(map));
 
-        activity["details"] = "Watching a demo";
+        activity["details"] = Localized("#NextClient_Discord_WatchingDemo", "Watching a demo");
         activity["state"] = std::string(map) + " (" + std::to_string(CountPlayers()) + "/" + std::to_string(cl->maxclients) + ")";
         activity["type"] = 3;
     }
