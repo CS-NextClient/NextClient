@@ -5,7 +5,9 @@
 
 #include <crosshair/crosshair.h>
 #include <cvars/cvar_defaults.h>
+#if NEXTCLIENT_WITH_PLUGINS
 #include <nextclient/runtime.h>
+#endif
 
 HudCrosshair::HudCrosshair(nitroapi::NitroApiInterface *nitro_api) :
     nitroapi::NitroApiHelper(nitro_api),
@@ -47,8 +49,10 @@ void HudCrosshair::VidInit()
 
 void HudCrosshair::DrawCrosshair(float flTime, int weaponid)
 {
+#if NEXTCLIENT_WITH_PLUGINS
     if (nc_runtime_ui_hidden(NC_UI_CROSSHAIR))
         return;
+#endif
     int iDistance;
     int iDeltaDistance;
     float flCurTime = cl_enginefunc()->GetClientTime();

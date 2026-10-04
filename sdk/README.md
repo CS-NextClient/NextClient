@@ -12,6 +12,9 @@ and per-plugin JSON stores. SDK, ABI, and API versions are 1.0.0 / 1 / 1.
 
 ## Install and trust
 
+The runtime currently supports Windows only. Linux client builds omit plugins, their menus,
+and their hooks; Windows DLLs cannot be loaded by the Linux client.
+
 Put plugin DLLs in `plugins/` beside `cstrike.exe`. Open **Plugins** from the main
 or pause screen. Review name, self-declared author, description, version, SDK
 warnings, and compatibility rules; enable plugins and arrange their order.

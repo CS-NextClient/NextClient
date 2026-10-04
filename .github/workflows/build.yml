@@ -125,10 +125,22 @@ jobs:
         run: ./vcpkg/bootstrap-vcpkg.sh -disableMetrics
 
       - name: Configure
-        run: cmake --preset linux "-DNEXTCLIENT_INSTALL_DIR=$GITHUB_WORKSPACE/install"
+        run: cmake --preset linux -DNEXTCLIENT_WITH_PLUGINS=OFF "-DNEXTCLIENT_INSTALL_DIR=$GITHUB_WORKSPACE/install"
 
       - name: Build
         run: cmake --build --preset linux-release --target BUILD_ALL
+
+      - name: Check Linux package has no Windows plugin runtime
+        run: |
+          test ! -e install/next_plugins.dll
+          test ! -e install/plugins/life_stats.dll
+          for module in install/cstrike/cl_dlls/client_mini.dll install/cstrike/cl_dlls/gameui.so; do
+            readelf --wide --dyn-syms "$module" > /tmp/nextclient-symbols.txt
+            if grep -q 'nc_runtime_' /tmp/nextclient-symbols.txt; then
+              echo "Unexpected plugin runtime dependency in $module"
+              exit 1
+            fi
+          done
 
       # upload-artifact drops the executable bit, nextclient.sh needs it
       - name: Pack install directory
@@ -142,7 +154,7 @@ jobs:
           if-no-files-found: error
 
       - name: Configure tests
-        run: cmake --preset linux -B build/linux-tests -DNEXTCLIENT_BUILD_TESTS=ON
+        run: cmake --preset linux -B build/linux-tests -DNEXTCLIENT_BUILD_TESTS=ON -DNEXTCLIENT_WITH_PLUGINS=OFF
 
       - name: Build tests
         run: cmake --build build/linux-tests --config Release --target engine_mini-tests gameui-tests view-tests crosshair-tests

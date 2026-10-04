@@ -7,10 +7,12 @@
 
 #include "OptionsSubMultiplayer.h"
 #include "OptionsSubGame.h"
+#if NEXTCLIENT_WITH_PLUGINS
 #include "PluginLocalization.h"
 #include "PluginSettingsPage.h"
 #include <nextclient/runtime.h>
 #include <vgui_controls/MessageBox.h>
+#endif
 #include "OptionsSubKeyboard.h"
 #include "OptionsSubMouse.h"
 #include "OptionsSubAudio.h"
@@ -57,6 +59,7 @@ COptionsDialog::COptionsDialog(vgui2::Panel* parent) :
 
     m_pOptionsSubMiscellaneous = new OptionsSubMiscellaneous(this);
 
+#if NEXTCLIENT_WITH_PLUGINS
     auto plugins = tao::json::from_string(nc_runtime_ui());
     auto controlsFor = [&](const std::string& tab, const std::string& owner) {
         tao::json::value controls = tao::json::empty_array;
@@ -71,9 +74,11 @@ COptionsDialog::COptionsDialog(vgui2::Panel* parent) :
         return controls;
     };
     bool hasExtendedBuiltin = false;
+#endif
     auto builtin = [&](const char* id, vgui2::PropertyPage* page, const char* title) {
         if (!page)
             return;
+#if NEXTCLIENT_WITH_PLUGINS
         auto controls = controlsFor(id, "");
         if (!controls.get_array().empty())
         {
@@ -82,11 +87,13 @@ COptionsDialog::COptionsDialog(vgui2::Panel* parent) :
             page = extended;
             hasExtendedBuiltin = true;
         }
+#endif
         AddPage(page, title);
         m_tabNames.Insert(id, page);
     };
     builtin("multiplayer", m_pOptionsSubMultiplayer, "#GameUI_Multiplayer");
     builtin("game", m_pOptionsSubGame, "#GameUI_Game");
+#if NEXTCLIENT_WITH_PLUGINS
     // Plugin-created tabs sit next to the built-in top-level settings tabs.
     for (const auto& p : plugins.get_array())
         for (const auto& t : p.at("tabs").get_array())
@@ -97,14 +104,17 @@ COptionsDialog::COptionsDialog(vgui2::Panel* parent) :
             AddPage(page, PluginTitle(id, PluginLocalized(t)).c_str());
             m_tabNames.Insert(id.c_str(), page);
         }
+#endif
     builtin("keyboard", m_pOptionsSubKeyboard, "#GameUI_Keyboard");
     builtin("mouse", m_pOptionsSubMouse, "#GameUI_Mouse");
     builtin("audio", m_pOptionsSubAudio, "#GameUI_Audio");
     builtin("video", m_pOptionsSubVideo, "#GameUI_Video");
     builtin("voice", m_pOptionsSubVoice, "#GameUI_Voice");
     builtin("miscellaneous", m_pOptionsSubMiscellaneous, "#GameUI_Miscellaneous");
+#if NEXTCLIENT_WITH_PLUGINS
     if (hasExtendedBuiltin)
         SetTall(GetTall() + 28);
+#endif
 
     SetApplyButtonVisible(true);
     GetPropertySheet()->SetTabWidth(84);
@@ -116,6 +126,7 @@ COptionsDialog::~COptionsDialog(void) {}
 
 bool COptionsDialog::OnOK(bool applyOnly)
 {
+#if NEXTCLIENT_WITH_PLUGINS
     tao::json::value values = tao::json::empty_array;
     const auto current = tao::json::from_string(nc_runtime_ui());
     for (auto* page : m_pluginPages)
@@ -130,6 +141,7 @@ bool COptionsDialog::OnOK(bool applyOnly)
             return false;
         }
     }
+#endif
     const bool applied = BaseClass::OnOK(applyOnly);
     if (applied)
         FitPageNavigation();

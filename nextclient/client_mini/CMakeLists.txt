@@ -24,10 +24,6 @@ add_library(${PROJECT_NAME} SHARED
         src/hlsdk.h
         src/main.cpp
         src/main.h
-        src/plugin_bridge.cpp
-        src/plugin_bridge.h
-        src/plugin_game_state.cpp
-        src/plugin_game_state.h
         src/view.cpp
         src/view.h
         src/hud/HudCrosshair.cpp
@@ -83,7 +79,6 @@ target_include_directories(${PROJECT_NAME} PRIVATE
 )
 
 target_link_libraries(${PROJECT_NAME} PRIVATE
-        next_plugins
         taocpp::json
         nitro_api::nitro_api
         NextClient::gameui
@@ -103,6 +98,7 @@ if (MSVC)
 endif ()
 
 target_compile_definitions(${PROJECT_NAME} PRIVATE
+        NEXTCLIENT_WITH_PLUGINS=$<BOOL:${NEXTCLIENT_WITH_PLUGINS}>
         LOG_TAG="game"
         USE_OPTICK=$<BOOL:${USE_PROFILER}>
         _HAS_STATIC_RTTI=0 #disable rtti things in stl
@@ -138,7 +134,12 @@ target_include_directories(client_mini_export INTERFACE
         include
 )
 
-if (NEXTCLIENT_BUILD_TESTS)
+if (NEXTCLIENT_WITH_PLUGINS)
+    target_sources(${PROJECT_NAME} PRIVATE src/plugin_bridge.cpp src/plugin_game_state.cpp)
+    target_link_libraries(${PROJECT_NAME} PRIVATE next_plugins)
+endif ()
+
+if (NEXTCLIENT_BUILD_TESTS AND NEXTCLIENT_WITH_PLUGINS)
     find_package(GTest CONFIG REQUIRED)
     include(GoogleTest)
     add_executable(plugin-bridge-tests tests/plugin_bridge_tests.cpp src/plugin_bridge.cpp src/plugin_game_state.cpp

@@ -1,11 +1,14 @@
 #include "main.h"
+#if NEXTCLIENT_WITH_PLUGINS
 #include "plugin_movement.h"
+#include "plugin_bridge.h"
+#include <nextclient/runtime.h>
+#endif
 #include <cstring>
 #include <ranges>
 #include <next_client_mini/client_mini.h>
 #include <parsemsg.h>
 
-#include <nextclient/runtime.h>
 #include "camera.h"
 #include "studiorenderer.h"
 #include "view.h"
@@ -13,7 +16,6 @@
 #include "color_chat_in_console.h"
 #include "inspect.h"
 #include "invert_mouse.h"
-#include "plugin_bridge.h"
 
 nitroapi::NitroApiInterface* g_NitroApi;
 
@@ -79,7 +81,9 @@ static void HUD_InitPost()
 
     std::memcpy(&cl_funcs, g_NitroApi->GetEngineData()->cldll_func, sizeof(cl_funcs));
     std::memcpy(&gEngfuncs, g_NitroApi->GetEngineData()->cl_enginefunc, sizeof(gEngfuncs));
+#if NEXTCLIENT_WITH_PLUGINS
     PluginBridgeWrapMessages();
+#endif
     std::memcpy(&g_engfuncs, g_NitroApi->GetEngineData()->enginefuncs, sizeof(g_engfuncs));
     gHUD = g_NitroApi->GetClientData()->gHUD;
     sv = g_NitroApi->GetEngineData()->server;
@@ -96,19 +100,25 @@ static void HUD_InitPost()
     InvertMouseInit();
 
     ColorChatInConsolePatch();
+#if NEXTCLIENT_WITH_PLUGINS
     PluginBridgeInit();
+#endif
 }
 
 static int HUD_RedrawHandler(float flTime, int iIntermission, nitroapi::NextHandlerInterface<int, float, int>* next)
 {
     int result = 1;
+#if NEXTCLIENT_WITH_PLUGINS
     if (!nc_runtime_ui_hidden(NC_UI_HUD))
+#endif
     {
         result = next->Invoke(flTime, iIntermission);
         if (hud_draw->value != 0.0)
             g_GameHud->Draw(flTime);
     }
+#if NEXTCLIENT_WITH_PLUGINS
     PluginBridgeDraw(flTime, iIntermission);
+#endif
     return result;
 }
 
@@ -120,7 +130,9 @@ static void HUD_ResetHandler(HUD_ResetNext next)
 
     g_GameHud->Reset();
     ResetInvertMouse();
+#if NEXTCLIENT_WITH_PLUGINS
     PluginBridgeReset();
+#endif
 }
 
 static int HUD_VidInitHandler(HUD_VidInitNext next)
@@ -151,7 +163,9 @@ static void HUD_UpdateClientDataPost(client_data_t* cdata, float flTime, int res
 static void HUD_PostRunCmdPost(struct local_state_s *from, struct local_state_s *to, struct usercmd_s *cmd, int runfuncs, double time, unsigned int random_seed)
 {
     std::memcpy(&g_LastPlayerState, to, sizeof(local_state_t));
+#if NEXTCLIENT_WITH_PLUGINS
     PluginBridgePredictionReady();
+#endif
 }
 
 static void HUD_GetStudioModelInterfacePost(int version, r_studio_interface_t **ppinterface, engine_studio_api_t *pstudio, int result)
@@ -189,7 +203,9 @@ static void UserMsg_CurWeaponPost(const char* name, int size, void* data, int re
 static void UserMsg_InitHUDPost(const char* name, int size, void* data, int result)
 {
     g_GameHud->InitHUDData();
+#if NEXTCLIENT_WITH_PLUGINS
     PluginBridgeReset();
+#endif
     ResetInvertMouse();
 }
 
@@ -231,6 +247,7 @@ static void CL_CreateMoveHandler(float frametime, usercmd_t* cmd, int active, CL
     next->Invoke(frametime, cmd, active);
 
     CL_CreateMove_InvertMousePost(frametime, cmd, active);
+#if NEXTCLIENT_WITH_PLUGINS
     NcCommand command{
         sizeof(NcCommand),
         cmd->buttons,
@@ -248,6 +265,7 @@ static void CL_CreateMoveHandler(float frametime, usercmd_t* cmd, int active, CL
     cmd->forwardmove = command.forward_move;
     cmd->sidemove = command.side_move;
     cmd->upmove = command.up_move;
+#endif
 }
 
 static void HUD_ProcessPlayerStateHandler(entity_state_s* dst, const entity_state_s* src, HUD_ProcessPlayerStateNext next)
@@ -276,16 +294,20 @@ public:
         nitroapi::ClientData* client_data = nitro_api->GetClientData();
         g_Unsub.emplace_back(client_data->HUD_VidInit |= HUD_VidInitHandler);
         g_Unsub.emplace_back(client_data->HUD_Reset |= HUD_ResetHandler);
+#if NEXTCLIENT_WITH_PLUGINS
         g_Unsub.emplace_back(client_data->HUD_Init |= [](const auto& next) {
             PluginBridgePrepare();
             next->Invoke();
         });
+#endif
         g_Unsub.emplace_back(client_data->HUD_Init += HUD_InitPost);
         g_Unsub.emplace_back(client_data->HUD_Redraw |= HUD_RedrawHandler);
+#if NEXTCLIENT_WITH_PLUGINS
         g_Unsub.emplace_back(client_data->HUD_Frame += PluginBridgeFrame);
         g_Unsub.emplace_back(client_data->HUD_VoiceStatus += [](int index, qboolean talking, int) {
             PluginBridgeVoice(index, talking);
         });
+#endif
         g_Unsub.emplace_back(client_data->HUD_UpdateClientData += HUD_UpdateClientDataPost);
         g_Unsub.emplace_back(client_data->V_CalcRefdef |= Hook_V_CalcRefdef);
         g_Unsub.emplace_back(client_data->HUD_PostRunCmd += HUD_PostRunCmdPost);
@@ -300,7 +322,9 @@ public:
 
         g_GameHud = std::make_unique<GameHud>(nitro_api);
         g_Unsub.emplace_back(client_data->HUD_Shutdown |= [](const auto& next) {
+#if NEXTCLIENT_WITH_PLUGINS
             PluginBridgeShutdown();
+#endif
             next->Invoke();
             g_GameHud.reset();
         });
@@ -313,7 +337,9 @@ public:
 
     void Uninitialize() override
     {
+#if NEXTCLIENT_WITH_PLUGINS
         PluginBridgeShutdown();
+#endif
         ResetInvertMouse();
 
         for (auto& unsubscriber: g_Unsub) {

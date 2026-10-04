@@ -17,6 +17,11 @@ endforeach ()
 
 project(NextClient VERSION 2.5.4)
 
+option(NEXTCLIENT_WITH_PLUGINS "Build the Windows native plugin runtime and UI" ${WIN32})
+if (NEXTCLIENT_WITH_PLUGINS AND NOT WIN32)
+    message(FATAL_ERROR "Native plugins currently require Windows. Configure with -DNEXTCLIENT_WITH_PLUGINS=OFF.")
+endif ()
+
 set(NEXTCLIENT_ROOT ${CMAKE_CURRENT_SOURCE_DIR})
 
 # TODO do fetch curl and zlib via vcpkg, make a custom port if necessary
@@ -85,8 +90,10 @@ endif ()
 # NextClient sub-projects
 add_subdirectory(nextclient/packages)
 add_subdirectory(dep/NclNitroApi)
-add_subdirectory(nextclient/plugins)
-add_subdirectory(sdk/examples/cpp-life-stats)
+if (NEXTCLIENT_WITH_PLUGINS)
+    add_subdirectory(nextclient/plugins)
+    add_subdirectory(sdk/examples/cpp-life-stats)
+endif ()
 add_subdirectory(nextclient/engine_mini)
 add_subdirectory(nextclient/gameui)
 add_subdirectory(nextclient/client_mini)
@@ -130,8 +137,6 @@ if (NOT NEXTCLIENT_BUILD_TESTS)
     add_custom_target(BUILD_ALL ALL)
 
     add_dependencies(BUILD_ALL
-            next_plugins
-            plugin_life_stats
             next_launcher
             engine_mini
             filesystem_proxy
@@ -142,12 +147,20 @@ if (NOT NEXTCLIENT_BUILD_TESTS)
             vgui2
     )
 
+    if (NEXTCLIENT_WITH_PLUGINS)
+        add_dependencies(BUILD_ALL next_plugins plugin_life_stats)
+        if (NEXTCLIENT_INSTALL_DIR)
+            add_custom_command(TARGET BUILD_ALL POST_BUILD
+                    COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:next_plugins> ${NEXTCLIENT_INSTALL_DIR}/next_plugins.dll
+                    COMMAND ${CMAKE_COMMAND} -E make_directory ${NEXTCLIENT_INSTALL_DIR}/plugins
+                    COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:plugin_life_stats> ${NEXTCLIENT_INSTALL_DIR}/plugins/life_stats.dll
+            )
+        endif ()
+    endif ()
+
     if (WIN32 AND NEXTCLIENT_INSTALL_DIR)
         add_custom_command(TARGET BUILD_ALL POST_BUILD
                 COMMENT "Installing libraries and assets to ${NEXTCLIENT_INSTALL_DIR}..."
-                COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:next_plugins> ${NEXTCLIENT_INSTALL_DIR}/next_plugins.dll
-                COMMAND ${CMAKE_COMMAND} -E make_directory ${NEXTCLIENT_INSTALL_DIR}/plugins
-                COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:plugin_life_stats> ${NEXTCLIENT_INSTALL_DIR}/plugins/life_stats.dll
                 COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:next_launcher> ${NEXTCLIENT_INSTALL_DIR}/cstrike.exe
                 COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:engine_mini> ${NEXTCLIENT_INSTALL_DIR}/next_engine_mini.dll
                 COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:filesystem_proxy> ${NEXTCLIENT_INSTALL_DIR}/FileSystem_Proxy.dll

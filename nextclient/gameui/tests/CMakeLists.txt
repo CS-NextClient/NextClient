@@ -8,9 +8,6 @@ add_executable(${TARGET_NAME}
         ServerBrowserTextTests.cpp
         ServerFilterCountsTests.cpp
         ServerGameModeNamesTests.cpp
-        PluginsDialogStateTests.cpp
-        PluginTextTests.cpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/../src/GameUi/PluginText.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/../src/ServerBrowser/ServerBrowserText.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/../src/ServerBrowser/ServerFilterCounts.cpp
 )
@@ -40,7 +37,16 @@ target_link_libraries(${TARGET_NAME} PRIVATE
         taocpp::json
 )
 
-set_source_files_properties(PluginTextTests.cpp PROPERTIES COMPILE_OPTIONS /utf-8)
+if (NEXTCLIENT_WITH_PLUGINS)
+    target_sources(${TARGET_NAME} PRIVATE
+            PluginsDialogStateTests.cpp
+            PluginTextTests.cpp
+            ${CMAKE_CURRENT_SOURCE_DIR}/../src/GameUi/PluginText.cpp
+    )
+    if (MSVC)
+        set_source_files_properties(PluginTextTests.cpp PROPERTIES COMPILE_OPTIONS /utf-8)
+    endif ()
+endif ()
 
 target_include_directories(${TARGET_NAME} PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/../src

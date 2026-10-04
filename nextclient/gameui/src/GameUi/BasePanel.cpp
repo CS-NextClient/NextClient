@@ -32,9 +32,11 @@
 #include "ToolBar.h"
 #include "GameConsole.h"
 #include "PlayerListDialog.h"
+#if NEXTCLIENT_WITH_PLUGINS
 #include "PluginsDialog.h"
 #include "PluginLocalization.h"
 #include <nextclient/runtime.h>
+#endif
 
 #include <keydefs.h>
 
@@ -753,6 +755,7 @@ CGameMenu *CBasePanel::RecursiveLoadGameMenu(vgui2::Panel *parent, KeyValues *da
 {
     CGameMenu *menu = new CGameMenu(parent, datafile->GetName());
 
+#if NEXTCLIENT_WITH_PLUGINS
     // Add the Plugins entry if GameMenu.res does not provide one, sharing the
     // menu items' layout, input and fades.
     KeyValues* options = nullptr;
@@ -777,24 +780,36 @@ CGameMenu *CBasePanel::RecursiveLoadGameMenu(vgui2::Panel *parent, KeyValues *da
         menu->AddMenuItem("Plugins", "#NextPlugins_Title", "OpenPluginsDialog", this, data);
         hasPlugins = true;
     };
+#endif
 
     for (KeyValues *dat = datafile->GetFirstSubKey(); dat != NULL; dat = dat->GetNextKey())
     {
+#if NEXTCLIENT_WITH_PLUGINS
         if (!hasPlugins && !options && dat == quit)
             addPlugins(quit);
+#endif
 
         const char *label = dat->GetString("label", "<unknown>");
         const char *cmd = dat->GetString("command", NULL);
         const char *name = dat->GetString("name", label);
 
+#if !NEXTCLIENT_WITH_PLUGINS
+        // Custom menus may contain a Plugins item even when the runtime is unavailable.
+        if (cmd && (!Q_stricmp(cmd, "OpenPluginsDialog") || !Q_strncmp(cmd, "PluginWindow:", 13)))
+            continue;
+#endif
         menu->AddMenuItem(name, label, cmd, this, dat);
 
+#if NEXTCLIENT_WITH_PLUGINS
         if (!hasPlugins && dat == options)
             addPlugins(options);
+#endif
     }
 
+#if NEXTCLIENT_WITH_PLUGINS
     if (!hasPlugins)
         addPlugins(nullptr);
+#endif
 
     return menu;
 }
@@ -1003,10 +1018,12 @@ void CBasePanel::RunMenuCommand(const char *command)
     {
         OnOpenOptionsDialog();
     }
+#if NEXTCLIENT_WITH_PLUGINS
     else if (!Q_stricmp(command, "OpenPluginsDialog"))
     {
         OnOpenPluginsDialog();
     }
+#endif
     else if (!Q_stricmp(command, "ResumeGame"))
     {
         engine->pfnClientCmd("cancelselect");
@@ -1076,14 +1093,17 @@ void CBasePanel::RunMenuCommand(const char *command)
 
 void CBasePanel::OnCommand(const char *command)
 {
+#if NEXTCLIENT_WITH_PLUGINS
     if (!Q_strncmp(command, "PluginWindow:", 13))
     {
         nc_runtime_window_action(command + 13, "$open", "null");
         return;
     }
+#endif
     RunMenuCommand(command);
 }
 
+#if NEXTCLIENT_WITH_PLUGINS
 void CBasePanel::OnOpenPluginsDialog()
 {
     if (!m_hPluginsDialog.Get())
@@ -1109,6 +1129,7 @@ void CBasePanel::UpdatePluginMenus(const tao::json::value& windows)
         if (!current.count(it->first)) { m_pGameMenu->DeleteItem(it->second); it = pluginMenuItems_.erase(it); }
         else ++it;
 }
+#endif
 
 void CBasePanel::RunAnimationWithCallback(vgui2::Panel *parent, const char *animName, KeyValues *msgFunc)
 {
