@@ -5,11 +5,17 @@
 #ifdef _WIN32
 #include <windows.h>
 #else
+#include <spawn.h>
+#include <sys/wait.h>
+#include <cstring>
+#include <vector>
 #include <pwd.h>
 #include <unistd.h>
 #include <cstdio>
 #include <cstdlib>
 #include <filesystem>
+
+extern char** environ;
 #endif
 
 #include <string>
@@ -45,6 +51,45 @@ void DiscordUrlScheme_Register(const char* app_id)
 }
 
 #else
+
+static bool RunXdgMime(std::string home, std::string desktop_name, std::string mime)
+{
+    std::string home_var = "HOME=" + home;
+
+    std::vector<char*> env;
+    for (char** var = environ; *var != nullptr; var++)
+    {
+        if (strncmp(*var, "HOME=", 5) == 0 || strncmp(*var, "LD_LIBRARY_PATH=", 16) == 0)
+        {
+            continue;
+        }
+        env.push_back(*var);
+    }
+    env.push_back(home_var.data());
+    env.push_back(nullptr);
+
+    char* argv[] = {
+        const_cast<char*>("xdg-mime"),
+        const_cast<char*>("default"),
+        const_cast<char*>(desktop_name.c_str()),
+        const_cast<char*>(mime.c_str()),
+        nullptr
+    };
+
+    pid_t pid;
+    if (posix_spawnp(&pid, "xdg-mime", nullptr, nullptr, argv, env.data()) != 0)
+    {
+        return false;
+    }
+
+    int status = 0;
+    if (waitpid(pid, &status, 0) == -1)
+    {
+        return false;
+    }
+
+    return WIFEXITED(status) && WEXITSTATUS(status) == 0;
+}
 
 void DiscordUrlScheme_Register(const char* app_id)
 {
@@ -89,10 +134,11 @@ void DiscordUrlScheme_Register(const char* app_id)
     fprintf(file, "MimeType=x-scheme-handler/discord-%s;\n", app_id);
     fclose(file);
 
-    std::string command = "env -u LD_LIBRARY_PATH HOME=" + home + " xdg-mime default discord-" + app_id
-        + ".desktop x-scheme-handler/discord-" + app_id;
-    if (system(command.c_str()) != 0)
+    std::string scheme = std::string("discord-") + app_id;
+    if (!RunXdgMime(home, scheme + ".desktop", "x-scheme-handler/" + scheme))
+    {
         Con_Printf("Discord: could not register the join URL scheme\n");
+    }
 }
 
 #endif
