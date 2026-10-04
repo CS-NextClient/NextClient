@@ -235,6 +235,10 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, 
 int main(int argc, char** argv)
 #endif
 {
+    // started by Discord's join or a shortcut, the working directory isn't the game's
+    std::error_code error;
+    std::filesystem::current_path(GetCurrentProcessDirectory(), error);
+
     SetupLogger();
 
     LOG(INFO) << "-----------------------------------------------";

@@ -72,6 +72,9 @@ NextClient has integrated some features from [csldr](https://github.com/mikkokko
 | hud_deathnotice_old | 0             | No                          | Enable the old style of killfeed. |
 | http_max_active_requests | 5             | No                          |  |
 | http_max_requests_retries | 3             | No                          |   |
+| cl_discordrpc | 1             | No                          | Show what you're playing in Discord. |
+| cl_discordrpc_server | 1             | No                          | Show the server name in Discord. When 0, friends can't join you either. |
+| cl_discordrpc_join | 1             | No                          | Let Discord friends join your server. |
 
 *Can the server change the value of a cvar using the cvars sandbox feature.
 </details>
