@@ -16,29 +16,32 @@
 #include <unistd.h>
 #endif
 
-// Discord opens discord-ipc-0, and takes the next free number when another client already holds it
-static constexpr int kMaxPipeNumber = 10;
-
-// Discord's own messages are a few KB; anything far bigger means the stream is out of sync
-static constexpr uint32_t kMaxPayloadSize = 64 * 1024;
-
-static constexpr size_t kHeaderSize = 8;
-
-// Our messages are tiny, so a full send buffer means Discord stopped reading
-static constexpr int kWriteTimeoutMs = 100;
-
-static void WriteUint32Le(uint8_t* out, uint32_t value)
+namespace
 {
-    out[0] = value & 0xFF;
-    out[1] = (value >> 8) & 0xFF;
-    out[2] = (value >> 16) & 0xFF;
-    out[3] = (value >> 24) & 0xFF;
-}
+    // Discord opens discord-ipc-0, and takes the next free number when another client already holds it
+    constexpr int kMaxPipeNumber = 10;
 
-static uint32_t ReadUint32Le(const uint8_t* in)
-{
-    return in[0] | (in[1] << 8) | (in[2] << 16) | (static_cast<uint32_t>(in[3]) << 24);
-}
+    // Discord's own messages are a few KB; anything far bigger means the stream is out of sync
+    constexpr uint32_t kMaxPayloadSize = 64 * 1024;
+
+    constexpr size_t kHeaderSize = 8;
+
+    // Our messages are tiny, so a full send buffer means Discord stopped reading
+    constexpr int kWriteTimeoutMs = 100;
+
+    void WriteUint32Le(uint8_t* out, uint32_t value)
+    {
+        out[0] = value & 0xFF;
+        out[1] = (value >> 8) & 0xFF;
+        out[2] = (value >> 16) & 0xFF;
+        out[3] = (value >> 24) & 0xFF;
+    }
+
+    uint32_t ReadUint32Le(const uint8_t* in)
+    {
+        return in[0] | (in[1] << 8) | (in[2] << 16) | (static_cast<uint32_t>(in[3]) << 24);
+    }
+} // namespace
 
 DiscordIpc::~DiscordIpc()
 {
@@ -60,7 +63,9 @@ bool DiscordIpc::Write(DiscordOpcode opcode, std::string_view payload)
 bool DiscordIpc::TakeMessage(DiscordOpcode& opcode, std::string& payload)
 {
     if (recv_buf_.size() < kHeaderSize)
+    {
         return false;
+    }
 
     const auto* header = reinterpret_cast<const uint8_t*>(recv_buf_.data());
     uint32_t size = ReadUint32Le(header + 4);
@@ -72,7 +77,9 @@ bool DiscordIpc::TakeMessage(DiscordOpcode& opcode, std::string& payload)
     }
 
     if (recv_buf_.size() < kHeaderSize + size)
+    {
         return false;
+    }
 
     opcode = static_cast<DiscordOpcode>(ReadUint32Le(header));
     payload.assign(recv_buf_, kHeaderSize, size);
@@ -84,11 +91,15 @@ bool DiscordIpc::TakeMessage(DiscordOpcode& opcode, std::string& payload)
 bool DiscordIpc::Poll(DiscordOpcode& opcode, std::string& payload)
 {
     if (!is_open())
+    {
         return false;
+    }
 
     // An earlier read may have brought in more than one message
     if (TakeMessage(opcode, payload))
+    {
         return true;
+    }
 
     return ReceiveAvailable() && TakeMessage(opcode, payload);
 }
@@ -194,7 +205,9 @@ bool DiscordIpc::Wait(int timeout_ms)
         }
 
         if (available > 0)
+        {
             return true;
+        }
 
         Sleep(1);
     } while (std::chrono::steady_clock::now() < deadline);
@@ -204,19 +217,24 @@ bool DiscordIpc::Wait(int timeout_ms)
 
 #else
 
-static const char* GetSocketDirectory()
+namespace
 {
-    static const char* const kVars[] = { "XDG_RUNTIME_DIR", "TMPDIR", "TMP", "TEMP" };
-
-    for (const char* var : kVars)
+    const char* GetSocketDirectory()
     {
-        const char* dir = getenv(var);
-        if (dir && *dir)
-            return dir;
-    }
+        static const char* const kVars[] = {"XDG_RUNTIME_DIR", "TMPDIR", "TMP", "TEMP"};
 
-    return "/tmp";
-}
+        for (const char* var : kVars)
+        {
+            const char* dir = getenv(var);
+            if (dir && *dir)
+            {
+                return dir;
+            }
+        }
+
+        return "/tmp";
+    }
+} // namespace
 
 bool DiscordIpc::Open()
 {
@@ -232,11 +250,12 @@ bool DiscordIpc::Open()
 
         int fd = socket(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0);
         if (fd == -1)
+        {
             return false;
+        }
 
         // A local connect finishes at once, so only switch to non-blocking once it is through
-        if (connect(fd, reinterpret_cast<sockaddr*>(&addr), sizeof(addr)) == 0 &&
-            fcntl(fd, F_SETFL, fcntl(fd, F_GETFL) | O_NONBLOCK) == 0)
+        if (connect(fd, reinterpret_cast<sockaddr*>(&addr), sizeof(addr)) == 0 && fcntl(fd, F_SETFL, fcntl(fd, F_GETFL) | O_NONBLOCK) == 0)
         {
             fd_ = fd;
             return true;
@@ -280,13 +299,17 @@ bool DiscordIpc::WriteBytes(const void* data, size_t size)
         }
 
         if (written == -1 && errno == EINTR)
+        {
             continue;
+        }
 
         if (written == -1 && (errno == EAGAIN || errno == EWOULDBLOCK))
         {
-            pollfd pfd{ fd_, POLLOUT, 0 };
+            pollfd pfd{fd_, POLLOUT, 0};
             if (poll(&pfd, 1, kWriteTimeoutMs) > 0)
+            {
                 continue;
+            }
         }
 
         Close();
@@ -310,11 +333,15 @@ bool DiscordIpc::ReceiveAvailable()
         }
 
         if (read == -1 && errno == EINTR)
+        {
             continue;
+        }
 
         // Drained everything there was; the connection is still fine
         if (read == -1 && (errno == EAGAIN || errno == EWOULDBLOCK))
+        {
             return true;
+        }
 
         // 0 means Discord closed its end
         Close();
@@ -324,7 +351,7 @@ bool DiscordIpc::ReceiveAvailable()
 
 bool DiscordIpc::Wait(int timeout_ms)
 {
-    pollfd pfd{ fd_, POLLIN, 0 };
+    pollfd pfd{fd_, POLLIN, 0};
     return poll(&pfd, 1, timeout_ms) > 0;
 }
 

@@ -44,7 +44,7 @@ namespace
         }
         return false;
     }
-}
+} // namespace
 
 // A Discord that accepts the connection and then stops reading must not stall the game thread or shutdown
 TEST(DiscordWorkerTest, StaysResponsiveWhenDiscordStopsReading)

@@ -2,31 +2,31 @@
 
 namespace
 {
-// Reads a decimal number at p no bigger than max and moves p past its digits
-bool ReadNumber(const char*& p, unsigned int max)
-{
-    if (*p < '0' || *p > '9')
+    // Reads a decimal number at p no bigger than max and moves p past its digits
+    bool ReadNumber(const char*& p, unsigned int max)
     {
-        return false;
-    }
-
-    unsigned int value = 0;
-    int digits = 0;
-
-    while (*p >= '0' && *p <= '9')
-    {
-        value = value * 10 + (*p - '0');
-        p++;
-
-        if (++digits > 5 || value > max)
+        if (*p < '0' || *p > '9')
         {
             return false;
         }
-    }
 
-    return true;
-}
-}
+        unsigned int value = 0;
+        int digits = 0;
+
+        while (*p >= '0' && *p <= '9')
+        {
+            value = value * 10 + (*p - '0');
+            p++;
+
+            if (++digits > 5 || value > max)
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+} // namespace
 
 bool Discord_IsSafeJoinAddress(const char* address)
 {

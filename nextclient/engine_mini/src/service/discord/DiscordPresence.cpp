@@ -18,160 +18,162 @@
 namespace
 {
     constexpr const char* kDiscordAppId = "1538460768503070771";
-}
 
-static cvar_t* g_DiscordRpcCvar = nullptr;
-static cvar_t* g_DiscordRpcServerCvar = nullptr;
-static cvar_t* g_DiscordRpcJoinCvar = nullptr;
+    cvar_t* g_DiscordRpcCvar = nullptr;
+    cvar_t* g_DiscordRpcServerCvar = nullptr;
+    cvar_t* g_DiscordRpcJoinCvar = nullptr;
 
-static DiscordWorker g_DiscordWorker(kDiscordAppId);
-static std::string g_LastActivity;
-static int64_t g_StartTime = 0;
+    DiscordWorker g_DiscordWorker(kDiscordAppId);
+    std::string g_LastActivity;
+    int64_t g_StartTime = 0;
 
-static double g_NextUpdateTime = 0;
+    double g_NextUpdateTime = 0;
 
-static void GetFileBaseName(const char* path, char* out, size_t out_size)
-{
-    const char* slash = strrchr(path, '/');
-    const char* start = slash ? slash + 1 : path;
-
-    snprintf(out, out_size, "%s", start);
-
-    char* dot = strrchr(out, '.');
-    if (dot)
-        *dot = '\0';
-}
-
-static int CountPlayers()
-{
-    int players = 0;
-
-    for (int i = 0; i <cl->maxclients; i++)
+    void GetFileBaseName(const char* path, char* out, size_t out_size)
     {
-        if (cl->players[i].name[0] != '\0')
-            players++;
-    }
+        const char* slash = strrchr(path, '/');
+        const char* start = slash ? slash + 1 : path;
 
-    return players;
-}
+        snprintf(out, out_size, "%s", start);
 
-static std::string Localized(const char* token, const char* english)
-{
-    const wchar_t* wide = g_pLocalize->Find(token);
-    if (wide == nullptr)
-        return english;
-
-    std::string utf8;
-    utf8.resize(wcslen(wide) * 4 + 1);
-    V_UnicodeToUTF8(wide, utf8.data(), static_cast<int>(utf8.size()));
-    utf8.resize(strlen(utf8.c_str()));
-    return utf8;
-}
-
-// What Discord gets when it keeps rejecting the full activity: nothing taken from the server
-static tao::json::value BuildFallbackActivity()
-{
-    return {
-        { "details", "Counter-Strike 1.6" },
-        { "assets", { { "large_image", "logo" }, { "large_text", "NextClient" } } },
-        { "timestamps", { { "start", g_StartTime } } }
-    };
-}
-
-static tao::json::value BuildActivity()
-{
-    tao::json::value assets = {
-        { "large_image", "logo" },
-        { "large_text", "NextClient" }
-    };
-
-    tao::json::value button = { { "label", Localized("#NextClient_Discord_GetNextClient", "Get NextClient") }, { "url", "https://nextclient.ru/" } };
-    tao::json::value buttons = tao::json::value::array({ button });
-
-    tao::json::value activity = {
-        { "details", "Counter-Strike 1.6" },
-        { "assets", assets },
-        { "timestamps", { { "start", g_StartTime } } }
-    };
-
-    if (cls->state == ca_disconnected)
-    {
-        activity["state"] = Localized("#NextClient_Discord_MainMenu", "In main menu");
-        activity["buttons"] = buttons;
-        return activity;
-    }
-
-    if (!cls->demoplayback)
-    {
-        if (cls->state == ca_connecting || cls->state == ca_connected || cls->state == ca_uninitialized)
+        char* dot = strrchr(out, '.');
+        if (dot)
         {
-            activity["state"] = Localized("#NextClient_Discord_Connecting", "Connecting...");
+            *dot = '\0';
+        }
+    }
+
+    int CountPlayers()
+    {
+        int players = 0;
+
+        for (int i = 0; i < cl->maxclients; i++)
+        {
+            if (cl->players[i].name[0] != '\0')
+            {
+                players++;
+            }
+        }
+
+        return players;
+    }
+
+    std::string Localized(const char* token, const char* english)
+    {
+        const wchar_t* wide = g_pLocalize->Find(token);
+        if (wide == nullptr)
+        {
+            return english;
+        }
+
+        std::string utf8;
+        utf8.resize(wcslen(wide) * 4 + 1);
+        V_UnicodeToUTF8(wide, utf8.data(), static_cast<int>(utf8.size()));
+        utf8.resize(strlen(utf8.c_str()));
+        return utf8;
+    }
+
+    // What Discord gets when it keeps rejecting the full activity: nothing taken from the server
+    tao::json::value BuildFallbackActivity()
+    {
+        return {
+            {"details", "Counter-Strike 1.6"},
+            {"assets", {{"large_image", "logo"}, {"large_text", "NextClient"}}},
+            {"timestamps", {{"start", g_StartTime}}}
+        };
+    }
+
+    tao::json::value BuildActivity()
+    {
+        tao::json::value assets = {{"large_image", "logo"}, {"large_text", "NextClient"}};
+
+        tao::json::value button = {
+            {"label", Localized("#NextClient_Discord_GetNextClient", "Get NextClient")}, {"url", "https://nextclient.ru/"}
+        };
+        tao::json::value buttons = tao::json::value::array({button});
+
+        tao::json::value activity = {{"details", "Counter-Strike 1.6"}, {"assets", assets}, {"timestamps", {{"start", g_StartTime}}}};
+
+        if (cls->state == ca_disconnected)
+        {
+            activity["state"] = Localized("#NextClient_Discord_MainMenu", "In main menu");
             activity["buttons"] = buttons;
             return activity;
         }
 
-        if (cls->state == ca_active)
+        if (!cls->demoplayback)
         {
-            bool is_local = strcmp(cls->servername, "local") == 0;
-
-            if (is_local)
+            if (cls->state == ca_connecting || cls->state == ca_connected || cls->state == ca_uninitialized)
             {
-                activity["state"] = Localized("#NextClient_Discord_SinglePlayer", "Single-player");
+                activity["state"] = Localized("#NextClient_Discord_Connecting", "Connecting...");
                 activity["buttons"] = buttons;
+                return activity;
             }
-            else
+
+            if (cls->state == ca_active)
             {
-                const std::string& hostname = DiscordHostname_Get();
-                if (!hostname.empty() && Q_UnicodeValidate(hostname.c_str()) && g_DiscordRpcServerCvar->value != 0)
+                bool is_local = strcmp(cls->servername, "local") == 0;
+
+                if (is_local)
                 {
-                    size_t size = GeoIp_GetUtf8PrefixSize(hostname, 128);
-                    activity["details"] = hostname.substr(0, size);
-                }
-                else activity["details"] = Localized("#NextClient_Discord_OnServer", "On a server");
-
-                activity["state"] = Localized("#NextClient_Discord_Multiplayer", "Multiplayer");
-
-                const netadr_t& remote = cls->netchan.remote_address;
-                bool can_join = g_DiscordRpcServerCvar->value != 0
-                    && g_DiscordRpcJoinCvar->value != 0
-                    && remote.GetType() == NA_IP
-                    && !remote.IsReservedAdr();
-
-                if (can_join)
-                {
-                    std::string address = remote.ToString();
-                    activity["party"]["id"] = "party-" + address;
-                    activity["secrets"] = { { "join", address } };
+                    activity["state"] = Localized("#NextClient_Discord_SinglePlayer", "Single-player");
+                    activity["buttons"] = buttons;
                 }
                 else
                 {
-                    activity["buttons"] = buttons;
+                    const std::string& hostname = DiscordHostname_Get();
+                    if (!hostname.empty() && Q_UnicodeValidate(hostname.c_str()) && g_DiscordRpcServerCvar->value != 0)
+                    {
+                        size_t size = GeoIp_GetUtf8PrefixSize(hostname, 128);
+                        activity["details"] = hostname.substr(0, size);
+                    }
+                    else
+                    {
+                        activity["details"] = Localized("#NextClient_Discord_OnServer", "On a server");
+                    }
+
+                    activity["state"] = Localized("#NextClient_Discord_Multiplayer", "Multiplayer");
+
+                    const netadr_t& remote = cls->netchan.remote_address;
+                    bool can_join = g_DiscordRpcServerCvar->value != 0 && g_DiscordRpcJoinCvar->value != 0 && remote.GetType() == NA_IP &&
+                                    !remote.IsReservedAdr();
+
+                    if (can_join)
+                    {
+                        std::string address = remote.ToString();
+                        activity["party"]["id"] = "party-" + address;
+                        activity["secrets"] = {{"join", address}};
+                    }
+                    else
+                    {
+                        activity["buttons"] = buttons;
+                    }
                 }
+
+                activity["party"]["size"] = tao::json::value::array({CountPlayers(), cl->maxclients});
+            }
+        }
+        else
+        {
+            activity["buttons"] = buttons;
+
+            if (cls->timedemo)
+            {
+                activity["state"] = Localized("#NextClient_Discord_Benchmark", "Running a benchmark");
+                return activity;
             }
 
-            activity["party"]["size"] = tao::json::value::array({ CountPlayers(), cl->maxclients });
-        }
-    }
-    else
-    {
-        activity["buttons"] = buttons;
+            char map[64];
+            GetFileBaseName(cl->levelname, map, sizeof(map));
 
-        if (cls->timedemo)
-        {
-            activity["state"] = Localized("#NextClient_Discord_Benchmark", "Running a benchmark");
-            return activity;
+            activity["details"] = Localized("#NextClient_Discord_WatchingDemo", "Watching a demo");
+            activity["state"] = std::string(map) + " (" + std::to_string(CountPlayers()) + "/" + std::to_string(cl->maxclients) + ")";
+            activity["type"] = 3;
         }
 
-        char map[64];
-        GetFileBaseName(cl->levelname, map, sizeof(map));
-
-        activity["details"] = Localized("#NextClient_Discord_WatchingDemo", "Watching a demo");
-        activity["state"] = std::string(map) + " (" + std::to_string(CountPlayers()) + "/" + std::to_string(cl->maxclients) + ")";
-        activity["type"] = 3;
+        return activity;
     }
-
-    return activity;
-}
+} // namespace
 
 void DiscordPresence_Init()
 {

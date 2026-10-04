@@ -28,16 +28,13 @@ namespace
         const tao::json::value* field = json.find(key);
         return field != nullptr && field->is_string() && field->get_string() == expected;
     }
-}
+} // namespace
 
 DiscordSession::DiscordSession(DiscordTransportInterface& transport, const std::string& app_id, int pid) :
     transport_(transport),
     pid_(pid)
 {
-    tao::json::value handshake = {
-        {"v", 1},
-        {"client_id", app_id}
-    };
+    tao::json::value handshake = {{"v", 1}, {"client_id", app_id}};
     handshake_ = tao::json::to_string(handshake);
 }
 
@@ -136,28 +133,28 @@ void DiscordSession::ProcessIncoming(double now)
         switch (opcode)
         {
             case DiscordOpcode::Frame:
-            {
-                HandleFrame(message, now);
-                break;
-            }
-            case DiscordOpcode::Ping:
-            {
-                if (!transport_.Write(DiscordOpcode::Pong, message))
                 {
-                    Log("pong failed");
+                    HandleFrame(message, now);
+                    break;
                 }
-                break;
-            }
+            case DiscordOpcode::Ping:
+                {
+                    if (!transport_.Write(DiscordOpcode::Pong, message))
+                    {
+                        Log("pong failed");
+                    }
+                    break;
+                }
             case DiscordOpcode::Close:
-            {
-                Log("close " + message);
-                transport_.Close();
-                break;
-            }
+                {
+                    Log("close " + message);
+                    transport_.Close();
+                    break;
+                }
             default:
-            {
-                break;
-            }
+                {
+                    break;
+                }
         }
     }
 }
@@ -188,11 +185,7 @@ void DiscordSession::HandleFrame(const std::string& message, double now)
             ready_ = true;
             Log("ready!");
 
-            tao::json::value subscribe = {
-                {"cmd", "SUBSCRIBE"},
-                {"evt", "ACTIVITY_JOIN"},
-                {"nonce", std::to_string(++nonce_)}
-            };
+            tao::json::value subscribe = {{"cmd", "SUBSCRIBE"}, {"evt", "ACTIVITY_JOIN"}, {"nonce", std::to_string(++nonce_)}};
             transport_.Write(DiscordOpcode::Frame, tao::json::to_string(subscribe));
         }
         else
@@ -298,11 +291,7 @@ void DiscordSession::SendActivity(double now)
 
     std::string nonce = std::to_string(++nonce_);
 
-    tao::json::value command = {
-        {"cmd", "SET_ACTIVITY"},
-        {"nonce", nonce},
-        {"args", {{"pid", pid_}, {"activity", std::move(parsed)}}}
-    };
+    tao::json::value command = {{"cmd", "SET_ACTIVITY"}, {"nonce", nonce}, {"args", {{"pid", pid_}, {"activity", std::move(parsed)}}}};
 
     if (!transport_.Write(DiscordOpcode::Frame, tao::json::to_string(command)))
     {

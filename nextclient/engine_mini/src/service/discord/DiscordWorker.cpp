@@ -28,12 +28,11 @@ namespace
         return getpid();
 #endif
     }
-}
+} // namespace
 
 DiscordWorker::DiscordWorker(std::string app_id) :
     app_id_(std::move(app_id))
-{
-}
+{}
 
 DiscordWorker::~DiscordWorker()
 {

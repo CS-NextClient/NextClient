@@ -63,7 +63,10 @@ TEST(DiscordValidationTest, RejectsCutAndStrayBytes)
 {
     EXPECT_FALSE(Q_UnicodeValidate("abc\xD0"));
     EXPECT_FALSE(Q_UnicodeValidate("\xF0\x9F\x94"));
-    EXPECT_FALSE(Q_UnicodeValidate("\x9F" "abc"));
+    EXPECT_FALSE(Q_UnicodeValidate(
+        "\x9F"
+        "abc"
+    ));
     EXPECT_FALSE(Q_UnicodeValidate("\xFF"));
 }
 

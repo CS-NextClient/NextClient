@@ -126,11 +126,7 @@ namespace
 
         void Answer(const std::string& nonce, bool error)
         {
-            tao::json::value answer = {
-                {"cmd", "SET_ACTIVITY"},
-                {"nonce", nonce},
-                {"data", tao::json::empty_object}
-            };
+            tao::json::value answer = {{"cmd", "SET_ACTIVITY"}, {"nonce", nonce}, {"data", tao::json::empty_object}};
             if (error)
             {
                 answer["evt"] = "ERROR";
@@ -151,7 +147,7 @@ namespace
             return false;
         }
     };
-}
+} // namespace
 
 TEST_F(DiscordSessionTest, SendsHandshakeWithAppId)
 {
