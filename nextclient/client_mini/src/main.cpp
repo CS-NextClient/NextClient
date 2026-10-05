@@ -15,6 +15,7 @@
 #include "fov.h"
 #include "color_chat_in_console.h"
 #include "inspect.h"
+#include "commands.h"
 #include "invert_mouse.h"
 
 nitroapi::NitroApiInterface* g_NitroApi;
@@ -92,6 +93,7 @@ static void HUD_InitPost()
     ViewInit();
     FovInit();
     InspectInit();
+    CommandsInit();
     CameraInit();
     g_GameHud->Init();
 
