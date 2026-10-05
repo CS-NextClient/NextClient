@@ -50,6 +50,16 @@ if (WIN32)
     target_link_libraries(${TARGET_NAME} PRIVATE
             Dbghelp.lib
     )
+else ()
+    # Without --as-needed (the default outside Debian/Ubuntu) the exe gets a DT_NEEDED on
+    # libvstdlib.so, whose InterfaceReg::s_pInterfaceRegs then preempts the registry of every
+    # module dlopen'ed later, and CreateInterface stops finding NITRO_API_001 / VFileSystem009.
+    # The version script stops the exe from exporting its own statically linked tier1 copy.
+    target_link_options(${TARGET_NAME} BEFORE PRIVATE
+            -Wl,--as-needed
+            -Wl,--version-script=${CMAKE_CURRENT_SOURCE_DIR}/exports.ld
+    )
+    set_property(TARGET ${TARGET_NAME} APPEND PROPERTY LINK_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/exports.ld)
 endif ()
 
 target_compile_definitions(${TARGET_NAME} PRIVATE
