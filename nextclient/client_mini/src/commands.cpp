@@ -1,9 +1,9 @@
-#include "hlsdk.h"
-#include "main.h"
 #include "commands.h"
 
 #include <string>
 #include <unordered_map>
+
+#include "main.h"
 
 namespace
 {
@@ -43,7 +43,7 @@ namespace
         int argc = gEngfuncs.Cmd_Argc();
         if (argc < 2)
         {
-            gEngfuncs.Con_Printf("Usage: +toggle <command> [held value] [released value]\n");
+            gEngfuncs.Con_Printf("Usage: +toggle <command> [<held> <released>]\n");
             return;
         }
 
