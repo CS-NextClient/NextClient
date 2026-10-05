@@ -39,6 +39,10 @@ extern "C" {
 NC_RUNTIME void nc_runtime_start(const wchar_t* root = nullptr, int safe_mode = -1);
 NC_RUNTIME void nc_runtime_stop();
 NC_RUNTIME const char* nc_runtime_catalog();
+// In-memory diagnostics; never scans packages or changes the current selection.
+NC_RUNTIME const char* nc_runtime_stats();
+NC_RUNTIME int32_t nc_runtime_recovery_pending();
+NC_RUNTIME const char* nc_runtime_acknowledge_recovery();
 NC_RUNTIME const char* nc_runtime_recommend(const char* selection);
 NC_RUNTIME const char* nc_runtime_save(const char* selection);
 NC_RUNTIME const char* nc_runtime_ui();

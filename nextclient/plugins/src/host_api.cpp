@@ -33,7 +33,9 @@ namespace plugins::runtime
             for (const auto& t : p->tabs.get_array())
                 if (t.at("id") == name)
                     return 0;
-            p->tabs.push_back(Json{{"id", name}, {"en", text(en, 128)}, {"ru", text(ru, 128)}});
+            auto tab = Json{{"id", name}, {"en", text(en, 128)}, {"ru", text(ru, 128)}};
+            p->registration_memory.resize(p->registration_memory.size() + json_memory(tab));
+            p->tabs.push_back(std::move(tab));
             return 1;
         }
         catch (...)
@@ -54,7 +56,10 @@ namespace plugins::runtime
                     return value.at("initial") == initial && value.at("min") == minimum && value.at("max") == maximum;
             if (p->settings.get_array().size() >= 128)
                 return 0;
-            p->settings.push_back(Json{{"id", id}, {"initial", initial}, {"min", minimum}, {"max", maximum}});
+            auto spec = Json{{"id", id}, {"initial", initial}, {"min", minimum}, {"max", maximum}};
+            Budget memory(json_memory(spec));
+            p->settings.push_back(std::move(spec));
+            p->registration_memory.absorb(std::move(memory));
             return 1;
         }
         catch (...)
@@ -92,22 +97,26 @@ namespace plugins::runtime
                 (en.empty() || c->minimum != 0 || c->maximum != static_cast<int32_t>(std::count(en.begin(), en.end(), '\n')) ||
                  (!ru.empty() && std::count(ru.begin(), ru.end(), '\n') != c->maximum)))
                 return 0;
+            auto control = Json{
+                {"id", id},
+                {"tab", tab},
+                {"kind", c->kind},
+                {"en", text(c->label_en, 256)},
+                {"ru", text(c->label_ru, 256)},
+                {"initial", c->initial},
+                {"min", c->minimum},
+                {"max", c->maximum},
+                {"choices_en", en},
+                {"choices_ru", ru}
+            };
+            Budget memory(8192 + 2 * (en.capacity() + ru.capacity()));
+            // Validate and allocate before registering the paired setting. Moving
+            // the prepared JSON into this reserved slot cannot allocate afterwards.
+            p->controls.get_array().reserve(p->controls.get_array().size() + 1);
             if (c->kind != NC_BUTTON && !register_setting(ctx, c->id, c->initial, c->minimum, c->maximum))
                 return 0;
-            p->controls.push_back(
-                Json{
-                    {"id", id},
-                    {"tab", tab},
-                    {"kind", c->kind},
-                    {"en", text(c->label_en, 256)},
-                    {"ru", text(c->label_ru, 256)},
-                    {"initial", c->initial},
-                    {"min", c->minimum},
-                    {"max", c->maximum},
-                    {"choices_en", en},
-                    {"choices_ru", ru}
-                }
-            );
+            p->controls.push_back(std::move(control));
+            p->registration_memory.absorb(std::move(memory));
             return 1;
         }
         catch (...)
@@ -118,9 +127,8 @@ namespace plugins::runtime
     int32_t setting_value(const Loaded& p, const Json& c)
     {
         int32_t value = c.at("initial").as<int32_t>();
-        if (auto owner = settings.find(p.item.manifest.id))
-            if (auto v = owner->find(c.at("id").get_string()))
-                value = static_cast<int32_t>(integer(*v, INT32_MIN, INT32_MAX));
+        if (auto v = p.values.find(c.at("id").get_string()))
+            value = static_cast<int32_t>(integer(*v, INT32_MIN, INT32_MAX));
         return std::clamp(value, c.at("min").as<int32_t>(), c.at("max").as<int32_t>());
     }
     int32_t NC_CALL get_setting(void* ctx, const char* raw, int32_t fallback)
@@ -155,12 +163,9 @@ namespace plugins::runtime
             for (const auto& spec : p->settings.get_array())
                 if (spec.at("id") == id && value >= spec.at("min").as<int32_t>() && value <= spec.at("max").as<int32_t>())
                 {
-                    auto next = settings;
-                    if (!next.find(p->item.manifest.id))
-                        next[p->item.manifest.id] = tao::json::empty_object;
-                    next[p->item.manifest.id][id] = value;
-                    write_json(root / L"plugins" / L"settings.json", next);
-                    settings = std::move(next);
+                    auto next = p->values;
+                    next[id] = value;
+                    save_settings(*p, std::move(next));
                     return 1;
                 }
         }
@@ -467,6 +472,7 @@ namespace plugins::runtime
             for (const auto& c : p->cvars)
                 if (c.name == name)
                     return 0;
+            p->registration_memory.resize(p->registration_memory.size() + string_memory(name) + string_memory(value) + 256);
             p->cvars.push_back({name, value, archive});
             return 1; // Installed after successful load, or when the client binds.
         }
@@ -550,7 +556,7 @@ namespace plugins::runtime
         auto value = parse(read_text(store_path(p)));
         if (!value.is_object() || value.get_object().size() > 1024)
             throw std::runtime_error("Invalid plugin store");
-        p.store = std::move(value);
+        replace_json(p.store, p.store_memory, std::move(value));
         p.store_loaded = true;
     }
     uint32_t NC_CALL store_get(void* ctx, const char* raw, char* buffer, uint32_t capacity)
@@ -581,7 +587,9 @@ namespace plugins::runtime
             if (!available(p) || p->store_pending || !valid_id(key) || !json)
                 return 0;
             auto value = parse(text(json, 65536));
+            Budget argument(json_memory(value));
             load_store(*p);
+            Budget working(json_memory(p->store));
             auto next = p->store;
             next[key] = std::move(value);
             if (next.get_object().size() > 1024 || tao::json::to_string(next).size() > 1024 * 1024)
@@ -589,8 +597,10 @@ namespace plugins::runtime
             // Include the store's outer object in the depth limit, so a value
             // accepted now is still readable after restarting the client.
             parse(tao::json::to_string(next));
+            Budget candidate(json_memory(next));
             write_json(store_path(*p), next);
             p->store = std::move(next);
+            p->store_memory = std::move(candidate);
             return 1;
         }
         catch (...)
@@ -611,10 +621,13 @@ namespace plugins::runtime
                 return 1;
             if (p->store_pending)
                 return 0;
+            Budget working(json_memory(p->store));
             auto next = p->store;
             next.erase(key);
+            Budget candidate(json_memory(next));
             write_json(store_path(*p), next);
             p->store = std::move(next);
+            p->store_memory = std::move(candidate);
             return 1;
         }
         catch (...)

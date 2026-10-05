@@ -6,9 +6,10 @@
 namespace plugins::runtime
 {
     fs::path root;
-    Json profile = tao::json::empty_object, settings = tao::json::empty_object;
+    Json profile = tao::json::empty_object;
     std::vector<std::unique_ptr<Loaded>> loaded;
     std::vector<Item> observed;
+    Budget catalog_memory;
     bool started = false, safe = false;
     std::string startup_error;
     DWORD main_thread{};
@@ -77,10 +78,21 @@ void nc_runtime_start(const wchar_t* directory, int safe_mode)
                 LocalFree(args);
             }
         }
-        profile = parse(read_text(root / L"plugins" / L"profile.json"));
-        settings = parse(read_text(root / L"plugins" / L"settings.json"));
-        if (!profile.is_object() || !settings.is_object())
-            throw std::runtime_error(message("#NextPlugins_ErrorConfig"));
+        recovery_start(safe_mode < 0);
+        try
+        {
+            profile = parse(read_text(root / L"plugins" / L"profile.json"));
+            validate_profile(profile);
+            // Older builds could save this hint when restoring a working profile.
+            profile.get_object().erase("settings_slot");
+        }
+        catch (...)
+        {
+            safe = true;
+            append_message(startup_error, message("#NextPlugins_ErrorConfig"));
+            profile = tao::json::empty_object;
+        }
+        migrate_settings();
         discover();
         if (safe)
             return;
@@ -114,24 +126,38 @@ void nc_runtime_start(const wchar_t* directory, int safe_mode)
             p->item = item;
             try
             {
+                p->base_memory.resize(32 * 1024);
+                load_settings(*p);
                 p->package = read_package(root / L"plugins" / fs::path(std::u8string(item.file.begin(), item.file.end())));
+                size_t package_memory = 32 * 1024 + 4 * json_memory(item_json(item));
+                for (const auto& file : p->package->files)
+                    package_memory += 1024 + 4 * file->ResolvedPath().capacity();
+                p->base_memory.resize(package_memory);
                 if (p->package->hash != item.hash)
                     throw std::runtime_error(message("#NextPlugins_ErrorApprovalChanged"));
                 // Dependencies are resolved only from System32 or modules the
                 // game already loaded. Never search an unapproved plugin folder.
-                p->module = p->package->Load();
+                recovery_loading(*p);
+                {
+                    CallbackScope scope(*p, "module");
+                    p->module = p->package->Load();
+                }
                 if (!p->module)
                     throw std::runtime_error(message("#NextPlugins_ErrorLoadDll"));
                 auto entry = reinterpret_cast<NcEntry>(GetProcAddress(p->module, "nc_plugin_entry"));
                 if (!entry)
                     throw std::runtime_error(message("#NextPlugins_ErrorEntryMissing"));
-                const auto* api = entry();
+                const NcPlugin* api;
+                {
+                    CallbackScope scope(*p, "entry");
+                    api = entry();
+                }
                 if (!api || api->size < sizeof(NcPlugin) || api->abi != NC_ABI_VERSION || api->api != NC_API_VERSION || !api->load)
                     throw std::runtime_error(message("#NextPlugins_ErrorEntryMismatch"));
                 p->api = *api;
                 extensions_attach(*p);
                 p->host = make_host(*p);
-                if (p->api.load(&p->host) != 0)
+                if (invoke(*p, "load", [&] { return p->api.load(&p->host); }) != 0)
                     throw std::runtime_error(message("#NextPlugins_ErrorInitialization"));
                 p->registering = false;
                 if (!install_commands(*p))
@@ -145,13 +171,15 @@ void nc_runtime_start(const wchar_t* directory, int safe_mode)
                     if (i.file == item.file)
                         i.error = error_message(e);
                 if (p)
-                    p->failed = true;
-                if (p && p->api.unload)
-                    p->api.unload();
-                if (p)
-                    extensions_detach(*p);
+                {
+                    retire(*p);
+                    // Failed loads may have native workers: retain the context and
+                    // package until the normal shutdown callback can join them.
+                    loaded.push_back(std::move(p));
+                }
             }
         }
+        recovery_running();
         // Preserve startup diagnostics across refreshes below.
         for (const auto& i : observed)
             if (i.enabled && !success.count(i.manifest.id))
@@ -167,6 +195,8 @@ void nc_runtime_start(const wchar_t* directory, int safe_mode)
     {
         startup_error = error_message(e);
         safe = true;
+        for (auto& p : loaded)
+            retire(*p);
     }
 }
 void nc_runtime_stop()
@@ -177,12 +207,28 @@ void nc_runtime_stop()
         auto& p = **it;
         p.failed = true;
         if (p.api.unload)
-            p.api.unload();
+            invoke(p, "unload", [&] {
+                p.api.unload();
+                return 0;
+            });
         extensions_detach(p);
     }
-    loaded.clear();
+    // Dependencies load first and must remain mapped through dependent teardown.
+    while (!loaded.empty())
+    {
+        auto& p = *loaded.back();
+        // Package destruction runs DLL_PROCESS_DETACH for entry and companions.
+        // Keep both the owner and its timing record alive through that code.
+        {
+            CallbackScope scope(p, "module_unload");
+            p.package.reset();
+            p.module = nullptr;
+        }
+        loaded.pop_back();
+    }
+    recovery_finish();
     observed.clear();
+    catalog_memory.resize(0);
     profile = tao::json::empty_object;
-    settings = tao::json::empty_object;
     started = false;
 }

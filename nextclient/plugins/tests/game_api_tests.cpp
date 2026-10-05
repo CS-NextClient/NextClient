@@ -320,6 +320,246 @@ TEST_F(GameApiRuntime, ServiceRequestsAreVersionedAndReplyHandlesAreSingleUse)
     EXPECT_EQ(name(1), "sdk.reply");
     EXPECT_EQ(payload(1).at("result").at("data"), 42);
 }
+
+TEST_F(GameApiRuntime, VersionOneServiceCallersCanConsumeMoreThan64RepliesWithoutAcknowledgement)
+{
+    install(PLUGIN_GAME_ALL_PATH);
+    ASSERT_NE(host, nullptr);
+    const auto* api = host->query_interface(host->context, "nextclient.services", 1);
+    ASSERT_NE(api, nullptr);
+    EXPECT_EQ(api->version, 1u);
+    const auto before = extension("nextclient.events", "stats").at("host_memory_estimate").as<uint64_t>();
+    for (int i = 0; i < 96; ++i)
+    {
+        SCOPED_TRACE(i);
+        Json args{{"name", "test.game/test"}, {"version", 1}, {"method", "echo"}, {"data", i}};
+        if (i >= 48)
+            args["retain_completion"] = false;
+        const auto request = extension("nextclient.services", "request", args);
+        ASSERT_EQ(request.at("ok"), true);
+        frame();
+        ASSERT_EQ(extension("nextclient.services", "reply", Json{{"request", request.at("request")}, {"data", i}}).at("ok"), true);
+        frame();
+        ASSERT_EQ(count(), (i + 1) * 2);
+        EXPECT_EQ(name(i * 2 + 1), "sdk.reply");
+        EXPECT_EQ(payload(i * 2 + 1).at("result").at("data"), i);
+    }
+    const auto after = extension("nextclient.events", "stats").at("host_memory_estimate").as<uint64_t>();
+    EXPECT_LE(after, before + 64 * 1024);
+}
+
+TEST_F(GameApiRuntime, UnretainedServiceCancellationReleasesItsRequest)
+{
+    install(PLUGIN_GAME_ALL_PATH);
+    ASSERT_NE(host, nullptr);
+    for (int i = 0; i < 96; ++i)
+    {
+        const auto result = extension(
+            "nextclient.services", "request", Json{{"name", "test.game/test"}, {"version", 1}, {"method", "echo"}, {"data", 42}}
+        );
+        ASSERT_EQ(result.at("ok"), true);
+        const Json args{{"request", result.at("request")}};
+        EXPECT_EQ(extension("nextclient.services", "cancel", args).at("state"), "complete");
+        EXPECT_EQ(extension("nextclient.services", "status", args).at("ok"), false);
+        frame();
+    }
+}
+
+TEST_F(GameApiRuntime, RejectedControlLabelsDoNotConsumeRegistrationMemory)
+{
+    ASSERT_TRUE(SetEnvironmentVariableA("NEXTCLIENT_TEST_REJECTED_CONTROLS", "1"));
+    install(PLUGIN_GAME_ALL_PATH);
+    EXPECT_TRUE(SetEnvironmentVariableA("NEXTCLIENT_TEST_REJECTED_CONTROLS", nullptr));
+    ASSERT_NE(host, nullptr);
+    const auto stats = Symbol<const char*(NC_CALL*)(int)>(L"game-api.dll", "nc_test_controls_stats");
+    const auto result = Symbol<int(NC_CALL*)(int)>(L"game-api.dll", "nc_test_controls_result");
+    ASSERT_NE(stats, nullptr);
+    ASSERT_NE(result, nullptr);
+    const auto before = parse(stats(0));
+    const auto after = parse(stats(1));
+    EXPECT_EQ(result(0), 0);
+    EXPECT_EQ(result(1), 1);
+    EXPECT_EQ(after.at("host_memory_estimate"), before.at("host_memory_estimate"));
+    EXPECT_EQ(after.at("memory_rejections"), before.at("memory_rejections"));
+    EXPECT_EQ(host->get_setting(host->context, "test_control", -1), 0);
+}
+
+TEST_F(GameApiRuntime, ServiceCompletionSurvivesQueueOverflowUntilAcknowledged)
+{
+    install(PLUGIN_GAME_ALL_PATH);
+    auto request =
+        extension(
+            "nextclient.services",
+            "request",
+            Json{{"name", "test.game/test"}, {"version", 1}, {"method", "echo"}, {"data", 42}, {"retain_completion", true}}
+        )
+            .at("request");
+    frame();
+    ASSERT_TRUE(host->subscribe_event(host->context, "player.health", 1));
+    for (int i = 0; i < 2048; ++i)
+        nc_runtime_event("player.health", "{}");
+    ASSERT_EQ(extension("nextclient.services", "reply", Json{{"request", request}, {"data", 42}}).at("ok"), true);
+    EXPECT_GT(extension("nextclient.events", "stats").at("dropped").as<uint64_t>(), 0u);
+    auto status = extension("nextclient.services", "status", Json{{"request", request}});
+    EXPECT_EQ(status.at("state"), "complete");
+    EXPECT_EQ(status.at("result").at("data"), 42);
+    EXPECT_EQ(extension("nextclient.services", "status", Json{{"request", request}}), status);
+    EXPECT_EQ(extension("nextclient.services", "ack", Json{{"request", request}}).at("ok"), true);
+    EXPECT_EQ(extension("nextclient.services", "status", Json{{"request", request}}).at("ok"), false);
+}
+
+TEST_F(GameApiRuntime, CancelledServiceRequestsRejectLateReplies)
+{
+    install(PLUGIN_GAME_ALL_PATH);
+    auto request =
+        extension(
+            "nextclient.services",
+            "request",
+            Json{{"name", "test.game/test"}, {"version", 1}, {"method", "echo"}, {"data", 42}, {"retain_completion", true}}
+        )
+            .at("request");
+    EXPECT_EQ(extension("nextclient.services", "ack", Json{{"request", request}}).at("ok"), false);
+    EXPECT_EQ(extension("nextclient.services", "cancel", Json{{"request", request}}).at("state"), "complete");
+    EXPECT_EQ(extension("nextclient.services", "reply", Json{{"request", request}, {"data", 42}}).at("ok"), false);
+    EXPECT_EQ(extension("nextclient.services", "status", Json{{"request", request}}).at("result").at("ok"), false);
+}
+
+TEST_F(GameApiRuntime, ServiceTimeoutRemainsQueryableAfterOverflow)
+{
+    install(PLUGIN_GAME_ALL_PATH);
+    auto request =
+        extension(
+            "nextclient.services",
+            "request",
+            Json{{"name", "test.game/test"}, {"version", 1}, {"method", "echo"}, {"data", 42}, {"retain_completion", true}}
+        )
+            .at("request");
+    ASSERT_TRUE(host->subscribe_event(host->context, "player.health", 1));
+    for (int i = 0; i < 2048; ++i)
+        nc_runtime_event("player.health", "{}");
+    std::this_thread::sleep_for(std::chrono::milliseconds(10020));
+    frame();
+    auto status = extension("nextclient.services", "status", Json{{"request", request}});
+    EXPECT_EQ(status.at("state"), "complete");
+    EXPECT_EQ(status.at("result").at("error"), "Request timed out");
+}
+
+TEST_F(GameApiRuntime, RetirementReleasesResourcesAndCancelsWorkersButKeepsModule)
+{
+    install(PLUGIN_GAME_ALL_PATH);
+    ASSERT_TRUE(host->subscribe_event(host->context, "player.health", 1));
+    const auto* tasks = host->query_interface(host->context, "nextclient.tasks", 1);
+    const auto token = extension("nextclient.tasks", "token").at("token").as<uint64_t>();
+    std::string data = "\"" + std::string(60000, 'a') + "\"";
+    ASSERT_TRUE(host->store_set(host->context, "large", data.c_str()));
+    for (int i = 0; i < 10; ++i)
+        nc_runtime_event("player.health", data.c_str());
+    ASSERT_EQ(tasks->post(token, nullptr), 1);
+    ASSERT_EQ(tasks->post(token, "{}"), 1);
+    const auto before = parse(nc_runtime_catalog()).at("resources").at("host_memory_estimate").as<uint64_t>();
+    mode(2);
+    frame();
+    EXPECT_NE(GetModuleHandleW(L"game-api.dll"), nullptr);
+    EXPECT_EQ(tasks->post(token, nullptr), 0);
+    EXPECT_EQ(tasks->post(token, "{}"), 0);
+    auto catalog = parse(nc_runtime_catalog());
+    EXPECT_FALSE(catalog.at("plugins").at(0).at("running").get_boolean());
+    EXPECT_LT(catalog.at("resources").at("host_memory_estimate").as<uint64_t>(), before / 2);
+    nc_runtime_stop();
+    EXPECT_EQ(GetModuleHandleW(L"game-api.dll"), nullptr);
+    EXPECT_EQ(parse(nc_runtime_catalog()).at("resources").at("host_memory_estimate"), 0);
+}
+
+TEST_F(GameApiRuntime, SlowEventBudgetRotatesToAnotherPluginNextFrame)
+{
+    install(PLUGIN_GAME_ALL_PATH, true);
+    auto getter = Symbol<const NcHost*(NC_CALL*)()>(L"game-other.dll", "nc_test_host");
+    ASSERT_NE(getter, nullptr);
+    auto* other = getter();
+    ASSERT_TRUE(host->subscribe_event(host->context, "player.health", 1));
+    ASSERT_TRUE(other->subscribe_event(other->context, "player.health", 1));
+    mode(3);
+    for (int i = 0; i < 10; ++i)
+        nc_runtime_event("player.health", "{}");
+    frame();
+    frame();
+    auto other_count = Symbol<int(NC_CALL*)()>(L"game-other.dll", "nc_test_count");
+    EXPECT_GT(other_count(), 0);
+    EXPECT_LE(count(), 2);
+    EXPECT_GT(extension("nextclient.events", "stats").at("callbacks").at("event").at("max_ms").as<double>(), 2.0);
+}
+
+TEST_F(GameApiRuntime, ManyPluginsShareOneMemoryBudget)
+{
+    install(PLUGIN_GAME_ALL_PATH);
+    nc_runtime_stop();
+    std::ifstream fixture(PLUGIN_GAME_OTHER_PATH, std::ios::binary);
+    const std::string original{std::istreambuf_iterator<char>(fixture), {}};
+    const auto position = original.find("\"id\":\"test.other\"");
+    ASSERT_NE(position, std::string::npos);
+    for (int i = 0; i < 24; ++i)
+    {
+        auto bytes = original;
+        const auto id = "test.p" + std::to_string(1000 + i);
+        bytes.replace(position + 6, 10, id);
+        std::ofstream file(dir / L"plugins" / ("budget-" + std::to_string(i) + ".dll"), std::ios::binary);
+        file.write(bytes.data(), static_cast<std::streamsize>(bytes.size()));
+    }
+    nc_runtime_start(dir.c_str(), 0);
+    auto plugins = rows();
+    ASSERT_EQ(plugins.get_array().size(), 25u);
+    for (auto& row : plugins.get_array())
+        row["enabled"] = row["consent"] = true;
+    ASSERT_STREQ(nc_runtime_save(tao::json::to_string(plugins).c_str()), "");
+    nc_runtime_stop();
+    nc_runtime_start(dir.c_str(), 0);
+    host = Symbol<const NcHost*(NC_CALL*)()>(L"game-api.dll", "nc_test_host")();
+    ASSERT_TRUE(host->subscribe_event(host->context, "player.health", 1));
+    const auto request =
+        extension(
+            "nextclient.services",
+            "request",
+            Json{{"name", "test.game/test"}, {"version", 1}, {"method", "echo"}, {"data", 0}, {"retain_completion", true}}
+        )
+            .at("request");
+    Json reply = tao::json::empty_array;
+    for (int i = 0; i < 16000; ++i)
+        reply.push_back(0);
+    ASSERT_EQ(extension("nextclient.services", "reply", Json{{"request", request}, {"data", reply}}).at("ok"), true);
+    for (int i = 0; i < 24; ++i)
+    {
+        auto file = L"budget-" + std::to_wstring(i) + L".dll";
+        auto getter = Symbol<const NcHost*(NC_CALL*)()>(file.c_str(), "nc_test_host");
+        ASSERT_NE(getter, nullptr);
+        const auto* owner = getter();
+        ASSERT_TRUE(owner->subscribe_event(owner->context, "player.health", 1));
+    }
+    const auto before = parse(nc_runtime_catalog()).at("resources").at("memory_rejections").as<uint64_t>();
+    const auto data = "\"" + std::string(60000, 'x') + "\"";
+    for (int i = 0; i < 20; ++i)
+        nc_runtime_event("player.health", data.c_str());
+    auto stats = parse(nc_runtime_catalog()).at("resources");
+    EXPECT_GT(stats.at("memory_rejections").as<uint64_t>(), before);
+    EXPECT_LE(stats.at("host_memory_estimate").as<uint64_t>(), stats.at("host_memory_limit").as<uint64_t>());
+    const auto completion = extension("nextclient.services", "status", Json{{"request", request}});
+    ASSERT_EQ(completion.at("ok"), true);
+    EXPECT_EQ(completion.at("result").at("data"), reply);
+    nc_runtime_stop();
+    EXPECT_EQ(parse(nc_runtime_catalog()).at("resources").at("host_memory_estimate"), 0);
+}
+
+TEST_F(GameApiRuntime, ParsedStoreMemoryIsAccountedBeyondItsJsonSize)
+{
+    install(PLUGIN_GAME_ALL_PATH);
+    auto before = extension("nextclient.events", "stats").at("host_memory_estimate").as<uint64_t>();
+    std::string data = "[0";
+    for (int i = 0; i < 16000; ++i)
+        data += ",0";
+    data += "]";
+    ASSERT_TRUE(host->store_set(host->context, "dense", data.c_str()));
+    auto after = extension("nextclient.events", "stats").at("host_memory_estimate").as<uint64_t>();
+    EXPECT_GT(after - before, 10 * data.size());
+}
 TEST_F(GameApiRuntime, OwnedWindowsValidatePermissionsAndWidgetInput)
 {
     install(PLUGIN_GAME_ALL_PATH);

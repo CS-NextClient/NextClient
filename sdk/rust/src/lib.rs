@@ -276,6 +276,11 @@ pub struct PostToken {
     post: unsafe extern "C" fn(u64, *const c_char) -> i32,
 }
 impl PostToken {
+    /// Worker-safe cooperative cancellation check. Stop work when true,
+    /// and join the worker before the plugin's unload callback returns.
+    pub fn is_cancelled(&self) -> bool {
+        unsafe { (self.post)(self.token, core::ptr::null()) == 0 }
+    }
     pub fn post(&self, json: &str) -> Result {
         let json = CString::new(json).map_err(|_| Error)?;
         status(unsafe { (self.post)(self.token, json.as_ptr()) })

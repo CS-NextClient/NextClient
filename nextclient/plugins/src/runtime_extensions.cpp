@@ -15,16 +15,23 @@ namespace plugins::runtime
             fs::path path;
             Json value;
             bool success{};
+            Budget memory;
         };
         std::mutex mutex;
         std::condition_variable wake;
         std::thread worker;
         bool stopping{};
         uint64_t next_result{}, next_request{};
-        std::set<uint64_t> issued_tokens;
+        uint64_t token_counter{}, token_salt{};
         std::map<uint64_t, Loaded*> owners;
         std::deque<Work> work, completed;
-        std::deque<std::pair<uint64_t, std::string>> posts;
+        struct Post
+        {
+            uint64_t owner;
+            std::string json;
+            Budget memory;
+        };
+        std::deque<Post> posts;
         size_t post_bytes{};
         std::map<uint64_t, std::pair<size_t, size_t>> post_load;
 
@@ -49,7 +56,8 @@ namespace plugins::runtime
                 catch (...)
                 {}
                 std::lock_guard lock(mutex);
-                completed.push_back(std::move(job));
+                if (owners.count(job.owner))
+                    completed.push_back(std::move(job));
             }
         }
         Json storage(Loaded& p, const std::string& operation, const Json& args)
@@ -57,6 +65,7 @@ namespace plugins::runtime
             if (operation != "commit" || p.store_pending)
                 throw std::runtime_error("Unknown operation or commit pending");
             load_store(p);
+            Budget working(json_memory(p.store));
             auto next = p.store;
             if (auto set = args.find("set"))
                 for (const auto& [key, value] : set->get_object())
@@ -76,7 +85,8 @@ namespace plugins::runtime
                 throw std::runtime_error("Storage queue full or stopping");
             if (!worker.joinable())
                 worker = std::thread(run_worker);
-            work.push_back({p.token, id, store_path(p), std::move(next)});
+            Budget memory(json_memory(next) + 2048);
+            work.push_back({p.token, id, store_path(p), std::move(next), false, std::move(memory)});
             p.store_pending = true;
             wake.notify_one();
             return Json{{"ok", true}, {"request", id}};
@@ -103,6 +113,7 @@ namespace plugins::runtime
             if (it != p->results.end())
             {
                 p->result_bytes -= it->second.size();
+                p->result_memory.resize(p->result_memory.size() - string_memory(it->second) - 128);
                 p->results.erase(it);
             }
         }
@@ -110,18 +121,24 @@ namespace plugins::runtime
         {
             try
             {
+                std::lock_guard lock(mutex);
+                if (stopping || !owners.count(token))
+                    return 0;
+                // A payload-free probe is a worker-safe cooperative cancellation check.
+                if (!raw)
+                    return 1;
                 auto json = text(raw, 65536);
                 parse(json);
-                std::lock_guard lock(mutex);
-                if (stopping || !owners.count(token) || posts.size() >= 1024 || post_bytes + json.size() > 1024 * 1024)
+                if (posts.size() >= 1024 || post_bytes + json.size() > 1024 * 1024)
                     return 0;
                 auto& usage = post_load[token];
                 if (usage.first >= 64 || usage.second + json.size() > 128 * 1024)
                     return 0;
-                posts.emplace_back(token, std::move(json));
-                post_bytes += posts.back().second.size();
+                Budget memory(string_memory(json) + 256);
+                posts.push_back({token, std::move(json), std::move(memory)});
+                post_bytes += posts.back().json.size();
                 ++usage.first;
-                usage.second += posts.back().second.size();
+                usage.second += posts.back().json.size();
                 return 1;
             }
             catch (...)
@@ -133,27 +150,31 @@ namespace plugins::runtime
         uint64_t NC_CALL call(void* ctx, const char* raw, const char* payload)
         {
             auto* p = static_cast<Loaded*>(ctx);
-            if (!available(p) || p->results.size() >= 64 || p->result_bytes > 512 * 1024)
+            if (!available(p) || p->results.size() >= 64 || p->result_memory.size() > 1024 * 1024)
                 return 0;
+            Budget response;
+            try
+            {
+                response.resize(1024 * 1024, true);
+            }
+            catch (...)
+            {
+                return 0;
+            } // Reject before executing a side effect.
             Json result;
+            std::string serialized;
             try
             {
                 const auto operation = text(raw, 64);
                 const auto args = parse(text(payload, 65536));
+                Budget arguments(json_memory(args), true);
                 if (!args.is_object())
                     throw std::runtime_error("Expected object");
                 if constexpr (Interface == 0)
                 {
                     if (operation != "stats")
                         throw std::runtime_error("Unknown operation");
-                    result = Json{
-                        {"ok", true},
-                        {"queued", p->pending.size()},
-                        {"dropped", p->dropped},
-                        {"delivered", p->delivered},
-                        {"callback_ms", p->callback_ms},
-                        {"slow_callbacks", p->slow_callbacks}
-                    };
+                    result = resource_stats(p);
                 }
                 if constexpr (Interface == 1)
                     result = storage(*p, operation, args);
@@ -168,7 +189,12 @@ namespace plugins::runtime
                 if constexpr (Interface == 4)
                     result = extension_ui(*p, operation, args);
                 if constexpr (Interface == 5)
-                    result = extension_services(*p, operation, args);
+                {
+                    if (operation == "status" || operation == "cancel")
+                        serialized = service_completion(*p, operation, args);
+                    else
+                        result = extension_services(*p, operation, args);
+                }
                 if constexpr (Interface == 6)
                 {
                     if (operation != "read" || !p->package)
@@ -183,7 +209,7 @@ namespace plugins::runtime
                         const auto relative = fs::path(file->ResolvedPath()).lexically_relative(directory).generic_u8string();
                         if (std::string(relative.begin(), relative.end()) != name)
                             continue;
-                        const auto bytes = file->Read(true);
+                        const auto bytes = file->Read(true, 65536);
                         if (bytes.size() > 65536)
                             throw std::runtime_error("Asset exceeds 64 KiB read limit");
                         Json data = tao::json::empty_array;
@@ -207,9 +233,11 @@ namespace plugins::runtime
             }
             try
             {
-                auto value = tao::json::to_string(result);
+                auto value = serialized.empty() ? tao::json::to_string(result) : std::move(serialized);
+                response.resize(string_memory(value) + 128);
                 const auto id = ++next_result;
                 p->results.emplace(id, std::move(value));
+                p->result_memory.absorb(std::move(response));
                 p->result_bytes += p->results.at(id).size();
                 return id;
             }
@@ -257,11 +285,17 @@ namespace plugins::runtime
     {
         std::lock_guard lock(mutex);
         stopping = false;
+        if (!token_counter)
+        {
+            if (BCryptGenRandom(nullptr, reinterpret_cast<PUCHAR>(&token_salt), sizeof(token_salt), BCRYPT_USE_SYSTEM_PREFERRED_RNG) < 0)
+                throw std::runtime_error("Cannot create worker token");
+        }
         do
         {
-            if (BCryptGenRandom(nullptr, reinterpret_cast<PUCHAR>(&p.token), sizeof(p.token), BCRYPT_USE_SYSTEM_PREFERRED_RNG) < 0)
-                throw std::runtime_error("Cannot create worker token");
-        } while (!p.token || !issued_tokens.insert(p.token).second);
+            if (token_counter == UINT64_MAX)
+                throw std::runtime_error("Worker token space exhausted");
+            p.token = ++token_counter ^ token_salt;
+        } while (!p.token);
         owners.emplace(p.token, &p);
     }
     void services_detach(Loaded&);
@@ -271,11 +305,20 @@ namespace plugins::runtime
         services_detach(p);
         std::lock_guard lock(mutex);
         owners.erase(p.token);
+        std::erase_if(work, [&](const auto& job) { return job.owner == p.token; });
+        std::erase_if(completed, [&](const auto& job) { return job.owner == p.token; });
+        std::erase_if(posts, [&](const auto& post) {
+            if (post.owner != p.token)
+                return false;
+            post_bytes -= post.json.size();
+            return true;
+        });
+        post_load.erase(p.token);
     }
     void extensions_pump()
     {
         std::deque<Work> done;
-        std::deque<std::pair<uint64_t, std::string>> messages;
+        std::deque<Post> messages;
         {
             std::lock_guard lock(mutex);
             done.swap(completed);
@@ -289,13 +332,16 @@ namespace plugins::runtime
             {
                 auto& p = *it->second;
                 if (job.success)
+                {
                     p.store = std::move(job.value);
+                    p.store_memory = std::move(job.memory);
+                }
                 p.store_pending = false;
                 notify(p, "sdk.storage", Json{{"request", job.id}, {"ok", job.success}});
             }
-        for (auto& [owner, json] : messages)
-            if (auto it = owners.find(owner); it != owners.end())
-                notify(*it->second, "sdk.task", parse(json));
+        for (auto& post : messages)
+            if (auto it = owners.find(post.owner); it != owners.end())
+                enqueue(*it->second, {++event_serial, "sdk.task", std::move(post.json), {}, 0, true});
         services_pump();
     }
     void extensions_stop()

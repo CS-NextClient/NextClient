@@ -160,7 +160,8 @@ protected:
         nc_runtime_stop();
         nc_runtime_bind_client(nullptr);
         fs::remove_all(dir);
-        for (auto key : {L"NEXTCLIENT_PROBE_MARKER", L"NEXTCLIENT_PROBE_FAIL_LOAD", L"NEXTCLIENT_PROBE_FAIL_COMMAND"})
+        for (auto key :
+             {L"NEXTCLIENT_PROBE_MARKER", L"NEXTCLIENT_PROBE_FAIL_LOAD", L"NEXTCLIENT_PROBE_FAIL_COMMAND", L"NEXTCLIENT_PROBE_SESSION"})
             SetEnvironmentVariableW(key, nullptr);
         SetEnvironmentVariableW(L"NEXTCLIENT_PERMISSIONS_FAIL", nullptr);
         SetEnvironmentVariableW(L"NEXTCLIENT_FRAME_FAIL", nullptr);
@@ -237,6 +238,137 @@ TEST_F(Runtime, SafeModeSkipsApprovedPlugins)
     EXPECT_TRUE(catalog().at(0).at("enabled").get_boolean());
 }
 
+TEST_F(Runtime, OversizedLegacySettingsMigrateWithoutDisablingPlugins)
+{
+    enable();
+    nc_runtime_stop();
+    const auto legacy = dir / L"plugins" / L"settings.json";
+    std::string data = R"({"test.settings":{"enabled":1},"broken":{"value":"invalid"}})";
+    data.resize(1048600, ' ');
+    {
+        std::ofstream file(legacy, std::ios::binary);
+        file << data;
+    }
+    nc_runtime_start(dir.c_str(), 0);
+    EXPECT_FALSE(parse(nc_runtime_catalog()).at("safe_mode").get_boolean());
+    EXPECT_TRUE(catalog().at(0).at("running").get_boolean());
+    EXPECT_EQ(parse(nc_runtime_ui()).at(0).at("controls").at(0).at("value"), 1);
+    EXPECT_EQ(fs::file_size(dir / L"plugins" / L"settings.json.migrated.bak"), 1048600u);
+    ASSERT_STREQ(nc_runtime_settings(R"([{"owner":"test.settings","id":"enabled","value":0}])"), "");
+    restart();
+    EXPECT_TRUE(catalog().at(0).at("running").get_boolean());
+    EXPECT_EQ(parse(nc_runtime_ui()).at(0).at("controls").at(0).at("value"), 0);
+}
+
+TEST_F(Runtime, CorruptOwnerSettingsRecoverFromBackupWithoutSafeMode)
+{
+    enable();
+    restart();
+    ASSERT_STREQ(nc_runtime_settings(R"([{"owner":"test.settings","id":"enabled","value":1}])"), "");
+    ASSERT_STREQ(nc_runtime_settings(R"([{"owner":"test.settings","id":"enabled","value":0}])"), "");
+    nc_runtime_stop();
+    const auto file = dir / L"plugins" / L".host" / L"settings" / L"plugin-test.settings.json";
+    {
+        std::ofstream stream(file);
+        stream << R"({"enabled":"not an integer"})";
+    }
+    nc_runtime_start(dir.c_str(), 0);
+    EXPECT_FALSE(parse(nc_runtime_catalog()).at("safe_mode").get_boolean());
+    EXPECT_TRUE(catalog().at(0).at("running").get_boolean());
+    EXPECT_EQ(parse(nc_runtime_ui()).at(0).at("controls").at(0).at("value"), 1);
+    ASSERT_STREQ(nc_runtime_settings(R"([{"owner":"test.settings","id":"enabled","value":0}])"), "");
+    EXPECT_TRUE(fs::exists(file.wstring() + L".damaged"));
+}
+
+TEST_F(Runtime, UncleanSessionDefaultsToSafeModeAndDisablingAllowsNormalRestart)
+{
+    enable();
+    restart();
+    nc_runtime_stop();
+    {
+        std::ofstream stream(dir / L"plugins" / L"session.json");
+        stream << R"({"phase":"initializing","suspected":"test.settings"})";
+    }
+    nc_runtime_start(dir.c_str(), 0);
+    EXPECT_TRUE(parse(nc_runtime_catalog()).at("safe_mode").get_boolean());
+    EXPECT_FALSE(catalog().at(0).at("running").get_boolean());
+    EXPECT_TRUE(fs::exists(dir / L"plugins" / L"session.previous.json"));
+    auto rows = catalog();
+    rows.at(0)["enabled"] = false;
+    ASSERT_STREQ(nc_runtime_save(tao::json::to_string(rows).c_str()), "");
+    EXPECT_FALSE(fs::exists(dir / L"plugins" / L"session.json"));
+    restart();
+    EXPECT_FALSE(parse(nc_runtime_catalog()).at("safe_mode").get_boolean());
+    EXPECT_FALSE(catalog().at(0).at("enabled").get_boolean());
+    enable();
+    restart();
+    EXPECT_TRUE(catalog().at(0).at("running").get_boolean());
+}
+
+TEST_F(Runtime, LegacyCheckpointHintDoesNotPreventLoadingCurrentSettings)
+{
+    enable();
+    restart();
+    ASSERT_STREQ(nc_runtime_settings(R"([{"owner":"test.settings","id":"enabled","value":1}])"), "");
+    nc_runtime_stop();
+    const auto file = dir / L"plugins" / L"profile.json";
+    Json saved;
+    {
+        std::ifstream stream(file);
+        saved = parse(std::string(std::istreambuf_iterator<char>(stream), {}));
+    }
+    saved["settings_slot"] = "a";
+    {
+        std::ofstream stream(file);
+        stream << tao::json::to_string(saved);
+    }
+    nc_runtime_start(dir.c_str(), 0);
+    EXPECT_FALSE(parse(nc_runtime_catalog()).at("safe_mode").get_boolean());
+    EXPECT_TRUE(catalog().at(0).at("running").get_boolean());
+    EXPECT_EQ(parse(nc_runtime_ui()).at(0).at("controls").at(0).at("value"), 1);
+}
+
+TEST_F(Runtime, CrashContextRecordsMetadataAndMarkerOutlivesDllDestruction)
+{
+    fs::copy_file(PLUGIN_PROBE_PATH, dir / L"plugins" / L"probe.dll");
+    auto rows = catalog();
+    for (auto& row : rows.get_array())
+        row["enabled"] = row["consent"] = true;
+    ASSERT_STREQ(nc_runtime_save(tao::json::to_string(rows).c_str()), "");
+    restart();
+    auto marker = dir / L"plugins" / L"session.json";
+    SetEnvironmentVariableW(L"NEXTCLIENT_PROBE_SESSION", marker.c_str());
+    {
+        std::ifstream stream(marker);
+        auto session = parse(std::string(std::istreambuf_iterator<char>(stream), {}));
+        EXPECT_EQ(session.at("phase"), "running");
+        ASSERT_EQ(session.at("plugins").get_array().size(), 2u);
+        for (size_t i = 0; i < 2; ++i)
+        {
+            EXPECT_EQ(session.at("plugins").at(i).at("id"), rows.at(i).at("id"));
+            EXPECT_EQ(session.at("plugins").at(i).at("version"), rows.at(i).at("version"));
+            EXPECT_EQ(session.at("plugins").at(i).at("hash"), rows.at(i).at("hash"));
+            EXPECT_EQ(session.at("plugins").at(i).at("order"), i);
+        }
+    }
+    move(0);
+    {
+        std::ifstream stream(dir / L"plugins" / L"session-trace.txt");
+        const std::string trace(std::istreambuf_iterator<char>(stream), {});
+        EXPECT_NE(trace.find("\"category\":\"command\""), std::string::npos);
+        EXPECT_NE(trace.find("\"id\":\"test.probe\""), std::string::npos);
+    }
+    nc_runtime_stop();
+    EXPECT_FALSE(fs::exists(marker));
+    std::ifstream observed(marker.wstring() + L".observed");
+    EXPECT_EQ(observed.get(), '1');
+    const auto unload = parse(std::string(std::istreambuf_iterator<char>(observed), {}));
+    EXPECT_EQ(unload.at("active"), true);
+    EXPECT_EQ(unload.at("id"), "test.probe");
+    EXPECT_EQ(unload.at("category"), "module_unload");
+    SetEnvironmentVariableW(L"NEXTCLIENT_PROBE_SESSION", nullptr);
+}
+
 TEST_F(Runtime, UnicodeDllFilenameLoadsAfterApproval)
 {
     nc_runtime_stop();
@@ -245,6 +377,183 @@ TEST_F(Runtime, UnicodeDllFilenameLoadsAfterApproval)
     enable();
     restart();
     EXPECT_TRUE(catalog().at(0).at("running").get_boolean());
+}
+TEST_F(Runtime, LongUnicodeDllFilenameRoundTripsProfileWithoutSafeMode)
+{
+    nc_runtime_stop();
+    const auto filename = std::wstring(100, L'\u754c') + L".dll";
+    fs::rename(dir / L"plugins" / L"settings.dll", dir / L"plugins" / filename);
+    nc_runtime_start(dir.c_str(), 0);
+    auto rows = catalog();
+    ASSERT_EQ(rows.get_array().size(), 1u);
+    EXPECT_GT(rows.at(0).at("file").get_string().size(), 256u);
+    enable();
+    restart();
+    EXPECT_FALSE(parse(nc_runtime_catalog()).at("safe_mode").get_boolean());
+    rows = catalog();
+    EXPECT_TRUE(rows.at(0).at("approved").get_boolean());
+    EXPECT_TRUE(rows.at(0).at("running").get_boolean());
+    rows.at(0)["enabled"] = false;
+    ASSERT_STREQ(nc_runtime_save(tao::json::to_string(rows).c_str()), "");
+    restart();
+    EXPECT_FALSE(parse(nc_runtime_catalog()).at("safe_mode").get_boolean());
+    EXPECT_FALSE(catalog().at(0).at("enabled").get_boolean());
+}
+TEST_F(Runtime, UnreadableApprovedPackageRetainsSavedIdentityAndCanBeDisabled)
+{
+    enable();
+    auto before = catalog().at(0);
+    nc_runtime_stop();
+    {
+        std::ofstream broken(dir / L"plugins" / L"settings.dll", std::ios::binary | std::ios::trunc);
+        broken << "invalid DLL";
+    }
+    nc_runtime_start(dir.c_str(), 0);
+    auto rows = catalog();
+    ASSERT_EQ(rows.get_array().size(), 1u);
+    EXPECT_NE(rows.at(0).at("error"), "");
+    for (const auto* key : {"id", "hash", "approved", "enabled", "permissions"})
+        EXPECT_EQ(rows.at(0).at(key), before.at(key)) << key;
+    EXPECT_FALSE(rows.at(0).at("running").get_boolean());
+    rows.at(0)["enabled"] = false;
+    ASSERT_STREQ(nc_runtime_save(tao::json::to_string(rows).c_str()), "");
+    restart();
+    EXPECT_FALSE(catalog().at(0).at("enabled").get_boolean());
+}
+TEST_F(Runtime, ThreeLoadedPluginsRetainCatalogAndCanBeDisabledUnderMemoryPressure)
+{
+    nc_runtime_stop();
+    std::ifstream fixture(PLUGIN_GAME_ALL_PATH, std::ios::binary);
+    std::string original{std::istreambuf_iterator<char>(fixture), {}};
+    const auto identity = original.find("\"id\":\"test.game\"");
+    ASSERT_NE(identity, std::string::npos);
+    // Package rescans need more temporary memory than the protected control
+    // reserve once ordinary plugin allocations approach the shared limit.
+    original.resize(3 * 1024 * 1024, '\0');
+    for (int i = 0; i < 3; ++i)
+    {
+        auto bytes = original;
+        bytes.replace(identity + 6, 9, "test.p00" + std::to_string(i));
+        std::ofstream file(dir / L"plugins" / ("pressure-" + std::to_string(i) + ".dll"), std::ios::binary);
+        file.write(bytes.data(), static_cast<std::streamsize>(bytes.size()));
+    }
+    nc_runtime_start(dir.c_str(), 0);
+    auto selected = catalog();
+    ASSERT_EQ(selected.get_array().size(), 4u);
+    for (auto& row : selected.get_array())
+        row["enabled"] = row["consent"] = row.at("file") != "settings.dll";
+    ASSERT_STREQ(nc_runtime_save(tao::json::to_string(selected).c_str()), "");
+    restart();
+    auto before = catalog();
+    for (size_t i = 0; i < 3; ++i)
+        ASSERT_TRUE(before.at(i).at("running").get_boolean());
+    ASSERT_EQ(before.at(3).at("file"), "settings.dll");
+    ASSERT_FALSE(before.at(3).at("running").get_boolean());
+    size_t accepted{};
+    for (int i = 0; i < 3; ++i)
+    {
+        const auto filename = L"pressure-" + std::to_wstring(i) + L".dll";
+        const auto module = GetModuleHandleW(filename.c_str());
+        ASSERT_NE(module, nullptr);
+        const auto getter = reinterpret_cast<const NcHost*(NC_CALL*)()>(GetProcAddress(module, "nc_test_host"));
+        ASSERT_NE(getter, nullptr);
+        const auto* host = getter();
+        ASSERT_NE(host, nullptr);
+        ASSERT_TRUE(host->subscribe_event(host->context, "player.health", 1));
+        const auto* services = host->query_interface(host->context, "nextclient.services", 1);
+        ASSERT_NE(services, nullptr);
+        const auto request =
+            tao::json::to_string(Json{{"name", "test.p00" + std::to_string(i) + "/test"}, {"version", 1}, {"method", "echo"}, {"data", 0}});
+        for (int n = 0; n < 64; ++n)
+        {
+            const auto handle = services->call(host->context, "request", request.c_str());
+            ASSERT_NE(handle, 0u);
+            const auto size = services->read_result(host->context, handle, nullptr, 0);
+            ASSERT_GT(size, 0u);
+            std::string result(size, '\0');
+            ASSERT_EQ(services->read_result(host->context, handle, result.data(), size), size);
+            services->release_result(host->context, handle);
+            result.resize(size - 1);
+            if (!parse(result).at("ok").get_boolean())
+                break;
+            ++accepted;
+        }
+    }
+    ASSERT_GT(accepted, 64u);
+    const auto payload = "\"" + std::string(60000, 'x') + "\"";
+    for (int i = 0; i < 24; ++i)
+        nc_runtime_event("player.health", payload.c_str());
+    const auto catalog_under_pressure = parse(nc_runtime_catalog());
+    auto rows = catalog_under_pressure.at("plugins");
+    ASSERT_EQ(rows.get_array().size(), 4u);
+    EXPECT_GT(catalog_under_pressure.at("resources").at("memory_rejections").as<uint64_t>(), 0u);
+    for (size_t i = 0; i < 3; ++i)
+    {
+        for (const auto* key : {"file", "id", "hash", "approved", "enabled", "running", "permissions"})
+            EXPECT_EQ(rows.at(i).at(key), before.at(i).at(key)) << key;
+        EXPECT_NE(rows.at(i).at("warning"), "");
+    }
+    // New metadata-heavy packages can exceed even the protected catalog reserve.
+    // The previous snapshot must survive, but cannot authorize stale nonloaded
+    // packages while the required rescan is unavailable.
+    auto metadata = parse(R"({"schema":1,"id":"test.extra","name":"Extra","author":"Tests",
+        "description":"Fixture","version":"1.0.0","sdk":"1.0.0","abi":1,"api":1,"compatibility_revision":1})");
+    metadata["translations"] = tao::json::empty_object;
+    for (int i = 0; i < 14; ++i)
+        metadata["translations"]["language" + std::to_string(i)] = Json{{"description", std::string(4096, 'x')}};
+    IMAGE_DOS_HEADER dos{};
+    dos.e_magic = IMAGE_DOS_SIGNATURE;
+    dos.e_lfanew = sizeof(dos);
+    IMAGE_NT_HEADERS32 nt{};
+    nt.Signature = IMAGE_NT_SIGNATURE;
+    nt.FileHeader.Machine = IMAGE_FILE_MACHINE_I386;
+    nt.FileHeader.Characteristics = IMAGE_FILE_DLL;
+    nt.FileHeader.NumberOfSections = 1;
+    nt.FileHeader.SizeOfOptionalHeader = sizeof(nt.OptionalHeader);
+    nt.OptionalHeader.Magic = IMAGE_NT_OPTIONAL_HDR32_MAGIC;
+    IMAGE_SECTION_HEADER section{};
+    std::memcpy(section.Name, ".nclmeta", 8);
+    section.PointerToRawData = 512;
+    section.SizeOfRawData = 65536;
+    std::string bytes(section.PointerToRawData + section.SizeOfRawData, '\0');
+    std::memcpy(bytes.data(), &dos, sizeof(dos));
+    std::memcpy(bytes.data() + dos.e_lfanew, &nt, sizeof(nt));
+    std::memcpy(bytes.data() + dos.e_lfanew + sizeof(nt), &section, sizeof(section));
+    for (int i = 0; i < 252; ++i)
+    {
+        metadata["id"] = "test.extra" + std::to_string(i);
+        const auto json = tao::json::to_string(metadata);
+        ASSERT_LT(json.size(), section.SizeOfRawData);
+        std::memcpy(bytes.data() + section.PointerToRawData, json.c_str(), json.size() + 1);
+        std::ofstream file(dir / L"plugins" / ("zz-extra-" + std::to_string(i) + ".dll"), std::ios::binary);
+        file.write(bytes.data(), static_cast<std::streamsize>(bytes.size()));
+    }
+    {
+        std::ofstream changed(dir / L"plugins" / L"settings.dll", std::ios::binary | std::ios::app);
+        changed.put('\0');
+    }
+    const auto exhausted = parse(nc_runtime_catalog());
+    EXPECT_NE(exhausted.at("error"), "");
+    rows = exhausted.at("plugins");
+    ASSERT_EQ(rows.get_array().size(), 4u);
+    EXPECT_EQ(rows.at(3).at("hash"), before.at(3).at("hash"));
+    EXPECT_NE(rows.at(3).at("error"), "");
+    rows.at(3)["enabled"] = rows.at(3)["consent"] = true;
+    EXPECT_STRNE(nc_runtime_save(tao::json::to_string(rows).c_str()), "");
+    rows.at(3)["enabled"] = false;
+    rows.at(0)["enabled"] = false;
+    ASSERT_STREQ(nc_runtime_save(tao::json::to_string(rows).c_str()), "");
+    rows = catalog();
+    EXPECT_FALSE(rows.at(0).at("enabled").get_boolean());
+    for (size_t i = 0; i < 3; ++i)
+        EXPECT_TRUE(rows.at(i).at("running").get_boolean());
+    for (int i = 0; i < 252; ++i)
+        fs::remove(dir / L"plugins" / ("zz-extra-" + std::to_string(i) + ".dll"));
+    restart();
+    rows = catalog();
+    EXPECT_FALSE(rows.at(0).at("running").get_boolean());
+    EXPECT_TRUE(rows.at(1).at("running").get_boolean());
+    EXPECT_TRUE(rows.at(2).at("running").get_boolean());
 }
 TEST_F(Runtime, PackageAssetsAreLockedAndChangesRevokeWholePackageApproval)
 {
@@ -501,8 +810,8 @@ protected:
     }
     int setting_count()
     {
-        std::ifstream stream(dir / L"plugins" / L"settings.json");
-        return parse(std::string(std::istreambuf_iterator<char>(stream), {})).at("test.permissions").at("count").as<int>();
+        std::ifstream stream(dir / L"plugins" / L".host" / L"settings" / L"plugin-test.permissions.json");
+        return parse(std::string(std::istreambuf_iterator<char>(stream), {})).at("count").as<int>();
     }
 };
 TEST_F(PermissionRuntime, SafeApisWorkAndImpactfulApisAreDeniedByDefault)
@@ -652,10 +961,8 @@ TEST_F(Runtime, CachedRetiredControlsDoNotBlockOtherSettings)
     move(0);
     ASSERT_STREQ(nc_runtime_settings(tao::json::to_string(cached).c_str()), "");
     EXPECT_EQ(move(NC_PLAYER_VALID | NC_PLAYER_ACTIVE | NC_PLAYER_CAN_JUMP).buttons, 1u);
-    std::ifstream stream(dir / L"plugins" / L"settings.json");
-    auto saved = parse(std::string(std::istreambuf_iterator<char>(stream), {}));
-    EXPECT_EQ(saved.find("test.probe"), nullptr);
-    EXPECT_EQ(saved.find("test.dependent"), nullptr);
+    EXPECT_FALSE(fs::exists(dir / L"plugins" / L".host" / L"settings" / L"plugin-test.probe.json"));
+    EXPECT_FALSE(fs::exists(dir / L"plugins" / L".host" / L"settings" / L"plugin-test.dependent.json"));
     EXPECT_STRNE(nc_runtime_settings(R"([{"owner":"unknown","id":"enabled","value":1}])"), "");
 }
 

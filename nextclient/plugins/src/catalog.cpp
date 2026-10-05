@@ -1,5 +1,6 @@
 #include "plugin_limits.h"
 #include "catalog.h"
+#include "runtime_budget.h"
 #include <nextclient/plugin.h>
 #include <windows.h>
 #include <bcrypt.h>
@@ -104,10 +105,26 @@ namespace plugins
         if (!condition)
             throw std::runtime_error(message(error));
     }
-    Json parse(const std::string& text)
+    Json parse(const std::string& text, size_t limit)
     {
-        check(text.size() <= 1024 * 1024, "#NextPlugins_ErrorJsonTooLarge");
-        tao::json::events::limit_nesting_depth<tao::json::events::to_value, 16> consumer;
+        check(text.size() <= limit, "#NextPlugins_ErrorJsonTooLarge");
+        struct Consumer : tao::json::events::limit_nesting_depth<tao::json::events::to_value, 16>
+        {
+            runtime::Budget memory;
+            explicit Consumer(size_t bytes) :
+                memory(bytes * 4 + 4096, true)
+            {}
+            void element()
+            {
+                memory.resize(memory.size() + 256, true);
+                tao::json::events::to_value::element();
+            }
+            void member()
+            {
+                memory.resize(memory.size() + 512, true);
+                tao::json::events::to_value::member();
+            }
+        } consumer(text.size());
         tao::json::events::from_string(consumer, text);
         return std::move(consumer.value);
     }

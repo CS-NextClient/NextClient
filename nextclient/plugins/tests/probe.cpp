@@ -14,6 +14,37 @@ NC_MANIFEST(
 
 BOOL WINAPI DllMain(HINSTANCE, DWORD reason, LPVOID)
 {
+    if (reason == DLL_PROCESS_DETACH)
+    {
+        wchar_t session[32768]{};
+        if (GetEnvironmentVariableW(L"NEXTCLIENT_PROBE_SESSION", session, 32750) > 0)
+        {
+            const char exists = GetFileAttributesW(session) == INVALID_FILE_ATTRIBUTES ? '0' : '1';
+            wchar_t trace_path[32768]{};
+            wcscpy_s(trace_path, session);
+            if (auto slash = wcsrchr(trace_path, L'\\'))
+                wcscpy_s(slash + 1, 32768 - (slash + 1 - trace_path), L"session-trace.txt");
+            char trace[1024]{};
+            DWORD trace_size{};
+            HANDLE input = CreateFileW(
+                trace_path, GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr
+            );
+            if (input != INVALID_HANDLE_VALUE)
+            {
+                ReadFile(input, trace, sizeof(trace), &trace_size, nullptr);
+                CloseHandle(input);
+            }
+            wcscat_s(session, L".observed");
+            HANDLE file = CreateFileW(session, GENERIC_WRITE, FILE_SHARE_READ, nullptr, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
+            if (file != INVALID_HANDLE_VALUE)
+            {
+                DWORD written{};
+                WriteFile(file, &exists, 1, &written, nullptr);
+                WriteFile(file, trace, trace_size, &written, nullptr);
+                CloseHandle(file);
+            }
+        }
+    }
     if (reason == DLL_PROCESS_ATTACH)
     {
         wchar_t path[32768]{};

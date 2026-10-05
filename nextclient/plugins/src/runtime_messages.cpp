@@ -1,4 +1,5 @@
 #include "runtime_internal.h"
+#include "runtime_schedule.h"
 #include <cstring>
 
 namespace plugins::runtime
@@ -122,9 +123,16 @@ int32_t nc_runtime_message(
         } guard{filtering};
         filtering = true;
         // A filter can only change presentation. Observers always received the original bytes.
-        for (auto& p : loaded)
-            if (auto it = p->filters.find(name);
-                it != p->filters.end() && permitted(p.get(), NC_PERMISSION_MESSAGES_FILTER | permission(name)))
+        static size_t cursor{};
+        const auto preferred = preferred_callback(cursor, CallbackCategory::Filter, [&](const Loaded& p) {
+            return p.filters.count(name) && permitted(&p, NC_PERMISSION_MESSAGES_FILTER | permission(name));
+        });
+        for (size_t index = 0; index < loaded.size(); ++index)
+        {
+            auto& p = loaded[index];
+            if (auto it = p->filters.find(name); it != p->filters.end() &&
+                                                 permitted(p.get(), NC_PERMISSION_MESSAGES_FILTER | permission(name)) &&
+                                                 ordered_callback_budget(index, preferred))
             {
                 uint8_t output[4096]{};
                 uint32_t count = sizeof(output);
@@ -132,8 +140,11 @@ int32_t nc_runtime_message(
                 int result = -1;
                 try
                 {
-                    result =
-                        filter.callback(filter.user, name.c_str(), current.data(), static_cast<uint32_t>(current.size()), output, &count);
+                    result = invoke(*p, "filter", [&] {
+                        return filter.callback(
+                            filter.user, name.c_str(), current.data(), static_cast<uint32_t>(current.size()), output, &count
+                        );
+                    });
                 }
                 catch (...)
                 {}
@@ -147,6 +158,7 @@ int32_t nc_runtime_message(
                 else if (result == 2)
                     hidden = true;
             }
+        }
         if (hidden)
             return 2;
         if (changed && *replacement_size >= current.size())

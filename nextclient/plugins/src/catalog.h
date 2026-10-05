@@ -29,7 +29,7 @@ namespace plugins
         bool approved{}, enabled{}, running{};
         bool consent{};
     };
-    Json parse(const std::string& text);
+    Json parse(const std::string& text, size_t limit = 1024 * 1024);
     int64_t integer(const Json& value, int64_t minimum, int64_t maximum);
     Manifest manifest(const std::string& text);
     std::string pe_manifest(const std::vector<unsigned char>& bytes);

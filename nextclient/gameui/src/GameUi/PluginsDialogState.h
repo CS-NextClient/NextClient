@@ -9,6 +9,15 @@ struct PluginSelection
     bool operator==(const PluginSelection&) const = default;
 };
 
+inline bool PluginCanConfirmSelection(
+    const std::vector<PluginSelection>& initial,
+    const std::vector<PluginSelection>& current,
+    bool recoveryPending
+)
+{
+    return recoveryPending || initial != current;
+}
+
 inline const char* PluginStatusToken(
     const std::vector<PluginSelection>& initial,
     const std::vector<PluginSelection>& current,
@@ -18,7 +27,7 @@ inline const char* PluginStatusToken(
     bool safeMode
 )
 {
-    if (blocked)
+    if (blocked && !running)
         return "#NextPlugins_Blocked";
 
     const auto& selection = current[index];

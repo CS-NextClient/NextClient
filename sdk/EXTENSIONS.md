@@ -50,13 +50,46 @@ on worker threads. Join all plugin workers before returning from unload.
 
 ## Events, tasks, and storage
 
-`nextclient.events/stats` returns `queued`, cumulative `dropped`, `delivered`,
-last event `callback_ms`, and `slow_callbacks` (event callbacks above 2 ms).
-Each plugin has its own ordered 2,048-event / 1 MiB queue. Dispatch has a soft
-2 ms / 128-event budget per plugin per frame. A callback cannot be preempted;
-a slow native callback can still stall the game. No health/damage/death
-coalescing is performed. New events created during dispatch wait for another
-frame. Unsubscribed events are not retained or replayed.
+`nextclient.events/stats` returns queue/delivery/loss counters, the last callback
+`callback_ms`, cumulative `slow_callbacks` (over 2 ms), and a `callbacks` map with
+count, last/maximum/total time and slow count for **every** callback category,
+including initialization, shutdown, module unloading, frame, drawing, commands and message filters.
+`deferred_callbacks` counts eligible callbacks skipped by time or event-count limits,
+including the separate 2 ms passes. A queued event waiting on several pumps counts
+once per pump; rejected budget checks without eligible work do not count.
+The Plugins dialog shows host memory estimates and callback timing only in its
+**Diagnostics** tab while developer mode is enabled (`developer 1` in the console).
+Selecting the tab or another plugin refreshes the snapshot; `developer 0` hides
+the tab. These refreshes read live in-memory statistics without rediscovering or
+hashing packages. Resource limits and SDK statistics remain active in either mode.
+
+All plugins share a 32 MiB accounting budget; ordinary retained resources use at
+most 30 MiB, leaving headroom for result retrieval and parsing. Charges include
+container capacity, parsed JSON nodes, map/deque overhead, stores, UI definitions,
+results, event/post queues, pending storage copies and reserved service completions.
+Parsing and package reads also require temporary reservations. `host_memory_estimate`,
+`host_memory_limit`, `host_memory_peak` and `memory_rejections` expose accounting.
+These are conservative estimates, **not measured process memory**. DLL images,
+native plugin allocations, driver allocations and individual synchronous native
+callbacks cannot be reliably constrained by SDK quotas. Admission can fail before
+an individual limit is reached; handle failures and release results promptly.
+
+Each plugin still has an ordered 2,048-event / 1 MiB JSON queue. A rotating scheduler
+shares **2 ms / 512 events per frame globally**, with at most 128 events per owner
+(including overflow notices). Frame and drawing passes each share a 2 ms allowance
+and rotate the starting owner. Drawing callbacks buffer their output; successful
+output is then composited in configured load order, preserving HUD layering even
+after a callback deadline. All automatic callback categories share a soft 6 ms
+allowance between frame pumps. Each category (events, frames, drawing, commands,
+filters) reserves one callback opportunity per pump with rotating owner priority,
+even if another category exhausted the allowance. Command/filter callbacks that
+are selected still run in configured order. This bounded progress exception and
+callbacks already running, which cannot be preempted, can exceed the allowance.
+Other exhausted command/filter work is skipped. Skipped frame/draw callbacks are
+not replayed; queued events remain pending subject to queue and permission limits.
+Explicit settings/actions/console calls and lifecycle callbacks are timed, but
+are not discarded on a frame deadline. Events created during dispatch wait for
+another frame. Unsubscribed events are not retained or replayed.
 
 Overflow drops new events and reports `sdk.overflow` out of band with cumulative
 `dropped` and the `first`/`last` lost serials since the last report. Serials are
@@ -71,7 +104,13 @@ Tokens expire on plugin failure/unload and are not reused. The global posting
 queue is bounded to 1,024 posts / 1 MiB. Rust's `api.post_token(token)` returns a
 Send/Sync `PostToken`. Each owner may queue at most 64 posts / 128 KiB. C++ can
 retain the function pointer and token without
-retaining `NcHost` on a worker.
+retaining `NcHost` on a worker. `post(token, nullptr)` (C) checks liveness without
+queueing: 1 means live, 0 means stop. Rust exposes `PostToken::is_cancelled()`.
+Poll during worker loops; cancellation is cooperative. Failure immediately stops
+SDK activity, cancels queued host work, removes registrations and frees dispensable
+host data. An already executing disk write may finish. The DLL and host context
+remain alive until shutdown, when `unload` must join all workers; failed partial
+initialization follows the same rule. Never wait for unload to notice cancellation.
 
 `nextclient.storage/commit` accepts `{"set":{...},"delete":[...]}`. The
 per-plugin JSON store is updated as one atomic transaction by a host worker.
@@ -187,14 +226,41 @@ The caller receives `sdk.reply` with `request` and `result:{ok:true,data}`.
 Pending calls time out after 10 seconds and are cancelled on provider failure or
 unload with `result:{ok:false,error}`. There is no synchronous cross-plugin call
 or borrowed function pointer, preventing call-stack recursion and dangling DLL
-function pointers. At most 1,024 pending requests and 1,024 registrations exist.
-Per plugin, limits are 64 pending requests and 32 service/topic registrations.
+function pointers. At most 1,024 outstanding requests and 1,024 registrations exist.
+Per plugin, limits are 64 outstanding requests and 32 service/topic registrations.
+Both pending and explicitly retained completed requests count against these limits.
+The host reserves 256 KiB of accounting capacity per accepted request, so global
+memory pressure may reject admission earlier.
 
 `subscribe`/`unsubscribe`: `{name,version}` for topics. `publish`: `{name,data}`
 is restricted to the topic's owner. Subscribers receive `sdk.topic` with `name`,
 `version`, and `data`. Provider-required permissions are checked for both service
-requests and topic subscriptions/delivery. Requests, replies, and topics share
-the bounded event queues and overflow reporting.
+requests and topic subscriptions/delivery. Notifications share the bounded event
+queues and overflow reporting; topics remain best effort.
+
+Version-1 requests retain their original completion behavior: by default the host
+releases each request record after queuing `sdk.reply`, including timeout,
+cancellation and provider-stop results. No `ack` is required, and releasing the
+extension result handle still uses `release_result`. The queued reply is best
+effort; it can be lost on overflow.
+
+Add `"retain_completion":true` to `request` to opt into completion records retained
+independently of notification delivery. This uses the same version-1 interface:
+
+- `status`: `{request}` returns `{ok:true,request,state:"pending"}` or
+  `{ok:true,request,state:"complete",result:{ok:true,data}}` (or an error result).
+- `cancel`: `{request}` makes a pending request terminal with an error. Late replies
+  are rejected; cancellation cannot undo provider work already performed.
+- `ack`: `{request}` releases a terminal record after consuming it. A pending
+  request cannot be acknowledged. Reads are repeatable until acknowledgement.
+
+Only the caller can status/cancel/ack its records. `status` and `cancel` also work
+on ordinary pending requests; cancellation returns its terminal result once and
+releases the unretained record. After `sdk.overflow`, query retained outstanding IDs
+even if no reply notification arrived. Timeouts and provider retirement use the
+same retained terminal records. Retained records survive until ack or caller
+retirement, not across process restarts. A caller retired with its required
+provider loses its records because all its SDK activity has stopped.
 
 ## Approved packages
 
@@ -204,6 +270,7 @@ source of metadata. No companion is executed during discovery. Approval hashes
 the paths and bytes of **all** files; adding, deleting, or changing an asset or DLL
 requires approval again. Approved files remain locked against writes/deletes
 while loaded. Packages are limited to 128 files, 64 MiB each, and 256 MiB total.
+Shared memory admission can reject a package read below these file limits.
 Reparse points/symlinks and DLLs in subdirectories are rejected.
 
 Imports must be x86 and have simple DLL basenames. Use unique companion basenames

@@ -44,11 +44,36 @@ game. Start with **`-noplugins`** to recover without loading plugins. Remove thi
 flag on a later launch to use plugins again. No live unload is offered.
 
 Approvals/order are stored in `plugins/profile.json`; settings are stored in
-`plugins/settings.json`. Saves use atomic file replacement. The directory must be
+`plugins/.host/settings/plugin-<id>.json`. Saves use atomic file replacement. The directory must be
 writable. Metadata, authorship, and compatibility claims are self-declared. The
 manager shows Active, Disabled, Pending Restart, or Blocked status. Pending edits
 show a restart notice; undoing all edits clears it. Technical compatibility details
 appear only when there is an issue or applicable ordering advice.
+
+## Recovery and isolated settings
+
+An unclean-session marker offers **Start without plugins** on the next normal
+launch. In Options > Plugins, select a suspected plugin, click **Disable**, then
+**OK** to save and restart. Disable any plugins that require it as well. Saving
+the selection acknowledges the failed session. **OK** also acknowledges recovery
+without changing the selection or restarting, including when the list is empty.
+The marker is created only before the first plugin module is loaded. Plugins can
+be enabled again through the same dialog; changed package hashes still require approval.
+
+Settings migrate from the former aggregate `plugins/settings.json`. Migration
+preserves `settings.json.migrated.bak`, resumes without replacing existing owner
+files, and isolates invalid owners. Files up to 16 MiB can be considered for
+migration, subject to parser memory admission. Each save validates the same
+1 MiB size, nesting and integer-setting schema as the reader before replacement.
+Valid predecessors use `.bak`; unreadable originals use `.damaged`. A corrupt
+owner uses a readable backup or defaults without disabling other plugins. Settings
+transactions are atomic per owner; a multi-owner Apply can partially succeed on
+an I/O error. `plugins/.host` is reserved for host configuration.
+
+Crash reports attach `session.json` (IDs, versions, hashes and initialization
+order) and a bounded `session-trace.txt` callback history, plus the previous
+session copies. Active initialization/callback/module-unload context identifies a **suspect**,
+not a proven cause; native worker faults may have no attributable callback.
 
 ## Permissions
 
@@ -208,7 +233,9 @@ Glyph coverage and encoding follow the engine font. Host-owned windows support
 installed fonts and textures through [the UI interface](EXTENSIONS.md#host-owned-ui).
 3D rendering is not exposed.
 
-`frame(session)` runs once per GameUI frame, including disconnected menu frames.
+`frame(session)` is eligible once per GameUI frame, including disconnected menu
+frames. A rotating scheduler may skip owners when the callback budget is spent;
+plugins must tolerate missed frames (see [dispatch limits](EXTENSIONS.md#events-tasks-and-storage)).
 It needs no permission. When the client bridge is bound, `session()` obtains the same
 kind of copied state: `CONNECTED`/`IN_GAME` flags, max clients, screen dimensions,
 client time, frame interval, and map path (for example `maps/de_dust2.bsp`).
@@ -249,7 +276,7 @@ posting function. Only that posting function may be called from workers. Do not
 retain borrowed callback pointers/references or use the host after shutdown.
 Copied snapshot values may be retained.
 Shutdown runs in reverse load order. A failed load rolls back registrations and
-calls unload for partial initialization. Join workers during unload. C++ exceptions
+defers unload of partial initialization until shutdown, keeping its DLL and context alive. Join workers during unload. C++ exceptions
 and Rust panics must not cross the ABI; the high-level SDKs contain them.
 Rust callbacks receive a borrowed `Host` argument, available only for that call.
 Host operations reject calls from worker threads and retired plugins. Join workers

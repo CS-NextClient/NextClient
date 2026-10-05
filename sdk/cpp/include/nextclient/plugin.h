@@ -142,7 +142,9 @@ typedef struct NcExtension
     uint64_t(NC_CALL *call)(void *, const char *operation, const char *json);
     uint32_t(NC_CALL *read_result)(void *, uint64_t, char *, uint32_t);
     void(NC_CALL *release_result)(void *, uint64_t);
-    /* Only post is worker-thread-safe. Tokens never get reused. */
+    /* Only post is worker-thread-safe. Tokens never get reused.
+     * post(token, NULL) checks liveness without queueing: 0 means cancel work.
+     * Poll this cooperatively, then join all workers in unload. */
     int32_t(NC_CALL *post)(uint64_t token, const char *json);
     int32_t(NC_CALL *set_filter)(void *, const char *, NcMessageFilter, void *user);
 } NcExtension;

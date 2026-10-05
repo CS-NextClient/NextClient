@@ -14,9 +14,12 @@ Call `subscribe_event("player.health", true)` during load or a later callback.
 Disable with `false`. Implement `Plugin::event(name, json)` in C++ or
 `fn event(&mut self, host: &Host<'_>, name: &str, json: &str) -> Result` in Rust.
 Subscriptions are per plugin, exact-name, idempotent, and do not replay earlier
-events. Unknown names fail. Callbacks run on the game thread, in plugin load order,
-before `frame`. Events emitted by a callback wait for a subsequent frame; engine
-message parsing and cvar setters never invoke plugin callbacks directly.
+events. Unknown names fail. Callbacks run on the game thread in a rotating,
+budgeted event pass before the frame-callback pass. Each owner's queued events
+retain their order; delivery across owners is not in plugin load order. Queued
+events may wait for later frames when the pass reaches a limit. Events emitted
+by a callback wait for a subsequent frame; engine message parsing and cvar setters
+never invoke plugin callbacks directly. See [dispatch limits](EXTENSIONS.md#events-tasks-and-storage).
 
 All events below are permission-free except `chat.message` (`chat.read`) and
 `cvar.changed` (`cvars.read`). Subscribe to the latter with `watch_cvar`, which

@@ -119,7 +119,9 @@ namespace plugins::runtime
                 throw std::runtime_error("Window limit");
             validate_window(p, args);
             const auto id = ++next_window;
-            p.windows[std::to_string(id)] = args;
+            auto next = p.windows;
+            next[std::to_string(id)] = args;
+            replace_json(p.windows, p.ui_memory, std::move(next));
             ++p.ui_revision;
             return Json{{"ok", true}, {"handle", id}};
         }
@@ -128,11 +130,16 @@ namespace plugins::runtime
         if (!window)
             throw std::runtime_error("Unknown window handle");
         if (operation == "destroy")
+        {
             p.windows.get_object().erase(id);
+            p.ui_memory.resize(json_memory(p.windows));
+        }
         else if (operation == "update")
         {
             validate_window(p, args.at("window"));
-            *window = args.at("window");
+            auto next = p.windows;
+            next[id] = args.at("window");
+            replace_json(p.windows, p.ui_memory, std::move(next));
         }
         else if (operation == "show")
             (*window)["visible"] = args.at("visible").get_boolean();
@@ -194,7 +201,9 @@ void nc_runtime_window_action(const char* raw, const char* action, const char* p
                         if (!found)
                             return;
                         validate_window(*p, next);
-                        *window = std::move(next);
+                        auto windows = p->windows;
+                        windows[id] = std::move(next);
+                        replace_json(p->windows, p->ui_memory, std::move(windows));
                     }
                     ++p->ui_revision;
                     notify(*p, "sdk.ui", Json{{"handle", std::stoull(id)}, {"id", name}, {"value", value}}, NC_PERMISSION_UI_INPUT);

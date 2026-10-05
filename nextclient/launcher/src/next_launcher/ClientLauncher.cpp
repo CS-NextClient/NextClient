@@ -560,6 +560,12 @@ void ClientLauncher::InitializeSentry()
     sentry_options_add_attachment(options, "user_game_config.ini");
     sentry_options_add_attachment(options, "launcher.log");
     sentry_options_add_attachment(options, "platform\\config\\backend.json");
+#ifdef NEXTCLIENT_WITH_PLUGINS
+    sentry_options_add_attachment(options, "plugins\\session.json");
+    sentry_options_add_attachment(options, "plugins\\session-trace.txt");
+    sentry_options_add_attachment(options, "plugins\\session.previous.json");
+    sentry_options_add_attachment(options, "plugins\\session-trace.previous.txt");
+#endif
 
     int result = sentry_init(options);
 

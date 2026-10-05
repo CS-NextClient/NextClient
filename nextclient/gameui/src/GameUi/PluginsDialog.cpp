@@ -7,6 +7,7 @@
 #include <vgui_controls/Label.h>
 #include <vgui_controls/MessageBox.h>
 #include <vgui_controls/QueryBox.h>
+#include <vgui_controls/PropertySheet.h>
 #include <vgui/ILocalize.h>
 #include <vgui/ISurfaceNext.h>
 #include <algorithm>
@@ -100,11 +101,91 @@ void CPluginsDialog::Activate()
     rows_ = catalog.at("plugins");
     initialSelection_ = Selection();
     safeMode_ = catalog.at("safe_mode").get_boolean();
+    recoveryPending_ = nc_runtime_recovery_pending() != 0;
     diagnostic_ = PluginDiagnostic(catalog.at("error").get_string());
     if (safeMode_)
         diagnostic_ = PluginTokenText("#NextPlugins_SafeMode") + "\n" + diagnostic_;
+    if (recoveryPending_)
+        diagnostic_ += "\n" + PluginTokenText("#NextPlugins_AcknowledgeRecovery");
+    UpdateDeveloperMode();
     Refresh();
     BaseClass::Activate();
+}
+void CPluginsDialog::UpdateDeveloperMode()
+{
+    const bool developerMode = engine && engine->pfnGetCvarFloat("developer") > 0;
+    if (developerMode == (detailsTabs_ != nullptr))
+        return;
+    if (developerMode)
+    {
+        detailsTabs_ = new vgui2::PropertySheet(this, "DetailsTabs");
+        detailsTabs_->AddPage(details_, "#NextPlugins_Details");
+        diagnostics_ = new vgui2::TextEntry(detailsTabs_, "Diagnostics");
+        diagnostics_->SetEditable(false);
+        diagnostics_->SetMultiline(true);
+        diagnostics_->SetVerticalScrollbar(true);
+        detailsTabs_->AddPage(diagnostics_, "#NextPlugins_Diagnostics");
+    }
+    else
+    {
+        // Return to the ordinary details view even if Diagnostics was selected.
+        detailsTabs_->RemovePage(details_);
+        details_->RemoveActionSignalTarget(detailsTabs_);
+        details_->SetParent(this);
+        details_->SetVisible(true);
+        detailsTabs_->SetVisible(false);
+        detailsTabs_->MarkForDeletion();
+        detailsTabs_ = nullptr;
+        diagnostics_ = nullptr;
+    }
+    diagnosticsSelected_ = false;
+    InvalidateLayout();
+}
+void CPluginsDialog::OnThink()
+{
+    BaseClass::OnThink();
+    if (!IsVisible())
+        return;
+    UpdateDeveloperMode();
+    const bool selected = detailsTabs_ && detailsTabs_->GetActivePage() == diagnostics_;
+    if (selected && !diagnosticsSelected_)
+        RefreshDiagnostics(tao::json::from_string(nc_runtime_stats()));
+    diagnosticsSelected_ = selected;
+}
+void CPluginsDialog::RefreshDiagnostics(const tao::json::value& catalog)
+{
+    if (!diagnostics_)
+        return;
+    std::string info;
+    if (auto resources = catalog.find("resources"))
+        info = PluginTokenText("#NextPlugins_Resources") + " " +
+               std::to_string(resources->at("host_memory_estimate").as<uint64_t>() / 1024) + " / " +
+               std::to_string(resources->at("host_memory_limit").as<uint64_t>() / 1024) + " KiB; " +
+               std::to_string(resources->at("frame_callback_ms").as<double>()) + " / " +
+               std::to_string(resources->at("frame_budget_ms").as<unsigned>()) + " ms";
+    const int n = Selected();
+    if (n >= 0 && n < static_cast<int>(rows_.get_array().size()))
+    {
+        const auto& selected = rows_.at(static_cast<size_t>(n));
+        info += "\n\n" + PluginMetadataText(selected, "name", PluginLanguage());
+        // Match the live row by identity: pending load-order edits reorder rows_.
+        for (const auto& row : catalog.at("plugins").get_array())
+            if (row.at("file") == selected.at("file") && row.at("hash") == selected.at("hash"))
+            {
+                if (auto resources = row.find("resources"))
+                {
+                    info += "\n" + PluginTokenText("#NextPlugins_CallbackTiming");
+                    for (const auto& [category, timing] : resources->at("callbacks").get_object())
+                        if (timing.at("count").as<uint64_t>())
+                            info += "\n" + category + ": " + std::to_string(timing.at("last_ms").as<double>()) + " / " +
+                                    std::to_string(timing.at("max_ms").as<double>()) + " ms";
+                }
+                break;
+            }
+    }
+    else
+        info += "\n\n" + PluginTokenText("#NextPlugins_SelectDiagnostics");
+    diagnostics_->SetText(PluginWide(info).c_str());
 }
 int CPluginsDialog::Selected() const
 {
@@ -136,7 +217,7 @@ void CPluginsDialog::Refresh(int selected)
     const auto selection = Selection();
     const bool changed = selection != initialSelection_;
     changes_->SetVisible(changed);
-    ok_->SetEnabled(changed);
+    ok_->SetEnabled(PluginCanConfirmSelection(initialSelection_, selection, recoveryPending_));
     InvalidateLayout();
     list_->DeleteAllItems();
     for (size_t n = 0; n < rows_.get_array().size(); ++n)
@@ -184,22 +265,27 @@ void CPluginsDialog::OnItemSelected()
     if (auto warning = advice.find("warning"))
         info += "\n" + PluginDiagnostic(warning->get_string());
     details_->SetText(PluginWide(info).c_str());
+    if (detailsTabs_ && detailsTabs_->GetActivePage() == diagnostics_)
+        RefreshDiagnostics(tao::json::from_string(nc_runtime_stats()));
 }
 void CPluginsDialog::OnCommand(const char* command)
 {
     int n = Selected();
     if (!Q_stricmp(command, "OK"))
     {
-        if (Selection() == initialSelection_)
+        const bool changed = Selection() != initialSelection_;
+        if (!PluginCanConfirmSelection(initialSelection_, Selection(), recoveryPending_))
             return;
-        const char* error = nc_runtime_save(SelectionJson().c_str());
+        const char* error = changed ? nc_runtime_save(SelectionJson().c_str()) : nc_runtime_acknowledge_recovery();
         if (*error)
         {
             auto* box = new vgui2::MessageBox(PluginToken("#NextPlugins_Title").c_str(), PluginWide(PluginDiagnostic(error)).c_str(), this);
             box->DoModal();
             return;
         }
-        engine->pfnClientCmd("fmod stop\n_restart\n");
+        recoveryPending_ = false;
+        if (changed)
+            engine->pfnClientCmd("fmod stop\n_restart\n");
         Close();
     }
     else if (!Q_stricmp(command, "Cancel"))
@@ -265,14 +351,16 @@ void CPluginsDialog::PerformLayout()
 {
     BaseClass::PerformLayout();
     int w = GetWide(), h = GetTall();
-    list_->SetBounds(12, 32, w - 24, (h - 180) / 2);
-    int y = 32 + (h - 180) / 2 + 8;
+    const int listHeight = std::max(64, (h - 180) / 2 - (detailsTabs_ ? 32 : 0));
+    list_->SetBounds(12, 32, w - 24, listHeight);
+    int y = 32 + listHeight + 8;
     toggle_->SetBounds(12, y, 100, 26);
     up_->SetBounds(120, y, 80, 26);
     down_->SetBounds(208, y, 80, 26);
     recommended_->SetBounds(296, y, 210, 26);
     int changesHeight = changes_->IsVisible() ? 44 : 0;
-    details_->SetBounds(12, y + 34, w - 24, h - y - 135 - changesHeight);
+    vgui2::Panel* detailPanel = detailsTabs_ ? static_cast<vgui2::Panel*>(detailsTabs_) : details_;
+    detailPanel->SetBounds(12, y + 34, w - 24, h - y - 135 - changesHeight);
     changes_->SetBounds(12, h - 98 - changesHeight, w - 24, changesHeight);
     notice_->SetBounds(12, h - 94, w - 24, 48);
     ok_->SetBounds(w - 192, h - 36, 80, 24);

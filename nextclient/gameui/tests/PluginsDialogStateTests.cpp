@@ -53,3 +53,26 @@ TEST(PluginsDialogState, ReorderedDisabledPluginRemainsDisabled)
     EXPECT_NE(initial, current);
     EXPECT_STREQ(PluginStatusToken(initial, current, 0, false, false, false), "#NextPlugins_Disabled");
 }
+
+TEST(PluginsDialogState, RunningPluginWithDiscoveryErrorRetainsActiveAndPendingStatus)
+{
+    std::vector<PluginSelection> initial{{"active.dll", true}};
+    EXPECT_STREQ(PluginStatusToken(initial, initial, 0, true, true, false), "#NextPlugins_Active");
+    auto disabled = initial;
+    disabled[0].enabled = false;
+    EXPECT_STREQ(PluginStatusToken(initial, disabled, 0, true, true, false), "#NextPlugins_PendingRestart");
+}
+
+TEST(PluginsDialogState, RecoveryCanBeAcknowledgedWithoutChangingEmptyOrUnchangedSelection)
+{
+    std::vector<PluginSelection> empty;
+    EXPECT_TRUE(PluginCanConfirmSelection(empty, empty, true));
+    EXPECT_FALSE(PluginCanConfirmSelection(empty, empty, false));
+    std::vector<PluginSelection> initial{{"active.dll", true}};
+    EXPECT_TRUE(PluginCanConfirmSelection(initial, initial, true));
+    EXPECT_FALSE(PluginCanConfirmSelection(initial, initial, false));
+    auto changed = initial;
+    changed[0].enabled = false;
+    EXPECT_TRUE(PluginCanConfirmSelection(initial, changed, false));
+    EXPECT_FALSE(PluginCanConfirmSelection(initial, initial, false));
+}

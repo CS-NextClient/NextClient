@@ -2,6 +2,9 @@
 #include <stdexcept>
 #include <string>
 #include <vector>
+#include <thread>
+#include <chrono>
+#include <windows.h>
 
 #ifndef NC_TEST_PERMISSIONS
 #define NC_TEST_PERMISSIONS "[]"
@@ -10,7 +13,7 @@
 #undef NC_TEST_PERMISSIONS
 #define NC_TEST_PERMISSIONS                                                                                                          \
     "[\"cvars.create\",\"cvars.read\",\"cvars.write\",\"chat.read\",\"chat.send\",\"connection.connect\",\"connection.disconnect\"," \
-    "\"messages.read\",\"messages.filter\",\"ui.windows\",\"ui.input\",\"services.call\"]"
+    "\"messages.read\",\"messages.filter\",\"ui.windows\",\"ui.input\",\"ui.settings\",\"services.call\"]"
 #endif
 #ifdef NC_TEST_MESSAGES
 #undef NC_TEST_PERMISSIONS
@@ -42,6 +45,8 @@ namespace
 {
     const NcHost* host;
     int creation, mode;
+    int rejected_control_acceptances, valid_control;
+    std::string controls_before, controls_after;
     std::vector<std::pair<std::string, std::string>> events;
 } // namespace
 extern "C" NC_EXPORT const NcHost* NC_CALL nc_test_host()
@@ -68,6 +73,14 @@ extern "C" NC_EXPORT void NC_CALL nc_test_mode(int value)
 {
     mode = value;
 }
+extern "C" NC_EXPORT const char* NC_CALL nc_test_controls_stats(int after)
+{
+    return (after ? controls_after : controls_before).c_str();
+}
+extern "C" NC_EXPORT int NC_CALL nc_test_controls_result(int valid)
+{
+    return valid ? valid_control : rejected_control_acceptances;
+}
 class GameApi : public nextclient::Plugin
 {
 public:
@@ -79,6 +92,23 @@ public:
         creation = create_cvar(NC_TEST_LOCAL_CVAR, "0", true);
         extension("nextclient.services", "register", R"({"name":"test","version":1})");
         extension("nextclient.services", "topic", R"({"name":"updates","version":1,"permissions":["chat.read"]})");
+        char probe[2]{};
+        if (GetEnvironmentVariableA("NEXTCLIENT_TEST_REJECTED_CONTROLS", probe, sizeof(probe)) == 1 && probe[0] == '1')
+        {
+            const std::string oversized(257, 'x');
+            NcControl control{sizeof(NcControl), "test_control", "game", NC_CHECKBOX, "Valid", "Valid", 0, 0, 1, "", ""};
+            rejected_control_acceptances = 0;
+            controls_before = extension("nextclient.events", "stats", "{}");
+            for (int i = 0; i < 4096; ++i)
+            {
+                control.label_en = i % 2 ? "Valid" : oversized.c_str();
+                control.label_ru = i % 2 ? oversized.c_str() : "Valid";
+                rejected_control_acceptances += host->add_control(host->context, &control);
+            }
+            controls_after = extension("nextclient.events", "stats", "{}");
+            control.label_en = control.label_ru = "Valid";
+            valid_control = host->add_control(host->context, &control);
+        }
     }
     void event(const char* name, const char* json) override
     {
@@ -87,6 +117,8 @@ public:
             write_cvar("speed", "125");
         if (mode == 2)
             throw std::runtime_error("Event failure");
+        if (mode == 3)
+            std::this_thread::sleep_for(std::chrono::milliseconds(4));
     }
 };
 NC_PLUGIN(GameApi)
