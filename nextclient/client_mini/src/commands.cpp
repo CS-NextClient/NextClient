@@ -36,7 +36,42 @@ static void Toggle_f()
     next = (next + 1) % count;
 }
 
+static void RunHoldToggle(bool pressed)
+{
+    int argc = gEngfuncs.Cmd_Argc();
+    if (argc < 2)
+    {
+        gEngfuncs.Con_Printf("Usage: +toggle <command> [held value] [released value]\n");
+        return;
+    }
+
+    const char* value;
+    if (argc >= 4)
+    {
+        value = pressed ? gEngfuncs.Cmd_Argv(2) : gEngfuncs.Cmd_Argv(3);
+    }
+    else
+    {
+        value = pressed ? "1" : "0";
+    }
+
+    std::string cmd = std::string(gEngfuncs.Cmd_Argv(1)) + " " + value + "\n";
+    gEngfuncs.pfnClientCmd(cmd.c_str());
+}
+
+static void PlusToggle_f()
+{
+    RunHoldToggle(true);
+}
+
+static void MinusToggle_f()
+{
+    RunHoldToggle(false);
+}
+
 void CommandsInit()
 {
     gEngfuncs.pfnAddCommand("toggle", Toggle_f);
+    gEngfuncs.pfnAddCommand("+toggle", PlusToggle_f);
+    gEngfuncs.pfnAddCommand("-toggle", MinusToggle_f);
 }
