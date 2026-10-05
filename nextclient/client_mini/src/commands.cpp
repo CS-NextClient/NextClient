@@ -2,27 +2,41 @@
 #include "main.h"
 #include "commands.h"
 
-static void BindToggle_f()
+#include <string>
+#include <unordered_map>
+
+static std::unordered_map<std::string, int> g_ToggleNext;
+
+static void Toggle_f()
 {
-    if (gEngfuncs.Cmd_Argc() < 2)
+    int argc = gEngfuncs.Cmd_Argc();
+    if (argc < 4)
     {
-        gEngfuncs.Con_Printf("Usage: BindToggle <cvar>\n");
+        gEngfuncs.Con_Printf("Usage: toggle <command> <value1> <value2> [value3...]\n");
         return;
     }
 
-    const char* name = gEngfuncs.Cmd_Argv(1);
-    const cvar_t* cvar = gEngfuncs.pfnGetCvarPointer(name);
-
-    if (cvar == nullptr)
+    std::string key;
+    for (int i = 1; i < argc; i++)
     {
-        gEngfuncs.Con_Printf("BindToggle: unknown cvar \"%s\"\n", name);
-        return;
+        if (i > 1)
+        {
+            key += ' ';
+        }
+        key += gEngfuncs.Cmd_Argv(i);
     }
 
-    gEngfuncs.Cvar_SetValue(name, cvar->value != 0.0f ? 0.0f : 1.0f);
+    int count = argc - 2;
+    int& next = g_ToggleNext[key];
+    const char* value = gEngfuncs.Cmd_Argv(2 + next);
+
+    std::string cmd = std::string(gEngfuncs.Cmd_Argv(1)) + " " + value + "\n";
+    gEngfuncs.pfnClientCmd(cmd.c_str());
+
+    next = (next + 1) % count;
 }
 
 void CommandsInit()
 {
-    gEngfuncs.pfnAddCommand("BindToggle", BindToggle_f);
+    gEngfuncs.pfnAddCommand("toggle", Toggle_f);
 }
