@@ -10,6 +10,7 @@
 #include "GameConsoleNext.h"
 #include "GameConsoleDialog.h"
 #include "LoadingDialog.h"
+#include "IGameUIFuncs.h"
 #include <vgui/ISurfaceNext.h>
 
 #include <KeyValues.h>
@@ -46,6 +47,29 @@ CGameConsole::~CGameConsole()
     m_bInitialized = false;
 }
 
+namespace
+{
+    void Bindlist_f()
+    {
+        int count = 0;
+
+        for (int i = 0; i < 256; i++)
+        {
+            const char* binding = g_pGameUIFuncs->Key_BindingForKey(i);
+            if (!binding || !binding[0])
+            {
+                continue;
+            }
+
+            const char* key = g_pGameUIFuncs->Key_NameForKey(i);
+            engine->Con_Printf("\"%s\" \"%s\"\n", key, binding);
+            count++;
+        }
+
+        engine->Con_Printf("%d bindings\n", count);
+    }
+} // namespace
+
 //-----------------------------------------------------------------------------
 // Purpose: sets up the console for use
 //-----------------------------------------------------------------------------
@@ -68,6 +92,7 @@ void CGameConsole::Initialize()
     m_bInitialized = true;
 
     engine->pfnAddCommand("condump", CGameConsole::OnCmdCondump);
+    engine->pfnAddCommand("bindlist", Bindlist_f);
 
     // This provides a 1 frame delay to display the text after the temporary buffer from the engine
     TaskCoro::RunInMainThread([this]
