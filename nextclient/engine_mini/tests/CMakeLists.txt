@@ -7,6 +7,9 @@ include(GoogleTest)
 add_executable(${TARGET_NAME}
         #CmdCheckerBindTests.cpp
         CmdCheckerTests.cpp
+        DiscordSessionTests.cpp
+        DiscordValidationTests.cpp
+        DiscordWorkerTests.cpp
         EngineMiniTestEnvironment.cpp
         GameModeRulesTests.cpp
         GeoIpCountryDatabaseTests.cpp

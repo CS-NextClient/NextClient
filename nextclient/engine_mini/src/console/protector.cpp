@@ -25,11 +25,15 @@ namespace
         g_Cbuf_AddText_called = true;
 
         if (text == nullptr || text[0] == '\0')
+        {
             return text;
+        }
 
         std::string_view cmd = text;
         if (cmd.starts_with(kPrivateResourceMsgMarker))
+        {
             return nullptr;
+        }
 
         g_CmdChecker->FilterCmd(cmd, g_CommandSource, g_FilteredCmd);
         return g_FilteredCmd.empty() ? nullptr : g_FilteredCmd.c_str();
@@ -46,7 +50,9 @@ namespace
     void Cbuf_AddFilteredTextHandler(const char* text, nitroapi::NextHandlerInterface<void, const char*>* next)
     {
         if (const char* filtered = FilterAddedText(text))
+        {
             next->Invoke(filtered);
+        }
     }
 
     void CL_ConnectionlessPacket(nitroapi::NextHandlerInterface<void>* next)
