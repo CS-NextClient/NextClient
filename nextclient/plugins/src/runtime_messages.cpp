@@ -140,7 +140,7 @@ int32_t nc_runtime_message(
                 int result = -1;
                 try
                 {
-                    result = invoke(*p, "filter", [&] {
+                    result = invoke(*p, CallbackCategory::Filter, [&] {
                         return filter.callback(
                             filter.user, name.c_str(), current.data(), static_cast<uint32_t>(current.size()), output, &count
                         );

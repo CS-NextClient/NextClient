@@ -578,16 +578,50 @@ TEST_F(GameApiRuntime, OwnedWindowsValidatePermissionsAndWidgetInput)
     ASSERT_EQ(result.at("ok"), true);
     const auto handle = std::to_string(result.at("handle").as<uint64_t>());
     ASSERT_EQ(parse(nc_runtime_windows()).get_array().size(), 1u);
-    nc_runtime_window_action(handle.c_str(), "check", "12");
+    EXPECT_EQ(nc_runtime_window_action(handle.c_str(), "check", "12"), 0);
+    EXPECT_EQ(parse(nc_runtime_windows()).at(0).at("items").at(0).at("value"), false);
     frame();
     EXPECT_EQ(count(), 0);
-    nc_runtime_window_action(handle.c_str(), "check", "true");
+    EXPECT_EQ(nc_runtime_window_action(handle.c_str(), "check", "true"), 1);
     frame();
     ASSERT_EQ(count(), 1);
     EXPECT_EQ(name(0), "sdk.ui");
     EXPECT_EQ(payload(0).at("value"), true);
     EXPECT_EQ(extension("nextclient.ui", "destroy", Json{{"handle", result.at("handle")}}).at("ok"), true);
     EXPECT_TRUE(parse(nc_runtime_windows()).get_array().empty());
+}
+TEST_F(GameApiRuntime, WindowListAndUtf8TextKeepAcceptedValuesAfterRejectedInput)
+{
+    install(PLUGIN_GAME_ALL_PATH);
+    const Json caption{{"en", "Test"}, {"ru", "Test"}};
+    const Json window{
+        {"title", caption},
+        {"surface", "all"},
+        {"interactive", true},
+        {"visible", true},
+        {"width", 400},
+        {"height", 300},
+        {"items",
+         Json::array(
+             {Json{{"id", "list"}, {"kind", "list"}, {"text", caption}, {"options", Json::array({caption, caption})}, {"value", 0}},
+              Json{{"id", "text"}, {"kind", "text"}, {"text", caption}, {"value", ""}}}
+         )}
+    };
+    const auto result = extension("nextclient.ui", "create", window);
+    ASSERT_EQ(result.at("ok"), true);
+    const auto handle = std::to_string(result.at("handle").as<uint64_t>());
+    EXPECT_EQ(nc_runtime_window_action(handle.c_str(), "list", "1"), 1);
+    EXPECT_EQ(nc_runtime_window_action(handle.c_str(), "list", R"("Test")"), 0);
+    std::string text;
+    for (int i = 0; i < 512; ++i)
+        text += "\xd0\xb0";
+    EXPECT_EQ(nc_runtime_window_action(handle.c_str(), "text", tao::json::to_string(Json(text)).c_str()), 1);
+    EXPECT_EQ(nc_runtime_window_action(handle.c_str(), "text", tao::json::to_string(Json(text + "x")).c_str()), 0);
+    const auto items = parse(nc_runtime_windows()).at(0).at("items");
+    EXPECT_EQ(items.at(0).at("value"), 1);
+    EXPECT_EQ(items.at(1).at("value"), text);
+    frame();
+    EXPECT_EQ(count(), 2);
 }
 TEST_F(GameApiRuntime, ServicesCrossDeclaredDependenciesAndRetireWithProvider)
 {

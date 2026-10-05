@@ -1,5 +1,6 @@
 #include "plugin_limits.h"
 #include "catalog.h"
+#include "pe_image.h"
 #include "runtime_budget.h"
 #include <nextclient/plugin.h>
 #include <windows.h>
@@ -148,11 +149,6 @@ namespace plugins
         check(s.size() <= limit && s.find('\0') == std::string::npos, "#NextPlugins_ErrorManifestString");
         return s;
     }
-    static bool id_ok(const std::string& id)
-    {
-        return !id.empty() && id.size() <= max_id_length &&
-               id.find_first_not_of("abcdefghijklmnopqrstuvwxyz0123456789._-") == std::string::npos;
-    }
     static std::array<unsigned, 3> version(const std::string& s)
     {
         std::array<unsigned, 3> result{};
@@ -213,7 +209,7 @@ namespace plugins
         check(integer(j.at("schema"), 0, UINT32_MAX) == 1, "#NextPlugins_ErrorManifestSchema");
         Manifest m;
         m.id = str(j, "id", max_id_length);
-        check(id_ok(m.id), "#NextPlugins_ErrorPluginId");
+        check(valid_id(m.id), "#NextPlugins_ErrorPluginId");
         m.name = str(j, "name", 128);
         m.author = str(j, "author", 128);
         m.description = str(j, "description");
@@ -255,7 +251,7 @@ namespace plugins
                 for (const auto& r : list->get_array())
                 {
                     Relation rel{str(r, "id", max_id_length), str(r, "version", 128), str(r, "reason", 512)};
-                    check(id_ok(rel.id) && rel.id != m.id, "#NextPlugins_ErrorRelationId");
+                    check(valid_id(rel.id) && rel.id != m.id, "#NextPlugins_ErrorRelationId");
                     matches("1.0.0", rel.range);
                     out.push_back(std::move(rel));
                 }
@@ -267,33 +263,13 @@ namespace plugins
         relations("after", m.after);
         return m;
     }
-    template <class T>
-    static T read(const std::vector<unsigned char>& b, size_t offset)
-    {
-        check(offset <= b.size() && sizeof(T) <= b.size() - offset, "#NextPlugins_ErrorPeTruncated");
-        T t;
-        std::memcpy(&t, b.data() + offset, sizeof(T));
-        return t;
-    }
     std::string pe_manifest(const std::vector<unsigned char>& b)
     {
-        auto dos = read<IMAGE_DOS_HEADER>(b, 0);
-        check(dos.e_magic == IMAGE_DOS_SIGNATURE && dos.e_lfanew > 0, "#NextPlugins_ErrorDosHeader");
-        size_t offset = static_cast<size_t>(dos.e_lfanew);
-        check(read<DWORD>(b, offset) == IMAGE_NT_SIGNATURE, "#NextPlugins_ErrorPeSignature");
-        auto header = read<IMAGE_FILE_HEADER>(b, offset + 4);
-        check(header.Machine == IMAGE_FILE_MACHINE_I386, "#NextPlugins_ErrorArchitecture");
-        check(header.Characteristics & IMAGE_FILE_DLL, "#NextPlugins_ErrorDll");
-        check(
-            header.NumberOfSections <= 96 && header.SizeOfOptionalHeader >= sizeof(IMAGE_OPTIONAL_HEADER32), "#NextPlugins_ErrorPeHeader"
-        );
-        auto optional = read<IMAGE_OPTIONAL_HEADER32>(b, offset + 4 + sizeof(header));
-        check(optional.Magic == IMAGE_NT_OPTIONAL_HDR32_MAGIC, "#NextPlugins_ErrorPe32");
-        offset += 4 + sizeof(header) + header.SizeOfOptionalHeader;
+        const PeImage image(b);
         std::string found;
-        for (unsigned i = 0; i < header.NumberOfSections; ++i)
+        for (unsigned i = 0; i < image.header.NumberOfSections; ++i)
         {
-            auto section = read<IMAGE_SECTION_HEADER>(b, offset + i * sizeof(IMAGE_SECTION_HEADER));
+            auto section = image.Section(i);
             if (std::memcmp(section.Name, ".nclmeta", 8) != 0)
                 continue;
             check(found.empty(), "#NextPlugins_ErrorMetadataDuplicate");

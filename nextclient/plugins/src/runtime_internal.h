@@ -1,8 +1,10 @@
 #pragma once
 #include "catalog.h"
 #include "plugin_file.h"
+#include "plugin_limits.h"
 #include "plugin_package.h"
 #include "runtime_budget.h"
+#include "runtime_callbacks.h"
 #include <nextclient/runtime.h>
 #include <deque>
 #include <map>
@@ -49,7 +51,6 @@ namespace plugins::runtime
         size_t pending_bytes{};
         double callback_ms{};
         std::map<uint64_t, std::string> results;
-        size_t result_bytes{};
         std::set<std::string> messages;
         struct Filter
         {
@@ -67,21 +68,7 @@ namespace plugins::runtime
             uint64_t count{}, slow{};
             double total_ms{}, max_ms{}, last_ms{};
         };
-        std::map<std::string, Timing> timings{
-            {"module", {}},
-            {"entry", {}},
-            {"load", {}},
-            {"unload", {}},
-            {"module_unload", {}},
-            {"command", {}},
-            {"setting", {}},
-            {"action", {}},
-            {"console", {}},
-            {"draw", {}},
-            {"frame", {}},
-            {"event", {}},
-            {"filter", {}}
-        };
+        std::array<Timing, callback_count> timings{};
     };
     struct DrawOperation
     {
@@ -109,7 +96,6 @@ namespace plugins::runtime
     bool available(const Loaded* plugin);
     bool permitted(const Loaded* plugin, uint32_t permission);
     std::string text(const char* value, size_t limit = 4096);
-    bool valid_id(const std::string& value);
     std::string cvar_name(const char* value);
     void discover();
     Json item_json(const Item& item);
@@ -128,29 +114,20 @@ namespace plugins::runtime
     Json resource_stats(const Loaded* plugin = nullptr);
     extern double frame_callback_ms;
     extern uint64_t deferred_callbacks;
-    enum class CallbackCategory
-    {
-        Event,
-        Frame,
-        Draw,
-        Command,
-        Filter,
-        Count
-    };
     extern std::array<bool, static_cast<size_t>(CallbackCategory::Count)> callback_categories;
     class CallbackScope
     {
         Loaded& plugin_;
-        const char* category_;
+        CallbackCategory category_;
         std::chrono::steady_clock::time_point begin_;
         std::string previous_;
 
     public:
-        CallbackScope(Loaded&, const char*) noexcept;
+        CallbackScope(Loaded&, CallbackCategory) noexcept;
         ~CallbackScope();
     };
     template <class F>
-    int invoke(Loaded& p, const char* category, F&& callback)
+    int invoke(Loaded& p, CallbackCategory category, F&& callback)
     {
         CallbackScope scope(p, category);
         try
@@ -177,6 +154,12 @@ namespace plugins::runtime
     void extensions_pump();
     void extensions_stop();
     const NcExtension* NC_CALL query_interface(void*, const char*, uint32_t);
+    struct StoreCandidate
+    {
+        Json value;
+        Budget memory;
+    };
+    StoreCandidate prepare_store(Loaded&, const Json& set, const Json& remove);
     void load_store(Loaded&);
     fs::path store_path(const Loaded&);
     Json extension_messages(Loaded&, const std::string&, const Json&);

@@ -588,19 +588,10 @@ namespace plugins::runtime
                 return 0;
             auto value = parse(text(json, 65536));
             Budget argument(json_memory(value));
-            load_store(*p);
-            Budget working(json_memory(p->store));
-            auto next = p->store;
-            next[key] = std::move(value);
-            if (next.get_object().size() > 1024 || tao::json::to_string(next).size() > 1024 * 1024)
-                return 0;
-            // Include the store's outer object in the depth limit, so a value
-            // accepted now is still readable after restarting the client.
-            parse(tao::json::to_string(next));
-            Budget candidate(json_memory(next));
-            write_json(store_path(*p), next);
-            p->store = std::move(next);
-            p->store_memory = std::move(candidate);
+            auto candidate = prepare_store(*p, Json{{key, std::move(value)}}, Json(tao::json::empty_array));
+            write_json(store_path(*p), candidate.value);
+            p->store = std::move(candidate.value);
+            p->store_memory = std::move(candidate.memory);
             return 1;
         }
         catch (...)
@@ -619,15 +610,10 @@ namespace plugins::runtime
             load_store(*p);
             if (!p->store.find(key))
                 return 1;
-            if (p->store_pending)
-                return 0;
-            Budget working(json_memory(p->store));
-            auto next = p->store;
-            next.erase(key);
-            Budget candidate(json_memory(next));
-            write_json(store_path(*p), next);
-            p->store = std::move(next);
-            p->store_memory = std::move(candidate);
+            auto candidate = prepare_store(*p, Json(tao::json::empty_object), Json::array({key}));
+            write_json(store_path(*p), candidate.value);
+            p->store = std::move(candidate.value);
+            p->store_memory = std::move(candidate.memory);
             return 1;
         }
         catch (...)

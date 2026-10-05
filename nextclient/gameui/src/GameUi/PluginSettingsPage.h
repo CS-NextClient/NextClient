@@ -14,10 +14,15 @@ class CPluginSettingsPage : public vgui2::PropertyPage
     DECLARE_CLASS_SIMPLE(CPluginSettingsPage, vgui2::PropertyPage);
 
 public:
-    CPluginSettingsPage(vgui2::Panel* parent, const tao::json::value& controls, vgui2::PropertyPage* original = nullptr);
+    CPluginSettingsPage(
+        vgui2::Panel* parent,
+        const tao::json::value& controls,
+        const PluginSettingsSnapshot& current,
+        vgui2::PropertyPage* original = nullptr
+    );
     void PerformLayout() override;
     void OnCommand(const char*) override;
-    void Collect(tao::json::value& values, const tao::json::value& current);
+    void Collect(tao::json::value& values, const PluginSettingsSnapshot& current);
     void OnPageShow() override;
     void OnPageHide() override;
     MESSAGE_FUNC(OnResetData, "ResetData");
@@ -34,6 +39,7 @@ private:
         vgui2::Panel* widget;
     };
     PluginSettingsState state_;
+    const PluginSettingsSnapshot& current_;
     void ResetControls();
     std::vector<Control> controls_;
     vgui2::PanelListPanel* list_;

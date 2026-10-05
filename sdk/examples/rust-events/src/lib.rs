@@ -1,5 +1,17 @@
 use nextclient_plugin::{self as nc, Host, Plugin, Result};
 
+#[cfg(feature = "abi-tests")]
+include!(concat!(env!("OUT_DIR"), "/abi_layout.rs"));
+
+#[cfg(feature = "abi-tests")]
+#[unsafe(no_mangle)]
+pub extern "C" fn nc_test_abi_layout() -> *const std::ffi::c_char {
+    static LAYOUT: std::sync::OnceLock<std::ffi::CString> = std::sync::OnceLock::new();
+    LAYOUT
+        .get_or_init(|| std::ffi::CString::new(abi_layout()).unwrap())
+        .as_ptr()
+}
+
 #[derive(Default)]
 struct Events;
 impl Plugin for Events {

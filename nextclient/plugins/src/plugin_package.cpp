@@ -1,4 +1,5 @@
 #include "plugin_package.h"
+#include "pe_image.h"
 #include <algorithm>
 #include <functional>
 #include <map>
@@ -15,63 +16,42 @@ namespace plugins
             std::transform(name.begin(), name.end(), name.begin(), [](wchar_t c) { return static_cast<wchar_t>(towlower(c)); });
             return name;
         }
-        template <class T>
-        T read(const std::vector<unsigned char>& bytes, size_t offset)
+        std::string filename_utf8(const fs::path& path)
         {
-            if (offset > bytes.size() || sizeof(T) > bytes.size() - offset)
-                throw std::runtime_error("Truncated PE");
-            T result;
-            std::memcpy(&result, bytes.data() + offset, sizeof(T));
-            return result;
+            const auto name = path.filename().u8string();
+            return {name.begin(), name.end()};
         }
         std::vector<std::wstring> imports(const std::vector<unsigned char>& bytes)
         {
-            const auto dos = read<IMAGE_DOS_HEADER>(bytes, 0);
-            if (dos.e_magic != IMAGE_DOS_SIGNATURE || dos.e_lfanew < 0)
-                throw std::runtime_error("Invalid PE");
-            const auto nt = read<IMAGE_NT_HEADERS32>(bytes, dos.e_lfanew);
-            if (nt.Signature != IMAGE_NT_SIGNATURE || nt.FileHeader.Machine != IMAGE_FILE_MACHINE_I386 ||
-                nt.OptionalHeader.Magic != IMAGE_NT_OPTIONAL_HDR32_MAGIC || !(nt.FileHeader.Characteristics & IMAGE_FILE_DLL))
-                throw std::runtime_error("Only x86 DLLs are supported");
-            if (nt.OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_DELAY_IMPORT].Size)
-                throw std::runtime_error("Package binaries must not use delay imports");
-            auto offset = [&](uint32_t rva) -> size_t {
-                for (size_t n = 0; n < nt.FileHeader.NumberOfSections; ++n)
-                {
-                    const auto section = read<IMAGE_SECTION_HEADER>(
-                        bytes,
-                        static_cast<size_t>(dos.e_lfanew) + 24 + nt.FileHeader.SizeOfOptionalHeader + n * sizeof(IMAGE_SECTION_HEADER)
-                    );
-                    if (rva >= section.VirtualAddress && rva - section.VirtualAddress < section.SizeOfRawData)
-                        return static_cast<size_t>(section.PointerToRawData) + (rva - section.VirtualAddress);
-                }
-                throw std::runtime_error("Invalid PE address");
-            };
+            const PeImage image(bytes);
+            if (image.optional.DataDirectory[IMAGE_DIRECTORY_ENTRY_DELAY_IMPORT].Size)
+                throw std::runtime_error(message("#NextPlugins_ErrorDelayImports"));
             std::vector<std::wstring> result;
-            const auto table = nt.OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_IMPORT];
+            const auto table = image.optional.DataDirectory[IMAGE_DIRECTORY_ENTRY_IMPORT];
             if (!table.VirtualAddress)
                 return result;
             for (size_t n = 0; n < 512; ++n)
             {
-                const auto row = read<IMAGE_IMPORT_DESCRIPTOR>(bytes, offset(table.VirtualAddress) + n * sizeof(IMAGE_IMPORT_DESCRIPTOR));
+                const auto row =
+                    image.Read<IMAGE_IMPORT_DESCRIPTOR>(image.Offset(table.VirtualAddress) + n * sizeof(IMAGE_IMPORT_DESCRIPTOR));
                 if (!row.Name)
                     return result;
-                auto start = offset(row.Name);
+                auto start = image.Offset(row.Name);
                 std::wstring name;
                 for (size_t i = 0; i < 128; ++i)
                 {
-                    const auto c = read<unsigned char>(bytes, start + i);
+                    const auto c = image.Read<unsigned char>(start + i);
                     if (!c)
                         break;
                     if (!(isalnum(c) || c == '-' || c == '_' || c == '.'))
-                        throw std::runtime_error("Unsafe DLL import name");
+                        throw std::runtime_error(message("#NextPlugins_ErrorUnsafeImport"));
                     name += static_cast<wchar_t>(c);
                 }
                 if (name.empty() || name.size() >= 128)
-                    throw std::runtime_error("Invalid DLL import name");
+                    throw std::runtime_error(message("#NextPlugins_ErrorInvalidImport"));
                 result.push_back(lower(name));
             }
-            throw std::runtime_error("Import limit exceeded");
+            throw std::runtime_error(message("#NextPlugins_ErrorImportLimit"));
         }
     } // namespace
     Package::~Package()
@@ -86,7 +66,7 @@ namespace plugins
         auto package = std::make_unique<Package>();
         auto lock_directory = [&](const fs::path& directory) {
             if (package->directories.size() >= 128)
-                throw std::runtime_error("Package directory limit exceeded");
+                throw std::runtime_error(message("#NextPlugins_ErrorPackageDirectoryLimit"));
             auto handle = CreateFileW(
                 directory.c_str(),
                 FILE_READ_ATTRIBUTES,
@@ -97,12 +77,12 @@ namespace plugins
                 nullptr
             );
             if (handle == INVALID_HANDLE_VALUE)
-                throw std::runtime_error("Cannot lock package directory");
+                throw std::runtime_error(message("#NextPlugins_ErrorLockPackage"));
             package->directories.push_back(handle);
         };
         lock_directory(path.parent_path());
         if (GetFileAttributesW(path.c_str()) & FILE_ATTRIBUTE_REPARSE_POINT)
-            throw std::runtime_error("Package links are not supported");
+            throw std::runtime_error(message("#NextPlugins_ErrorPackageLinks"));
         if (!fs::is_directory(path))
         {
             package->files.push_back(std::make_unique<File>(path));
@@ -117,13 +97,13 @@ namespace plugins
         for (const auto& file : fs::recursive_directory_iterator(path))
         {
             if (GetFileAttributesW(file.path().c_str()) & FILE_ATTRIBUTE_REPARSE_POINT)
-                throw std::runtime_error("Package links are not supported");
+                throw std::runtime_error(message("#NextPlugins_ErrorPackageLinks"));
             if (file.is_regular_file())
                 paths.push_back(file.path());
             else if (file.is_directory())
                 lock_directory(file.path());
             if (paths.size() > 128)
-                throw std::runtime_error("Package file limit exceeded");
+                throw std::runtime_error(message("#NextPlugins_ErrorPackageFileLimit"));
         }
         std::sort(paths.begin(), paths.end());
         std::string digest;
@@ -136,13 +116,13 @@ namespace plugins
             const auto bytes = package->files.back()->Read(true);
             total += bytes.size();
             if (total > 256 * 1024 * 1024)
-                throw std::runtime_error("Package size limit exceeded");
+                throw std::runtime_error(message("#NextPlugins_ErrorPackageSize"));
             const auto relative = file.lexically_relative(path).generic_u8string();
             digest += std::to_string(relative.size()) + ":" + std::string(relative.begin(), relative.end()) + ":" + sha256(bytes) + "\n";
             if (lower(file.extension().wstring()) == L".dll")
             {
                 if (file.parent_path() != path)
-                    throw std::runtime_error("DLLs must be in the package root");
+                    throw std::runtime_error(message("#NextPlugins_ErrorNestedDll"));
                 imports(bytes);
                 package->binaries.push_back(index);
                 if (lower(file.filename().wstring()) == L"plugin.dll")
@@ -154,7 +134,7 @@ namespace plugins
             }
         }
         if (!found)
-            throw std::runtime_error("Package is missing plugin.dll");
+            throw std::runtime_error(message("#NextPlugins_ErrorMissingPluginDll"));
         package->hash = sha256(std::vector<unsigned char>(digest.begin(), digest.end()));
         return package;
     }
@@ -168,9 +148,9 @@ namespace plugins
             // Entry points may share the conventional plugin.dll filename. Imports
             // must never bind to an entry point belonging to another package.
             if (i != entry && GetModuleHandleW(name.c_str()))
-                throw std::runtime_error("Companion DLL name already loaded");
+                throw std::runtime_error(message("#NextPlugins_ErrorCompanionCollision", {filename_utf8(name)}));
             if (!names.emplace(name, i).second)
-                throw std::runtime_error("Duplicate DLL name");
+                throw std::runtime_error(message("#NextPlugins_ErrorDuplicateDll", {filename_utf8(name)}));
             dependencies[i] = imports(files[i]->Read());
         }
         std::vector<size_t> order;
@@ -179,13 +159,13 @@ namespace plugins
             if (visited.count(index))
                 return;
             if (!visiting.insert(index).second)
-                throw std::runtime_error("Circular package imports");
+                throw std::runtime_error(message("#NextPlugins_ErrorCircularImports"));
             for (const auto& name : dependencies[index])
             {
                 if (auto it = names.find(name); it != names.end())
                 {
                     if (it->second == entry)
-                        throw std::runtime_error("Companions cannot import the plugin entry DLL");
+                        throw std::runtime_error(message("#NextPlugins_ErrorEntryImport", {filename_utf8(name)}));
                     visit(it->second);
                 }
                 else if (!GetModuleHandleW(name.c_str()))
@@ -194,7 +174,7 @@ namespace plugins
                     // directory or package-directory search is ever enabled.
                     auto module = LoadLibraryExW(name.c_str(), nullptr, LOAD_LIBRARY_SEARCH_SYSTEM32);
                     if (!module)
-                        throw std::runtime_error("External dependency unavailable in System32");
+                        throw std::runtime_error(message("#NextPlugins_ErrorSystemImport", {filename_utf8(name)}));
                     modules.push_back(module);
                 }
             }
@@ -210,7 +190,7 @@ namespace plugins
         {
             auto module = LoadLibraryExW(files[i]->ResolvedPath().c_str(), nullptr, LOAD_LIBRARY_SEARCH_SYSTEM32);
             if (!module)
-                throw std::runtime_error("Cannot load approved DLL");
+                throw std::runtime_error(message("#NextPlugins_ErrorLoadPackageDll", {filename_utf8(files[i]->ResolvedPath())}));
             modules.push_back(module);
             if (i == entry)
                 result = module;

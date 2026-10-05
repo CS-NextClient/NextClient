@@ -64,7 +64,7 @@ namespace plugins::runtime
         extensions_detach(p); // Invalidates cancellation tokens before freeing data.
         p.pending.clear();
         p.pending.shrink_to_fit();
-        p.pending_bytes = p.result_bytes = 0;
+        p.pending_bytes = 0;
         p.results.clear();
         p.store = p.values = p.windows = tao::json::empty_object;
         p.tabs = p.controls = p.settings = tao::json::empty_array;
@@ -101,7 +101,7 @@ void nc_runtime_command(NcCommand* command, const NcPlayer* player)
         if (!p->failed && p->api.command && ordered_callback_budget(index, preferred))
         {
             auto before = *command;
-            int result = invoke(*p, "command", [&] { return p->api.command(command, player); });
+            int result = invoke(*p, CallbackCategory::Command, [&] { return p->api.command(command, player); });
             bool finite = std::isfinite(command->forward_move) && std::isfinite(command->side_move) && std::isfinite(command->up_move);
             for (auto f : command->view_angles)
                 finite &= std::isfinite(f);
@@ -141,7 +141,7 @@ void nc_runtime_console(int32_t argc, const char* const* argv)
             for (const auto& id : p->commands)
                 if (!_stricmp(("nc." + p->item.manifest.id + "." + id).c_str(), argv[0]))
                 {
-                    if (invoke(*p, "console", [&] { return p->api.console_command(id.c_str(), argc - 1, argv + 1); }) != 0)
+                    if (invoke(*p, CallbackCategory::Console, [&] { return p->api.console_command(id.c_str(), argc - 1, argv + 1); }) != 0)
                         fail(*p);
                     return;
                 }
@@ -194,7 +194,7 @@ void nc_runtime_draw(const NcDrawContext* context)
             }
             draw_text_bytes = 0;
             drawing = p.get();
-            const int result = invoke(*p, "draw", [&] { return p->api.draw(context); });
+            const int result = invoke(*p, CallbackCategory::Draw, [&] { return p->api.draw(context); });
             drawing = nullptr;
             if (result != 0)
             {
@@ -263,7 +263,7 @@ void nc_runtime_frame(const NcSession* context)
         {
             auto loss = tao::json::to_string(Json{{"dropped", p->dropped}, {"first", p->first_dropped}, {"last", p->last_dropped}});
             p->first_dropped = p->last_dropped = 0;
-            if (invoke(*p, "event", [&] { return p->api.event("sdk.overflow", loss.c_str()); }) != 0)
+            if (invoke(*p, CallbackCategory::Event, [&] { return p->api.event("sdk.overflow", loss.c_str()); }) != 0)
                 fail(*p);
             ++counts[index];
             ++total;
@@ -283,7 +283,8 @@ void nc_runtime_frame(const NcSession* context)
             if ((event.direct || (found != subscriptions.end() && event.serial >= found->second)) && permitted(p.get(), event.permission) &&
                 p->api.event)
             {
-                const auto result = invoke(*p, "event", [&] { return p->api.event(event.name.c_str(), event.json.c_str()); });
+                const auto result =
+                    invoke(*p, CallbackCategory::Event, [&] { return p->api.event(event.name.c_str(), event.json.c_str()); });
                 ++p->delivered;
                 if (result != 0)
                     fail(*p);
@@ -325,7 +326,7 @@ void nc_runtime_frame(const NcSession* context)
             continue;
         }
         frame_cursor = index + 1;
-        if (invoke(*p, "frame", [&] { return p->api.frame(context); }) != 0)
+        if (invoke(*p, CallbackCategory::Frame, [&] { return p->api.frame(context); }) != 0)
             fail(*p);
     }
 }

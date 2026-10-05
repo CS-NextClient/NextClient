@@ -10,6 +10,9 @@ crate-type = ["cdylib"]
 [dependencies]
 nextclient-plugin = { path = "../../rust" }
 
+[features]
+abi-tests = []
+
 [profile.release]
 lto = true
 panic = "unwind"

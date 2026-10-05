@@ -123,6 +123,11 @@ if (MSVC)
             vgui2)
         target_link_libraries(${_tgt} PRIVATE "${YY_THUNKS_WIN7_OBJ}")
     endforeach ()
+    if (NEXTCLIENT_WITH_PLUGINS)
+        foreach (_tgt next_plugins plugin_life_stats)
+            target_link_libraries(${_tgt} PRIVATE "${YY_THUNKS_WIN7_OBJ}")
+        endforeach ()
+    endif ()
 endif ()
 
 # Install directory: cache variable with env fallback

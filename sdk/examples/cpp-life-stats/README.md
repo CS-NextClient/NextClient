@@ -30,6 +30,11 @@ The plugin waits 0.25 seconds for the final damage update, prints the report to
 the console, and displays chat lines 0.6 seconds apart. All output is local;
 the plugin does not request permission to send chat or change gameplay.
 
+Reports and player snapshots wait until queued events have been delivered. If
+the host reports lost events, the current totals are discarded with a local
+warning. Tracking resumes after the backlog drains and a new spawn, round, or
+map begins.
+
 The fatal damage update is matched to the local death message for its attacker
 and weapon. Earlier updates use the received damage flags, when provided;
 standard servers filter most damage types out of these flags. A later suicide

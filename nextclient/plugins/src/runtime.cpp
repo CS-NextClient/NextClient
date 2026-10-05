@@ -37,11 +37,6 @@ namespace plugins::runtime
             throw std::runtime_error(message("#NextPlugins_ErrorSdkString"));
         return {s, n};
     }
-    bool valid_id(const std::string& s)
-    {
-        return !s.empty() && s.size() <= max_id_length &&
-               s.find_first_not_of("abcdefghijklmnopqrstuvwxyz0123456789._-") == std::string::npos;
-    }
 } // namespace plugins::runtime
 
 using namespace plugins;
@@ -139,7 +134,7 @@ void nc_runtime_start(const wchar_t* directory, int safe_mode)
                 // game already loaded. Never search an unapproved plugin folder.
                 recovery_loading(*p);
                 {
-                    CallbackScope scope(*p, "module");
+                    CallbackScope scope(*p, CallbackCategory::Module);
                     p->module = p->package->Load();
                 }
                 if (!p->module)
@@ -149,7 +144,7 @@ void nc_runtime_start(const wchar_t* directory, int safe_mode)
                     throw std::runtime_error(message("#NextPlugins_ErrorEntryMissing"));
                 const NcPlugin* api;
                 {
-                    CallbackScope scope(*p, "entry");
+                    CallbackScope scope(*p, CallbackCategory::Entry);
                     api = entry();
                 }
                 if (!api || api->size < sizeof(NcPlugin) || api->abi != NC_ABI_VERSION || api->api != NC_API_VERSION || !api->load)
@@ -157,7 +152,7 @@ void nc_runtime_start(const wchar_t* directory, int safe_mode)
                 p->api = *api;
                 extensions_attach(*p);
                 p->host = make_host(*p);
-                if (invoke(*p, "load", [&] { return p->api.load(&p->host); }) != 0)
+                if (invoke(*p, CallbackCategory::Load, [&] { return p->api.load(&p->host); }) != 0)
                     throw std::runtime_error(message("#NextPlugins_ErrorInitialization"));
                 p->registering = false;
                 if (!install_commands(*p))
@@ -207,7 +202,7 @@ void nc_runtime_stop()
         auto& p = **it;
         p.failed = true;
         if (p.api.unload)
-            invoke(p, "unload", [&] {
+            invoke(p, CallbackCategory::Unload, [&] {
                 p.api.unload();
                 return 0;
             });
@@ -220,7 +215,7 @@ void nc_runtime_stop()
         // Package destruction runs DLL_PROCESS_DETACH for entry and companions.
         // Keep both the owner and its timing record alive through that code.
         {
-            CallbackScope scope(p, "module_unload");
+            CallbackScope scope(p, CallbackCategory::ModuleUnload);
             p.package.reset();
             p.module = nullptr;
         }

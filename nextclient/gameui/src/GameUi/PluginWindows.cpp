@@ -1,4 +1,5 @@
 #include "PluginWindows.h"
+#include "PluginWindowState.h"
 #include "PluginLocalization.h"
 #include "BasePanel.h"
 #include <nextclient/runtime.h>
@@ -30,7 +31,10 @@ namespace
             Panel(parent, "PluginRow"),
             cells_(std::move(children))
         {
-            SetTall(32);
+            int height = 24;
+            for (auto* cell : cells_)
+                height = std::max(height, cell->GetTall());
+            SetTall(PluginRowHeight(height));
             SetPaintBackgroundEnabled(false);
             for (auto* cell : cells_)
                 cell->SetParent(this);
@@ -98,7 +102,7 @@ namespace
             if (auto specs = spec.find("fonts"))
                 for (const auto& font : specs->get_array())
                 {
-                    const auto key = tao::json::to_string(font);
+                    const auto key = PluginFontKey(font);
                     auto found = fontCache.find(key);
                     if (found == fontCache.end() && fontCache.size() < 128)
                     {
@@ -167,10 +171,19 @@ namespace
                 }
                 if (!widget)
                     widget = new vgui2::Label(this, id.c_str(), title.c_str());
+                int contentHeight = 24;
+                if (kind == "image")
+                    for (const auto& texture : spec.at("textures").get_array())
+                        if (texture.at("id") == item.at("texture"))
+                            contentHeight = texture.at("height").as<int>();
                 if (auto font = item.find("font"))
                     if (auto found = fonts.find(font->get_string()); found != fonts.end())
                         if (auto* label = dynamic_cast<vgui2::Label*>(widget))
+                        {
                             label->SetFont(found->second);
+                            contentHeight = std::max(contentHeight, vgui2::surface()->GetFontTall(found->second));
+                        }
+                widget->SetTall(contentHeight);
                 widgets_.push_back(widget);
             }
             std::map<int, std::vector<vgui2::Panel*>> rows;
@@ -234,29 +247,45 @@ namespace
             for (size_t i = 0; i < widgets_.size(); ++i)
             {
                 auto& item = spec_["items"].at(i);
-                Json value;
-                if (auto* check = dynamic_cast<vgui2::CheckButton*>(widgets_[i]))
-                    value = check->IsSelected();
-                else if (auto* slider = dynamic_cast<vgui2::Slider*>(widgets_[i]))
-                    value = slider->GetValue();
-                else if (auto* entry = dynamic_cast<vgui2::TextEntry*>(widgets_[i]))
+                struct Reader
                 {
-                    wchar_t text[1025]{};
-                    entry->GetText(text, sizeof(text));
-                    char utf8[4097]{};
-                    WideCharToMultiByte(CP_UTF8, 0, text, -1, utf8, sizeof(utf8), nullptr, nullptr);
-                    value = std::string(utf8);
-                }
-                else if (auto* list = dynamic_cast<vgui2::ComboBox*>(widgets_[i]))
-                    value = list->GetActiveItem();
-                else
+                    vgui2::Panel* widget;
+                    bool Checked() const
+                    {
+                        return static_cast<vgui2::CheckButton*>(widget)->IsSelected();
+                    }
+                    int SliderValue() const
+                    {
+                        return static_cast<vgui2::Slider*>(widget)->GetValue();
+                    }
+                    int Selection() const
+                    {
+                        return static_cast<vgui2::ComboBox*>(widget)->GetActiveItem();
+                    }
+                    std::string Text() const
+                    {
+                        auto* entry = static_cast<vgui2::TextEntry*>(widget);
+                        wchar_t text[1025]{};
+                        entry->GetText(text, sizeof(text));
+                        char utf8[4097]{};
+                        WideCharToMultiByte(CP_UTF8, 0, text, -1, utf8, sizeof(utf8), nullptr, nullptr);
+                        const auto bounded = PluginInputText(utf8);
+                        if (bounded != utf8)
+                            entry->SetText(PluginWide(bounded).c_str());
+                        return bounded;
+                    }
+                } reader{widgets_[i]};
+                auto value = ReadPluginInput(item.at("kind").get_string(), reader);
+                if (!value)
                     continue;
-                if (value != item.at("value"))
+                if (*value != item.at("value"))
                 {
-                    nc_runtime_window_action(
-                        spec_.at("handle").get_string().c_str(), item.at("id").get_string().c_str(), tao::json::to_string(value).c_str()
-                    );
-                    item["value"] = value;
+                    if (nc_runtime_window_action(
+                            spec_.at("handle").get_string().c_str(),
+                            item.at("id").get_string().c_str(),
+                            tao::json::to_string(*value).c_str()
+                        ))
+                        item["value"] = std::move(*value);
                 }
             }
         }
@@ -274,14 +303,16 @@ void PluginWindowsFrame(vgui2::VPANEL root, bool menuVisible)
 {
     try
     {
-        const std::string next = nc_runtime_windows();
+        const std::string_view next = nc_runtime_windows();
         const auto currentLanguage = PluginLanguage();
-        if (next != snapshot)
+        const bool changed = next != snapshot;
+        const bool translated = currentLanguage != language;
+        if (changed)
         {
             specifications = tao::json::from_string(next);
             snapshot = next;
         }
-        if (currentLanguage != language)
+        if (translated)
         {
             windows.clear();
             language = currentLanguage;
@@ -293,7 +324,7 @@ void PluginWindowsFrame(vgui2::VPANEL root, bool menuVisible)
             auto id = spec.at("handle").get_string();
             current.insert(id);
             auto& window = windows[id];
-            if (window)
+            if (window && changed)
             {
                 auto visible = window->spec_;
                 visible["visible"] = spec.at("visible");
@@ -325,7 +356,8 @@ void PluginWindowsFrame(vgui2::VPANEL root, bool menuVisible)
                 it = windows.erase(it);
             else
                 ++it;
-        BasePanel()->UpdatePluginMenus(specs);
+        if (changed || translated)
+            BasePanel()->UpdatePluginMenus(specs);
     }
     catch (...)
     {}

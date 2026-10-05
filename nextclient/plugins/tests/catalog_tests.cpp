@@ -605,6 +605,49 @@ TEST_F(Runtime, ApprovedCompanionsLoadInDependencyOrderAndDiscoveryDoesNotExecut
     nc_runtime_stop();
     EXPECT_EQ(GetModuleHandleW(L"plugin-companion.dll"), nullptr);
 }
+TEST_F(Runtime, MissingCompanionReportsItsNameAndTranslatableReason)
+{
+    nc_runtime_stop();
+    fs::remove(dir / L"plugins" / L"settings.dll");
+    const auto folder = dir / L"plugins" / L"package";
+    fs::create_directory(folder);
+    fs::copy_file(PLUGIN_PACKAGE_PATH, folder / L"plugin.dll");
+    nc_runtime_start(dir.c_str(), 0);
+    enable();
+    restart();
+    const auto state = parse(nc_runtime_catalog());
+    const auto row = state.at("plugins").at(0);
+    EXPECT_FALSE(row.at("running").get_boolean());
+    const auto error = state.at("error").get_string();
+    EXPECT_NE(error.find("#NextPlugins_ErrorSystemImport"), std::string::npos);
+    EXPECT_NE(error.find("plugin-companion.dll"), std::string::npos);
+    EXPECT_EQ(error.find("#NextPlugins_ErrorUnexpected"), std::string::npos);
+}
+TEST_F(Runtime, RecommendationWarningsDescribeTheReturnedOrder)
+{
+    nc_runtime_stop();
+    fs::copy_file(PLUGIN_PROBE_PATH, dir / L"plugins" / L"z-probe.dll");
+    // Reuse the metadata-only discovery fixture with a soft ordering rule.
+    std::ifstream source(PLUGIN_DEPENDENT_PATH, std::ios::binary);
+    std::string bytes(std::istreambuf_iterator<char>(source), {});
+    const auto rule = bytes.find("\"requires\"");
+    ASSERT_NE(rule, std::string::npos);
+    bytes.replace(rule, 10, "\"after\"   ");
+    {
+        std::ofstream target(dir / L"plugins" / L"a-dependent.dll", std::ios::binary);
+        target.write(bytes.data(), bytes.size());
+    }
+    nc_runtime_start(dir.c_str(), 0);
+    auto rows = catalog();
+    for (auto& row : rows.get_array())
+        row["enabled"] = true;
+    const auto before = tao::json::to_string(rows);
+    EXPECT_STRNE(nc_runtime_order_warnings(before.c_str()), "");
+    const auto result = parse(nc_runtime_recommend(before.c_str()));
+    ASSERT_NE(result.find("plugins"), nullptr);
+    EXPECT_EQ(result.at("warning"), "");
+    EXPECT_STREQ(nc_runtime_order_warnings(tao::json::to_string(result.at("plugins")).c_str()), "");
+}
 TEST_F(Runtime, ChangedBinaryRevokesApproval)
 {
     enable();
@@ -1101,10 +1144,10 @@ TEST(PluginSettingsState, RetiredOwnersCannotSupplyCachedControls)
         {"id":"active","controls":[{"id":"enabled","value":1}]}
     ])");
     auto spec = tao::json::from_string(R"({"owner":"retired","id":"enabled"})");
-    EXPECT_EQ(FindPluginControl(plugins, spec), nullptr);
+    EXPECT_EQ(PluginSettingsSnapshot(plugins).Find(spec), nullptr);
     spec["owner"] = "active";
-    ASSERT_NE(FindPluginControl(plugins, spec), nullptr);
-    EXPECT_EQ(FindPluginControl(plugins, spec)->at("value"), 1);
+    ASSERT_NE(PluginSettingsSnapshot(plugins).Find(spec), nullptr);
+    EXPECT_EQ(PluginSettingsSnapshot(plugins).Find(spec)->at("value"), 1);
     spec["id"] = "removed";
-    EXPECT_EQ(FindPluginControl(plugins, spec), nullptr);
+    EXPECT_EQ(PluginSettingsSnapshot(plugins).Find(spec), nullptr);
 }

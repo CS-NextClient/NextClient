@@ -35,13 +35,11 @@ namespace nextclient
                     api->release_result(context, handle);
                 }
             } guard{api, host_->context, handle};
-            const auto size = api->read_result(host_->context, handle, nullptr, 0);
-            if (!size || size > 1024 * 1024)
+            std::string result;
+            if (!read_string(
+                    [&](char* out, uint32_t size) { return api->read_result(host_->context, handle, out, size); }, result, 1024 * 1024
+                ))
                 throw std::exception();
-            std::string result(size, '\0');
-            if (api->read_result(host_->context, handle, result.data(), size) != size)
-                throw std::exception();
-            result.pop_back();
             return result;
         }
         virtual ~Plugin() = default;
@@ -117,18 +115,7 @@ namespace nextclient
         }
         bool read_cvar(const char* name, std::string& value) const
         {
-            value.clear();
-            auto size = host_->read_cvar(host_->context, name, nullptr, 0);
-            if (!size || size > 65536)
-                return false;
-            value.resize(size);
-            if (host_->read_cvar(host_->context, name, value.data(), size) != size)
-            {
-                value.clear();
-                return false;
-            }
-            value.resize(size - 1);
-            return true;
+            return read_string([&](char* out, uint32_t size) { return host_->read_cvar(host_->context, name, out, size); }, value, 65535);
         }
         bool write_cvar(const char* name, const char* value) const
         {
@@ -175,20 +162,25 @@ namespace nextclient
             return host_->subscribe_event(host_->context, name, enable) != 0;
         }
         template <class Read>
-        static bool json_result(Read read, std::string& value)
+        static bool read_string(Read read, std::string& value, uint32_t payload_limit)
         {
             value.clear();
             const auto size = read(nullptr, 0);
-            if (!size || size > 1024 * 1024 + 1)
+            if (!size || static_cast<uint64_t>(size) > static_cast<uint64_t>(payload_limit) + 1)
                 return false;
-            value.resize(size);
-            if (read(value.data(), size) != size)
+            value.assign(size, '\xff');
+            if (read(value.data(), size) != size || value.back() != '\0')
             {
                 value.clear();
                 return false;
             }
             value.resize(size - 1);
             return true;
+        }
+        template <class Read>
+        static bool json_result(Read read, std::string& value)
+        {
+            return read_string(read, value, 1024 * 1024);
         }
         bool game_data(const char* section, int32_t index, std::string& json) const
         {

@@ -44,6 +44,7 @@ NC_RUNTIME const char* nc_runtime_stats();
 NC_RUNTIME int32_t nc_runtime_recovery_pending();
 NC_RUNTIME const char* nc_runtime_acknowledge_recovery();
 NC_RUNTIME const char* nc_runtime_recommend(const char* selection);
+NC_RUNTIME const char* nc_runtime_order_warnings(const char* selection);
 NC_RUNTIME const char* nc_runtime_save(const char* selection);
 NC_RUNTIME const char* nc_runtime_ui();
 NC_RUNTIME const char* nc_runtime_settings(const char* values);
@@ -60,7 +61,8 @@ NC_RUNTIME void nc_runtime_event(const char* name, const char* json);
 NC_RUNTIME void nc_runtime_cvar_changed(const char* name, const char* before, const char* after);
 NC_RUNTIME int32_t nc_runtime_ui_hidden(uint32_t element);
 NC_RUNTIME const char* nc_runtime_windows();
-NC_RUNTIME void nc_runtime_window_action(const char* handle, const char* id, const char* json);
+// Returns one only when the host accepted the input; this is not an SDK export.
+NC_RUNTIME int32_t nc_runtime_window_action(const char* handle, const char* id, const char* json);
 NC_RUNTIME int32_t nc_runtime_message(
     const char* name,
     const uint8_t* bytes,

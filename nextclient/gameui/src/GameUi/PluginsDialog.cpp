@@ -261,9 +261,7 @@ void CPluginsDialog::OnItemSelected()
     }
     // Recommendations are advisory. Surface violations without changing the
     // user's order or introducing an additional restart confirmation.
-    auto advice = tao::json::from_string(nc_runtime_recommend(SelectionJson().c_str()));
-    if (auto warning = advice.find("warning"))
-        info += "\n" + PluginDiagnostic(warning->get_string());
+    info += "\n" + PluginDiagnostic(nc_runtime_order_warnings(SelectionJson().c_str()));
     details_->SetText(PluginWide(info).c_str());
     if (detailsTabs_ && detailsTabs_->GetActivePage() == diagnostics_)
         RefreshDiagnostics(tao::json::from_string(nc_runtime_stats()));

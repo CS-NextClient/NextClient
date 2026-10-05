@@ -1,6 +1,8 @@
 #include "GameUi.h"
 #include "GameUINext.h"
 #include "BasePanel.h"
+#include "GameMenuOrder.h"
+#include <limits>
 
 #include "vgui/IInputInternal.h"
 #include "vgui/ILocalize.h"
@@ -142,6 +144,7 @@ void CGameMenuItem::OnCursorExited(void)
 class CGameMenu : public vgui2::Menu
 {
     DECLARE_CLASS_SIMPLE(CGameMenu, vgui2::Menu);
+    GameMenuOrder order_;
 
 public:
     CGameMenu(vgui2::Panel *parent, const char *name) : BaseClass(parent, name)
@@ -185,7 +188,15 @@ public:
         item->SetText(itemText);
         item->SetUserData(userData);
 
-        return BaseClass::AddMenuItem(item);
+        const int id = BaseClass::AddMenuItem(item);
+        order_.Add(id);
+        return id;
+    }
+
+    void DeleteItem(int id)
+    {
+        order_.Remove(id);
+        BaseClass::DeleteItem(id);
     }
 
     virtual void SetMenuItemBlinkingState(const char *itemName, bool state)
@@ -283,33 +294,15 @@ public:
             }
         }
 
-        if (!isInGame)
-        {
-            for (int j = 0; j < GetChildCount() - 2; j++)
-                MoveMenuItem(j, j + 1);
-        }
-        else
-        {
-            for (int i = 0; i < GetChildCount(); i++)
-            {
-                for (int j = i; j < GetChildCount() - 2; j++)
-                {
-                    int iID1 = GetMenuID(j);
-                    int iID2 = GetMenuID(j + 1);
-
-                    vgui2::MenuItem *menuItem1 = GetMenuItem(iID1);
-                    vgui2::MenuItem *menuItem2 = GetMenuItem(iID2);
-
-                    KeyValues *kv1 = menuItem1->GetUserData();
-                    KeyValues *kv2 = menuItem2->GetUserData();
-                    if (kv1 && kv2)
-                    {
-                        if (kv1->GetInt("InGameOrder") > kv2->GetInt("InGameOrder"))
-                            MoveMenuItem(iID2, iID1);
-                    }
-                }
-            }
-        }
+        order_.Apply(
+            isInGame,
+            [&](int id) {
+                auto *item = GetMenuItem(id);
+                auto *data = item ? item->GetUserData() : nullptr;
+                return data ? data->GetInt("InGameOrder") : std::numeric_limits<int>::max();
+            },
+            [&](int id, int before) { MoveMenuItem(id, before); }
+        );
 
         InvalidateLayout();
 

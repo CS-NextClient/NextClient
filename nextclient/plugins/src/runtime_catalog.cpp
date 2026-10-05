@@ -278,6 +278,19 @@ const char* nc_runtime_catalog()
     }
     return output.c_str();
 }
+const char* nc_runtime_order_warnings(const char* raw)
+{
+    static std::string output;
+    try
+    {
+        output = ordering_warnings(selection(raw));
+    }
+    catch (const std::exception& e)
+    {
+        output = error_message(e);
+    }
+    return output.c_str();
+}
 const char* nc_runtime_recommend(const char* raw)
 {
     static std::string output;
@@ -287,9 +300,13 @@ const char* nc_runtime_recommend(const char* raw)
         std::string warning;
         auto indices = recommend(selected, warning);
         Json list = tao::json::empty_array;
+        std::vector<Item> ordered;
         for (auto n : indices)
+        {
             list.push_back(item_json(selected[n]));
-        output = tao::json::to_string(Json{{"plugins", list}, {"warning", warning.empty() ? ordering_warnings(selected) : warning}});
+            ordered.push_back(selected[n]);
+        }
+        output = tao::json::to_string(Json{{"plugins", list}, {"warning", warning.empty() ? ordering_warnings(ordered) : warning}});
     }
     catch (const std::exception& e)
     {

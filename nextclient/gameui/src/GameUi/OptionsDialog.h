@@ -4,6 +4,9 @@
 #include "vgui_controls/KeyRepeat.h"
 #include "utldict.h"
 #include <vector>
+#if NEXTCLIENT_WITH_PLUGINS
+#include "PluginSettingsState.h"
+#endif
 
 class COptionsDialog : public COverflowPropertyDialog
 {
@@ -19,6 +22,7 @@ public:
     void OpenTab(const char *tabName);
     void OpenCrosshairSettings();
     bool OnOK(bool applyOnly) override;
+    void ResetAllData();
 
 public:
     void Activate(void);
@@ -34,6 +38,7 @@ private:
     class COptionsSubGame *m_pOptionsSubGame;
 #if NEXTCLIENT_WITH_PLUGINS
     std::vector<class CPluginSettingsPage *> m_pluginPages;
+    PluginSettingsSnapshot m_pluginSettings;
 #endif
     class COptionsSubKeyboard *m_pOptionsSubKeyboard;
     class COptionsSubMouse *m_pOptionsSubMouse;

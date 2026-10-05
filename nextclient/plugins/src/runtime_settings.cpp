@@ -175,7 +175,7 @@ const char* nc_runtime_settings(const char* raw)
             // Notify each committed owner even if a later owner's disk write fails.
             for (const auto& c : changes)
                 if (c.p == p && !p->failed && p->api.setting_changed &&
-                    invoke(*p, "setting", [&] { return p->api.setting_changed(c.id.c_str(), c.value); }) != 0)
+                    invoke(*p, CallbackCategory::Setting, [&] { return p->api.setting_changed(c.id.c_str(), c.value); }) != 0)
                     fail(*p);
         }
     }
@@ -193,7 +193,7 @@ void nc_runtime_action(const char* owner, const char* id)
             for (const auto& c : p->controls.get_array())
                 if (c.at("id") == id && c.at("kind").as<unsigned>() == NC_BUTTON)
                 {
-                    if (invoke(*p, "action", [&] { return p->api.action(id); }) != 0)
+                    if (invoke(*p, CallbackCategory::Action, [&] { return p->api.action(id); }) != 0)
                         fail(*p);
                     return;
                 }

@@ -178,6 +178,7 @@ namespace
     std::vector<std::string> console, chat;
     int network_calls;
     bool alive, spectator, accept_chat;
+    int current_health;
     NcSession current_session;
     int32_t Player(NcPlayerState* value)
     {
@@ -185,7 +186,7 @@ namespace
         value->size = sizeof(*value);
         value->index = 1;
         value->flags = NC_PLAYER_VALID | (spectator ? 0 : NC_PLAYER_ACTIVE);
-        value->health = alive ? 100 : 0;
+        value->health = alive ? current_health : 0;
         return 1;
     }
     int32_t Session(NcSession* value)
@@ -228,6 +229,7 @@ protected:
         chat.clear();
         network_calls = 0;
         alive = accept_chat = true;
+        current_health = 100;
         spectator = false;
         current_session = {};
         current_session.size = sizeof(current_session);
@@ -270,7 +272,65 @@ protected:
             nc_runtime_frame(&current_session);
         }
     }
+    void Backlog(int count)
+    {
+        for (int i = 0; i < count; ++i)
+            nc_runtime_event("player.joined", R"({"index":2,"name":"Alice"})");
+    }
 };
+TEST_F(LifeStatsPlugin, DeferredHealthDoesNotTurnAnOlderUpdateIntoHealing)
+{
+    Backlog(129);
+    nc_runtime_event("player.health", R"({"health":75,"time":1})");
+    nc_runtime_event("player.damage", R"({"health":25,"armor":0,"time":1})");
+    nc_runtime_event("player.health", R"({"health":50,"time":2})");
+    nc_runtime_event("player.damage", R"({"health":25,"armor":0,"time":2})");
+    current_health = 50;
+    Frame(10);
+    nc_runtime_event("player.health", R"({"health":0,"time":3})");
+    nc_runtime_event("player.damage", R"({"health":100,"armor":0,"time":3})");
+    nc_runtime_event("player.death", R"({"killer":2,"victim":1,"weapon":"ak47","headshot":false,"time":3})");
+    alive = false;
+    Frame(30);
+    ASSERT_FALSE(console.empty());
+    EXPECT_NE(console[0].find("100 HP, 0 armor. Overkill: 50 HP"), std::string::npos);
+}
+TEST_F(LifeStatsPlugin, DeferredFatalEventsArriveBeforeReportTimerStarts)
+{
+    current_session.frame_time = 0.3f;
+    Backlog(600);
+    nc_runtime_event("player.health", R"({"health":0,"time":1})");
+    nc_runtime_event("player.damage", R"({"health":100,"armor":0,"time":1})");
+    nc_runtime_event("player.death", R"({"killer":2,"victim":1,"weapon":"ak47","headshot":false,"time":1})");
+    alive = false;
+    Frame();
+    EXPECT_TRUE(console.empty());
+    Frame(12);
+    ASSERT_FALSE(console.empty());
+    EXPECT_NE(console[0].find("100 HP"), std::string::npos);
+    EXPECT_NE(console.back().find("Damage from Alice"), std::string::npos);
+}
+TEST_F(LifeStatsPlugin, OverflowInvalidatesLifeUntilBacklogDrainsAndNewBoundaryArrives)
+{
+    nc_runtime_event("player.damage", R"({"health":25,"armor":0,"time":1})");
+    Frame();
+    Backlog(100);
+    nc_runtime_event("hud.reset", "{}"); // A surviving reset may precede lost events.
+    Backlog(2100);
+    Frame(50);
+    ASSERT_EQ(console.size(), 1u);
+    EXPECT_NE(console[0].find("Events were lost"), std::string::npos);
+    nc_runtime_event("round.end", "{}");
+    Frame(30);
+    EXPECT_EQ(console.size(), 1u);
+    nc_runtime_event("hud.reset", "{}");
+    Frame();
+    nc_runtime_event("player.damage", R"({"health":10,"armor":0,"time":3})");
+    nc_runtime_event("round.end", R"({"time":4})");
+    Frame(30);
+    ASSERT_EQ(console.size(), 3u);
+    EXPECT_NE(console[1].find("10 HP"), std::string::npos);
+}
 TEST_F(LifeStatsPlugin, ReportsDeathBeforeRespawnWithColoredPrivateSummaryAndConsoleTimeline)
 {
     nc_runtime_event("player.damage", R"({"health":25,"armor":10,"bits":2,"time":0.01})");

@@ -64,29 +64,16 @@ namespace plugins::runtime
         {
             if (operation != "commit" || p.store_pending)
                 throw std::runtime_error("Unknown operation or commit pending");
-            load_store(p);
-            Budget working(json_memory(p.store));
-            auto next = p.store;
-            if (auto set = args.find("set"))
-                for (const auto& [key, value] : set->get_object())
-                {
-                    if (!valid_id(key) || tao::json::to_string(value).size() > 65536)
-                        throw std::runtime_error("Invalid store key or value");
-                    next[key] = value;
-                }
-            if (auto remove = args.find("delete"))
-                for (const auto& key : remove->get_array())
-                    next.get_object().erase(key.get_string());
-            if (next.get_object().size() > 1024 || tao::json::to_string(next).size() > 1024 * 1024)
-                throw std::runtime_error("Store quota exceeded");
+            const auto* set = args.find("set");
+            const auto* remove = args.find("delete");
+            auto candidate = prepare_store(p, set ? *set : Json(tao::json::empty_object), remove ? *remove : Json(tao::json::empty_array));
             const auto id = ++next_request;
             std::lock_guard lock(mutex);
             if (stopping || work.size() + completed.size() >= 256)
                 throw std::runtime_error("Storage queue full or stopping");
             if (!worker.joinable())
                 worker = std::thread(run_worker);
-            Budget memory(json_memory(next) + 2048);
-            work.push_back({p.token, id, store_path(p), std::move(next), false, std::move(memory)});
+            work.push_back({p.token, id, store_path(p), std::move(candidate.value), false, std::move(candidate.memory)});
             p.store_pending = true;
             wake.notify_one();
             return Json{{"ok", true}, {"request", id}};
@@ -112,7 +99,6 @@ namespace plugins::runtime
             auto it = p->results.find(id);
             if (it != p->results.end())
             {
-                p->result_bytes -= it->second.size();
                 p->result_memory.resize(p->result_memory.size() - string_memory(it->second) - 128);
                 p->results.erase(it);
             }
@@ -146,7 +132,17 @@ namespace plugins::runtime
                 return 0;
             }
         }
-        template <int Interface>
+        enum class Interface
+        {
+            Events,
+            Storage,
+            Tasks,
+            Messages,
+            UI,
+            Services,
+            Package
+        };
+        template <Interface Kind>
         uint64_t NC_CALL call(void* ctx, const char* raw, const char* payload)
         {
             auto* p = static_cast<Loaded*>(ctx);
@@ -170,32 +166,32 @@ namespace plugins::runtime
                 Budget arguments(json_memory(args), true);
                 if (!args.is_object())
                     throw std::runtime_error("Expected object");
-                if constexpr (Interface == 0)
+                if constexpr (Kind == Interface::Events)
                 {
                     if (operation != "stats")
                         throw std::runtime_error("Unknown operation");
                     result = resource_stats(p);
                 }
-                if constexpr (Interface == 1)
+                if constexpr (Kind == Interface::Storage)
                     result = storage(*p, operation, args);
-                if constexpr (Interface == 2)
+                if constexpr (Kind == Interface::Tasks)
                 {
                     if (operation != "token")
                         throw std::runtime_error("Unknown operation");
                     result = Json{{"ok", true}, {"token", p->token}};
                 }
-                if constexpr (Interface == 3)
+                if constexpr (Kind == Interface::Messages)
                     result = extension_messages(*p, operation, args);
-                if constexpr (Interface == 4)
+                if constexpr (Kind == Interface::UI)
                     result = extension_ui(*p, operation, args);
-                if constexpr (Interface == 5)
+                if constexpr (Kind == Interface::Services)
                 {
                     if (operation == "status" || operation == "cancel")
                         serialized = service_completion(*p, operation, args);
                     else
                         result = extension_services(*p, operation, args);
                 }
-                if constexpr (Interface == 6)
+                if constexpr (Kind == Interface::Package)
                 {
                     if (operation != "read" || !p->package)
                         throw std::runtime_error("Unknown operation");
@@ -238,7 +234,6 @@ namespace plugins::runtime
                 const auto id = ++next_result;
                 p->results.emplace(id, std::move(value));
                 p->result_memory.absorb(std::move(response));
-                p->result_bytes += p->results.at(id).size();
                 return id;
             }
             catch (...)
@@ -250,32 +245,29 @@ namespace plugins::runtime
     int32_t NC_CALL set_message_filter(void*, const char*, NcMessageFilter, void*);
     const NcExtension* NC_CALL query_interface(void* ctx, const char* raw, uint32_t version)
     {
-        static const NcExtension interfaces[] = {
-            {sizeof(NcExtension), 1, call<0>, read_result, release_result, nullptr, nullptr},
-            {sizeof(NcExtension), 1, call<1>, read_result, release_result, nullptr, nullptr},
-            {sizeof(NcExtension), 1, call<2>, read_result, release_result, post, nullptr},
-            {sizeof(NcExtension), 1, call<3>, read_result, release_result, nullptr, set_message_filter},
-            {sizeof(NcExtension), 1, call<4>, read_result, release_result, nullptr, nullptr},
-            {sizeof(NcExtension), 1, call<5>, read_result, release_result, nullptr, nullptr},
-            {sizeof(NcExtension), 1, call<6>, read_result, release_result, nullptr, nullptr}
+        struct Descriptor
+        {
+            const char* name;
+            NcExtension api;
         };
-        static const char* names[] = {
-            "nextclient.events",
-            "nextclient.storage",
-            "nextclient.tasks",
-            "nextclient.messages",
-            "nextclient.ui",
-            "nextclient.services",
-            "nextclient.package"
+        static const Descriptor interfaces[]{
+            {"nextclient.events", {sizeof(NcExtension), 1, call<Interface::Events>, read_result, release_result, nullptr, nullptr}},
+            {"nextclient.storage", {sizeof(NcExtension), 1, call<Interface::Storage>, read_result, release_result, nullptr, nullptr}},
+            {"nextclient.tasks", {sizeof(NcExtension), 1, call<Interface::Tasks>, read_result, release_result, post, nullptr}},
+            {"nextclient.messages",
+             {sizeof(NcExtension), 1, call<Interface::Messages>, read_result, release_result, nullptr, set_message_filter}},
+            {"nextclient.ui", {sizeof(NcExtension), 1, call<Interface::UI>, read_result, release_result, nullptr, nullptr}},
+            {"nextclient.services", {sizeof(NcExtension), 1, call<Interface::Services>, read_result, release_result, nullptr, nullptr}},
+            {"nextclient.package", {sizeof(NcExtension), 1, call<Interface::Package>, read_result, release_result, nullptr, nullptr}},
         };
         try
         {
             if (!available(static_cast<Loaded*>(ctx)) || version != 1)
                 return nullptr;
             const auto name = text(raw, 64);
-            for (size_t i = 0; i < std::size(names); ++i)
-                if (name == names[i])
-                    return &interfaces[i];
+            for (const auto& descriptor : interfaces)
+                if (name == descriptor.name)
+                    return &descriptor.api;
         }
         catch (...)
         {}

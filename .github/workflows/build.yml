@@ -71,7 +71,7 @@ jobs:
           cargo test --manifest-path sdk/rust/Cargo.toml --target i686-pc-windows-msvc
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           Push-Location sdk/examples/rust-events
-          cargo build --release --locked
+          cargo build --release --locked --features abi-tests
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           Pop-Location
           "NEXTCLIENT_RUST_EVENTS_DLL=$((Get-Location).Path)/sdk/examples/rust-events/target/i686-pc-windows-msvc/release/nextclient_rust_events.dll" >> $env:GITHUB_ENV

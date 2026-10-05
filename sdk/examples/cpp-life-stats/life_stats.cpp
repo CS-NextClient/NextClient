@@ -19,6 +19,7 @@ class LifeStats final : public nextclient::Plugin
     std::array<std::string, 33> names_;
     std::deque<std::string> chat_;
     double clock_{}, next_chat_{}, game_time_{};
+    bool discard_backlog_{}, await_boundary_{};
 
     void Reset()
     {
@@ -27,14 +28,19 @@ class LifeStats final : public nextclient::Plugin
         chat_.clear();
         next_chat_ = clock_;
     }
-    void Observe()
+    void Observe(bool eventBoundary = false, double eventTime = 0)
     {
         NcSession current{};
         if (session(current))
             game_time_ = current.time;
         NcPlayerState state{};
         if (player(state))
-            tracker_.Observe(state.index, state.health > 0 && (state.flags & NC_PLAYER_ACTIVE), game_time_, state.health);
+            tracker_.Observe(
+                state.index,
+                (eventBoundary || state.health > 0) && (state.flags & NC_PLAYER_ACTIVE),
+                eventBoundary ? eventTime : game_time_,
+                eventBoundary ? -1 : state.health
+            );
     }
     static std::string Colored(const std::string& line)
     {
@@ -74,6 +80,26 @@ public:
     {
         const std::string_view name(raw);
         const auto data = tao::json::from_string(json);
+        if (name == "sdk.overflow")
+        {
+            Reset();
+            discard_backlog_ = await_boundary_ = true;
+            const auto warning = Colored("[Life Stats] Events were lost; statistics resume at the next spawn or round.");
+            console_print(warning.c_str());
+            chat_.push_back(warning);
+            return;
+        }
+        // An overflow notice precedes the surviving old queue. Even a reset in
+        // that queue can predate the lost events, so it cannot establish a life.
+        if (discard_backlog_)
+            return;
+        if (await_boundary_)
+        {
+            if (name != "hud.reset" && name != "hud.init" && name != "map.changed" && name != "round.start")
+                return;
+            Reset();
+            await_boundary_ = false;
+        }
         if (name == "hud.init" || name == "map.changed")
         {
             Reset();
@@ -92,10 +118,10 @@ public:
                 names_[index] = name == "player.joined" ? data.at("name").get_string() : "";
             return;
         }
-        if (!tracker_.Local())
-            Observe();
         const auto* timestamp = data.find("time");
         const double time = timestamp ? timestamp->as<double>() : game_time_;
+        if (!tracker_.Local())
+            Observe(true, time);
         if (name == "player.damage")
             tracker_.Damage(data.at("health").as<int>(), data.at("armor").as<int>(), data.optional<uint32_t>("bits").value_or(0), time);
         else if (name == "player.health" && data.find("health"))
@@ -134,7 +160,7 @@ public:
         else if (name == "hud.reset")
         {
             tracker_.Spawn();
-            Observe();
+            Observe(true, time);
         }
     }
     void frame(const NcSession& state) override
@@ -144,10 +170,25 @@ public:
         if (!(state.flags & NC_SESSION_CONNECTED))
         {
             Reset();
+            discard_backlog_ = await_boundary_ = false;
             return;
         }
-        Observe();
-        tracker_.Tick(state.frame_time);
+        bool backlog = true;
+        try
+        {
+            backlog = tao::json::from_string(extension("nextclient.events", "stats")).at("queued").as<size_t>() != 0;
+        }
+        catch (...)
+        {} // Without queue state, postponing a report is safer than inventing one.
+        if (!backlog)
+        {
+            discard_backlog_ = false;
+            if (!await_boundary_)
+            {
+                Observe();
+                tracker_.Tick(state.frame_time);
+            }
+        }
         const auto report = tracker_.TakeReport();
         for (const auto& line : report.console)
             console_print(Colored(line).c_str());

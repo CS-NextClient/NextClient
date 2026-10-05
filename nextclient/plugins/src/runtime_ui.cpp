@@ -176,7 +176,7 @@ const char* nc_runtime_windows()
     previous = std::move(revision);
     return result.c_str();
 }
-void nc_runtime_window_action(const char* raw, const char* action, const char* payload)
+int32_t nc_runtime_window_action(const char* raw, const char* action, const char* payload)
 {
     try
     {
@@ -199,7 +199,7 @@ void nc_runtime_window_action(const char* raw, const char* action, const char* p
                                 found = true;
                             }
                         if (!found)
-                            return;
+                            return 0;
                         validate_window(*p, next);
                         auto windows = p->windows;
                         windows[id] = std::move(next);
@@ -207,9 +207,10 @@ void nc_runtime_window_action(const char* raw, const char* action, const char* p
                     }
                     ++p->ui_revision;
                     notify(*p, "sdk.ui", Json{{"handle", std::stoull(id)}, {"id", name}, {"value", value}}, NC_PERMISSION_UI_INPUT);
-                    return;
+                    return 1;
                 }
     }
     catch (...)
     {}
+    return 0;
 }

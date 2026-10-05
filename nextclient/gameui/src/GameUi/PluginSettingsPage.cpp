@@ -43,8 +43,14 @@ namespace
     };
 } // namespace
 
-CPluginSettingsPage::CPluginSettingsPage(vgui2::Panel* parent, const tao::json::value& controls, vgui2::PropertyPage* original) :
-    BaseClass(parent, "PluginSettings")
+CPluginSettingsPage::CPluginSettingsPage(
+    vgui2::Panel* parent,
+    const tao::json::value& controls,
+    const PluginSettingsSnapshot& current,
+    vgui2::PropertyPage* original
+) :
+    BaseClass(parent, "PluginSettings"),
+    current_(current)
 {
     list_ = new vgui2::PanelListPanel(this, "Controls");
     list_->SetFirstColumnWidth(0);
@@ -124,12 +130,10 @@ void CPluginSettingsPage::OnResetData()
 }
 void CPluginSettingsPage::ResetControls()
 {
-    auto current = tao::json::from_string(nc_runtime_ui());
     for (auto& c : controls_)
     {
-        state_.ResetControl(c.spec, current);
+        const auto* active = state_.ResetControl(c.spec, current_);
         int value = c.spec.at("value").as<int>();
-        const auto* active = FindPluginControl(current, c.spec);
         c.widget->SetEnabled(active != nullptr);
         if (active)
             value = active->at("value").as<int>();
@@ -147,14 +151,10 @@ void CPluginSettingsPage::ResetControls()
         }
     }
 }
-void CPluginSettingsPage::Collect(tao::json::value& values, const tao::json::value& current)
+void CPluginSettingsPage::Collect(tao::json::value& values, const PluginSettingsSnapshot& current)
 {
     for (const auto& c : controls_)
     {
-        const bool available = FindPluginControl(current, c.spec) != nullptr;
-        c.widget->SetEnabled(available);
-        if (!available)
-            continue;
         int value = 0;
         switch (c.spec.at("kind").as<unsigned>())
         {
@@ -168,9 +168,10 @@ void CPluginSettingsPage::Collect(tao::json::value& values, const tao::json::val
                 value = static_cast<vgui2::ComboBox*>(c.widget)->GetActiveItem();
                 break;
             default:
+                c.widget->SetEnabled(current.Find(c.spec) != nullptr);
                 continue;
         }
-        state_.Collect(values, c.spec, value, current);
+        c.widget->SetEnabled(state_.Collect(values, c.spec, value, current));
     }
 }
 void CPluginSettingsPage::ForwardPageEvent(const char* event)

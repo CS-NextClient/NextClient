@@ -59,7 +59,7 @@ namespace plugins::runtime
         frame_callback_ms = 0;
         callback_categories.fill(false);
     }
-    CallbackScope::CallbackScope(Loaded& p, const char* category) noexcept :
+    CallbackScope::CallbackScope(Loaded& p, CallbackCategory category) noexcept :
         plugin_(p),
         category_(category),
         previous_(std::move(active))
@@ -70,7 +70,7 @@ namespace plugins::runtime
                 Json{
                     {"id", p.item.manifest.id},
                     {"hash", p.item.hash},
-                    {"category", category},
+                    {"category", callback_descriptor(category).name},
                     {"active", true},
                     {"sequence", ++trace_serial}
                 }
@@ -85,7 +85,7 @@ namespace plugins::runtime
     CallbackScope::~CallbackScope()
     {
         const double ms = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - begin_).count();
-        auto& timing = plugin_.timings.find(category_)->second;
+        auto& timing = plugin_.timings[static_cast<size_t>(category_)];
         ++timing.count;
         timing.last_ms = plugin_.callback_ms = ms;
         timing.total_ms += ms;
@@ -95,22 +95,23 @@ namespace plugins::runtime
             ++timing.slow;
             ++plugin_.slow_callbacks;
         }
-        const std::string_view category(category_);
-        constexpr const char* names[] = {"event", "frame", "draw", "command", "filter"};
-        for (size_t i = 0; i < callback_categories.size(); ++i)
-            if (category == names[i])
-            {
-                callback_categories[i] = true;
-                frame_callback_ms += ms;
-                break;
-            }
+        const auto& descriptor = callback_descriptor(category_);
+        if (descriptor.budgeted)
+        {
+            callback_categories[static_cast<size_t>(category_)] = true;
+            frame_callback_ms += ms;
+        }
         try
         {
             trace_line(
                 1 + (++trace_serial) % (slots - 1),
                 tao::json::to_string(
                     Json{
-                        {"id", plugin_.item.manifest.id}, {"category", category_}, {"active", false}, {"ms", ms}, {"sequence", trace_serial}
+                        {"id", plugin_.item.manifest.id},
+                        {"category", descriptor.name},
+                        {"active", false},
+                        {"ms", ms},
+                        {"sequence", trace_serial}
                     }
                 )
             );
@@ -141,9 +142,12 @@ namespace plugins::runtime
             value["callback_ms"] = p->callback_ms;
             value["slow_callbacks"] = p->slow_callbacks;
             Json categories = tao::json::empty_object;
-            for (const auto& [name, t] : p->timings)
-                categories[name] =
+            for (size_t i = 0; i < callback_count; ++i)
+            {
+                const auto& t = p->timings[i];
+                categories[callback_descriptors[i].name] =
                     Json{{"count", t.count}, {"slow", t.slow}, {"last_ms", t.last_ms}, {"max_ms", t.max_ms}, {"total_ms", t.total_ms}};
+            }
             value["callbacks"] = std::move(categories);
         }
         return value;

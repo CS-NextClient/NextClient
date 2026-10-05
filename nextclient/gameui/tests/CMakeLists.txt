@@ -41,6 +41,7 @@ if (NEXTCLIENT_WITH_PLUGINS)
     target_sources(${TARGET_NAME} PRIVATE
             PluginsDialogStateTests.cpp
             PluginTextTests.cpp
+            PluginWindowStateTests.cpp
             ${CMAKE_CURRENT_SOURCE_DIR}/../src/GameUi/PluginText.cpp
     )
     if (MSVC)
