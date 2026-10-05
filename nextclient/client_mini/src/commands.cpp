@@ -5,69 +5,72 @@
 #include <string>
 #include <unordered_map>
 
-static std::unordered_map<std::string, int> g_ToggleNext;
-
-static void Toggle_f()
+namespace
 {
-    int argc = gEngfuncs.Cmd_Argc();
-    if (argc < 4)
-    {
-        gEngfuncs.Con_Printf("Usage: toggle <command> <value1> <value2> [value3...]\n");
-        return;
-    }
+    std::unordered_map<std::string, int> g_ToggleNext;
 
-    std::string key;
-    for (int i = 1; i < argc; i++)
+    void Toggle_f()
     {
-        if (i > 1)
+        int argc = gEngfuncs.Cmd_Argc();
+        if (argc < 4)
         {
-            key += ' ';
+            gEngfuncs.Con_Printf("Usage: toggle <command> <value1> <value2> [value3...]\n");
+            return;
         }
-        key += gEngfuncs.Cmd_Argv(i);
+
+        std::string key;
+        for (int i = 1; i < argc; i++)
+        {
+            if (i > 1)
+            {
+                key += ' ';
+            }
+            key += gEngfuncs.Cmd_Argv(i);
+        }
+
+        int count = argc - 2;
+        int& next = g_ToggleNext[key];
+        const char* value = gEngfuncs.Cmd_Argv(2 + next);
+
+        std::string cmd = std::string(gEngfuncs.Cmd_Argv(1)) + " " + value + "\n";
+        gEngfuncs.pfnClientCmd(cmd.c_str());
+
+        next = (next + 1) % count;
     }
 
-    int count = argc - 2;
-    int& next = g_ToggleNext[key];
-    const char* value = gEngfuncs.Cmd_Argv(2 + next);
-
-    std::string cmd = std::string(gEngfuncs.Cmd_Argv(1)) + " " + value + "\n";
-    gEngfuncs.pfnClientCmd(cmd.c_str());
-
-    next = (next + 1) % count;
-}
-
-static void RunHoldToggle(bool pressed)
-{
-    int argc = gEngfuncs.Cmd_Argc();
-    if (argc < 2)
+    void RunHoldToggle(bool pressed)
     {
-        gEngfuncs.Con_Printf("Usage: +toggle <command> [held value] [released value]\n");
-        return;
+        int argc = gEngfuncs.Cmd_Argc();
+        if (argc < 2)
+        {
+            gEngfuncs.Con_Printf("Usage: +toggle <command> [held value] [released value]\n");
+            return;
+        }
+
+        const char* value;
+        if (argc >= 4)
+        {
+            value = pressed ? gEngfuncs.Cmd_Argv(2) : gEngfuncs.Cmd_Argv(3);
+        }
+        else
+        {
+            value = pressed ? "1" : "0";
+        }
+
+        std::string cmd = std::string(gEngfuncs.Cmd_Argv(1)) + " " + value + "\n";
+        gEngfuncs.pfnClientCmd(cmd.c_str());
     }
 
-    const char* value;
-    if (argc >= 4)
+    void PlusToggle_f()
     {
-        value = pressed ? gEngfuncs.Cmd_Argv(2) : gEngfuncs.Cmd_Argv(3);
+        RunHoldToggle(true);
     }
-    else
+
+    void MinusToggle_f()
     {
-        value = pressed ? "1" : "0";
+        RunHoldToggle(false);
     }
-
-    std::string cmd = std::string(gEngfuncs.Cmd_Argv(1)) + " " + value + "\n";
-    gEngfuncs.pfnClientCmd(cmd.c_str());
-}
-
-static void PlusToggle_f()
-{
-    RunHoldToggle(true);
-}
-
-static void MinusToggle_f()
-{
-    RunHoldToggle(false);
-}
+} // namespace
 
 void CommandsInit()
 {

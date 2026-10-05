@@ -47,25 +47,28 @@ CGameConsole::~CGameConsole()
     m_bInitialized = false;
 }
 
-static void Bindlist_f()
+namespace
 {
-    int count = 0;
-
-    for (int i = 0; i < 256; i++)
+    void Bindlist_f()
     {
-        const char* binding = g_pGameUIFuncs->Key_BindingForKey(i);
-        if (!binding || !binding[0])
+        int count = 0;
+
+        for (int i = 0; i < 256; i++)
         {
-            continue;
+            const char* binding = g_pGameUIFuncs->Key_BindingForKey(i);
+            if (!binding || !binding[0])
+            {
+                continue;
+            }
+
+            const char* key = g_pGameUIFuncs->Key_NameForKey(i);
+            engine->Con_Printf("\"%s\" \"%s\"\n", key, binding);
+            count++;
         }
 
-        const char* key = g_pGameUIFuncs->Key_NameForKey(i);
-        engine->Con_Printf("\"%s\" \"%s\"\n", key, binding);
-        count++;
+        engine->Con_Printf("%d bindings\n", count);
     }
-
-    engine->Con_Printf("%d bindings\n", count);
-}
+} // namespace
 
 //-----------------------------------------------------------------------------
 // Purpose: sets up the console for use
