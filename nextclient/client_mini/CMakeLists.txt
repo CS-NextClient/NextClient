@@ -3,7 +3,9 @@ project(client_mini)
 set(OUTPUT_NAME "client_mini")
 
 find_package(optic REQUIRED)
-find_package(taocpp-json CONFIG REQUIRED)
+if (NEXTCLIENT_WITH_PLUGINS)
+    find_package(taocpp-json CONFIG REQUIRED)
+endif ()
 
 set(CMAKE_POLICY_DEFAULT_CMP0077 NEW)
 if (MSVC)
@@ -81,7 +83,6 @@ target_include_directories(${PROJECT_NAME} PRIVATE
 )
 
 target_link_libraries(${PROJECT_NAME} PRIVATE
-        taocpp::json
         nitro_api::nitro_api
         NextClient::gameui
         optic::optic
@@ -137,14 +138,14 @@ target_include_directories(client_mini_export INTERFACE
 )
 
 if (NEXTCLIENT_WITH_PLUGINS)
-    target_sources(${PROJECT_NAME} PRIVATE src/plugin_bridge.cpp src/plugin_game_state.cpp)
-    target_link_libraries(${PROJECT_NAME} PRIVATE next_plugins)
+    target_sources(${PROJECT_NAME} PRIVATE src/plugin_bridge.cpp src/plugin_game_state.cpp src/plugin_snapshot.cpp)
+    target_link_libraries(${PROJECT_NAME} PRIVATE next_plugins taocpp::json)
 endif ()
 
 if (NEXTCLIENT_BUILD_TESTS AND NEXTCLIENT_WITH_PLUGINS)
     find_package(GTest CONFIG REQUIRED)
     include(GoogleTest)
-    add_executable(plugin-bridge-tests tests/plugin_bridge_tests.cpp src/plugin_bridge.cpp src/plugin_game_state.cpp
+    add_executable(plugin-bridge-tests tests/plugin_bridge_tests.cpp src/plugin_bridge.cpp src/plugin_game_state.cpp src/plugin_snapshot.cpp
         src/color_chat_in_console.cpp)
     target_include_directories(plugin-bridge-tests PRIVATE src)
     target_compile_features(plugin-bridge-tests PRIVATE cxx_std_23)

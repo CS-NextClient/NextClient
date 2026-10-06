@@ -1,16 +1,16 @@
 #include "PluginSettingsPage.h"
-#include "Controls/WrappedLabel.h"
-#include "PluginLocalization.h"
+
 #include <nextclient/runtime.h>
-#include <vgui_controls/PanelListPanel.h>
-#include <vgui_controls/CheckButton.h>
-#include <vgui_controls/Slider.h>
-#include <vgui_controls/ComboBox.h>
-#include <vgui_controls/Button.h>
-#include <vgui_controls/Label.h>
-#include <vgui_controls/PropertySheet.h>
 #include <vgui/IPanel.h>
+#include <vgui_controls/Label.h>
+#include <vgui_controls/PanelListPanel.h>
+#include <vgui_controls/PropertySheet.h>
 #include <KeyValues.h>
+
+#include "Controls/WrappedLabel.h"
+#include "PluginControls.h"
+#include "PluginLocalization.h"
+
 #undef PostMessage
 #undef SendMessage
 
@@ -64,42 +64,9 @@ CPluginSettingsPage::CPluginSettingsPage(
     for (const auto& spec : controls.get_array())
     {
         auto caption = PluginWide(PluginLocalized(spec));
-        vgui2::Panel* widget = nullptr;
-        auto kind = spec.at("kind").as<unsigned>();
-        auto name = spec.at("id").get_string();
-        if (kind == NC_CHECKBOX)
-        {
-            auto* checkbox = new vgui2::CheckButton(list_, name.c_str(), "");
-            checkbox->SetText(caption.c_str());
-            widget = checkbox;
-        }
-        else if (kind == NC_SLIDER)
-        {
-            auto* slider = new vgui2::Slider(list_, name.c_str());
-            slider->SetRange(spec.at("min").as<int>(), spec.at("max").as<int>());
-            widget = slider;
-        }
-        else if (kind == NC_CHOICE)
-        {
-            auto* combo = new vgui2::ComboBox(list_, name.c_str(), 8, false);
-            auto choices = PluginLocalized(spec, "choices_en", "choices_ru");
-            size_t start = 0;
-            do
-            {
-                auto end = choices.find('\n', start);
-                combo->AddItem(PluginWide(choices.substr(start, end == std::string::npos ? end : end - start)).c_str(), nullptr);
-                if (end == std::string::npos)
-                    break;
-                start = end + 1;
-            } while (start <= choices.size());
-            widget = combo;
-        }
-        else
-        {
-            auto* button =
-                new vgui2::Button(list_, name.c_str(), "#NextPlugins_Run", this, ("Action" + std::to_string(controls_.size())).c_str());
-            widget = button;
-        }
+        const unsigned kind = spec.at("kind").as<unsigned>();
+        const std::string command = "Action" + std::to_string(controls_.size());
+        vgui2::Panel* widget = PluginControls_Create(list_, PluginControls_SettingsSpec(spec), this, command.c_str());
         widget->SetTall(28);
         widget->AddActionSignalTarget(this);
         if (kind == NC_CHECKBOX)
@@ -137,41 +104,21 @@ void CPluginSettingsPage::ResetControls()
         c.widget->SetEnabled(active != nullptr);
         if (active)
             value = active->at("value").as<int>();
-        switch (c.spec.at("kind").as<unsigned>())
-        {
-            case NC_CHECKBOX:
-                static_cast<vgui2::CheckButton*>(c.widget)->SetSelected(value != 0);
-                break;
-            case NC_SLIDER:
-                static_cast<vgui2::Slider*>(c.widget)->SetValue(value);
-                break;
-            case NC_CHOICE:
-                static_cast<vgui2::ComboBox*>(c.widget)->ActivateItemByRow(value);
-                break;
-        }
+        PluginControls_SetValue(c.widget, PluginControls_SettingKind(c.spec.at("kind").as<unsigned>()), value);
     }
 }
 void CPluginSettingsPage::Collect(tao::json::value& values, const PluginSettingsSnapshot& current)
 {
     for (const auto& c : controls_)
     {
-        int value = 0;
-        switch (c.spec.at("kind").as<unsigned>())
+        const auto value = PluginControls_Read(c.widget, PluginControls_SettingKind(c.spec.at("kind").as<unsigned>()));
+        if (!value)
         {
-            case NC_CHECKBOX:
-                value = static_cast<vgui2::CheckButton*>(c.widget)->IsSelected() ? 1 : 0;
-                break;
-            case NC_SLIDER:
-                value = static_cast<vgui2::Slider*>(c.widget)->GetValue();
-                break;
-            case NC_CHOICE:
-                value = static_cast<vgui2::ComboBox*>(c.widget)->GetActiveItem();
-                break;
-            default:
-                c.widget->SetEnabled(current.Find(c.spec) != nullptr);
-                continue;
+            c.widget->SetEnabled(current.Find(c.spec) != nullptr);
+            continue;
         }
-        c.widget->SetEnabled(state_.Collect(values, c.spec, value, current));
+        const int setting = value->is_boolean() ? (value->get_boolean() ? 1 : 0) : value->as<int>();
+        c.widget->SetEnabled(state_.Collect(values, c.spec, setting, current));
     }
 }
 void CPluginSettingsPage::ForwardPageEvent(const char* event)

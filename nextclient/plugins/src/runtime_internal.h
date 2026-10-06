@@ -97,7 +97,7 @@ namespace plugins::runtime
     bool permitted(const Loaded* plugin, uint32_t permission);
     std::string text(const char* value, size_t limit = 4096);
     std::string cvar_name(const char* value);
-    void discover();
+    void discover(bool verify_files = false);
     Json item_json(const Item& item);
     std::vector<Item> selection(const char* raw);
     int32_t setting_value(const Loaded& plugin, const Json& control);

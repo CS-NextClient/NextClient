@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
 #include "plugin_game_state.h"
+#include <algorithm>
 #include <limits>
 
 namespace
@@ -435,4 +436,37 @@ TEST(GameState, NamedSnapshotsStayBoundedAndExistingEntriesRemainUpdateable)
     Packet{}.send(state, "InitHUD");
     EXPECT_TRUE(state.Match().at("team_scores").get_object().empty());
     EXPECT_TRUE(state.Match().at("status_icons").get_object().empty());
+}
+
+TEST(GameState, OrdinaryPlayerResetStartsRoundAndClearsPreviousResult)
+{
+    PluginGameState state;
+    Packet{}.word(120).send(state, "RoundTime");
+    Packet{}.byte(4).text("#CTs_Win").send(state, "TextMsg");
+    ASSERT_NE(state.Match().find("round.end"), nullptr);
+    const auto events = Packet{}.send(state, "ResetHUD");
+    EXPECT_EQ(std::count_if(events.begin(), events.end(), [](const PluginGameEvent& event) { return event.name == "round.start"; }), 1);
+    EXPECT_EQ(state.Match().find("round.end"), nullptr);
+    EXPECT_EQ(state.Match().find("round.time"), nullptr);
+    Packet{}.word(90).send(state, "RoundTime");
+    EXPECT_EQ(state.Match().at("round.time").at("seconds"), 90);
+    const auto refresh = Packet{}.send(state, "ResetHUD");
+    EXPECT_EQ(std::count_if(refresh.begin(), refresh.end(), [](const PluginGameEvent& event) { return event.name == "round.start"; }), 0);
+    EXPECT_NE(state.Match().find("round.time"), nullptr);
+    state.Reset();
+    const auto first = Packet{}.send(state, "ResetHUD");
+    EXPECT_EQ(std::count_if(first.begin(), first.end(), [](const PluginGameEvent& event) { return event.name == "round.start"; }), 1);
+}
+
+TEST(GameState, SpectatorTimerStartsNextRoundWithoutLocalRespawn)
+{
+    PluginGameState state;
+    Packet{}.word(120).send(state, "RoundTime");
+    Packet{}.byte(4).text("#CTs_Win").send(state, "TextMsg");
+    const auto events = Packet{}.word(90).send(state, "RoundTime");
+    EXPECT_EQ(std::count_if(events.begin(), events.end(), [](const PluginGameEvent& event) { return event.name == "round.start"; }), 1);
+    EXPECT_EQ(state.Match().find("round.end"), nullptr);
+    EXPECT_EQ(state.Match().at("round.time").at("seconds"), 90);
+    const auto update = Packet{}.word(89).send(state, "RoundTime");
+    EXPECT_EQ(std::count_if(update.begin(), update.end(), [](const PluginGameEvent& event) { return event.name == "round.start"; }), 0);
 }

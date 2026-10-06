@@ -3,6 +3,8 @@
 #include <map>
 #include <string>
 
+tao::json::value PluginSettings_Parse(const char* source);
+
 // The snapshot belongs to the editing session, not to the running plugin.
 // Untouched controls must never replace values changed by plugin callbacks.
 class PluginSettingsSnapshot

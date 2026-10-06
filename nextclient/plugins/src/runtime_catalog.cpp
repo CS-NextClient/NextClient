@@ -5,7 +5,42 @@ namespace plugins::runtime
 {
     namespace
     {
-        std::string catalog_error;
+        std::string g_CatalogError;
+
+        std::string DiscoveryStamp(const fs::path& path)
+        {
+            std::vector<fs::path> paths{path};
+            if (fs::is_directory(path))
+            {
+                for (const auto& entry : fs::recursive_directory_iterator(path))
+                {
+                    paths.push_back(entry.path());
+                    if (paths.size() > 257)
+                    {
+                        return {};
+                    }
+                }
+            }
+            std::sort(paths.begin(), paths.end());
+            std::string stamp;
+            for (const auto& entry : paths)
+            {
+                const DWORD attributes = GetFileAttributesW(entry.c_str());
+                if (attributes == INVALID_FILE_ATTRIBUTES || (attributes & FILE_ATTRIBUTE_REPARSE_POINT))
+                {
+                    return {};
+                }
+                const auto relative = entry.lexically_relative(path).generic_u8string();
+                stamp += std::to_string(relative.size()) + ":" + std::string(relative.begin(), relative.end()) + ":";
+                stamp += std::to_string(attributes) + ":" + std::to_string(fs::last_write_time(entry).time_since_epoch().count()) + ":";
+                if (fs::is_regular_file(entry))
+                {
+                    stamp += std::to_string(fs::file_size(entry));
+                }
+                stamp += '\n';
+            }
+            return stamp;
+        }
     }
     void validate_profile(const Json& value)
     {
@@ -74,9 +109,9 @@ namespace plugins::runtime
             if (p->item.file == item.file)
                 item.running = !p->failed;
     }
-    void discover()
+    void discover(bool verify_files)
     {
-        catalog_error.clear();
+        g_CatalogError.clear();
         if (!started)
         {
             observed.clear();
@@ -105,9 +140,22 @@ namespace plugins::runtime
                 item.file.assign(reinterpret_cast<const char*>(filename.data()), filename.size());
                 try
                 {
-                    auto package = read_package(entry.path());
-                    item.hash = package->hash;
-                    item.manifest = package->manifest;
+                    const std::string stamp = DiscoveryStamp(entry.path());
+                    const auto cached = std::find_if(previous.begin(), previous.end(), [&](const Item& candidate) {
+                        return candidate.file == item.file && candidate.discovery_stamp == stamp;
+                    });
+                    if (!verify_files && !stamp.empty() && cached != previous.end() && !cached->manifest.version.empty())
+                    {
+                        item.hash = cached->hash;
+                        item.manifest = cached->manifest;
+                    }
+                    else
+                    {
+                        auto package = read_package(entry.path());
+                        item.hash = package->hash;
+                        item.manifest = package->manifest;
+                    }
+                    item.discovery_stamp = stamp;
                     if (item.manifest.sdk != NC_SDK_VERSION)
                         item.warning = message("#NextPlugins_SdkMismatch", {item.manifest.sdk, NC_SDK_VERSION});
                 }
@@ -145,7 +193,7 @@ namespace plugins::runtime
                         append_message(item.warning, message("#NextPlugins_CallbackFailed"));
                 try
                 {
-                    catalog_memory.resize(catalog_memory.size() + json_memory(item_json(item)));
+                    catalog_memory.resize(catalog_memory.size() + json_memory(item_json(item)) + item.discovery_stamp.capacity());
                 }
                 catch (...)
                 {
@@ -153,7 +201,7 @@ namespace plugins::runtime
                     // controls available after plugins exhaust their ordinary budget.
                     // Do not replace the row with a blank, apparently disabled item.
                     append_message(item.warning, message("#NextPlugins_ResourceLimit"));
-                    catalog_memory.resize(catalog_memory.size() + json_memory(item_json(item)), true);
+                    catalog_memory.resize(catalog_memory.size() + json_memory(item_json(item)) + item.discovery_stamp.capacity(), true);
                 }
                 observed.push_back(std::move(item));
                 if (observed.size() >= 256)
@@ -175,7 +223,7 @@ namespace plugins::runtime
         {
             if (previous.empty())
                 throw;
-            catalog_error = error_message(e);
+            g_CatalogError = error_message(e);
             observed = std::move(previous);
             catalog_memory = std::move(previous_memory);
             for (auto& item : observed)
@@ -187,7 +235,7 @@ namespace plugins::runtime
                 // A cached nonloaded row cannot authorize a package that may
                 // have changed since it was read. Disabling remains available.
                 if (locked == loaded.end())
-                    item.error = catalog_error;
+                    item.error = g_CatalogError;
             }
         }
     }
@@ -267,7 +315,7 @@ const char* nc_runtime_catalog()
             Json{
                 {"plugins", list},
                 {"safe_mode", safe},
-                {"error", catalog_error.empty() ? startup_error : catalog_error},
+                {"error", g_CatalogError.empty() ? startup_error : g_CatalogError},
                 {"resources", resource_stats()}
             }
         );
@@ -322,7 +370,7 @@ const char* nc_runtime_save(const char* raw)
     {
         // Re-scan immediately before approving; reject replacements since the
         // dialog opened. A final locked hash check is also made on next launch.
-        discover();
+        discover(true);
         auto selected = selection(raw);
         error = validate(selected);
         if (!error.empty())

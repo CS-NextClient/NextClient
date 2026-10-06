@@ -60,7 +60,7 @@ COptionsDialog::COptionsDialog(vgui2::Panel* parent) :
     m_pOptionsSubMiscellaneous = new OptionsSubMiscellaneous(this);
 
 #if NEXTCLIENT_WITH_PLUGINS
-    auto plugins = tao::json::from_string(nc_runtime_ui());
+    auto plugins = PluginSettings_Parse(nc_runtime_ui());
     m_pluginSettings = PluginSettingsSnapshot(plugins);
     auto controlsFor = [&](const std::string& tab, const std::string& owner) {
         tao::json::value controls = tao::json::empty_array;
@@ -129,7 +129,7 @@ bool COptionsDialog::OnOK(bool applyOnly)
 {
 #if NEXTCLIENT_WITH_PLUGINS
     tao::json::value values = tao::json::empty_array;
-    const PluginSettingsSnapshot current(tao::json::from_string(nc_runtime_ui()));
+    const PluginSettingsSnapshot current(PluginSettings_Parse(nc_runtime_ui()));
     for (auto* page : m_pluginPages)
         page->Collect(values, current);
     if (!values.get_array().empty())
@@ -142,7 +142,7 @@ bool COptionsDialog::OnOK(bool applyOnly)
             return false;
         }
     }
-    m_pluginSettings = PluginSettingsSnapshot(tao::json::from_string(nc_runtime_ui()));
+    m_pluginSettings = PluginSettingsSnapshot(PluginSettings_Parse(nc_runtime_ui()));
 #endif
     const bool applied = BaseClass::OnOK(applyOnly);
     if (applied)
@@ -153,7 +153,7 @@ bool COptionsDialog::OnOK(bool applyOnly)
 void COptionsDialog::ResetAllData()
 {
 #if NEXTCLIENT_WITH_PLUGINS
-    m_pluginSettings = PluginSettingsSnapshot(tao::json::from_string(nc_runtime_ui()));
+    m_pluginSettings = PluginSettingsSnapshot(PluginSettings_Parse(nc_runtime_ui()));
 #endif
     BaseClass::ResetAllData();
 }

@@ -10,6 +10,13 @@ return zero/None/false when unavailable. Unknown fields should be ignored.
 
 ## Events
 
+Message-derived events and cached fields require a consumer registered through
+the wrapped stock-client or client_mini engine table. Messages registered only
+through other engine tables are not observed. In particular, `HealthInfo` and
+`Account` have no fallback registrations, so updates from those messages require
+an observed consumer too. Engine-backed snapshots and connection,
+player join/leave, voice, and cvar notifications do not depend on this observer.
+
 Call `subscribe_event("player.health", true)` during load or a later callback.
 Disable with `false`. Implement `Plugin::event(name, json)` in C++ or
 `fn event(&mut self, host: &Host<'_>, name: &str, json: &str) -> Result` in Rust.
@@ -46,7 +53,7 @@ and its required dependents. Events observe state; they cannot cancel engine beh
 | `item.pickup` | Item `name` |
 | `weapon.definition` | `id`, `name`, `ammo_type`, `ammo_max`, `ammo2_type`, `ammo2_max`, `slot`, `slot_position`, `flags` |
 | `round.time` | `seconds`, `received_at` |
-| `round.start` | New-round HLTV notification; may precede freeze-time end |
+| `round.start` | Observed round transition: HLTV reset, or ResetHUD/RoundTime initially or after a round result/restart; may precede freeze-time end |
 | `round.reset` | Local ResetHUD notification; also occurs on spawn, not exclusively at round start |
 | `round.end`, `match.reset` | Recognized server message token in `reason` |
 | `match.team_score` | `team`, `score` |

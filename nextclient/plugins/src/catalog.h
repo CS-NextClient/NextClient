@@ -25,6 +25,7 @@ namespace plugins
     struct Item
     {
         std::string file, hash, error, warning;
+        std::string discovery_stamp;
         Manifest manifest;
         bool approved{}, enabled{}, running{};
         bool consent{};

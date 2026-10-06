@@ -43,7 +43,7 @@ namespace plugins::runtime
         {
             if (p.messages.size() >= 128)
                 throw std::runtime_error("Subscription limit");
-            if (services.watch_message && !services.watch_message(name.c_str()))
+            if (!services.watch_message || !services.watch_message(name.c_str()))
                 throw std::runtime_error("Message hook unavailable");
             p.messages.insert(name);
         }
@@ -64,7 +64,7 @@ namespace plugins::runtime
                 p->filters.erase(name);
                 return 1;
             }
-            if (services.watch_message && !services.watch_message(name.c_str()))
+            if (!services.watch_message || !services.watch_message(name.c_str()))
                 return 0;
             p->filters[name] = {callback, user};
             return 1;

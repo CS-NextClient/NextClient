@@ -130,6 +130,7 @@ bool PluginGameState::Observes(std::string_view name)
 }
 void PluginGameState::Reset()
 {
+    round_active_ = false;
     players_.clear();
     weapons_.clear();
     ammo_.clear();
@@ -525,8 +526,12 @@ std::vector<PluginGameEvent> PluginGameState::Message(std::string_view name, con
             ammo_.clear();
             match_ = tao::json::empty_object;
         }
-        if (name == "HLTV")
+        // ResetHUD reaches players at respawn; RoundTime also reaches spectators.
+        // Refreshes during an active round must not erase its state.
+        const bool round_start = name == "HLTV" || ((name == "ResetHUD" || name == "RoundTime") && !round_active_);
+        if (round_start)
         {
+            round_active_ = true;
             for (const auto* key : {"bomb.dropped", "bomb.picked_up", "round.end", "round.time", "hud.progress", "hostages"})
                 match_.get_object().erase(key);
             for (auto& [id, fields] : players_)
@@ -592,7 +597,19 @@ std::vector<PluginGameEvent> PluginGameState::Message(std::string_view name, con
                 match_[event] = data;
         }
         data["time"] = time;
+        if (event == "round.end" || event == "match.reset")
+        {
+            round_active_ = false;
+        }
+        else if (name == "RoundTime")
+        {
+            round_active_ = true;
+        }
         result.push_back({event, std::move(data)});
+        if (round_start && name != "HLTV")
+        {
+            result.push_back({"round.start", Json{{"time", time}}});
+        }
         if (name == "ResetHUD")
             result.push_back({"round.reset", Json{{"time", time}}});
     }

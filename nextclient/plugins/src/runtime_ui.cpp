@@ -195,7 +195,22 @@ int32_t nc_runtime_window_action(const char* raw, const char* action, const char
                         for (auto& item : next["items"].get_array())
                             if (item.at("id") == name)
                             {
-                                item["value"] = value;
+                                const std::string& kind = item.at("kind").get_string();
+                                if (kind == "button")
+                                {
+                                    if (!value.is_null())
+                                    {
+                                        return 0;
+                                    }
+                                }
+                                else if (kind == "checkbox" || kind == "slider" || kind == "text" || kind == "list")
+                                {
+                                    item["value"] = value;
+                                }
+                                else
+                                {
+                                    return 0;
+                                }
                                 found = true;
                             }
                         if (!found)

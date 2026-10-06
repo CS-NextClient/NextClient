@@ -26,6 +26,7 @@ public:
     int Armor() const;
 
 private:
+    bool round_active_{};
     std::map<int, tao::json::value> players_, weapons_, ammo_;
     tao::json::value match_ = tao::json::empty_object;
 };

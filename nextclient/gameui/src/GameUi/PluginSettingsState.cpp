@@ -1,5 +1,41 @@
 #include "PluginSettingsState.h"
 
+tao::json::value PluginSettings_Parse(const char* source)
+{
+    try
+    {
+        tao::json::value plugins = tao::json::from_string(source);
+        for (const auto& plugin : plugins.get_array())
+        {
+            (void)plugin.at("id").get_string();
+            for (const auto& tab : plugin.at("tabs").get_array())
+            {
+                for (const char* key : {"id", "en", "ru"})
+                {
+                    (void)tab.at(key).get_string();
+                }
+            }
+            for (const auto& control : plugin.at("controls").get_array())
+            {
+                for (const char* key : {"id", "tab", "en", "ru", "choices_en", "choices_ru"})
+                {
+                    (void)control.at(key).get_string();
+                }
+                for (const char* key : {"value", "min", "max"})
+                {
+                    (void)control.at(key).as<int>();
+                }
+                (void)control.at("kind").as<unsigned>();
+            }
+        }
+        return plugins;
+    }
+    catch (const std::exception&)
+    {
+        return tao::json::empty_array;
+    }
+}
+
 const tao::json::value* PluginSettingsState::ResetControl(const tao::json::value& spec, const PluginSettingsSnapshot& current)
 {
     const auto key = std::make_pair(spec.at("owner").get_string(), spec.at("id").get_string());

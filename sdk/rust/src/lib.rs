@@ -419,26 +419,9 @@ impl Host<'_> {
     }
     pub fn read_cvar(&self, name: &str) -> Option<String> {
         let name = CString::new(name).ok()?;
-        let size = unsafe {
-            (self.raw.read_cvar)(self.raw.context, name.as_ptr(), std::ptr::null_mut(), 0)
-        };
-        if size == 0 || size > 65536 {
-            return None;
-        }
-        let mut bytes = vec![0u8; size as usize];
-        if unsafe {
-            (self.raw.read_cvar)(
-                self.raw.context,
-                name.as_ptr(),
-                bytes.as_mut_ptr().cast(),
-                size,
-            )
-        } != size
-        {
-            return None;
-        }
-        bytes.pop();
-        String::from_utf8(bytes).ok()
+        bounded_string(65536, |buffer, capacity| unsafe {
+            (self.raw.read_cvar)(self.raw.context, name.as_ptr(), buffer, capacity)
+        })
     }
     pub fn write_cvar(&self, name: &str, value: &str) -> Result {
         let [name, value] = strings([name, value])?;
@@ -627,8 +610,11 @@ impl Host<'_> {
     }
 }
 fn json_result(read: impl Fn(*mut c_char, u32) -> u32) -> Option<String> {
+    bounded_string(1024 * 1024 + 1, read)
+}
+fn bounded_string(limit: u32, read: impl Fn(*mut c_char, u32) -> u32) -> Option<String> {
     let size = read(std::ptr::null_mut(), 0);
-    if size == 0 || size > 1024 * 1024 + 1 {
+    if size == 0 || size > limit {
         return None;
     }
     let mut bytes = vec![0; size as usize];
@@ -805,6 +791,32 @@ mod tests {
         info.name[0] = 255;
         assert!(info.name().starts_with('�'));
         assert!(Session::default().map_name().is_empty());
+    }
+    #[test]
+    fn bounded_strings_validate_length_terminator_and_utf8() {
+        fn read(bytes: &[u8], output: *mut c_char, capacity: u32) -> u32 {
+            if !output.is_null() && capacity as usize >= bytes.len() {
+                unsafe {
+                    std::ptr::copy_nonoverlapping(bytes.as_ptr(), output.cast(), bytes.len())
+                };
+            }
+            bytes.len() as u32
+        }
+        assert_eq!(
+            bounded_string(4, |out, cap| read(b"abc\0", out, cap)),
+            Some("abc".into())
+        );
+        assert_eq!(bounded_string(3, |out, cap| read(b"abc\0", out, cap)), None);
+        assert_eq!(bounded_string(4, |out, cap| read(b"abcd", out, cap)), None);
+        assert_eq!(
+            bounded_string(4, |out, cap| read(&[0xe9, 0], out, cap)),
+            None
+        );
+        assert_eq!(bounded_string(4, |_, _| 0), None);
+        assert_eq!(
+            bounded_string(4, |out, _| if out.is_null() { 4 } else { 3 }),
+            None
+        );
     }
     #[test]
     fn catches_panics() {

@@ -265,8 +265,27 @@ TEST_F(GameApiRuntime, AsyncStoreFailureKeepsCommittedDataAndReportsFailure)
     EXPECT_EQ(payload(0).at("ok"), false);
     EXPECT_EQ(get("value"), "1");
 }
+TEST_F(GameApiRuntime, RawMessagesRequireAnAvailableClientObserver)
+{
+    install(PLUGIN_GAME_ALL_PATH);
+    ASSERT_NE(host, nullptr);
+    const auto* api = host->query_interface(host->context, "nextclient.messages", 1);
+    ASSERT_NE(api, nullptr);
+    const auto hide = +[](void*, const char*, const uint8_t*, uint32_t, uint8_t*, uint32_t*) -> int32_t { return 2; };
+    for (int state = 0; state < 2; ++state)
+    {
+        const Json response = extension("nextclient.messages", "subscribe", Json{{"name", "ScreenShake"}});
+        EXPECT_EQ(response.at("ok"), false);
+        EXPECT_EQ(response.at("error"), "Message hook unavailable");
+        EXPECT_EQ(api->set_filter(host->context, "ScreenShake", hide, nullptr), 0);
+        nc_runtime_bind_client(nullptr);
+    }
+}
+
 TEST_F(GameApiRuntime, FiltersValidateRewritesAndPreserveObservation)
 {
+    services.watch_message = [](const char*) { return 1; };
+    nc_runtime_bind_client(&services);
     install(PLUGIN_GAME_ALL_PATH);
     ASSERT_NE(host, nullptr);
     EXPECT_EQ(extension("nextclient.messages", "subscribe", Json{{"name", "ScreenShake"}}).at("ok"), true);
@@ -1016,4 +1035,30 @@ TEST_F(GameApiRuntime, LongestNamesCanBeCreatedReadWrittenAndWatched)
     EXPECT_EQ(count(), 2);
     EXPECT_TRUE(read_name.empty());
     EXPECT_TRUE(write_name.empty());
+}
+
+TEST_F(GameApiRuntime, StatelessWindowButtonPreservesSpecification)
+{
+    install(PLUGIN_GAME_ALL_PATH);
+    const Json window{
+        {"title", Json{{"en", "Test"}, {"ru", "Test"}}},
+        {"surface", "all"},
+        {"interactive", true},
+        {"visible", true},
+        {"width", 400},
+        {"height", 300},
+        {"items", Json::array({Json{{"id", "run"}, {"kind", "button"}, {"text", Json{{"en", "Run"}, {"ru", "Run"}}}}})}
+    };
+    const Json result = extension("nextclient.ui", "create", window);
+    ASSERT_EQ(result.at("ok"), true);
+    const std::string handle = std::to_string(result.at("handle").as<uint64_t>());
+    const std::string before = nc_runtime_windows();
+    EXPECT_EQ(nc_runtime_window_action(handle.c_str(), "run", "null"), 1);
+    EXPECT_EQ(nc_runtime_windows(), before);
+    EXPECT_EQ(nc_runtime_window_action(handle.c_str(), "run", "true"), 0);
+    frame();
+    ASSERT_EQ(count(), 1);
+    EXPECT_EQ(name(0), "sdk.ui");
+    EXPECT_EQ(payload(0).at("id"), "run");
+    EXPECT_TRUE(payload(0).at("value").is_null());
 }

@@ -1,29 +1,30 @@
 #include "PluginWindows.h"
-#include "PluginWindowState.h"
-#include "PluginLocalization.h"
-#include "BasePanel.h"
-#include <nextclient/runtime.h>
-#include <vgui/ISurfaceNext.h>
-#include <vgui/IScheme.h>
-#include <vgui/IInputInternal.h>
-#include <vgui/IPanel.h>
-#include <vgui_controls/Frame.h>
-#include <vgui_controls/Label.h>
-#include <vgui_controls/Button.h>
-#include <vgui_controls/CheckButton.h>
-#include <vgui_controls/Slider.h>
-#include <vgui_controls/TextEntry.h>
-#include <vgui_controls/ComboBox.h>
-#include <vgui_controls/PanelListPanel.h>
+
 #include <algorithm>
 #include <map>
 #include <memory>
 #include <set>
 
+#include <nextclient/runtime.h>
+#include <vgui/IInputInternal.h>
+#include <vgui/IPanel.h>
+#include <vgui/IScheme.h>
+#include <vgui/ISurfaceNext.h>
+#include <vgui_controls/Frame.h>
+#include <vgui_controls/Label.h>
+#include <vgui_controls/PanelListPanel.h>
+
+#include "BasePanel.h"
+#include "PluginControls.h"
+#include "PluginLocalization.h"
+#include "PluginWindowState.h"
+
+#undef CreateFont
+
 namespace
 {
     using Json = tao::json::value;
-    std::map<std::string, vgui2::HFont> fontCache;
+    std::map<std::string, vgui2::HFont> g_FontCache;
     class PluginRow : public vgui2::Panel
     {
     public:
@@ -103,8 +104,8 @@ namespace
                 for (const auto& font : specs->get_array())
                 {
                     const auto key = PluginFontKey(font);
-                    auto found = fontCache.find(key);
-                    if (found == fontCache.end() && fontCache.size() < 128)
+                    auto found = g_FontCache.find(key);
+                    if (found == g_FontCache.end() && g_FontCache.size() < 128)
                     {
                         auto handle = vgui2::surface()->CreateFont();
                         vgui2::surface()->AddGlyphSetToFont(
@@ -118,52 +119,19 @@ namespace
                             0,
                             0
                         );
-                        found = fontCache.emplace(key, handle).first;
+                        found = g_FontCache.emplace(key, handle).first;
                     }
-                    if (found != fontCache.end())
+                    if (found != g_FontCache.end())
+                    {
                         fonts[font.at("id").get_string()] = found->second;
+                    }
                 }
             for (const auto& item : spec.at("items").get_array())
             {
                 const auto kind = item.at("kind").get_string(), id = item.at("id").get_string();
                 const auto title = PluginWide(PluginLocalized(item.at("text")));
-                vgui2::Panel* widget{};
-                if (kind == "button")
-                {
-                    auto* button = new vgui2::Button(this, id.c_str(), "", this, id.c_str());
-                    button->SetText(title.c_str());
-                    widget = button;
-                }
-                else if (kind == "checkbox")
-                {
-                    auto* check = new vgui2::CheckButton(this, id.c_str(), "");
-                    check->SetText(title.c_str());
-                    check->SetSelected(item.at("value").get_boolean());
-                    widget = check;
-                }
-                else if (kind == "slider")
-                {
-                    auto* slider = new vgui2::Slider(this, id.c_str());
-                    slider->SetRange(item.at("min").as<int>(), item.at("max").as<int>());
-                    slider->SetValue(item.at("value").as<int>());
-                    widget = slider;
-                }
-                else if (kind == "text")
-                {
-                    auto* entry = new vgui2::TextEntry(this, id.c_str());
-                    entry->SetMaximumCharCount(1024);
-                    entry->SetText(PluginWide(item.at("value").get_string()).c_str());
-                    widget = entry;
-                }
-                else if (kind == "list")
-                {
-                    auto* list = new vgui2::ComboBox(this, id.c_str(), 8, false);
-                    for (const auto& option : item.at("options").get_array())
-                        list->AddItem(PluginWide(PluginLocalized(option)).c_str(), nullptr);
-                    list->ActivateItem(item.at("value").as<int>());
-                    widget = list;
-                }
-                else if (kind == "image" && spec.find("textures") && item.find("texture"))
+                vgui2::Panel* widget = PluginControls_Create(this, item, this, id.c_str());
+                if (kind == "image" && spec.find("textures") && item.find("texture"))
                 {
                     for (const auto& texture : spec.at("textures").get_array())
                         if (texture.at("id") == item.at("texture"))
@@ -171,19 +139,19 @@ namespace
                 }
                 if (!widget)
                     widget = new vgui2::Label(this, id.c_str(), title.c_str());
-                int contentHeight = 24;
+                int content_height = 24;
                 if (kind == "image")
                     for (const auto& texture : spec.at("textures").get_array())
                         if (texture.at("id") == item.at("texture"))
-                            contentHeight = texture.at("height").as<int>();
+                            content_height = texture.at("height").as<int>();
                 if (auto font = item.find("font"))
                     if (auto found = fonts.find(font->get_string()); found != fonts.end())
                         if (auto* label = dynamic_cast<vgui2::Label*>(widget))
                         {
                             label->SetFont(found->second);
-                            contentHeight = std::max(contentHeight, vgui2::surface()->GetFontTall(found->second));
+                            content_height = std::max(content_height, vgui2::surface()->GetFontTall(found->second));
                         }
-                widget->SetTall(contentHeight);
+                widget->SetTall(content_height);
                 widgets_.push_back(widget);
             }
             std::map<int, std::vector<vgui2::Panel*>> rows;
@@ -247,35 +215,7 @@ namespace
             for (size_t i = 0; i < widgets_.size(); ++i)
             {
                 auto& item = spec_["items"].at(i);
-                struct Reader
-                {
-                    vgui2::Panel* widget;
-                    bool Checked() const
-                    {
-                        return static_cast<vgui2::CheckButton*>(widget)->IsSelected();
-                    }
-                    int SliderValue() const
-                    {
-                        return static_cast<vgui2::Slider*>(widget)->GetValue();
-                    }
-                    int Selection() const
-                    {
-                        return static_cast<vgui2::ComboBox*>(widget)->GetActiveItem();
-                    }
-                    std::string Text() const
-                    {
-                        auto* entry = static_cast<vgui2::TextEntry*>(widget);
-                        wchar_t text[1025]{};
-                        entry->GetText(text, sizeof(text));
-                        char utf8[4097]{};
-                        WideCharToMultiByte(CP_UTF8, 0, text, -1, utf8, sizeof(utf8), nullptr, nullptr);
-                        const auto bounded = PluginInputText(utf8);
-                        if (bounded != utf8)
-                            entry->SetText(PluginWide(bounded).c_str());
-                        return bounded;
-                    }
-                } reader{widgets_[i]};
-                auto value = ReadPluginInput(item.at("kind").get_string(), reader);
+                auto value = PluginControls_Read(widgets_[i], item.at("kind").get_string());
                 if (!value)
                     continue;
                 if (*value != item.at("value"))
@@ -295,35 +235,35 @@ namespace
         std::vector<vgui2::Panel*> widgets_;
         vgui2::PanelListPanel* list_{};
     };
-    std::map<std::string, std::unique_ptr<PluginWindow>> windows;
-    std::string snapshot, language;
-    Json specifications = tao::json::empty_array;
+    std::map<std::string, std::unique_ptr<PluginWindow>> g_Windows;
+    std::string g_Snapshot, g_Language;
+    Json g_Specifications = tao::json::empty_array;
 } // namespace
-void PluginWindowsFrame(vgui2::VPANEL root, bool menuVisible)
+void PluginWindowsFrame(vgui2::VPANEL root, bool menu_visible)
 {
     try
     {
         const std::string_view next = nc_runtime_windows();
-        const auto currentLanguage = PluginLanguage();
-        const bool changed = next != snapshot;
-        const bool translated = currentLanguage != language;
+        const auto current_language = PluginLanguage();
+        const bool changed = next != g_Snapshot;
+        const bool translated = current_language != g_Language;
         if (changed)
         {
-            specifications = tao::json::from_string(next);
-            snapshot = next;
+            g_Specifications = tao::json::from_string(next);
+            g_Snapshot = next;
         }
         if (translated)
         {
-            windows.clear();
-            language = currentLanguage;
+            g_Windows.clear();
+            g_Language = current_language;
         }
-        const auto& specs = specifications;
+        const auto& specs = g_Specifications;
         std::set<std::string> current;
         for (const auto& spec : specs.get_array())
         {
             auto id = spec.at("handle").get_string();
             current.insert(id);
-            auto& window = windows[id];
+            auto& window = g_Windows[id];
             if (window && changed)
             {
                 auto visible = window->spec_;
@@ -336,7 +276,8 @@ void PluginWindowsFrame(vgui2::VPANEL root, bool menuVisible)
             if (!window)
                 window = std::make_unique<PluginWindow>(root, spec);
             const auto surface = spec.at("surface").get_string();
-            const bool visible = spec.at("visible").get_boolean() && (surface == "all" || (surface == "menu" ? menuVisible : !menuVisible));
+            const bool visible =
+                spec.at("visible").get_boolean() && (surface == "all" || (surface == "menu" ? menu_visible : !menu_visible));
             const bool input = visible && spec.at("interactive").get_boolean();
             const bool opening = visible && !window->IsVisible();
             if (!visible)
@@ -351,11 +292,17 @@ void PluginWindowsFrame(vgui2::VPANEL root, bool menuVisible)
             }
             window->Poll();
         }
-        for (auto it = windows.begin(); it != windows.end();)
+        for (auto it = g_Windows.begin(); it != g_Windows.end();)
+        {
             if (!current.count(it->first))
-                it = windows.erase(it);
+            {
+                it = g_Windows.erase(it);
+            }
             else
+            {
                 ++it;
+            }
+        }
         if (changed || translated)
             BasePanel()->UpdatePluginMenus(specs);
     }
@@ -364,7 +311,7 @@ void PluginWindowsFrame(vgui2::VPANEL root, bool menuVisible)
 }
 void PluginWindowsShutdown()
 {
-    windows.clear();
-    snapshot.clear();
-    specifications = tao::json::empty_array;
+    g_Windows.clear();
+    g_Snapshot.clear();
+    g_Specifications = tao::json::empty_array;
 }

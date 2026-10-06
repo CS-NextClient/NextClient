@@ -33,8 +33,10 @@ namespace plugins::runtime
         if (!s)
             return {};
         size_t n = strnlen_s(s, limit + 1);
-        if (n > limit)
+        if (n > limit || (n && !MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, s, static_cast<int>(n), nullptr, 0)))
+        {
             throw std::runtime_error(message("#NextPlugins_ErrorSdkString"));
+        }
         return {s, n};
     }
 } // namespace plugins::runtime
@@ -92,15 +94,19 @@ void nc_runtime_start(const wchar_t* directory, int safe_mode)
         if (safe)
             return;
         for (auto& a : observed)
-            if (a.enabled)
+            if (a.enabled && !a.manifest.version.empty())
+            {
                 for (auto& b : observed)
-                    if (b.enabled)
+                    if (b.enabled && !b.manifest.version.empty())
+                    {
                         for (const auto& r : a.manifest.conflicts)
                             if (r.id == b.manifest.id && matches(b.manifest.version, r.range))
                             {
                                 a.error = message("#NextPlugins_ErrorConflict", {display_name(b), r.reason});
                                 b.error = message("#NextPlugins_ErrorConflict", {display_name(a), r.reason});
                             }
+                    }
+            }
         // Walk user order once. A failed dependency never allows its dependents
         // to load, while unrelated plugins remain usable (including cycles).
         std::set<std::string> success;

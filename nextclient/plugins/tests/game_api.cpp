@@ -105,8 +105,37 @@ public:
                 control.label_ru = i % 2 ? oversized.c_str() : "Valid";
                 rejected_control_acceptances += host->add_control(host->context, &control);
             }
+            for (const char* invalid : {"\xe9", "\xc0\xaf", "\xed\xa0\x80", "\xf4\x90\x80\x80"})
+            {
+                rejected_control_acceptances += host->add_tab(host->context, "invalid_tab", invalid, "Valid");
+                rejected_control_acceptances += host->add_tab(host->context, "invalid_tab", "Valid", invalid);
+                for (int field = 0; field < 4; ++field)
+                {
+                    NcControl malformed{
+                        sizeof(NcControl), "invalid_control", "game", NC_CHOICE, "Valid", "Valid", 0, 0, 0, "Valid", "Valid"
+                    };
+                    if (field == 0)
+                    {
+                        malformed.label_en = invalid;
+                    }
+                    if (field == 1)
+                    {
+                        malformed.label_ru = invalid;
+                    }
+                    if (field == 2)
+                    {
+                        malformed.choices_en = invalid;
+                    }
+                    if (field == 3)
+                    {
+                        malformed.choices_ru = invalid;
+                    }
+                    rejected_control_acceptances += host->add_control(host->context, &malformed);
+                }
+            }
             controls_after = extension("nextclient.events", "stats", "{}");
-            control.label_en = control.label_ru = "Valid";
+            control.label_en = "Valid";
+            control.label_ru = "Настройка";
             valid_control = host->add_control(host->context, &control);
         }
     }

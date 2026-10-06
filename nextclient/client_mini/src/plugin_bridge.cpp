@@ -1,40 +1,41 @@
 #include "plugin_bridge.h"
-#include "plugin_game_state.h"
-#include "color_chat_in_console.h"
-#include <net_api.h>
-#include <array>
-#include <map>
-#include "main.h"
-#include "plugin_movement.h"
-#include <nextclient/runtime.h>
-#include <triangleapi.h>
+
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <cstring>
+#include <map>
+#include <memory>
 #include <set>
 #include <string>
+#include <utility>
 #include <vector>
+
+#include <nextclient/runtime.h>
+
+#include "main.h"
+#include <net_api.h>
+#include <triangleapi.h>
+
+#include "color_chat_in_console.h"
+#include "plugin_game_state.h"
+#include "plugin_movement.h"
+#include "plugin_snapshot.h"
 
 namespace
 {
-    bool prediction_ready{};
-    bool bridge_ready{};
-    PluginGameState game_state;
-    pfnEngSrc_pfnHookUserMsg_t original_hook{};
-    std::map<std::string, pfnUserMsgHook> message_handlers;
-    std::set<std::string> watched_messages;
-    std::shared_ptr<nitroapi::Unsubscriber> cvar_hook, state_hook, disconnect_hook;
-    struct CvarStorage
-    {
-        std::string initial;
-        int32_t archive;
-    };
-    std::map<std::string, CvarStorage> cvar_storage;
-    std::string connection_identity, current_map;
-    int server_epoch = -1;
-    std::array<int, 33> player_ids{};
-    using Json = tao::json::value;
-    void Emit(const char* name, const Json& data)
+    bool g_PredictionReady{};
+    bool g_BridgeReady{};
+    PluginGameState g_GameState;
+    decltype(gEngfuncs.pfnHookUserMsg) g_RegisterMessage{};
+    std::map<std::string, pfnUserMsgHook> g_MessageHandlers;
+    std::shared_ptr<nitroapi::Unsubscriber> g_CvarHook, g_StateHook, g_DisconnectHook;
+    std::map<std::string, std::string> g_CvarStorage;
+    std::string g_ConnectionIdentity, g_CurrentMap;
+    int g_ServerEpoch = -1;
+    std::array<int, 33> g_PlayerIds{};
+    using json_t = tao::json::value;
+    void Emit(const char* name, const json_t& data)
     {
         try
         {
@@ -44,76 +45,108 @@ namespace
         catch (...)
         {}
     }
+    void ClearGameState();
     void SyncEpoch()
     {
         const auto* state = eng()->client_state;
         const auto* cls = eng()->client_static;
         const int epoch = cls && cls->state >= ca_connected && state ? state->servercount : -1;
-        if (epoch != server_epoch)
+        if (epoch != g_ServerEpoch)
         {
-            game_state.Reset();
-            player_ids.fill(0);
-            server_epoch = epoch;
-            prediction_ready = false;
+            ClearGameState();
+            g_ServerEpoch = epoch;
         }
     }
     void ClearGameState()
     {
-        game_state.Reset();
-        player_ids.fill(0);
-        server_epoch = -1;
-        prediction_ready = false;
+        g_GameState.Reset();
+        g_PlayerIds.fill(0);
+        g_ServerEpoch = -1;
+        g_PredictionReady = false;
     }
     void SyncPlayers();
     int DispatchMessage(const char* name, int size, void* bytes)
     {
-        auto handler = message_handlers.find(name ? name : "");
-        if (handler == message_handlers.end())
+        auto handler = g_MessageHandlers.find(name ? name : "");
+        if (handler == g_MessageHandlers.end())
+        {
             return 0;
+        }
         SyncEpoch();
-        if (bridge_ready)
+        if (g_BridgeReady)
+        {
             SyncPlayers();
+        }
         uint8_t replacement[4096]{};
         uint32_t replacement_size = sizeof(replacement);
-        const int action = bridge_ready && size >= 0 ? nc_runtime_message(
-                                                           name,
-                                                           static_cast<const uint8_t*>(bytes),
-                                                           static_cast<uint32_t>(size),
-                                                           gEngfuncs.GetClientTime(),
-                                                           server_epoch,
-                                                           replacement,
-                                                           &replacement_size
-                                                       )
-                                                     : 0;
+        const int action = g_BridgeReady && size >= 0 ? nc_runtime_message(
+                                                            name,
+                                                            static_cast<const uint8_t*>(bytes),
+                                                            static_cast<uint32_t>(size),
+                                                            gEngfuncs.GetClientTime(),
+                                                            g_ServerEpoch,
+                                                            replacement,
+                                                            &replacement_size
+                                                        )
+                                                      : 0;
         // Parse canonical data before the presentation consumer can mutate it.
-        if (bridge_ready && size >= 0)
-            for (const auto& event : game_state.Message(name, bytes, static_cast<size_t>(size), gEngfuncs.GetClientTime()))
+        if (g_BridgeReady && size >= 0)
+        {
+            for (const auto& event : g_GameState.Message(name, bytes, static_cast<size_t>(size), gEngfuncs.GetClientTime()))
+            {
                 Emit(event.name.c_str(), event.data);
+            }
+        }
         return action == 2 || !handler->second
                    ? 1
                    : handler->second(name, action == 1 ? static_cast<int>(replacement_size) : size, action == 1 ? replacement : bytes);
     }
-    int HookMessage(const char* name, pfnUserMsgHook handler)
+    int RegisterMessage(const char* name, pfnUserMsgHook handler)
     {
-        if (name && handler && handler != DispatchMessage)
+        if (!name || handler == DispatchMessage)
         {
-            message_handlers[name] = handler;
-            if (PluginGameState::Observes(name) || watched_messages.count(name))
-                return original_hook(name, DispatchMessage);
+            return g_RegisterMessage(name, handler);
         }
-        return original_hook(name, handler);
+        // Capture consumers during registration; subscriptions never replace engine handlers.
+        const int result = g_RegisterMessage(name, handler ? DispatchMessage : nullptr);
+        if (result)
+        {
+            if (handler)
+            {
+                g_MessageHandlers[name] = handler;
+            }
+            else
+            {
+                g_MessageHandlers.erase(name);
+            }
+        }
+        return result;
+    }
+    void InstallMessageWrappers()
+    {
+        for (cl_enginefunc_t* table : {client()->gEngfuncs, &gEngfuncs})
+        {
+            if (!table || !table->pfnHookUserMsg || table->pfnHookUserMsg == RegisterMessage)
+            {
+                continue;
+            }
+            if (!g_RegisterMessage)
+            {
+                g_RegisterMessage = table->pfnHookUserMsg;
+            }
+            if (table->pfnHookUserMsg == g_RegisterMessage)
+            {
+                table->pfnHookUserMsg = RegisterMessage;
+            }
+        }
     }
     int32_t WatchMessage(const char* name)
     {
-        if (!original_hook)
-            return 0;
-        watched_messages.insert(name);
-        message_handlers.try_emplace(name, nullptr);
-        return original_hook(name, DispatchMessage) != 0;
+        return g_RegisterMessage && g_MessageHandlers.count(name) != 0;
     }
-    float frame_time{};
+    float g_FrameTime{};
     // Engine command registrations keep their names; preserve storage until DLL shutdown.
-    std::set<std::string> command_names;
+    std::set<std::string> g_CommandNames;
     void DispatchCommand()
     {
         const int count = gEngfuncs.Cmd_Argc();
@@ -128,16 +161,16 @@ namespace
     {
         for (auto handle = gEngfuncs.GetFirstCmdFunctionHandle(); handle; handle = gEngfuncs.GetNextCmdFunctionHandle(handle))
             if (!_stricmp(name, gEngfuncs.GetCmdFunctionName(handle)))
-                return command_names.count(name) != 0;
+                return g_CommandNames.count(name) != 0;
         if (gEngfuncs.pfnGetCvarPointer(name))
             return 0;
-        const auto& stored = *command_names.insert(name).first;
+        const auto& stored = *g_CommandNames.insert(name).first;
         return gEngfuncs.pfnAddCommand(const_cast<char*>(stored.c_str()), DispatchCommand) != 0;
     }
     bool InGame()
     {
         auto* local = gEngfuncs.GetLocalPlayer();
-        return eng()->client_static && eng()->client_static->state == ca_active && prediction_ready && local && local->model && pmove;
+        return eng()->client_static && eng()->client_static->state == ca_active && g_PredictionReady && local && local->model && pmove;
     }
     void CopyVector(float (&target)[3], const float* source)
     {
@@ -156,7 +189,7 @@ namespace
         value->health = gHUD ? gHUD->m_Health->m_iHealth : static_cast<int32_t>(g_LastPlayerState.client.health);
         // Nitro does not bind the optional battery HUD. Use the received
         // Battery message instead of dereferencing its null HUD pointer.
-        value->armor = game_state.Armor();
+        value->armor = g_GameState.Armor();
         value->weapon_id = g_LastPlayerState.client.m_iId;
         value->weapons = static_cast<uint32_t>(gHUD ? *gHUD->m_iWeaponBits : g_LastPlayerState.client.weapons);
         CopyVector(value->position, pmove->origin);
@@ -246,12 +279,12 @@ namespace
     int32_t CreateCvar(const char* name, const char* initial, int32_t archive)
     {
         if (gEngfuncs.pfnGetCvarPointer(name))
-            return cvar_storage.count(name) != 0;
+            return g_CvarStorage.count(name) != 0;
         for (auto handle = gEngfuncs.GetFirstCmdFunctionHandle(); handle; handle = gEngfuncs.GetNextCmdFunctionHandle(handle))
             if (!_stricmp(name, gEngfuncs.GetCmdFunctionName(handle)))
                 return 0;
-        const auto it = cvar_storage.try_emplace(name, CvarStorage{initial, archive}).first;
-        return gEngfuncs.pfnRegisterVariable(it->first.c_str(), it->second.initial.c_str(), archive ? FCVAR_ARCHIVE : 0) != nullptr;
+        const auto it = g_CvarStorage.try_emplace(name, initial).first;
+        return gEngfuncs.pfnRegisterVariable(it->first.c_str(), it->second.c_str(), archive ? FCVAR_ARCHIVE : 0) != nullptr;
     }
     int32_t SendChat(const char* text, int32_t team)
     {
@@ -262,12 +295,14 @@ namespace
     }
     int32_t ChatPrint(const char* text)
     {
-        if (!bridge_ready || !eng()->client_static || eng()->client_static->state != ca_active)
+        if (!g_BridgeReady || !eng()->client_static || eng()->client_static->state != ca_active)
+        {
             return 0;
-        auto handler = message_handlers.find("SayText");
+        }
+        auto handler = g_MessageHandlers.find("SayText");
         // Invoke the original local handler directly. This neither sends chat
         // to the server nor re-emits synthetic messages to chat subscribers.
-        return handler != message_handlers.end() && PrintLocalChat(handler->second, text) != 0;
+        return handler != g_MessageHandlers.end() && PrintLocalChat(handler->second, text) != 0;
     }
     int32_t Connect(const char* host, uint32_t port)
     {
@@ -296,7 +331,7 @@ namespace
         gEngfuncs.pfnGetScreenInfo(&screen);
         value->width = screen.iWidth;
         value->height = screen.iHeight;
-        value->frame_time = frame_time;
+        value->frame_time = g_FrameTime;
         const auto* client = eng()->client_static;
         if (client && client->state >= ca_connected)
         {
@@ -361,199 +396,20 @@ namespace
         gEngfuncs.pfnPlaySoundByName(const_cast<char*>(path), volume);
     }
 
-    Json VectorJson(const float* values, size_t count = 3)
-    {
-        Json result = tao::json::empty_array;
-        for (size_t i = 0; i < count; ++i)
-            result.push_back(values[i]);
-        return result;
-    }
     template <size_t N>
     std::string ArrayText(const char (&value)[N])
     {
         return {value, strnlen_s(value, N)};
     }
-    Json EntityState(const entity_state_t& state)
-    {
-        Json result = tao::json::empty_object;
-        result["entityType"] = state.entityType;
-        result["number"] = state.number;
-        result["msg_time"] = state.msg_time;
-        result["messagenum"] = state.messagenum;
-        result["modelindex"] = state.modelindex;
-        result["sequence"] = state.sequence;
-        result["frame"] = state.frame;
-        result["colormap"] = state.colormap;
-        result["skin"] = state.skin;
-        result["solid"] = state.solid;
-        result["effects"] = state.effects;
-        result["scale"] = state.scale;
-        result["eflags"] = state.eflags;
-        result["rendermode"] = state.rendermode;
-        result["renderamt"] = state.renderamt;
-        result["renderfx"] = state.renderfx;
-        result["movetype"] = state.movetype;
-        result["animtime"] = state.animtime;
-        result["framerate"] = state.framerate;
-        result["body"] = state.body;
-        result["aiment"] = state.aiment;
-        result["owner"] = state.owner;
-        result["friction"] = state.friction;
-        result["gravity"] = state.gravity;
-        result["team"] = state.team;
-        result["playerclass"] = state.playerclass;
-        result["health"] = state.health;
-        result["spectator"] = state.spectator;
-        result["weaponmodel"] = state.weaponmodel;
-        result["gaitsequence"] = state.gaitsequence;
-        result["usehull"] = state.usehull;
-        result["oldbuttons"] = state.oldbuttons;
-        result["onground"] = state.onground;
-        result["iStepLeft"] = state.iStepLeft;
-        result["flFallVelocity"] = state.flFallVelocity;
-        result["fov"] = state.fov;
-        result["weaponanim"] = state.weaponanim;
-        result["impacttime"] = state.impacttime;
-        result["starttime"] = state.starttime;
-        result["iuser1"] = state.iuser1;
-        result["iuser2"] = state.iuser2;
-        result["iuser3"] = state.iuser3;
-        result["iuser4"] = state.iuser4;
-        result["fuser1"] = state.fuser1;
-        result["fuser2"] = state.fuser2;
-        result["fuser3"] = state.fuser3;
-        result["fuser4"] = state.fuser4;
-        result["origin"] = VectorJson(state.origin);
-        result["angles"] = VectorJson(state.angles);
-        result["velocity"] = VectorJson(state.velocity);
-        result["mins"] = VectorJson(state.mins);
-        result["maxs"] = VectorJson(state.maxs);
-        result["basevelocity"] = VectorJson(state.basevelocity);
-        result["startpos"] = VectorJson(state.startpos);
-        result["endpos"] = VectorJson(state.endpos);
-        result["vuser1"] = VectorJson(state.vuser1);
-        result["vuser2"] = VectorJson(state.vuser2);
-        result["vuser3"] = VectorJson(state.vuser3);
-        result["vuser4"] = VectorJson(state.vuser4);
-
-        result["rendercolor"] = Json::array({state.rendercolor.r, state.rendercolor.g, state.rendercolor.b});
-        result["controller"] = Json::array({state.controller[0], state.controller[1], state.controller[2], state.controller[3]});
-        result["blending"] = Json::array({state.blending[0], state.blending[1], state.blending[2], state.blending[3]});
-        return result;
-    }
-    Json ClientState(const clientdata_t& state)
-    {
-        Json result = tao::json::empty_object;
-        result["viewmodel"] = state.viewmodel;
-        result["flags"] = state.flags;
-        result["waterlevel"] = state.waterlevel;
-        result["watertype"] = state.watertype;
-        result["health"] = state.health;
-        result["bInDuck"] = state.bInDuck;
-        result["weapons"] = state.weapons;
-        result["flTimeStepSound"] = state.flTimeStepSound;
-        result["flDuckTime"] = state.flDuckTime;
-        result["flSwimTime"] = state.flSwimTime;
-        result["waterjumptime"] = state.waterjumptime;
-        result["maxspeed"] = state.maxspeed;
-        result["fov"] = state.fov;
-        result["weaponanim"] = state.weaponanim;
-        result["m_iId"] = state.m_iId;
-        result["ammo_shells"] = state.ammo_shells;
-        result["ammo_nails"] = state.ammo_nails;
-        result["ammo_cells"] = state.ammo_cells;
-        result["ammo_rockets"] = state.ammo_rockets;
-        result["m_flNextAttack"] = state.m_flNextAttack;
-        result["tfstate"] = state.tfstate;
-        result["pushmsec"] = state.pushmsec;
-        result["deadflag"] = state.deadflag;
-        result["iuser1"] = state.iuser1;
-        result["iuser2"] = state.iuser2;
-        result["iuser3"] = state.iuser3;
-        result["iuser4"] = state.iuser4;
-        result["fuser1"] = state.fuser1;
-        result["fuser2"] = state.fuser2;
-        result["fuser3"] = state.fuser3;
-        result["fuser4"] = state.fuser4;
-        result["origin"] = VectorJson(state.origin);
-        result["velocity"] = VectorJson(state.velocity);
-        result["punchangle"] = VectorJson(state.punchangle);
-        result["view_ofs"] = VectorJson(state.view_ofs);
-        result["vuser1"] = VectorJson(state.vuser1);
-        result["vuser2"] = VectorJson(state.vuser2);
-        result["vuser3"] = VectorJson(state.vuser3);
-        result["vuser4"] = VectorJson(state.vuser4);
-
-        result["physinfo"] = ArrayText(state.physinfo);
-        return result;
-    }
-    Json MovementState()
-    {
-        Json result = tao::json::empty_object;
-        result["player_index"] = pmove->player_index;
-        result["multiplayer"] = pmove->multiplayer;
-        result["time"] = pmove->time;
-        result["frametime"] = pmove->frametime;
-        result["flDuckTime"] = pmove->flDuckTime;
-        result["bInDuck"] = pmove->bInDuck;
-        result["flTimeStepSound"] = pmove->flTimeStepSound;
-        result["iStepLeft"] = pmove->iStepLeft;
-        result["flFallVelocity"] = pmove->flFallVelocity;
-        result["flSwimTime"] = pmove->flSwimTime;
-        result["flNextPrimaryAttack"] = pmove->flNextPrimaryAttack;
-        result["effects"] = pmove->effects;
-        result["flags"] = pmove->flags;
-        result["usehull"] = pmove->usehull;
-        result["gravity"] = pmove->gravity;
-        result["friction"] = pmove->friction;
-        result["oldbuttons"] = pmove->oldbuttons;
-        result["waterjumptime"] = pmove->waterjumptime;
-        result["dead"] = pmove->dead;
-        result["deadflag"] = pmove->deadflag;
-        result["spectator"] = pmove->spectator;
-        result["movetype"] = pmove->movetype;
-        result["onground"] = pmove->onground;
-        result["waterlevel"] = pmove->waterlevel;
-        result["watertype"] = pmove->watertype;
-        result["oldwaterlevel"] = pmove->oldwaterlevel;
-        result["maxspeed"] = pmove->maxspeed;
-        result["clientmaxspeed"] = pmove->clientmaxspeed;
-        result["iuser1"] = pmove->iuser1;
-        result["iuser2"] = pmove->iuser2;
-        result["iuser3"] = pmove->iuser3;
-        result["iuser4"] = pmove->iuser4;
-        result["fuser1"] = pmove->fuser1;
-        result["fuser2"] = pmove->fuser2;
-        result["fuser3"] = pmove->fuser3;
-        result["fuser4"] = pmove->fuser4;
-        result["forward"] = VectorJson(pmove->forward);
-        result["right"] = VectorJson(pmove->right);
-        result["up"] = VectorJson(pmove->up);
-        result["origin"] = VectorJson(pmove->origin);
-        result["angles"] = VectorJson(pmove->angles);
-        result["oldangles"] = VectorJson(pmove->oldangles);
-        result["velocity"] = VectorJson(pmove->velocity);
-        result["movedir"] = VectorJson(pmove->movedir);
-        result["basevelocity"] = VectorJson(pmove->basevelocity);
-        result["view_ofs"] = VectorJson(pmove->view_ofs);
-        result["punchangle"] = VectorJson(pmove->punchangle);
-        result["vuser1"] = VectorJson(pmove->vuser1);
-        result["vuser2"] = VectorJson(pmove->vuser2);
-        result["vuser3"] = VectorJson(pmove->vuser3);
-        result["vuser4"] = VectorJson(pmove->vuser4);
-        result["texture"] = ArrayText(pmove->sztexturename);
-        result["texture_type"] = std::string(1, pmove->chtexturetype);
-        return result;
-    }
-    Json WeaponData(int id)
+    json_t WeaponData(int id)
     {
         if (id < 1 || id >= 64 || !InGame())
             return tao::json::null;
-        auto definition = game_state.Weapon(id);
+        auto definition = g_GameState.Weapon(id);
         const auto& state = g_LastPlayerState.weapondata[id];
         if (definition.is_null() && state.m_iId != id)
             return tao::json::null;
-        Json result{
+        json_t result{
             {"id", id},
             {"definition", definition},
             {"prediction", tao::json::null},
@@ -563,7 +419,7 @@ namespace
         };
         if (state.m_iId == id)
         {
-            Json prediction = tao::json::empty_object;
+            json_t prediction = tao::json::empty_object;
             prediction["m_iId"] = state.m_iId;
             prediction["m_iClip"] = state.m_iClip;
             prediction["m_flNextPrimaryAttack"] = state.m_flNextPrimaryAttack;
@@ -591,7 +447,7 @@ namespace
         }
         if (!definition.is_null())
         {
-            auto ammo = game_state.Ammo();
+            auto ammo = g_GameState.Ammo();
             for (const auto& [field, output] : {std::pair{"ammo_type", "reserve"}, std::pair{"ammo2_type", "reserve2"}})
             {
                 const int type = definition.at(field).as<int>();
@@ -601,14 +457,14 @@ namespace
         }
         return result;
     }
-    Json ConnectionData()
+    json_t ConnectionData()
     {
         auto* cls = eng()->client_static;
         const int state = cls ? cls->state : ca_disconnected;
         constexpr const char* states[]{"dedicated", "disconnected", "connecting", "connected", "uninitialized", "active"};
         const bool connected = state >= ca_connected;
         const char* hostname = connected ? gEngfuncs.ServerInfo_ValueForKey("hostname") : nullptr;
-        Json result{
+        json_t result{
             {"state", state >= 0 && state < 6 ? states[state] : "unknown"},
             {"connected", connected},
             {"in_game", InGame()},
@@ -634,7 +490,7 @@ namespace
         }
         return result;
     }
-    Json ScoreboardPlayer(int index)
+    json_t ScoreboardPlayer(int index)
     {
         if (index < 1 || index > std::min(gEngfuncs.GetMaxClients(), 32))
             return tao::json::null;
@@ -642,7 +498,7 @@ namespace
         gEngfuncs.pfnGetPlayerInfo(index, &info);
         if (!info.name || !*info.name)
             return tao::json::null;
-        auto result = game_state.Player(index);
+        auto result = g_GameState.Player(index);
         for (const auto* key :
              {"frags",
               "deaths",
@@ -682,13 +538,15 @@ namespace
             if (i <= gEngfuncs.GetMaxClients())
                 gEngfuncs.pfnGetPlayerInfo(i, &info);
             const int id = info.name && *info.name ? eng()->client_state->players[i - 1].userid : 0;
-            if (id == player_ids[i])
+            if (id == g_PlayerIds[i])
+            {
                 continue;
-            const int previous = player_ids[i];
-            player_ids[i] = id;
-            game_state.RemovePlayer(i);
+            }
+            const int previous = g_PlayerIds[i];
+            g_PlayerIds[i] = id;
+            g_GameState.RemovePlayer(i);
             if (previous)
-                Emit("player.left", Json{{"index", i}, {"user_id", previous}});
+                Emit("player.left", json_t{{"index", i}, {"user_id", previous}});
             if (id)
                 Emit("player.joined", ScoreboardPlayer(i));
         }
@@ -697,21 +555,21 @@ namespace
     {
         const auto connection = ConnectionData();
         const auto identity =
-            tao::json::to_string(Json::array({connection.at("state"), connection.at("address"), connection.at("demo_playback")}));
-        if (identity != connection_identity)
+            tao::json::to_string(json_t::array({connection.at("state"), connection.at("address"), connection.at("demo_playback")}));
+        if (identity != g_ConnectionIdentity)
         {
-            connection_identity = identity;
+            g_ConnectionIdentity = identity;
             Emit("connection.changed", connection);
         }
         const auto map = connection.at("map").get_string();
-        if (map != current_map)
+        if (map != g_CurrentMap)
         {
-            Emit("map.changed", Json{{"old", current_map}, {"map", map}});
-            current_map = map;
+            Emit("map.changed", json_t{{"old", g_CurrentMap}, {"map", map}});
+            g_CurrentMap = map;
         }
         SyncPlayers();
     }
-    Json GameDataValue(std::string_view section, int index)
+    json_t GameDataValue(std::string_view section, int index)
     {
         if (section == "connection")
             return ConnectionData();
@@ -721,26 +579,26 @@ namespace
         {
             NcPlayerState player{};
             GetPlayer(&player);
-            return Json{
+            return json_t{
                 {"index", player.index},
                 {"flags", player.flags},
                 {"health", player.health},
                 {"armor", player.armor},
                 {"weapon_id", player.weapon_id},
                 {"weapons", player.weapons},
-                {"position", VectorJson(player.position)},
-                {"velocity", VectorJson(player.velocity)},
-                {"view_angles", VectorJson(player.view_angles)},
-                {"view_offset", VectorJson(player.view_offset)},
+                {"position", PluginSnapshot_Vector(player.position)},
+                {"velocity", PluginSnapshot_Vector(player.velocity)},
+                {"view_angles", PluginSnapshot_Vector(player.view_angles)},
+                {"view_offset", PluginSnapshot_Vector(player.view_offset)},
                 {"fov", player.fov},
                 {"max_speed", player.max_speed},
                 {"water_level", player.water_level},
                 {"move_type", player.move_type},
-                {"client", ClientState(g_LastPlayerState.client)},
-                {"movement", MovementState()},
-                {"entity", EntityState(g_LastPlayerState.playerstate)},
-                {"shots_fired", client()->g_iShotsFired ? Json(*client()->g_iShotsFired) : Json(tao::json::null)},
-                {"hud", game_state.Match()}
+                {"client", PluginSnapshot_Client(g_LastPlayerState.client)},
+                {"movement", PluginSnapshot_Movement(*pmove)},
+                {"entity", PluginSnapshot_Entity(g_LastPlayerState.playerstate)},
+                {"shots_fired", client()->g_iShotsFired ? json_t(*client()->g_iShotsFired) : json_t(tao::json::null)},
+                {"hud", g_GameState.Match()}
             };
         }
         if (section == "entity")
@@ -749,18 +607,18 @@ namespace
             if (!GetEntity(index, &entity))
                 return tao::json::null;
             auto* source = gEngfuncs.GetEntityByIndex(index);
-            auto result = EntityState(source->curstate);
-            result["render_origin"] = VectorJson(source->origin);
-            result["render_angles"] = VectorJson(source->angles);
+            auto result = PluginSnapshot_Entity(source->curstate);
+            result["render_origin"] = PluginSnapshot_Vector(source->origin);
+            result["render_angles"] = PluginSnapshot_Vector(source->angles);
             result["model_name"] = ArrayText(source->model->name);
             result["is_player"] = source->player != 0;
             // Network health fields remain raw; this explicitly identifies reliable local health.
-            result["known_health"] = (entity.flags & NC_ENTITY_HEALTH) ? Json(entity.health) : Json(tao::json::null);
+            result["known_health"] = (entity.flags & NC_ENTITY_HEALTH) ? json_t(entity.health) : json_t(tao::json::null);
             return result;
         }
         if (section == "entities")
         {
-            Json result = tao::json::empty_array;
+            json_t result = tao::json::empty_array;
             const int count = eng()->client_state ? std::min(eng()->client_state->max_edicts, 8192) : 8192;
             for (int i = 1; i < count; ++i)
             {
@@ -774,7 +632,7 @@ namespace
             return WeaponData(index);
         if (section == "weapons")
         {
-            Json result = tao::json::empty_array;
+            json_t result = tao::json::empty_array;
             for (int i = 1; i < 64; ++i)
             {
                 auto weapon = WeaponData(i);
@@ -784,12 +642,12 @@ namespace
             return result;
         }
         if (section == "ammo")
-            return game_state.Ammo();
+            return g_GameState.Ammo();
         if (section == "scoreboard")
         {
             if (index)
                 return ScoreboardPlayer(index);
-            Json result = tao::json::empty_array;
+            json_t result = tao::json::empty_array;
             for (int i = 1; i <= std::min(gEngfuncs.GetMaxClients(), 32); ++i)
             {
                 auto player = ScoreboardPlayer(i);
@@ -800,7 +658,7 @@ namespace
         }
         if (section == "match")
         {
-            auto result = game_state.Match();
+            auto result = g_GameState.Match();
             result["time"] = gEngfuncs.GetClientTime();
             result["map"] = gEngfuncs.pfnGetLevelName();
             for (const auto* key : {"player.money", "round.time", "round.end", "bomb.dropped"})
@@ -849,21 +707,21 @@ namespace
         PrintPluginConsole(text);
     }
 } // namespace
-void PluginBridgeInit()
+void PluginBridge_Init()
 {
-    prediction_ready = false;
-    bridge_ready = true;
-    frame_time = 0;
+    g_PredictionReady = false;
+    g_BridgeReady = true;
+    g_FrameTime = 0;
     const NcClientServices services{RegisterCommand, GetPlayer,     GetEntity,     GetWeapon,   ReadCvar,   WriteCvar, DrawRect,
                                     GetSession,      GetPlayerInfo, WorldToScreen, MeasureText, DrawText,   PlaySound, ConsolePrint,
                                     GameData,        CreateCvar,    SendChat,      Connect,     Disconnect, ChatPrint, WatchMessage};
     nc_runtime_bind_client(&services);
 }
-void PluginBridgeShutdown()
+void PluginBridge_Shutdown()
 {
-    bridge_ready = false;
-    prediction_ready = false;
-    for (auto* hook : {&cvar_hook, &state_hook, &disconnect_hook})
+    g_BridgeReady = false;
+    g_PredictionReady = false;
+    for (auto* hook : {&g_CvarHook, &g_StateHook, &g_DisconnectHook})
     {
         if (*hook)
         {
@@ -871,34 +729,36 @@ void PluginBridgeShutdown()
             hook->reset();
         }
     }
-    if (original_hook)
+    if (g_RegisterMessage)
     {
-        for (const auto& [name, handler] : message_handlers)
-            original_hook(name.c_str(), handler);
-        if (client()->gEngfuncs && client()->gEngfuncs->pfnHookUserMsg == HookMessage)
-            client()->gEngfuncs->pfnHookUserMsg = original_hook;
-        if (gEngfuncs.pfnHookUserMsg == HookMessage)
-            gEngfuncs.pfnHookUserMsg = original_hook;
-        message_handlers.clear();
-        watched_messages.clear();
-        original_hook = nullptr;
+        for (const auto& [name, handler] : g_MessageHandlers)
+        {
+            g_RegisterMessage(name.c_str(), handler);
+        }
+        for (cl_enginefunc_t* table : {client()->gEngfuncs, &gEngfuncs})
+        {
+            if (table && table->pfnHookUserMsg == RegisterMessage)
+            {
+                table->pfnHookUserMsg = g_RegisterMessage;
+            }
+        }
+        g_MessageHandlers.clear();
+        g_RegisterMessage = nullptr;
     }
-    game_state.Reset();
-    server_epoch = -1;
-    current_map.clear();
-    connection_identity.clear();
-    player_ids.fill(0);
+    ClearGameState();
+    g_CurrentMap.clear();
+    g_ConnectionIdentity.clear();
     nc_runtime_bind_client(nullptr);
 }
-void PluginBridgeReset()
+void PluginBridge_Reset()
 {
-    prediction_ready = false;
+    g_PredictionReady = false;
 }
-void PluginBridgePredictionReady()
+void PluginBridge_PredictionReady()
 {
-    prediction_ready = true;
+    g_PredictionReady = true;
 }
-void PluginBridgeDraw(float time, int intermission)
+void PluginBridge_Draw(float time, int intermission)
 {
     if (!InGame())
         return;
@@ -907,54 +767,51 @@ void PluginBridgeDraw(float time, int intermission)
     const NcDrawContext context{sizeof(NcDrawContext), screen.iWidth, screen.iHeight, intermission, time};
     nc_runtime_draw(&context);
 }
-void PluginBridgeFrame(double delta)
+void PluginBridge_Frame(double delta)
 {
-    if (!bridge_ready)
+    if (!g_BridgeReady)
+    {
         return;
+    }
     SyncEpoch();
     ConnectionEvents();
     // HUD_Frame receives host_frametime, not an absolute timestamp.
-    frame_time = std::isfinite(delta) ? static_cast<float>(std::clamp(delta, 0.0, 1.0)) : 0;
+    g_FrameTime = std::isfinite(delta) ? static_cast<float>(std::clamp(delta, 0.0, 1.0)) : 0;
     // GameUI pumps plugin callbacks once per frame, also in disconnected menus.
 }
 
-void PluginBridgePrepare()
+void PluginBridge_Prepare()
 {
-    if (!original_hook && client()->gEngfuncs)
+    InstallMessageWrappers();
+    if (!g_CvarHook)
     {
-        original_hook = client()->gEngfuncs->pfnHookUserMsg;
-        client()->gEngfuncs->pfnHookUserMsg = HookMessage;
-    }
-    if (!cvar_hook)
-        cvar_hook = eng()->Cvar_DirectSet |= [](cvar_t* var, const char* value, const auto& next) {
+        g_CvarHook = eng()->Cvar_DirectSet |= [](cvar_t* var, const char* value, const auto& next) {
             const std::string name = var && var->name ? var->name : "";
             const std::string before = var && var->string ? var->string : "";
             next->Invoke(var, value);
             if (var && var->string)
                 nc_runtime_cvar_changed(name.c_str(), before.c_str(), var->string);
         };
+    }
     // A rapid reconnect can reuse the server count without a disconnected HUD
     // frame. Clear on engine lifecycle events as well as the observed epoch.
-    if (!state_hook)
-        state_hook = eng()->CL_ClearState += [](qboolean) { ClearGameState(); };
-    if (!disconnect_hook)
-        disconnect_hook = eng()->CL_Disconnect += ClearGameState;
+    if (!g_StateHook)
+    {
+        g_StateHook = eng()->CL_ClearState += [](qboolean) { ClearGameState(); };
+    }
+    if (!g_DisconnectHook)
+    {
+        g_DisconnectHook = eng()->CL_Disconnect += ClearGameState;
+    }
 }
-void PluginBridgeWrapMessages()
+void PluginBridge_WrapMessages()
 {
-    if (!original_hook)
-        original_hook = gEngfuncs.pfnHookUserMsg;
-    if (!original_hook)
-        return;
-    gEngfuncs.pfnHookUserMsg = HookMessage;
-    // Observe optional scoreboard messages even without a HUD consumer.
-    // Chain any handlers registered afterward.
-    for (const auto* name : {"HealthInfo", "Account"})
-        if (message_handlers.emplace(name, nullptr).second)
-            original_hook(name, DispatchMessage);
+    InstallMessageWrappers();
 }
-void PluginBridgeVoice(int index, int talking)
+void PluginBridge_Voice(int index, int talking)
 {
-    if (bridge_ready && index >= -1 && index <= 32)
-        Emit("voice.state", Json{{"player", index}, {"talking", talking != 0}});
+    if (g_BridgeReady && index >= -1 && index <= 32)
+    {
+        Emit("voice.state", json_t{{"player", index}, {"talking", talking != 0}});
+    }
 }

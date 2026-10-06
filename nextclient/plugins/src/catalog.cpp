@@ -313,8 +313,10 @@ namespace plugins
     static int find(const std::vector<Item>& items, const std::string& id)
     {
         for (size_t i = 0; i < items.size(); ++i)
-            if (items[i].enabled && items[i].manifest.id == id)
+            if (items[i].enabled && items[i].error.empty() && !items[i].manifest.version.empty() && items[i].manifest.id == id)
+            {
                 return static_cast<int>(i);
+            }
         return -1;
     }
     Json display_name(const Item& item)

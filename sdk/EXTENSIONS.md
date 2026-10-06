@@ -130,8 +130,15 @@ subscription. Plugins cannot publish a host event using the service broker.
 
 Request `messages.read` to use `nextclient.messages/subscribe` or `unsubscribe`
 with `{"name":"CustomMsg"}`. Names are 1–15 ASCII letters/digits/underscores;
-up to 128 names per plugin. Registration can precede client initialization.
-Custom server messages do not require an update to the bridge's event enum.
+up to 128 names per plugin. A message is available only after its consumer registers
+through the wrapped stock-client or client_mini engine table. Subscribing before
+that registration, or to a message registered only through another engine table,
+returns `{"ok":false,"error":"Message hook unavailable"}`. A filter registration
+for an unavailable message returns 0. Retry after the consumer registers if needed.
+Subscription requests never register or replace engine handlers. Registrations
+through other engine tables are not observed; replacing a wrapped consumer through
+one of those tables stops observation. Custom messages registered through a wrapped
+table do not require an update to the bridge's event enum.
 
 `sdk.message` contains `name`, `bytes` (unsigned byte array), client `time`, and
 server `epoch`. Payloads above 4,096 bytes are ignored. Bytes are copied before

@@ -59,8 +59,15 @@ namespace
     std::vector<char> chat_packet;
     std::map<std::string, pfnUserMsgHook> message_hooks;
     int hud_message_calls{};
+    int registration_calls{};
+    bool reject_registration{};
     int HookMessage(const char* name, pfnUserMsgHook handler)
     {
+        ++registration_calls;
+        if (reject_registration)
+        {
+            return 0;
+        }
         message_hooks[name] = handler;
         return 1;
     }
@@ -90,6 +97,8 @@ namespace
 class PluginBridge : public ::testing::Test
 {
 protected:
+    cl_enginefunc_t engine_table{};
+    cl_enginefunc_t stock_client_table{};
     std::filesystem::path dir;
     const NcHost* host{};
     virtual const char* fixture()
@@ -116,15 +125,20 @@ protected:
         gEngfuncs.ServerInfo_ValueForKey = [](const char*) { return ""; };
         gEngfuncs.pfnHookUserMsg = HookMessage;
         message_hooks.clear();
-        hud_message_calls = 0;
-        PluginBridgeWrapMessages();
+        hud_message_calls = registration_calls = 0;
+        reject_registration = false;
+        engine_table.pfnHookUserMsg = HookMessage;
+        stock_client_table = engine_table;
+        eng()->cl_enginefunc = &engine_table;
+        client()->gEngfuncs = &stock_client_table;
+        PluginBridge_WrapMessages();
         hud.m_Health = &health;
         hud.m_Health->m_iHealth = 100;
         hud.m_iWeaponBits = &weapons;
         ASSERT_EQ(hud.m_Battery, nullptr); // Deliberately unbound in ClientModule.
         gHUD = &hud;
         pmove = &movement;
-        PluginBridgeInit();
+        PluginBridge_Init();
         nc_runtime_start(dir.c_str(), 0);
         auto rows = tao::json::from_string(nc_runtime_catalog()).at("plugins");
         ASSERT_EQ(rows.get_array().size(), 1u);
@@ -141,7 +155,9 @@ protected:
     void TearDown() override
     {
         nc_runtime_stop();
-        PluginBridgeShutdown();
+        PluginBridge_Shutdown();
+        eng()->cl_enginefunc = nullptr;
+        client()->gEngfuncs = nullptr;
         std::filesystem::remove_all(dir);
         gHUD = nullptr;
         pmove = nullptr;
@@ -180,9 +196,100 @@ TEST_F(PluginMessageBridge, CustomSubscriptionPreservesEarlierAndLaterHandlers)
     gEngfuncs.pfnHookUserMsg("Custom", later);
     EXPECT_EQ(message_hooks.at("Custom")("Custom", sizeof(bytes), bytes), 23);
     EXPECT_EQ(hud_message_calls, 2);
-    PluginBridgeShutdown();
+    PluginBridge_Shutdown();
     EXPECT_EQ(message_hooks.at("Custom"), later);
 }
+TEST_F(PluginMessageBridge, UnobservedSubscriptionsLeaveEngineConsumersUntouched)
+{
+    const auto* api = host->query_interface(host->context, "nextclient.messages", 1);
+    ASSERT_NE(api, nullptr);
+    for (const char* name : {"SandboxCvar", "ncl_str_reg", "nsync_test", "HealthInfo", "Account"})
+    {
+        const auto original = +[](const char*, int, void*) {
+            ++hud_message_calls;
+            return 29;
+        };
+        engine_table.pfnHookUserMsg(name, original);
+        const int registrations_before = registration_calls;
+        const std::string request = tao::json::to_string(tao::json::value{{"name", name}});
+        const uint64_t result = api->call(host->context, "subscribe", request.c_str());
+        char output[256]{};
+        api->read_result(host->context, result, output, sizeof(output));
+        api->release_result(host->context, result);
+        const auto response = tao::json::from_string(output);
+        EXPECT_FALSE(response.at("ok").get_boolean());
+        EXPECT_EQ(response.at("error"), "Message hook unavailable");
+        EXPECT_EQ(registration_calls, registrations_before);
+        EXPECT_EQ(message_hooks.at(name), original);
+        EXPECT_EQ(message_hooks.at(name)(name, 0, nullptr), 29);
+    }
+    EXPECT_EQ(hud_message_calls, 5);
+    const int registrations_before = registration_calls;
+    PluginBridge_Shutdown();
+    EXPECT_EQ(registration_calls, registrations_before);
+    EXPECT_EQ(stock_client_table.pfnHookUserMsg, HookMessage);
+    EXPECT_EQ(gEngfuncs.pfnHookUserMsg, HookMessage);
+}
+
+TEST_F(PluginMessageBridge, SubscriptionCanRetryAfterAnObservedRegistration)
+{
+    const auto* api = host->query_interface(host->context, "nextclient.messages", 1);
+    ASSERT_NE(api, nullptr);
+    auto subscribe = [&] {
+        const int registrations_before = registration_calls;
+        const uint64_t result = api->call(host->context, "subscribe", R"({"name":"Custom"})");
+        char output[256]{};
+        api->read_result(host->context, result, output, sizeof(output));
+        api->release_result(host->context, result);
+        EXPECT_EQ(registration_calls, registrations_before);
+        return tao::json::from_string(output).at("ok").get_boolean();
+    };
+    EXPECT_FALSE(subscribe());
+    const auto consumer = +[](const char*, int, void*) { return 31; };
+    reject_registration = true;
+    EXPECT_EQ(stock_client_table.pfnHookUserMsg("Custom", consumer), 0);
+    EXPECT_FALSE(subscribe());
+    reject_registration = false;
+    EXPECT_EQ(stock_client_table.pfnHookUserMsg("Custom", consumer), 1);
+    EXPECT_TRUE(subscribe());
+    EXPECT_EQ(message_hooks.at("Custom")("Custom", 0, nullptr), 31);
+    stock_client_table.pfnHookUserMsg("Custom", nullptr);
+    EXPECT_EQ(message_hooks.at("Custom"), nullptr);
+    EXPECT_FALSE(subscribe());
+}
+
+TEST_F(PluginMessageBridge, UnobservedPresentationFilterLeavesConsumerUntouched)
+{
+    const auto consumer = +[](const char*, int, void*) { return 17; };
+    engine_table.pfnHookUserMsg("ScreenShake", consumer);
+    const auto* api = host->query_interface(host->context, "nextclient.messages", 1);
+    ASSERT_NE(api, nullptr);
+    const auto hide = +[](void*, const char*, const uint8_t*, uint32_t, uint8_t*, uint32_t*) -> int32_t { return 2; };
+    const int registrations_before = registration_calls;
+    EXPECT_EQ(api->set_filter(host->context, "ScreenShake", hide, nullptr), 0);
+    EXPECT_EQ(registration_calls, registrations_before);
+    EXPECT_EQ(message_hooks.at("ScreenShake"), consumer);
+}
+
+TEST_F(PluginMessageBridge, MessageWrappersCanBeReinstalledAfterShutdown)
+{
+    PluginBridge_Shutdown();
+    PluginBridge_Shutdown();
+    PluginBridge_WrapMessages();
+    PluginBridge_Init();
+    const auto consumer = +[](const char*, int, void*) {
+        ++hud_message_calls;
+        return 31;
+    };
+    stock_client_table.pfnHookUserMsg("Health", consumer);
+    EXPECT_NE(message_hooks.at("Health"), consumer);
+    unsigned char health_packet[]{75};
+    EXPECT_EQ(message_hooks.at("Health")("Health", sizeof(health_packet), health_packet), 31);
+    EXPECT_EQ(hud_message_calls, 1);
+    PluginBridge_Shutdown();
+    EXPECT_EQ(message_hooks.at("Health"), consumer);
+}
+
 TEST_F(PluginMessageBridge, PresentationHideSkipsOriginalWithoutBlockingFutureRegistrations)
 {
     auto original = +[](const char*, int, void*) {
@@ -206,13 +313,13 @@ TEST_F(PluginBridge, PlayerSnapshotOnJoinDoesNotRequireBatteryHud)
 {
     NcPlayerState state{sizeof(NcPlayerState)};
     EXPECT_EQ(host->get_player(host->context, &state), 0);
-    PluginBridgePredictionReady();
+    PluginBridge_PredictionReady();
     ASSERT_EQ(host->get_player(host->context, &state), 1);
     EXPECT_EQ(state.index, 1);
     EXPECT_EQ(state.health, 100);
     EXPECT_EQ(state.armor, 0);
     EXPECT_EQ(state.weapons, static_cast<uint32_t>(weapons));
-    PluginBridgeReset();
+    PluginBridge_Reset();
     EXPECT_EQ(host->get_player(host->context, &state), 0);
 }
 
@@ -220,21 +327,59 @@ TEST_F(PluginBridge, FrameTimeIsEngineDeltaAtConstantFrameRate)
 {
     for (int i = 0; i < 30; ++i)
     {
-        PluginBridgeFrame(0.01);
+        PluginBridge_Frame(0.01);
         NcSession state{sizeof(NcSession)};
         ASSERT_EQ(host->get_session(host->context, &state), 1);
         EXPECT_FLOAT_EQ(state.frame_time, 0.01f);
     }
     for (double invalid : {-1.0, std::numeric_limits<double>::quiet_NaN()})
     {
-        PluginBridgeFrame(invalid);
+        PluginBridge_Frame(invalid);
         NcSession state{sizeof(NcSession)};
         ASSERT_EQ(host->get_session(host->context, &state), 1);
         EXPECT_FLOAT_EQ(state.frame_time, 0);
     }
 }
 
-TEST_F(PluginBridge, OptionalScoreboardMessagesWorkWithoutHudHandlersAndPreserveLaterHandlers)
+TEST_F(PluginBridge, StockRegistrationsBeforeLocalTableKeepRoundTransitions)
+{
+    PluginBridge_Shutdown();
+    gEngfuncs.pfnHookUserMsg = nullptr;
+    PluginBridge_WrapMessages();
+    const auto consumer = +[](const char*, int, void*) {
+        ++hud_message_calls;
+        return 17;
+    };
+    for (const char* name : {"TextMsg", "ResetHUD", "RoundTime"})
+    {
+        stock_client_table.pfnHookUserMsg(name, consumer);
+    }
+    gEngfuncs.pfnHookUserMsg = engine_table.pfnHookUserMsg;
+    const int registrations_before = registration_calls;
+    PluginBridge_WrapMessages();
+    EXPECT_EQ(registration_calls, registrations_before);
+    PluginBridge_Init();
+    PluginBridge_PredictionReady();
+    auto match = [&] {
+        char json[4096]{};
+        const uint32_t size = host->game_data(host->context, "match", 0, json, sizeof(json));
+        EXPECT_GT(size, 0u);
+        EXPECT_LE(size, sizeof(json));
+        return tao::json::from_string(json);
+    };
+    char outcome[]{4, '#', 'C', 'T', 's', '_', 'W', 'i', 'n', 0};
+    EXPECT_EQ(message_hooks.at("TextMsg")("TextMsg", sizeof(outcome), outcome), 17);
+    EXPECT_FALSE(match().at("round.end").is_null());
+    char reset = 0;
+    EXPECT_EQ(message_hooks.at("ResetHUD")("ResetHUD", 1, &reset), 17);
+    unsigned char timer[]{90, 0};
+    EXPECT_EQ(message_hooks.at("RoundTime")("RoundTime", sizeof(timer), timer), 17);
+    EXPECT_TRUE(match().at("round.end").is_null());
+    EXPECT_EQ(match().at("round.time").at("seconds"), 90);
+    EXPECT_EQ(hud_message_calls, 3);
+}
+
+TEST_F(PluginBridge, OptionalScoreboardMessagesRequireObservedConsumers)
 {
     gEngfuncs.GetMaxClients = [] { return 2; };
     gEngfuncs.pfnGetPlayerInfo = [](int, hud_player_info_t* info) {
@@ -242,13 +387,16 @@ TEST_F(PluginBridge, OptionalScoreboardMessagesWorkWithoutHudHandlersAndPreserve
         static char name[] = "Alice";
         info->name = name;
     };
-    ASSERT_NE(message_hooks.at("HealthInfo"), nullptr);
-    ASSERT_NE(message_hooks.at("Account"), nullptr);
+    EXPECT_EQ(message_hooks.count("HealthInfo"), 0u);
+    EXPECT_EQ(message_hooks.count("Account"), 0u);
+    const auto initial = +[](const char*, int, void*) { return 1; };
+    stock_client_table.pfnHookUserMsg("HealthInfo", initial);
+    stock_client_table.pfnHookUserMsg("Account", initial);
     unsigned char health_packet[]{2, 0xe8, 3, 0, 0}; // 1000 HP, not byte-truncated.
     unsigned char money_packet[]{2, 0x40, 0x1f, 0, 0};
     EXPECT_EQ(message_hooks.at("HealthInfo")("HealthInfo", sizeof(health_packet), health_packet), 1);
     EXPECT_EQ(message_hooks.at("Account")("Account", sizeof(money_packet), money_packet), 1);
-    PluginBridgePredictionReady();
+    PluginBridge_PredictionReady();
     auto row = [&] {
         char json[4096]{};
         const auto size = host->game_data(host->context, "scoreboard", 2, json, sizeof(json));
@@ -264,15 +412,15 @@ TEST_F(PluginBridge, OptionalScoreboardMessagesWorkWithoutHudHandlersAndPreserve
         return 17;
     };
     gEngfuncs.pfnHookUserMsg("HealthInfo", consumer);
-    PluginBridgeWrapMessages(); // Must not replace a real consumer with a fallback.
+    PluginBridge_WrapMessages(); // Must not replace a real consumer with a fallback.
     unsigned char hidden[]{2, 255, 255, 255, 255};
     EXPECT_EQ(message_hooks.at("HealthInfo")("HealthInfo", sizeof(hidden), hidden), 17);
     EXPECT_EQ(hud_message_calls, 1);
     EXPECT_TRUE(row().at("reported_health").is_null());
     EXPECT_EQ(row().at("reported_money"), 8000);
-    PluginBridgeShutdown();
+    PluginBridge_Shutdown();
     EXPECT_EQ(message_hooks.at("HealthInfo"), consumer);
-    EXPECT_EQ(message_hooks.at("Account"), nullptr);
+    EXPECT_EQ(message_hooks.at("Account"), initial);
     EXPECT_EQ(gEngfuncs.pfnHookUserMsg, HookMessage);
 }
 
