@@ -16,6 +16,7 @@ CMakeCache.txt
 CMakeFiles
 CMakeScripts
 Testing
+!/docs/testing/
 Makefile
 cmake_install.cmake
 install_manifest.txt
@@ -40,3 +41,6 @@ __pycache__/
 .cursor/
 .windsurf/
 .junie/
+
+# Local documentation drafts and run records
+/.superpowers/

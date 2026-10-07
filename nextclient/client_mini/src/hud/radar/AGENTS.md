@@ -9,7 +9,7 @@ under this directory is the machinery it drives.
 | Area | Files |
 |---|---|
 | Frame model and projection | `RadarView.*` (box, shape, transform), `RadarFrame.h`, `RadarTeam.h` |
-| Drawing | `RadarDraw.*` (GL prims, shaders, clip) with `RadarDrawEffects.cpp` (blur capture, mask) behind `RadarDrawInternal.h`, `RadarText.*` and `RadarLabel.*` (labels), `RadarPalette.h`, `ServerMarker.*`, `RadarFade.*`, `HudTextZone.*` |
+| Drawing | `RadarDraw.*` (GL prims, shaders, clip) with `RadarDrawEffects.cpp` (blur capture, mask) behind `RadarDrawInternal.h`, `RadarText.*` and `RadarLabel.*` (labels), `RadarPalette.h`, `ServerMarker.*`, `RadarFade.*`, `HudTextZone.*`, `HudTextBuffer.*` |
 | Map sources | `Overview.*` (BSP overview sprite), `MapRender.*` (runtime generated map), `MapObjectives.*` (bomb sites, A/B letters) |
 | Per-frame contents | `layers/BackdropLayer.*` (box, map, smoke, rim), `layers/PlayersLayer.*` over `layers/players/*`, `layers/ObjectivesLayer.*` (sites plus the dispatch) over `layers/objectives/*` (`ObjectiveEntities.*`, `BombMarker.*`, `HostageMarkers.*`, each marker picking its own feed through `ObjectiveSource.*`) |
 | State that outlives a frame | `layers/players/PlayerTracks.*` (trails), `layers/players/DeathMarks.*`, the remembered spots inside the two marker units, `MarkerFeed.*` over `MarkerIdentity.*` (the snapshot and broadcast feeds of one feature, resolved into one marker set), `SmokeRegistry.*`, `RadarBroadcast.*` (server-sent markers), `RadarText.*` (layout cache, font memo) |
@@ -56,6 +56,12 @@ because a virtual list would bury the order that this file calls load-bearing.
   one decoder decides where characters begin. `FilterCodepoint` is not a Unicode primitive but the
   engine-compatibility rule (control characters draw as a space). The flash cut for labels lives in
   `RadarLabel_FlashFadeFor`, shared by both label renderers because their fades differ.
+- **Stock HUD text is buffered as fragments, then shifted as a block.** `HudTextBuffer` preserves
+  the original draw order and return contracts; `HudTextZone` groups lines by their original
+  alignment and computes one displacement for the group. Grouping is a geometric heuristic: the
+  engine supplies no semantic block ID. Do not shift characters or adjacent lines independently.
+  Measure through the corresponding original font path, invalidate metrics on video changes and
+  preserve ambient color transitions, including the console-string reset to `con_color`.
 - **A broadcast index is not an entity index.** `HostagePos` carries `CHostage::m_iHostageIndex`,
   a spawn counter the server hands out 1..N, while the snapshot carries edicts. `MarkerIdentity`
   pairs the two by position and is the only place that answers which entity a message describes;
@@ -151,7 +157,9 @@ build/ninja-local-tests/out/bin/Debug/client_mini-tests.exe
 
 The unit tests cover the parts that can run without the engine: `RadarViewTests` (projection and
 clamping, including the rotated basis), `RadarPolicyTests`, `RadarFadeTests`, `PlayerTracksTests`,
-`MarkerIdentityTests`, `MarkerFeedTests`, `ObjectiveSourceTests`, `RadarUtilTests`. Anything touching projection, clamping or reveal rules should leave them green.
+`MarkerIdentityTests`, `MarkerFeedTests`, `ObjectiveSourceTests`, `RadarUtilTests`, `HudTextZoneTests`
+and `HudTextBufferTests`. Changes to projection, reveal rules or stock-text placement must keep the
+corresponding tests green.
 
 Do not launch the game to check a change. A build plus the unit tests is the loop; the developer runs
 the game. Deploying (`--target BUILD_ALL`) installs into the user's game directory, so do it only when

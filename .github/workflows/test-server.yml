@@ -1,0 +1,78 @@
+name: Test server
+
+on:
+  push:
+    paths: ['tools/test_server/**', 'plugins/nextclient_testlab/**', '.github/workflows/test-server.yml']
+  pull_request:
+    paths: ['tools/test_server/**', 'plugins/nextclient_testlab/**', '.github/workflows/test-server.yml']
+  workflow_dispatch:
+    inputs:
+      server_smoke:
+        description: Install the Valve server and run stack/gameplay checks
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-2022, ubuntu-24.04]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Python unit tests without SteamCMD
+        run: python -m unittest discover -s tools/test_server/tests -p "test_*.py"
+      - name: Linux x86 runtime
+        if: runner.os == 'Linux'
+        run: |
+          sudo dpkg --add-architecture i386
+          sudo apt-get update
+          sudo apt-get install -y libc6:i386 libstdc++6:i386 libgcc-s1:i386
+      - name: Compile pinned Pawn plugin without SteamCMD
+        run: python tools/test_server/test_server.py compile-only
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: pawn-${{ runner.os }}
+          path: |
+            out/manual-tests/build/
+            out/manual-tests/install/*/compile.log
+      - name: Install dedicated server
+        if: github.event_name == 'workflow_dispatch' && inputs.server_smoke
+        run: python tools/test_server/test_server.py init
+      - name: Linux Steamworks runtime
+        if: runner.os == 'Linux' && github.event_name == 'workflow_dispatch' && inputs.server_smoke
+        run: |
+          mkdir -p "$HOME/.steam/sdk32"
+          if [ ! -e "$HOME/.steam/sdk32/steamclient.so" ] && [ ! -L "$HOME/.steam/sdk32/steamclient.so" ]; then
+            ln -s "$GITHUB_WORKSPACE/build/test-server/cache/steamcmd/linux-x86/linux32/steamclient.so" "$HOME/.steam/sdk32/steamclient.so"
+          fi
+      - name: Doctor and dedicated server checks
+        if: github.event_name == 'workflow_dispatch' && inputs.server_smoke
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force out/manual-tests/ci | Out-Null
+          python tools/test_server/test_server.py doctor > out/manual-tests/ci/doctor.json
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          python tools/test_server/test_server.py smoke --suite stack > out/manual-tests/ci/stack.json
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          python tools/test_server/test_server.py smoke --suite gameplay > out/manual-tests/ci/gameplay.json
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          python tools/test_server/test_server.py smoke --suite review --map cs_office > out/manual-tests/ci/review.json
+          exit $LASTEXITCODE
+      - name: Stop owned server
+        if: always() && github.event_name == 'workflow_dispatch' && inputs.server_smoke
+        run: python tools/test_server/test_server.py stop
+      - uses: actions/upload-artifact@v4
+        if: always() && github.event_name == 'workflow_dispatch' && inputs.server_smoke
+        with:
+          name: server-checks-${{ runner.os }}
+          path: out/manual-tests/ci/*.json

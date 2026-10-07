@@ -8,18 +8,17 @@ required.
 
 | Path | Ships as | What it is |
 |---|---|---|
-| `nextclient/launcher` | `cstrike.exe` | process entry point, updater, whole-process relaunch |
-| `nextclient/engine_mini` | `next_engine_mini.dll` | runtime detours and byte patches of the stock `hw.dll` |
-| `nextclient/client_mini` | `cstrike/cl_dlls/client_mini.dll` | HUD, view, weapons, radar |
-| `nextclient/gameui` | `cstrike/cl_dlls/GameUI.dll` | VGUI menus and the CEF-backed HTML UI |
+| [`nextclient/launcher`](nextclient/launcher/AGENTS.md) | `cstrike.exe` | process entry point, updater, whole-process relaunch |
+| [`nextclient/engine_mini`](nextclient/engine_mini/AGENTS.md) | `next_engine_mini.dll` | runtime detours and byte patches of the stock `hw.dll` |
+| [`nextclient/client_mini`](nextclient/client_mini/AGENTS.md) | `cstrike/cl_dlls/client_mini.dll` | HUD, view, weapons, radar |
+| [`nextclient/gameui`](nextclient/gameui/AGENTS.md) | `cstrike/cl_dlls/GameUI.dll` | VGUI menus and the CEF-backed HTML UI |
 | `nextclient/filesystem_proxy` | `FileSystem_Proxy.dll` | filesystem interposer |
 | `nextclient/steam_api_proxy` | `steam_api.dll` | Steam API interposer |
-| `nextclient/packages` | static libs | shared code: `ncl_math`, `ncl_utils`, `ncl_gl`, `task_coro`, `data_*`, `hwid_collector` |
-| `nextclient/nitro_api` | `nitro_api2.dll` | engine address and hook layer |
-| `nextclient/goldsrc_abi` | headers only | clean-room declarations of the stock engine ABI, namespace `goldsrc` |
+| [`nextclient/packages`](nextclient/packages/AGENTS.md) | static libs | shared code: `ncl_math`, `ncl_utils`, `ncl_gl`, `task_coro`, `data_*`, `hwid_collector` |
+| [`nextclient/nitro_api`](nextclient/nitro_api/AGENTS.md) | `nitro_api2.dll` | engine address and hook layer |
+| [`nextclient/goldsrc_abi`](nextclient/goldsrc_abi/AGENTS.md) | headers only | clean-room declarations of the stock engine ABI, namespace `goldsrc` |
 | `dep/ncl-hl1-source-sdk` | `vgui2.dll` | HL1 SDK fork: `tier1`, `tier2`, `vgui2`, `mathlib`, `cef`, HLTV |
 | `assets/` | copied into the game directory | resources, schemes, localisation, shaders |
-| `tools/` | not shipped | offline test harnesses (`radar_tests`, `studio_tests`) |
 
 Everything is 32-bit (`x86-windows-static`), because the engine it loads into is. Third-party
 dependencies come from the vendored `vcpkg/`, wired in by the `base` configure preset.
@@ -57,7 +56,7 @@ hand and check the timestamps. This is the most common reason a change appears t
 cmake --build --preset vs2022-tests-release --target client_mini-tests
 ```
 
-Test targets are `client_mini-tests`, `engine_mini-tests` and `updater-test`. They exist only where
+Test targets are `client_mini-tests`, `engine_mini-tests`, `data_types-tests` and `updater-test`. They exist only where
 `NEXTCLIENT_BUILD_TESTS` is on, which among the tracked presets means `vs2022-tests`; a Ninja test
 build comes from a local preset or `-D NEXTCLIENT_BUILD_TESTS=ON`. They cover what runs without the
 engine, so the engine-free half of a module is the only half that can be tested at all; keeping logic
@@ -67,11 +66,45 @@ Do not launch the game to check a change. The loop is a build plus the unit test
 the game and reports back. When something has to be observed at run time, add a console command that
 dumps the state rather than driving the game.
 
+## Code review
+
+Read the applicable directory rules and establish the comparison base before reviewing a branch.
+Trace affected callers, owners and consumers outside the diff. Historical sessions explain why a
+constraint exists, but an unmerged feature or a superseded implementation is not a fact about the
+current checkout.
+
+Cover these areas where the change touches them:
+
+- **Lifetime and ordering:** initialization, reset, disconnect, normal and fatal shutdown;
+  subscriptions, callbacks and work that can continue after cancellation.
+- **ABI and NitroApi:** layout, pointer depth, calling conventions, public member offsets, hook IDs
+  and the address-provider registration path.
+- **Duplication and architecture:** ownership of state, existing STL/EASTL or package helpers,
+  repeated policy and an API whose name no longer describes its behavior.
+- **GL resources and state:** context lifetime, framebuffer selection, state restoration and draw
+  order across the stock and replacement renderers.
+- **Behavior:** actual recipients and timing of engine messages, observer modes, stale state,
+  failure paths and preservation of stock callback contracts.
+- **Project conventions:** the root and local naming, API shape, dependencies, comments and
+  formatting rules on the changed code. Do not turn the review into unrelated style cleanup.
+- **Verification:** tests that exercise the failure scenario, affected consumers, a current CMake
+  graph and the distinction between compilation, installation and runtime observation.
+
+A finding identifies the trigger, the incorrect result and a precise code location, backed by the
+actual call path or a reproducing test. Separate confirmed defects from open questions; discard a
+candidate when the code proves its precondition cannot occur. Do not report a hypothetical guard
+or a preference as a demonstrated bug. State the checks performed and relevant coverage limits.
+
 ## Conventions
 
 A directory with rules of its own keeps an `AGENTS.md` next to the code and adds to what is here
 rather than restating it: see
 [nextclient/client_mini/src/hud/radar/AGENTS.md](nextclient/client_mini/src/hud/radar/AGENTS.md).
+
+**Documentation.** Keep maintained documentation in English (`.md`), with Russian translations
+in matching `.ru.md` files. Use `.superpowers/` for design drafts, implementation plans and
+session reports; that directory is ignored by Git. Keep procedures, references and test cases
+separate, and link each translation to its counterpart.
 
 **Naming.** Methods and functions are `CamelCase`, public free functions `Module_Method`, globals
 `g_CamelCase`, `constexpr` constants `kCamelCase` (no underscore, acronyms as words: `Abc`, not
