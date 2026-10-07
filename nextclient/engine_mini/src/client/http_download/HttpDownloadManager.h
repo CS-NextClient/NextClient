@@ -45,6 +45,7 @@ class HttpDownloadManager : public HttpDownloadManagerInterface
 
     std::queue<QueuedRequest> files_to_download_;
     std::vector<RequestContext> requests_;
+    std::vector<std::shared_ptr<cpr::Session>> free_sessions_;
 
     bool is_download_active_ = false;
     bool is_slow_speed_ = false;
@@ -76,6 +77,7 @@ private:
     void InvokeEndDownloadingEvent();
     void PruneCompletedRequests();
     void StartNewDownloads();
+    std::shared_ptr<cpr::Session> AcquireSession();
     void UpdateUi();
     void UpdateDownloadSpeed();
     void SlowSpeedDetection();

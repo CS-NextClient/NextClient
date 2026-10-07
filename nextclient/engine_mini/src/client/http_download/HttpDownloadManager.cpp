@@ -77,6 +77,7 @@ void HttpDownloadManager::Stop()
         request.get_shared_data()->stop_download = true;
     }
     requests_.clear();
+    free_sessions_.clear();
 
     if (is_download_active_)
         InvokeEndDownloadingEvent();
@@ -147,6 +148,11 @@ void HttpDownloadManager::PruneCompletedRequests()
         }
 
         auto response_result = request.get_response().get();
+        if (response_result.error.code == cpr::ErrorCode::OK && free_sessions_.size() < GetMaxActiveRequests())
+        {
+            free_sessions_.push_back(request.get_session());
+        }
+
         auto error_message = ValidateResponseAndGetErrorMessage(response_result);
         const ResourceDescriptor& resource_descriptor = request.get_file_resource();
 
@@ -187,6 +193,21 @@ void HttpDownloadManager::PruneCompletedRequests()
     }
 }
 
+std::shared_ptr<cpr::Session> HttpDownloadManager::AcquireSession()
+{
+    if (!free_sessions_.empty())
+    {
+        auto session = free_sessions_.back();
+        free_sessions_.pop_back();
+        return session;
+    }
+
+    auto session = std::make_shared<cpr::Session>();
+    session->SetUserAgent(cpr::UserAgent("Valve/Steam HTTP Client 1.0 (10)"));
+    session->SetConnectTimeout(cpr::ConnectTimeout(std::chrono::duration_cast<std::chrono::milliseconds>(connection_timeout_)));
+    return session;
+}
+
 void HttpDownloadManager::StartNewDownloads()
 {
     while (!files_to_download_.empty())
@@ -200,28 +221,29 @@ void HttpDownloadManager::StartNewDownloads()
         nitro_utils::replace_all(file_url, " ", "%20");
 
         auto shared_data = std::make_shared<RequestContext::Shared>();
-        auto cpr_response = cpr::GetAsync(
-            cpr::Url(file_url),
-            cpr::UserAgent("Valve/Steam HTTP Client 1.0 (10)"),
-            cpr::ConnectTimeout(std::chrono::duration_cast<std::chrono::milliseconds>(connection_timeout_)),
-            cpr::ProgressCallback(
-                [shared_data]
-                    (size_t downloadTotal, size_t downloadNow, size_t uploadTotal, size_t uploadNow, intptr_t userdata)
-                {
-                    if (shared_data->stop_download)
-                        return false;
+        auto session = AcquireSession();
+        session->SetUrl(cpr::Url(file_url));
+        session->SetProgressCallback(cpr::ProgressCallback(
+            [shared_data]
+                (size_t downloadTotal, size_t downloadNow, size_t uploadTotal, size_t uploadNow, intptr_t userdata)
+            {
+                if (shared_data->stop_download)
+                    return false;
 
-                    shared_data->download_total = downloadTotal;
-                    shared_data->download_now = downloadNow;
+                shared_data->download_total = downloadTotal;
+                shared_data->download_now = downloadNow;
 
-                    return true;
-                }));
+                return true;
+            }));
+        auto cpr_response = session->GetAsync();
+
         requests_.emplace_back(
             queued_request.get_file_resource(),
             queued_request.get_retry(),
             std::chrono::system_clock::now(),
             shared_data,
-            std::move(cpr_response));
+            std::move(cpr_response),
+            session);
 
         files_to_download_.pop();
 
