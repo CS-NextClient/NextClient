@@ -148,7 +148,7 @@ static void PrintWithConsoleNext(TextRange* range, const std::wstring& print_tex
         }
     }
 
-    g_GameConsoleNext->ColorPrintfWide(r, g, b, L"%s", print_text.c_str());
+    g_GameConsoleNext->ColorPrintfWide(r, g, b, L"%ls", print_text.c_str());
 }
 
 static void ColorChatConsolePrint(char string[512])
