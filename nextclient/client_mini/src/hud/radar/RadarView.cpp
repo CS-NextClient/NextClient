@@ -1,5 +1,6 @@
 #include "RadarView.h"
 
+#include <goldsrc/pmove.h>
 #include <ncl_math/scalar.h>
 #include <algorithm>
 #include <cmath>
@@ -33,6 +34,16 @@ namespace
     // Radar centre in tile steps from the overview grid origin.
     constexpr ncl_math::Vector2 kCenterInTiles{3.0f, 4.0f};
 } // namespace
+
+bool RadarView_IsFreeCamera(int observer_mode)
+{
+    return observer_mode == goldsrc::OBS_ROAMING;
+}
+
+bool RadarView_ShouldHighlightPlayer(int observer_mode)
+{
+    return observer_mode == goldsrc::OBS_NONE || observer_mode == goldsrc::OBS_IN_EYE;
+}
 
 RadarBox RadarView_ComputeBox(float screen_w, float screen_h, float scale, bool spectating)
 {

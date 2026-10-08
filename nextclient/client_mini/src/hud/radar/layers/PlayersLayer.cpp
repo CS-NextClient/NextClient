@@ -18,6 +18,7 @@
 #include <goldsrc/pmove.h>
 
 #include "hud/radar/RadarConfig.h"
+#include "hud/radar/RadarBroadcast.h"
 #include "hud/radar/RadarDraw.h"
 #include "hud/radar/RadarLabel.h"
 #include "hud/radar/RadarPalette.h"
@@ -29,14 +30,25 @@
 namespace
 {
     // Fractions of box.marker_px.
-    constexpr float kPlayerDotScale = 0.023f;
-    constexpr float kDeathCrossScale = 0.02f;
+    constexpr float kPlayerDotScale = 0.026f;
+    constexpr float kMemoryMarkScale = 0.025f;
+    constexpr float kMemoryMarkMinSize = 2.5f;
+    constexpr float kMemoryMarkWidthScale = 0.36f;
+    constexpr float kMemoryMarkMinHalfWidth = 1.15f;
+    constexpr float kQuestionMarkWidthFactor = 0.9f;
     constexpr float kTrackWidth = 2.0f;
 
     constexpr float kRunSpeedFallback = 320.0f; // stock sv_maxspeed
     constexpr float kTeleportPad = 24.0f;
     constexpr float kTrailAlphaTail = 30.0f;
     constexpr float kTrailAlphaHead = 200.0f;
+
+    constexpr MarkerFeed::Params kPlayerFeedParams{
+        .index_is_entity = true,
+        .min_interval = 0.2f,
+        .max_interval = 1.5f,
+        .snap_dist = 600.0f,
+    };
 
     constexpr float kNameScale = 0.85f;
     constexpr float kNameHeightScale = 0.055f; // fraction of box.marker_px
@@ -58,28 +70,44 @@ namespace
     }
 } // namespace
 
-PlayersLayer::PlayersLayer(RadarVisibility& visibility, const RadarPolicy& policy, RadarText& text) :
+PlayersLayer::PlayersLayer(RadarVisibility& visibility, const RadarPolicy& policy, const RadarBroadcast& broadcast, RadarText& text) :
     visibility_(visibility),
     policy_(policy),
-    text_(text)
+    text_(text),
+    broadcast_(broadcast),
+    feed_(kPlayerFeedParams)
 {
 }
 
 void PlayersLayer::BeginFrame(float time)
 {
+    if (time < last_time_)
+    {
+        OnPlayerRespawn();
+    }
+    last_time_ = time;
     tracks_.BeginFrame(time);
 }
 
 void PlayersLayer::Draw(const RadarFrame& frame)
 {
+    if (team_ != frame.ctx.highlight_team || spectating_ != frame.ctx.spectating)
+    {
+        OnPlayerRespawn();
+        tracks_.BeginFrame(frame.time);
+        team_ = frame.ctx.highlight_team;
+        spectating_ = frame.ctx.spectating;
+    }
+
     DrawPlayers(frame);
+    DrawLastSeen(frame);
     DrawDeaths(frame);
     DrawCamera(frame);
 }
 
 void PlayersLayer::DrawCamera(const RadarFrame& frame)
 {
-    if (!frame.ctx.spectating || g_iUser1 != goldsrc::OBS_ROAMING)
+    if (!frame.ctx.free_camera)
     {
         return;
     }
@@ -97,7 +125,10 @@ void PlayersLayer::DrawCamera(const RadarFrame& frame)
 void PlayersLayer::OnPlayerRespawn()
 {
     tracks_.Reset();
+    feed_.Reset();
+    last_seen_.Reset();
     prev_alive_.fill(false);
+    prev_snapshot_.fill(false);
     deaths_.Reset();
 }
 
@@ -149,9 +180,8 @@ void PlayersLayer::DrawEdgeArrow(ncl_math::Vector2 pos, ncl_math::Vector2 out_di
     RadarDraw_DrawTriangle(tip, base_l, base_r, color);
 }
 
-void PlayersLayer::DrawTrack(const RadarFrame& frame, int player, ncl_math::Vector2 pos, ncl_math::Color color)
+void PlayersLayer::DrawTrack(const RadarFrame& frame, int player, ncl_math::Color color)
 {
-    tracks_.Sample(player, pos, frame.time);
 
     ncl_math::Vector2 world[PlayerTracks::kMaxPoints];
     int count = tracks_.CopyPoints(player, world);
@@ -186,6 +216,7 @@ void PlayersLayer::RecordPlayerDeathIfNew(int player, RadarTeam team, float time
     {
         const ncl_math::Color& dc = (team == RadarTeam::Terrorist) ? RadarPalette::kTerrorist : RadarPalette::kCounterTerrorist;
         deaths_.Add(prev_pos_[player], dc, time);
+        last_seen_.OnPlayerDeath(player);
     }
 }
 
@@ -241,6 +272,7 @@ void PlayersLayer::DrawPlayers(const RadarFrame& frame)
         return;
     }
 
+    UpdatePlayerFeed(frame);
     int dot = std::max(2, (int)(frame.box.marker_px * kPlayerDotScale));
     std::array<PlayerJob, kRadarMaxPlayers + 1> jobs;
     DrawPlayerLayers(frame, CollectPlayerJobs(frame, dot, jobs), dot, ComputeHighlightConeSpread(frame));
@@ -255,7 +287,7 @@ float PlayersLayer::ComputeHighlightConeSpread(const RadarFrame& frame)
         fov = (float)*gHUD->m_iFOV;
     }
 
-    if (frame.ctx.spectating && g_iUser1 != goldsrc::OBS_ROAMING && gHUD && gHUD->m_pPlayerFOV && frame.ctx.highlight_idx >= 1 &&
+    if (frame.ctx.spectating && !frame.ctx.free_camera && gHUD && gHUD->m_pPlayerFOV && frame.ctx.highlight_idx >= 1 &&
         frame.ctx.highlight_idx < 64)
     {
         int pf = (*gHUD->m_pPlayerFOV)[frame.ctx.highlight_idx];
@@ -267,6 +299,48 @@ float PlayersLayer::ComputeHighlightConeSpread(const RadarFrame& frame)
     }
 
     return std::clamp(fov, 10.0f, 130.0f) * 0.5f * ncl_math::kDeg2Rad;
+}
+
+void PlayersLayer::UpdatePlayerFeed(const RadarFrame& frame)
+{
+    MarkerIdentity::Entity entities[kRadarMaxPlayers];
+    MarkerIdentity::Observation observations[kRadarMaxPlayers];
+    int entity_count = 0;
+    int observation_count = 0;
+    int max_clients = std::min<int>(kRadarMaxPlayers, gEngfuncs.GetMaxClients());
+
+    for (int i = 1; i <= kRadarMaxPlayers; i++)
+    {
+        const goldsrc::cstrike::extra_player_info_t& ext = client()->g_PlayerExtraInfo[i];
+        bool revealed = i <= max_clients && !ext.dead && i != frame.ctx.self_idx && !frame.ctx.spectating &&
+                        RadarTeam_From(ext.teamnumber) == frame.ctx.highlight_team && policy_.IsAllyRevealed(i);
+        if (!revealed)
+        {
+            feed_.ResetMotion(i);
+            continue;
+        }
+
+        const RadarBroadcast::Player& broadcast = broadcast_.get_player(i);
+        const ncl_math::Vector3& broadcast_pos = broadcast.seq != 0 ? broadcast.pos : ncl_math::Vector3::Ref(ext.origin);
+        if (IsKnownOrigin(broadcast_pos))
+        {
+            observations[observation_count++] = {
+                i,
+                {broadcast_pos.x, broadcast_pos.y},
+                broadcast.seq,
+                {broadcast.previous_pos.x, broadcast.previous_pos.y},
+                broadcast.interval,
+            };
+        }
+
+        goldsrc::cl_entity_t* ent = gEngfuncs.GetEntityByIndex(i);
+        if (ent && ent->player && ent->curstate.messagenum == frame.ctx.local->curstate.messagenum)
+        {
+            entities[entity_count++] = {i, {ent->origin[0], ent->origin[1]}};
+        }
+    }
+
+    feed_.Update({entities, (size_t)entity_count}, {observations, (size_t)observation_count}, frame.time);
 }
 
 bool PlayersLayer::ResolvePlayerSpot(const RadarFrame& frame, int i, bool is_self, goldsrc::cl_entity_t* ent, PlayerSpot& out)
@@ -296,29 +370,31 @@ bool PlayersLayer::ResolvePlayerSpot(const RadarFrame& frame, int i, bool is_sel
     }
     else if (is_ally && !frame.ctx.spectating)
     {
+        std::span<const MarkerFeed::Marker> markers = feed_.get_markers();
+        auto marker = std::ranges::find_if(markers, [i](const MarkerFeed::Marker& item) { return item.index == i; });
+        if (marker == markers.end())
+        {
+            return false;
+        }
+
+        spot_xy[0] = marker->pos.x;
+        spot_xy[1] = marker->pos.y;
+        origin = spot_xy;
         if (live)
         {
-            origin = ent->origin;
             facing_yaw = ent->angles[1];
             has_dir = true;
-        }
-        else
-        {
-            origin = ext.origin; // teammate radar broadcast
         }
     }
     else if (visibility_.is_gating())
     {
-        // Use the spotted position/facing, never the live one: the marker must freeze
-        // the instant sight is lost.
         ncl_math::Vector2 p;
-        float a = 1.0f, yaw = 0.0f;
+        float yaw = 0.0f;
 
-        if (!visibility_.ShouldShowEnemy(i, frame.time, p, yaw, a))
+        if (!visibility_.IsEnemyVisible(i, p, yaw))
         {
             return false;
         }
-        marker_alpha = (int)(a * 255.0f);
         spot_xy[0] = p.x;
         spot_xy[1] = p.y;
         origin = spot_xy;
@@ -336,15 +412,11 @@ bool PlayersLayer::ResolvePlayerSpot(const RadarFrame& frame, int i, bool is_sel
         return false;
     }
 
-    if (!IsKnownOrigin(ncl_math::Vector3::Ref(origin)))
-    {
-        return false;
-    }
-
     out.pos = {origin[0], origin[1]};
     out.yaw = facing_yaw;
     out.alpha = marker_alpha;
     out.has_dir = has_dir;
+    out.snapshot = is_self || live;
     return true;
 }
 
@@ -357,7 +429,7 @@ bool PlayersLayer::IsTeleported(int player, ncl_math::Vector2 pos, float run_spe
 
     float frame_move = run_speed * std::clamp(dt, 0.005f, 0.1f) + kTeleportPad;
 
-    return (pos - prev_pos_[player]).LengthSqr() > frame_move * frame_move;
+    return (pos - prev_snapshot_pos_[player]).LengthSqr() > frame_move * frame_move;
 }
 
 void PlayersLayer::UpdatePlayerTrail(const RadarFrame& frame,
@@ -389,7 +461,8 @@ void PlayersLayer::UpdatePlayerTrail(const RadarFrame& frame,
         return;
     }
 
-    DrawTrack(frame, player, world, color);
+    tracks_.Sample(player, world, frame.time);
+    DrawTrack(frame, player, color);
 }
 
 void PlayersLayer::FillPlayerJob(
@@ -405,7 +478,7 @@ void PlayersLayer::FillPlayerJob(
 {
     ncl_math::Color col = team == RadarTeam::Terrorist ? RadarPalette::kTerrorist : RadarPalette::kCounterTerrorist;
 
-    if (player == frame.ctx.highlight_idx)
+    if (!frame.ctx.spectating && player == frame.ctx.highlight_idx)
     {
         col = RadarPalette::kHighlight;
     }
@@ -445,6 +518,8 @@ void PlayersLayer::FillPlayerJob(
 std::span<const PlayersLayer::PlayerJob> PlayersLayer::CollectPlayerJobs(const RadarFrame& frame, int dot, std::span<PlayerJob> jobs)
 {
     int job_count = 0;
+    PlayerLastSeen::Observation visible[kRadarMaxPlayers];
+    int visible_count = 0;
 
     // The client arrays are sized for 64, but the engine caps maxclients at 32 and the
     // slots past it are always empty.
@@ -461,6 +536,8 @@ std::span<const PlayersLayer::PlayerJob> PlayersLayer::CollectPlayerJobs(const R
         {
             RecordPlayerDeathIfNew(i, RadarTeam_From(ext.teamnumber), frame.time);
             tracks_.Clear(i);
+            prev_snapshot_[i] = false;
+            last_seen_.Forget(i);
             continue;
         }
 
@@ -469,7 +546,17 @@ std::span<const PlayersLayer::PlayerJob> PlayersLayer::CollectPlayerJobs(const R
 
         if (team != RadarTeam::CounterTerrorist && team != RadarTeam::Terrorist && !is_self)
         {
+            tracks_.Clear(i);
+            prev_alive_[i] = false;
+            prev_snapshot_[i] = false;
+            last_seen_.Forget(i);
             continue;
+        }
+
+        bool gated = visibility_.is_gating() && !is_self && (team != frame.ctx.highlight_team || !policy_.IsAllyRevealed(i));
+        if (!gated)
+        {
+            last_seen_.Forget(i);
         }
 
         goldsrc::cl_entity_t* ent = gEngfuncs.GetEntityByIndex(i);
@@ -477,20 +564,47 @@ std::span<const PlayersLayer::PlayerJob> PlayersLayer::CollectPlayerJobs(const R
 
         if (!ResolvePlayerSpot(frame, i, is_self, ent, spot))
         {
-            // Do not clear the trail: a transient PVS gap must resume on return, and the
-            // trail's own break distance handles a far re-acquire.
+            prev_snapshot_[i] = false;
+            if (team == frame.ctx.highlight_team && i != frame.ctx.highlight_idx && g_RadarCfg.tracks->value != 0.0f &&
+                !tracks_.IsSuppressed(frame.time))
+            {
+                DrawTrack(frame, i, team == RadarTeam::Terrorist ? RadarPalette::kTerrorist : RadarPalette::kCounterTerrorist);
+            }
             continue;
         }
 
-        bool teleported = IsTeleported(i, spot.pos, run_speed, frame.dt);
+        if (gated)
+        {
+            visible[visible_count++] = {i, spot.pos, team};
+        }
 
+        bool teleported = false;
+        if (spot.snapshot)
+        {
+            // The marker's return correction can exceed running speed without the entity teleporting.
+            const float* origin = is_self ? frame.ctx.local->origin : ent->origin;
+            ncl_math::Vector2 snapshot_pos{origin[0], origin[1]};
+            teleported = prev_snapshot_[i] && IsTeleported(i, snapshot_pos, run_speed, frame.dt);
+            prev_snapshot_pos_[i] = snapshot_pos;
+        }
+
+        prev_snapshot_[i] = spot.snapshot;
         prev_alive_[i] = true;
         prev_pos_[i] = spot.pos;
 
         PlayerJob& job = jobs[job_count++];
         FillPlayerJob(frame, i, is_self, team, spot, ext, dot, job);
 
-        UpdatePlayerTrail(frame, i, ent, spot.pos, job.col, job.offscreen, teleported);
+        UpdatePlayerTrail(frame, i, spot.snapshot ? ent : nullptr, spot.pos, job.col, job.offscreen, teleported);
+    }
+
+    if (visibility_.is_gating())
+    {
+        last_seen_.Update({visible, (size_t)visible_count}, frame.time);
+    }
+    else
+    {
+        last_seen_.Reset();
     }
 
     return jobs.first(job_count);
@@ -631,20 +745,42 @@ void PlayersLayer::DrawNames(const RadarFrame& frame, std::span<const PlayerJob>
     }
 }
 
+void PlayersLayer::DrawLastSeen(const RadarFrame& frame)
+{
+    if (last_seen_.get_marks().empty())
+    {
+        return;
+    }
+
+    float sz = std::max(kMemoryMarkMinSize, frame.box.marker_px * kMemoryMarkScale);
+    float hw = std::max(kMemoryMarkMinHalfWidth, sz * kMemoryMarkWidthScale) * kQuestionMarkWidthFactor;
+    int inset = (int)std::ceil(sz + hw);
+    RadarDraw_BeginPrims();
+
+    for (const PlayerLastSeen::Mark& mark : last_seen_.get_marks())
+    {
+        ncl_math::Vector2 pos = frame.shape.Clamp(inset, frame.t.WorldToScreen(mark.pos));
+        ncl_math::Color color = mark.team == RadarTeam::Terrorist ? RadarPalette::kTerrorist : RadarPalette::kCounterTerrorist;
+        RadarDraw_DrawQuestionMark(pos, sz, hw, color.WithAlpha(mark.alpha));
+    }
+
+    RadarDraw_EndPrims();
+}
+
 void PlayersLayer::DrawDeaths(const RadarFrame& frame)
 {
     DeathMarks::Visible marks[DeathMarks::kMax];
     int n = deaths_.CollectVisible(marks, frame.time);
-    float sz = std::max(2.0f, frame.box.marker_px * kDeathCrossScale);
+    float sz = std::max(kMemoryMarkMinSize, frame.box.marker_px * kMemoryMarkScale);
+    float hw = std::max(kMemoryMarkMinHalfWidth, sz * kMemoryMarkWidthScale);
+    int inset = (int)std::ceil(sz * std::sqrt(2.0f) + hw);
 
     RadarDraw_BeginPrims();
 
     for (int i = 0; i < n; i++)
     {
-        ncl_math::Vector2 s = frame.shape.Clamp((int)sz, frame.t.WorldToScreen(marks[i].pos));
+        ncl_math::Vector2 s = frame.shape.Clamp(inset, frame.t.WorldToScreen(marks[i].pos));
 
-        // Half-width scales with the cross so it does not look thin at high resolutions.
-        float hw = std::max(1.3f, sz * 0.42f);
         RadarDraw_DrawCross(s, sz, hw, marks[i].color.WithAlpha(marks[i].alpha));
     }
 

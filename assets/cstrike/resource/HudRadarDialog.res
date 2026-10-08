@@ -202,6 +202,17 @@
 		"tall"			"24"
 	}
 
+	"ShiftScoreboard"
+	{
+		"ControlName"		"CCvarToggleCheckButton"
+		"fieldName"		"ShiftScoreboard"
+		"xpos"			"20"
+		"ypos"			"267"
+		"wide"			"350"
+		"tall"			"22"
+		"labelText"		"#GameUI_HudRadar_ShiftScoreboard"
+	}
+
 	"Divider1"
 	{
 		"ControlName"		"Divider"

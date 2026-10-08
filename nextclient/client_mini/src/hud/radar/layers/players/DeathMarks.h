@@ -17,6 +17,8 @@ public:
     };
 
     static constexpr int kMax = 32;
+    static constexpr float kHold = 3.0f;
+    static constexpr float kLifetime = 4.5f; // includes kHold
 
 private:
     struct Mark
@@ -29,9 +31,6 @@ private:
 
     std::array<Mark, kMax> marks_{};
     int head_{};
-
-    static constexpr float kHold = 3.0f;
-    static constexpr float kLifetime = 4.5f; // includes kHold
 
 public:
     void Reset();

@@ -23,8 +23,6 @@
 namespace
 {
     constexpr float kVisInterval = 0.05f;
-    constexpr float kSpotMemory = 1.2f;
-    constexpr float kSpotHold = 0.2f;
     constexpr float kEyeZ = goldsrc::PM_VEC_VIEW;
     constexpr float kDuckEyeZ = goldsrc::PM_VEC_DUCK_VIEW;
     // The second trace point on a target, just above eye level.
@@ -140,6 +138,7 @@ void RadarVisibility::Reset()
     }
 
     viewer_count_ = 0;
+    gating_ = false;
     last_update_ = 0.0f;
     objective_tests_open_ = false;
     traces_begun_ = false;
@@ -281,10 +280,9 @@ void RadarVisibility::SpotEnemies(const SweepContext& ctx, const RadarPolicy& po
         if (AnyViewerSees(target_points, time, 0.0f))
         {
             Spotted& spotted = spotted_[i];
-            spotted.last_seen = time;
             spotted.pos = {ent->origin[0], ent->origin[1]};
             spotted.yaw = ent->angles[1];
-            spotted.valid = true;
+            spotted.visible = true;
         }
     }
 }
@@ -295,8 +293,7 @@ void RadarVisibility::Update(int self_player_id, RadarTeam my_team, bool spectat
 
     if (spectating || my_team == RadarTeam::Unassigned)
     {
-        gating_ = false;
-        viewer_count_ = 0;
+        Reset();
         return;
     }
 
@@ -310,6 +307,7 @@ void RadarVisibility::Update(int self_player_id, RadarTeam my_team, bool spectat
     }
 
     last_update_ = time;
+    spotted_.fill(Spotted{});
 
     goldsrc::cl_entity_t* local = gEngfuncs.GetLocalPlayer();
 
@@ -342,27 +340,15 @@ void RadarVisibility::Update(int self_player_id, RadarTeam my_team, bool spectat
     gEngfuncs.pEventAPI->EV_PopPMStates();
 }
 
-bool RadarVisibility::ShouldShowEnemy(int player_id, float time, ncl_math::Vector2& out_pos, float& out_yaw, float& out_alpha) const
+bool RadarVisibility::IsEnemyVisible(int player_id, ncl_math::Vector2& out_pos, float& out_yaw) const
 {
-    if (player_id < 1 || player_id > kRadarMaxPlayers)
+    if (player_id < 1 || player_id > kRadarMaxPlayers || !spotted_[player_id].visible)
     {
         return false;
     }
 
-    const Spotted& spotted = spotted_[player_id];
-    float age = time - spotted.last_seen;
-
-    if (!spotted.valid || age > kSpotMemory)
-    {
-        return false;
-    }
-
-    float alpha = ncl_math::HoldLinear(age, kSpotHold, kSpotMemory);
-
-    out_pos = spotted.pos;
-    out_yaw = spotted.yaw;
-    out_alpha = alpha;
-
+    out_pos = spotted_[player_id].pos;
+    out_yaw = spotted_[player_id].yaw;
     return true;
 }
 

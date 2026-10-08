@@ -172,7 +172,9 @@ void HostageMarkers::DrawRevealed(const RadarFrame& frame, const ObjectiveEntiti
 
         for (int i = 0; i < count; i++)
         {
-            broadcast[broadcast_count++] = {hostages[i].index, hostages[i].pos, hostages[i].seq};
+            broadcast[broadcast_count++] = {
+                hostages[i].index, hostages[i].pos, hostages[i].seq, hostages[i].previous_pos, hostages[i].interval
+            };
         }
     }
 

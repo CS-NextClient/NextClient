@@ -62,7 +62,8 @@ namespace nitroapi
         { StaticHookId::UserMsg_BombPickup,         SearchConfig("_Z20__MsgFunc_BombPickupPKciPv", SearchType::ExportFunc) },
         { StaticHookId::UserMsg_HostagePos,         SearchConfig("_Z20__MsgFunc_HostagePosPKciPv", SearchType::ExportFunc) },
         { StaticHookId::UserMsg_HostageK,           SearchConfig("_Z18__MsgFunc_HostageKPKciPv", SearchType::ExportFunc) },
-        { StaticHookId::UserMsg_ResetHUD,           SearchConfig("_Z18__MsgFunc_ResetHUDPKciPv", SearchType::ExportFunc) }
+        { StaticHookId::UserMsg_ResetHUD,           SearchConfig("_Z18__MsgFunc_ResetHUDPKciPv", SearchType::ExportFunc) },
+        { StaticHookId::UserMsg_Radar,              SearchConfig("_Z15__MsgFunc_RadarPKciPv", SearchType::ExportFunc) }
 
     };
 

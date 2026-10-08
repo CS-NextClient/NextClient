@@ -11,6 +11,7 @@
 #include "radar/RadarPolicy.h"
 #include "radar/RadarView.h"
 #include "radar/RadarFrame.h"
+#include "radar/RadarScoreboard.h"
 #include "radar/layers/BackdropLayer.h"
 #include "radar/layers/PlayersLayer.h"
 #include "radar/layers/ObjectivesLayer.h"
@@ -19,6 +20,7 @@ class HudRadarAdvanced : public HudBase, public HudBaseHelper
 {
 private:
     FrameContext ctx_{};
+    RadarScoreboard scoreboard_;
 
     // Declared before the members that hold references to them (visibility_, backdrop_,
     // objectives_).
@@ -28,7 +30,7 @@ private:
     RadarPolicy policy_;
     RadarText text_;
     BackdropLayer backdrop_{smoke_};
-    PlayersLayer players_{visibility_, policy_, text_};
+    PlayersLayer players_{visibility_, policy_, broadcast_, text_};
     ObjectivesLayer objectives_{visibility_, policy_, broadcast_, text_};
 
     // Serverinfo changes only on a server "serverinfo" command, so hints are re-read on
@@ -47,6 +49,7 @@ public:
     void Reset() override;
     void Draw(float flTime) override;
     void PrepareHudTextZone();
+    void UpdateScoreboard(bool hud_visible);
 
     // True only when this frame had no map source at all (no overview sprite, no runtime
     // render). The advanced radar draws first, so the classic one reads this to take over.
@@ -54,7 +57,7 @@ public:
 
 private:
     RadarBox ComputeBox(bool spectating);
-    RadarTransform ComputeTransform(const RadarBox& box, const RadarShape& shape);
+    RadarTransform ComputeTransform(const RadarBox& box, const RadarShape& shape, bool scoreboard);
     bool ShouldDraw();
     void UpdateFrameContext(bool spectating, float flTime);
     void UpdatePolicy(float flTime);

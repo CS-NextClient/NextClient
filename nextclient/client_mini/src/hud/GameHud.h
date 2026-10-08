@@ -35,6 +35,7 @@ public:
     void Draw(float time);
     void DrawRadar(float time);
     void PrepareRadar();
+    void UpdateRadarScoreboard(bool hud_visible);
     void Think(float time);
     void Reset();
     void InitHUDData();		// called every time a server is connected to

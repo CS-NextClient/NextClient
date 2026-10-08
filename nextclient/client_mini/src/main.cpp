@@ -149,6 +149,8 @@ static int HUD_RedrawHandler(float flTime, int iIntermission, HUD_RedrawNext nex
         g_GameHud->Draw(flTime);
     }
 
+    // Stock HUD updates may recenter the scoreboard, so place it after that pass.
+    g_GameHud->UpdateRadarScoreboard(hud_draw->value != 0.0);
     return result;
 }
 
@@ -164,6 +166,7 @@ static void HUD_ResetHandler(HUD_ResetNext next)
 
 static int HUD_VidInitHandler(HUD_VidInitNext next)
 {
+    g_GameHud->UpdateRadarScoreboard(false);
     ClearHudTxt();
 
     next->Invoke();

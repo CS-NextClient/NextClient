@@ -23,6 +23,7 @@
 namespace
 {
     constexpr float kBombPulsePeriod = 4.4f; // seconds
+    constexpr float kBombIconScale = 1.5f;
 
     constexpr int kHistoryMask = goldsrc::HISTORY_MAX - 1;
 
@@ -113,7 +114,9 @@ void BombMarker::UpdatePulse(bool planted, float time)
 
 void BombMarker::DrawMarker(const RadarFrame& frame, ncl_math::Vector2 world, int size, bool planted, float fade)
 {
-    ncl_math::Vector2 s = frame.shape.Clamp(size, frame.t.WorldToScreen(world));
+    float half_extent = size * kBombIconScale;
+    int inset = (int)std::ceil(half_extent * std::sqrt(2.0f));
+    ncl_math::Vector2 s = frame.shape.Clamp(inset, frame.t.WorldToScreen(world));
     float f = std::clamp(fade, 0.0f, 1.0f);
 
     RadarDraw_BeginPrims();
@@ -150,9 +153,7 @@ void BombMarker::DrawMarker(const RadarFrame& frame, ncl_math::Vector2 world, in
 
     a = (int)(a * f);
 
-    RadarDraw_DrawDisc(s, (float)size + 1.5f, {0, 0, 0, a});
-    RadarDraw_DrawDisc(s, (float)size, RadarPalette::kGold.WithAlpha(a));
-    RadarDraw_DrawDisc(s, size * 0.5f, {90, 70, 0, a});
+    RadarDraw_DrawBomb(s, half_extent, RadarPalette::kGold.WithAlpha(a));
 
     RadarDraw_EndPrims();
 }

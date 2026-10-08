@@ -16,7 +16,7 @@ class CHudRadarDialog : public vgui2::Frame
     DECLARE_CLASS_SIMPLE(CHudRadarDialog, vgui2::Frame);
 
 public:
-    static constexpr int kCheckCount = 7;
+    static constexpr int kCheckCount = 8;
     static constexpr int kSnapshotCount = 6 + kCheckCount; // 6 sliders/combos + toggles
 
     explicit CHudRadarDialog(vgui2::Panel* parent);

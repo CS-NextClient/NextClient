@@ -9,12 +9,15 @@
 
 #include "hud/radar/RadarFrame.h"
 #include "hud/radar/RadarLimits.h"
+#include "hud/radar/MarkerFeed.h"
 #include "players/DeathMarks.h"
 #include "players/PlayerTracks.h"
+#include "players/PlayerLastSeen.h"
 
 class RadarVisibility;
 class RadarText;
 class RadarPolicy;
+class RadarBroadcast;
 
 class PlayersLayer
 {
@@ -43,6 +46,7 @@ class PlayersLayer
         float yaw;
         int alpha;
         bool has_dir;
+        bool snapshot;
     };
 
     struct NameWidth
@@ -54,17 +58,25 @@ class PlayersLayer
     RadarVisibility& visibility_;
     const RadarPolicy& policy_;
     RadarText& text_;
+    const RadarBroadcast& broadcast_;
+    MarkerFeed feed_;
+    PlayerLastSeen last_seen_;
+    RadarTeam team_ = RadarTeam::Unassigned;
+    bool spectating_{};
+    float last_time_{};
 
     PlayerTracks tracks_;
 
     DeathMarks deaths_;
     std::array<bool, kRadarMaxPlayers + 1> prev_alive_{};
+    std::array<bool, kRadarMaxPlayers + 1> prev_snapshot_{};
     std::array<ncl_math::Vector2, kRadarMaxPlayers + 1> prev_pos_{};
+    std::array<ncl_math::Vector2, kRadarMaxPlayers + 1> prev_snapshot_pos_{};
 
     std::array<NameWidth, kRadarMaxPlayers + 1> name_widths_{};
 
 public:
-    explicit PlayersLayer(RadarVisibility& visibility, const RadarPolicy& policy, RadarText& text);
+    explicit PlayersLayer(RadarVisibility& visibility, const RadarPolicy& policy, const RadarBroadcast& broadcast, RadarText& text);
 
     void BeginFrame(float time);
     void Draw(const RadarFrame& frame);
@@ -76,7 +88,9 @@ private:
     void DrawPlayers(const RadarFrame& frame);
     void DrawCamera(const RadarFrame& frame);
     void DrawDeaths(const RadarFrame& frame);
-    
+    void DrawLastSeen(const RadarFrame& frame);
+    void UpdatePlayerFeed(const RadarFrame& frame);
+
     float ComputeHighlightConeSpread(const RadarFrame& frame);
     bool ResolvePlayerSpot(const RadarFrame& frame, int i, bool is_self, goldsrc::cl_entity_t* ent, PlayerSpot& out);
     // Returns the prefix of jobs it filled.
@@ -110,7 +124,7 @@ private:
     int ComputeNameHeightPx(const RadarFrame& frame);
     void DrawMarker(ncl_math::Vector2 pos, ncl_math::Vector2 dir, int size, ncl_math::Color color, float halo_radius = 0.0f);
     void DrawEdgeArrow(ncl_math::Vector2 pos, ncl_math::Vector2 out_dir, int size, ncl_math::Color color);
-    void DrawTrack(const RadarFrame& frame, int player, ncl_math::Vector2 pos, ncl_math::Color color);
+    void DrawTrack(const RadarFrame& frame, int player, ncl_math::Color color);
     void RecordPlayerDeathIfNew(int player, RadarTeam team, float time);
     void DrawHealthBar(ncl_math::Vector2 pos, int dot, int sb_health);
 

@@ -16,6 +16,7 @@
 #include <vgui/ISurfaceNext.h>
 #include <vgui/IVGui.h>
 #include <vgui/ISystem.h>
+#include <vgui_controls/AnimationController.h>
 #include <utils/TaskRun.h>
 #include <utils/TaskRunImpl.h>
 #include <Windows.h>
@@ -325,6 +326,9 @@ void CGameUI::RunFrame(void)
     int wide, tall;
     vgui2::surface()->GetScreenSize(wide, tall);
     BasePanel()->SetSize(wide, tall);
+
+    // Dialogs over the game still animate while the main menu is hidden.
+    vgui2::GetAnimationController()->UpdateAnimations(engine->GetAbsoluteTime());
 
     if (BasePanel()->IsVisible())
         BasePanel()->RunFrame();

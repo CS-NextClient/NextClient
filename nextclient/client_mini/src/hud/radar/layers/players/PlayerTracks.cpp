@@ -48,6 +48,11 @@ void PlayerTracks::Sample(int player, ncl_math::Vector2 pos, float time)
     {
         int last = (buf.head - 1 + kMaxPoints) % kMaxPoints;
 
+        if (pos == buf.points[last])
+        {
+            return;
+        }
+
         if ((pos - buf.points[last]).LengthSqr() > kJumpDist * kJumpDist)
         {
             buf.count = 0;

@@ -356,6 +356,8 @@ namespace
     constexpr float kShapeRing = 4.0f;
     constexpr float kShapeSolid = 5.0f;
     constexpr float kShapeGlyph = 6.0f;
+    constexpr float kShapeQuestionMark = 7.0f;
+    constexpr float kShapeBomb = 8.0f;
 
     struct ShapeParams
     {
@@ -716,6 +718,17 @@ void RadarDraw_DrawGlyph(
     AddQuad(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, corners, (GLuint)atlas);
 }
 
+void RadarDraw_DrawBomb(ncl_math::Vector2 center, float half_extent, ncl_math::Color color)
+{
+    float margin = half_extent + 2.0f;
+    AddShapeQuad(
+        {.shape = kShapeBomb, .feather = 1.1f, .center = center, .radius = half_extent, .color = color, .alpha = color.a / 255.0f},
+        GL_SRC_ALPHA,
+        GL_ONE_MINUS_SRC_ALPHA,
+        {{center.x - margin, center.y - margin}, {center.x + margin, center.y + margin}}
+    );
+}
+
 void RadarDraw_DrawCross(ncl_math::Vector2 center, float half_extent, float half_width, ncl_math::Color color)
 {
     float m = half_extent + half_width + 2.0f;
@@ -723,6 +736,23 @@ void RadarDraw_DrawCross(ncl_math::Vector2 center, float half_extent, float half
         {.shape = kShapeCross, .feather = 1.1f, .center = center, .radius = half_extent, .len = half_width,
          .color = color, .alpha = color.a / 255.0f},
         GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA,
+        {{center.x - m, center.y - m}, {center.x + m, center.y + m}}
+    );
+}
+
+void RadarDraw_DrawQuestionMark(ncl_math::Vector2 center, float half_extent, float half_width, ncl_math::Color color)
+{
+    float m = half_extent + half_width + 2.0f;
+    AddShapeQuad(
+        {.shape = kShapeQuestionMark,
+         .feather = 1.1f,
+         .center = center,
+         .radius = half_extent,
+         .len = half_width,
+         .color = color,
+         .alpha = color.a / 255.0f},
+        GL_SRC_ALPHA,
+        GL_ONE_MINUS_SRC_ALPHA,
         {{center.x - m, center.y - m}, {center.x + m, center.y + m}}
     );
 }

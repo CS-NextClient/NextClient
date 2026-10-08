@@ -29,6 +29,7 @@ void RadarConfig_Init()
     g_RadarCfg.opacity = RegisterCvar("hud_radar_opacity");
     g_RadarCfg.round = RegisterCvar("hud_radar_round");
     g_RadarCfg.fullmap = RegisterCvar("hud_radar_fullmap");
+    g_RadarCfg.shift_scoreboard = RegisterCvar("hud_radar_shift_scoreboard");
     g_RadarCfg.rotate = RegisterCvar("hud_radar_rotate");
     g_RadarCfg.names = RegisterCvar("hud_radar_names");
     g_RadarCfg.health = RegisterCvar("hud_radar_health");

@@ -14,10 +14,23 @@ void MarkerFeed::Reset()
     ResetMotion();
 }
 
+void MarkerFeed::ResetMotion(int index)
+{
+    for (Motion& motion : motions_)
+    {
+        if (motion.used && motion.index == index)
+        {
+            motion = Motion{};
+            return;
+        }
+    }
+}
+
 void MarkerFeed::ResetMotion()
 {
     motions_.fill(Motion{});
     marker_count_ = 0;
+    last_time_ = 0.0f;
 }
 
 int MarkerFeed::get_entity(int index) const
@@ -54,7 +67,16 @@ MarkerFeed::Motion* MarkerFeed::AcquireMotion(int index, ncl_math::Vector2 pos, 
     {
         if (!slot.used)
         {
-            slot = {true, index, seq, pos, pos, time, params_.max_interval};
+            slot = {
+                .used = true,
+                .index = index,
+                .seq = seq,
+                .from = pos,
+                .to = pos,
+                .start = time,
+                .duration = params_.max_interval,
+                .shown = pos,
+            };
             return &slot;
         }
     }
@@ -62,24 +84,63 @@ MarkerFeed::Motion* MarkerFeed::AcquireMotion(int index, ncl_math::Vector2 pos, 
     return nullptr;
 }
 
-void MarkerFeed::PinMotion(int index, ncl_math::Vector2 pos, std::uint32_t seq, float time)
+float MarkerFeed::ComputeCorrectionSpeed(const MarkerIdentity::Observation& report) const
 {
-    Motion* motion = AcquireMotion(index, pos, seq, time);
+    float distance = ncl_math::Distance(report.previous_pos, report.pos);
+    if (report.interval <= 0.0f || distance == 0.0f || distance > params_.snap_dist)
+    {
+        return params_.fallback_speed;
+    }
+
+    return distance / report.interval;
+}
+
+ncl_math::Vector2 MarkerFeed::UpdateSnapshot(ncl_math::Vector2 pos, const MarkerIdentity::Observation& report, float time)
+{
+    Motion* motion = AcquireMotion(report.index, pos, report.seq, time);
 
     if (!motion)
     {
-        return;
+        return pos;
     }
 
-    // A report taken here is older than the snapshot, so it only times the segment the next one starts.
-    if (motion->seq != seq)
+    if (!motion->snapshot)
     {
-        motion->seq = seq;
+        motion->snapshot_offset = motion->shown - pos;
+        if (motion->snapshot_offset.LengthSqr() > params_.snap_dist * params_.snap_dist)
+        {
+            motion->snapshot_offset = {};
+        }
+    }
+    else if (ncl_math::DistanceSqr(motion->snapshot_pos, pos) > params_.snap_dist * params_.snap_dist)
+    {
+        motion->snapshot_offset = {};
+    }
+    else
+    {
+        float distance = motion->snapshot_offset.Length();
+        float step = motion->snapshot_speed * (time - motion->snapshot_time);
+        motion->snapshot_offset = distance <= step ? ncl_math::Vector2{} : motion->snapshot_offset * (1.0f - step / distance);
+    }
+
+    motion->shown = pos + motion->snapshot_offset;
+    motion->snapshot = true;
+    motion->snapshot_pos = pos;
+    motion->snapshot_time = time;
+    // Apply a newly received speed to subsequent frames, without changing distance already covered.
+    motion->snapshot_speed = ComputeCorrectionSpeed(report);
+
+    // A report taken here is older than the snapshot, so it only times the segment the next one starts.
+    if (motion->seq != report.seq)
+    {
+        motion->seq = report.seq;
         motion->start = time;
     }
 
-    motion->from = pos;
-    motion->to = pos;
+    // Leaving mid-correction must hold the drawn position until a newer report arrives.
+    motion->from = motion->shown;
+    motion->to = motion->shown;
+    return motion->shown;
 }
 
 ncl_math::Vector2 MarkerFeed::Interpolate(int index, ncl_math::Vector2 pos, std::uint32_t seq, float time)
@@ -105,7 +166,9 @@ ncl_math::Vector2 MarkerFeed::Interpolate(int index, ncl_math::Vector2 pos, std:
     }
 
     float t = std::clamp((time - motion->start) / motion->duration, 0.0f, 1.0f);
-    return ncl_math::Lerp(motion->from, motion->to, t);
+    motion->shown = ncl_math::Lerp(motion->from, motion->to, t);
+    motion->snapshot = false;
+    return motion->shown;
 }
 
 void MarkerFeed::Update(
@@ -114,6 +177,12 @@ void MarkerFeed::Update(
     float time
 )
 {
+    if (time < last_time_)
+    {
+        ResetMotion();
+    }
+    last_time_ = time;
+
     if (!params_.index_is_entity)
     {
         identity_.Update(entities, observations);
@@ -128,7 +197,12 @@ void MarkerFeed::Update(
             break;
         }
 
-        markers_[marker_count_++] = {entity.pos, entity.ent, get_index(entity.ent)};
+        int index = get_index(entity.ent);
+        auto report = std::ranges::find_if(observations, [index](const MarkerIdentity::Observation& observation) {
+            return observation.index == index;
+        });
+        ncl_math::Vector2 pos = report != observations.end() ? UpdateSnapshot(entity.pos, *report, time) : entity.pos;
+        markers_[marker_count_++] = {pos, entity.ent, index};
     }
 
     for (const MarkerIdentity::Observation& observation : observations)
@@ -137,11 +211,8 @@ void MarkerFeed::Update(
         auto carrier =
             std::ranges::find_if(entities, [ent](const MarkerIdentity::Entity& entity) { return ent >= 0 && entity.ent == ent; });
 
-        // Pinned while the snapshot carries the thing: the report at hand is older than the snapshot,
-        // so a marker that leaves the PVS holds where it was last seen until a newer report walks it on.
         if (carrier != entities.end())
         {
-            PinMotion(observation.index, carrier->pos, observation.seq, time);
             continue;
         }
 

@@ -7,19 +7,26 @@ include(GoogleTest)
 add_executable(${TARGET_NAME}
         RadarUtilTests.cpp
         RadarViewTests.cpp
+        RadarScoreboardTests.cpp
         NclMathTests.cpp
         PlayerTracksTests.cpp
+        PlayerLastSeenTests.cpp
         RadarFadeTests.cpp
         RadarPolicyTests.cpp
+        RadarBroadcastTests.cpp
         MarkerIdentityTests.cpp
         MarkerFeedTests.cpp
         ObjectiveSourceTests.cpp
         HudTextZoneTests.cpp
         HudTextBufferTests.cpp
         ../src/hud/radar/RadarView.cpp
+        ../src/hud/radar/RadarScoreboard.cpp
         ../src/hud/radar/layers/players/PlayerTracks.cpp
+        ../src/hud/radar/layers/players/PlayerLastSeen.cpp
+        ../src/hud/radar/layers/players/DeathMarks.cpp
         ../src/hud/radar/RadarFade.cpp
         ../src/hud/radar/RadarPolicy.cpp
+        ../src/hud/radar/RadarBroadcast.cpp
         ../src/hud/radar/MarkerIdentity.cpp
         ../src/hud/radar/MarkerFeed.cpp
         ../src/hud/radar/ObjectiveSource.cpp

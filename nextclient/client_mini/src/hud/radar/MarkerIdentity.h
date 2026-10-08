@@ -32,6 +32,8 @@ public:
         int index;
         ncl_math::Vector2 pos;
         std::uint32_t seq; // a value the feed bumps per message, so a repeat still reads as new
+        ncl_math::Vector2 previous_pos{};
+        float interval{}; // seconds between the last two received reports; zero without a pair
     };
     
 private:

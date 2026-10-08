@@ -71,6 +71,8 @@ add_library(${PROJECT_NAME} SHARED
         src/hud/radar/RadarConfig.cpp
         src/hud/radar/RadarConfig.h
         src/hud/radar/RadarView.cpp
+        src/hud/radar/RadarScoreboard.h
+        src/hud/radar/RadarScoreboard.cpp
         src/hud/radar/RadarView.h
         src/hud/radar/RadarFrame.h
         src/hud/radar/RadarLabel.cpp
@@ -122,6 +124,8 @@ add_library(${PROJECT_NAME} SHARED
         src/hud/radar/layers/PlayersLayer.cpp
         src/hud/radar/layers/players/PlayerTracks.h
         src/hud/radar/layers/players/PlayerTracks.cpp
+        src/hud/radar/layers/players/PlayerLastSeen.h
+        src/hud/radar/layers/players/PlayerLastSeen.cpp
         src/hud/radar/layers/players/DeathMarks.h
         src/hud/radar/layers/players/DeathMarks.cpp
         src/hud/radar/layers/ObjectivesLayer.h

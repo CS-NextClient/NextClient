@@ -70,5 +70,8 @@ struct RadarViewParams
     int sprite_frames; // 0 with no sprite (runtime map)
 };
 
+bool RadarView_IsFreeCamera(int observer_mode);
+bool RadarView_ShouldHighlightPlayer(int observer_mode);
+
 RadarBox RadarView_ComputeBox(float screen_w, float screen_h, float scale, bool spectating);
 RadarTransform RadarView_ComputeTransform(const RadarBox& box, const RadarViewParams& p);

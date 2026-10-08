@@ -66,6 +66,8 @@ void RadarDraw_DrawGlyph(
     ncl_math::Color fill
 );
 
+void RadarDraw_DrawBomb(ncl_math::Vector2 center, float half_extent, ncl_math::Color color);
+
 void RadarDraw_SetPrimClip(ncl_math::Vector2 center, float radius, bool square);
 void RadarDraw_ClearPrimClip();
 
@@ -97,6 +99,8 @@ void RadarDraw_DrawRect(ncl_math::Vector2 min, ncl_math::Vector2 max, ncl_math::
 
 // One shape, not two diagonals: overlapping arms would double-blend at the centre.
 void RadarDraw_DrawCross(ncl_math::Vector2 center, float half_extent, float half_width, ncl_math::Color color);
+
+void RadarDraw_DrawQuestionMark(ncl_math::Vector2 center, float half_extent, float half_width, ncl_math::Color color);
 
 void RadarDraw_DrawRing(ncl_math::Vector2 center, float outer, float inner, ncl_math::Color color);
 

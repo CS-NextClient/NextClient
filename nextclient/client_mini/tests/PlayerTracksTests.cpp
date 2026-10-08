@@ -77,3 +77,21 @@ TEST(PlayerTracksSample, ThrottlesWithinInterval)
     ASSERT_EQ(n, 1);
     EXPECT_EQ(out[0], (ncl_math::Vector2{0.0f, 0.0f}));
 }
+
+TEST(PlayerTracksSample, AStationaryBroadcastDoesNotEraseTheTrail)
+{
+    PlayerTracks tracks;
+    tracks.Sample(1, {100.0f, 100.0f}, 1.0f);
+    tracks.Sample(1, {120.0f, 100.0f}, 1.2f);
+
+    for (int i = 0; i < 100; i++)
+    {
+        tracks.Sample(1, {120.0f, 100.0f}, 1.4f + kStep * i);
+    }
+
+    ncl_math::Vector2 out[PlayerTracks::kMaxPoints];
+    int count = tracks.CopyPoints(1, out);
+    ASSERT_EQ(count, 2);
+    EXPECT_EQ(out[0], (ncl_math::Vector2{100.0f, 100.0f}));
+    EXPECT_EQ(out[1], (ncl_math::Vector2{120.0f, 100.0f}));
+}

@@ -93,11 +93,14 @@ HudRadarAdvanced::HudRadarAdvanced(nitroapi::NitroApiInterface* nitro_api) :
 
 HudRadarAdvanced::~HudRadarAdvanced()
 {
+    RadarHooks_UpdateScoreboard(scoreboard_, nullptr);
     RadarHooks_ClearSinks();
 }
 
 void HudRadarAdvanced::OnPlayerRespawn()
 {
+    visibility_.Reset();
+    broadcast_.ResetPlayers();
     players_.OnPlayerRespawn();
     objectives_.OnPlayerRespawn();
 }
@@ -139,7 +142,7 @@ RadarBox HudRadarAdvanced::ComputeBox(bool spectating)
     return RadarView_ComputeBox(static_cast<float>(screen_w), static_cast<float>(screen_h), scale, spectating);
 }
 
-RadarTransform HudRadarAdvanced::ComputeTransform(const RadarBox& box, const RadarShape& shape)
+RadarTransform HudRadarAdvanced::ComputeTransform(const RadarBox& box, const RadarShape& shape, bool scoreboard)
 {
     const RadarOverview& overview = backdrop_.get_overview();
     const overview_t& ov = overview.get_data();
@@ -148,9 +151,9 @@ RadarTransform HudRadarAdvanced::ComputeTransform(const RadarBox& box, const Rad
     p.ov_zoom = ov.zoom;
     p.ov_origin = {ov.origin[0], ov.origin[1]};
     p.ov_rotated = ov.rotated != 0;
-    p.map_scale = std::clamp(g_RadarCfg.map_scale->value, kMapScaleCvar.min_value, kMapScaleCvar.max_value);
+    p.map_scale = scoreboard ? 1.0f : std::clamp(g_RadarCfg.map_scale->value, kMapScaleCvar.min_value, kMapScaleCvar.max_value);
     p.rotate = g_RadarCfg.rotate->value != 0.0f;
-    p.fullmap = g_RadarCfg.fullmap->value != 0.0f;
+    p.fullmap = scoreboard || g_RadarCfg.fullmap->value != 0.0f;
     p.round = shape.round;
     p.view_origin = {g_MainViewOrigin[0], g_MainViewOrigin[1]};
     p.view_yaw = g_MainViewAngles[1];
@@ -204,6 +207,7 @@ void HudRadarAdvanced::UpdateFrameContext(bool spectating, float flTime)
 {
     ctx_ = FrameContext{};
     ctx_.spectating = spectating;
+    ctx_.free_camera = spectating && RadarView_IsFreeCamera(g_iUser1);
 
     if (goldsrc::cl_entity_t* local = cl_enginefunc()->GetLocalPlayer())
     {
@@ -222,6 +226,11 @@ void HudRadarAdvanced::UpdateFrameContext(bool spectating, float flTime)
         }
         
         ctx_.local_team = RadarTeam_From(cl()->g_PlayerExtraInfo[ctx_.self_idx].teamnumber);
+    }
+
+    if (!RadarView_ShouldHighlightPlayer(g_iUser1))
+    {
+        ctx_.highlight_idx = 0;
     }
 
     // Runs here: the visibility pass below builds its sets from the policy's teammate answer.
@@ -317,6 +326,19 @@ void HudRadarAdvanced::PrepareHudTextZone()
     HudTextZone_SetZone(box.x, box.y, box.size);
 }
 
+void HudRadarAdvanced::UpdateScoreboard(bool hud_visible)
+{
+    if (hud_visible && RadarConfig_CheckAdvancedActive() && ShouldDraw() && !g_MapUnavailable && g_RadarCfg.shift_scoreboard->value != 0.0f)
+    {
+        RadarBox box = ComputeBox(g_iUser1 != 0 || cl_enginefunc()->IsSpectateOnly());
+        RadarHooks_UpdateScoreboard(scoreboard_, &box);
+    }
+    else
+    {
+        RadarHooks_UpdateScoreboard(scoreboard_, nullptr);
+    }
+}
+
 void HudRadarAdvanced::Draw(float flTime)
 {
     g_MapUnavailable = false;
@@ -353,11 +375,12 @@ void HudRadarAdvanced::Draw(float flTime)
     }
     
     bool spectating = g_iUser1 != 0 || cl_enginefunc()->IsSpectateOnly();
-    
+
+    bool scoreboard = RadarHooks_IsScoreboardVisible();
     RadarBox box = ComputeBox(spectating);
-    RadarShape shape = RadarView_ComputeShape(box, g_RadarCfg.round->value != 0.0f);
+    RadarShape shape = RadarView_ComputeShape(box, !scoreboard && g_RadarCfg.round->value != 0.0f);
     HudTextZone_SetZone(box.x, box.y, box.size);
-    RadarTransform transform = ComputeTransform(box, shape);
+    RadarTransform transform = ComputeTransform(box, shape, scoreboard);
 
     UpdateFrameContext(spectating, flTime);
 

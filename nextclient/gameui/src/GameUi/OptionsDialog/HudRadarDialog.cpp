@@ -34,6 +34,7 @@ namespace
         {nullptr, "hud_radar_name_size"},
         {"RadarRound", "hud_radar_round"},
         {"FullMap", "hud_radar_fullmap"},
+        {"ShiftScoreboard", "hud_radar_shift_scoreboard"},
         {"Rotation", "hud_radar_rotate"},
         {"Names", "hud_radar_names"},
         {"Health", "hud_radar_health"},
@@ -94,7 +95,6 @@ CHudRadarDialog::CHudRadarDialog(Panel* parent) :
     m_bLiveApply = false;
     SetBounds(0, 0, 380, 496);
     SetTitle("#GameUI_HudRadar_Title", true);
-    MoveToCenterOfScreen();
     SetSizeable(false);
     SetMoveable(true);
     SetDeleteSelfOnClose(true);
@@ -175,11 +175,8 @@ void CHudRadarDialog::Activate()
     BaseClass::Activate();
     input()->SetAppModalSurface(GetVPanel());
 
-    // Re-centre after the reparent so the frame does not cover the radar.
-    if (m_bLiveApply)
-    {
-        MoveToCenterOfScreen();
-    }
+    // Resource loading and reparenting must finish before positioning the dialog.
+    MoveToCenterOfScreen();
 }
 
 void CHudRadarDialog::OnClose()

@@ -2,6 +2,8 @@
 
 #include <cmath>
 
+#include <goldsrc/pmove.h>
+
 #include "RadarView.h"
 
 namespace
@@ -22,6 +24,34 @@ namespace
         return p;
     }
 } // namespace
+
+TEST(RadarViewObserver, OnlyFreeFlightUsesTheCameraMarker)
+{
+    EXPECT_TRUE(RadarView_IsFreeCamera(goldsrc::OBS_ROAMING));
+    EXPECT_FALSE(RadarView_IsFreeCamera(goldsrc::OBS_CHASE_FREE));
+}
+
+TEST(RadarViewObserver, AttachedViewsDoNotAddACameraMarker)
+{
+    for (int mode : {goldsrc::OBS_NONE, goldsrc::OBS_IN_EYE, goldsrc::OBS_CHASE_LOCKED, goldsrc::OBS_MAP_FREE, goldsrc::OBS_MAP_CHASE})
+    {
+        SCOPED_TRACE(mode);
+        EXPECT_FALSE(RadarView_IsFreeCamera(mode));
+    }
+}
+
+TEST(RadarViewObserver, ThirdPersonViewsHaveNoGreenMarker)
+{
+    for (int mode : {goldsrc::OBS_CHASE_FREE, goldsrc::OBS_CHASE_LOCKED})
+    {
+        SCOPED_TRACE(mode);
+        EXPECT_FALSE(RadarView_IsFreeCamera(mode));
+        EXPECT_FALSE(RadarView_ShouldHighlightPlayer(mode));
+    }
+    EXPECT_TRUE(RadarView_ShouldHighlightPlayer(goldsrc::OBS_NONE));
+    EXPECT_TRUE(RadarView_ShouldHighlightPlayer(goldsrc::OBS_IN_EYE));
+    EXPECT_FALSE(RadarView_ShouldHighlightPlayer(goldsrc::OBS_ROAMING));
+}
 
 TEST(RadarViewComputeBox, AnchorsToScreenHeight)
 {

@@ -11,6 +11,7 @@ struct RadarConfig
     goldsrc::cvar_t* opacity; // 0..100
     goldsrc::cvar_t* round;
     goldsrc::cvar_t* fullmap;
+    goldsrc::cvar_t* shift_scoreboard;
     goldsrc::cvar_t* rotate;
     goldsrc::cvar_t* names;
     goldsrc::cvar_t* health;

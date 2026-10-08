@@ -27,9 +27,15 @@ float segDist(vec2 p, vec2 a, vec2 b)
     return length(w - e * t);
 }
 
+float roundedBoxDist(vec2 p, vec2 halfSize, float radius)
+{
+    vec2 q = abs(p) - halfSize + vec2(radius);
+    return length(max(q, 0.0)) + min(max(q.x, q.y), 0.0) - radius;
+}
+
 void main()
 {
-    float uShape = vShape.x; // 0 disc, 1 cone, 2 triangle, 3 cross, 4 ring, 5 solid, 6 glyph
+    float uShape = vShape.x; // 0 disc, 1 cone, 2 triangle, 3 cross, 4 ring, 5 solid, 6 glyph, 7 question mark, 8 bomb
     float uFeather = vShape.y;
     float uRadius = vShape.z;
     float uLen = vShape.w;
@@ -94,7 +100,7 @@ void main()
     {
         a = 1.0; // solid: the quad geometry itself is the shape (polyline segments)
     }
-    else
+    else if (uShape < 6.5)
     {
         // glyph: LUMINANCE_ALPHA atlas cell with alpha = coverage (the fill plus the baked drop
         // shadow) and luminance = the glyph fill. Modulate the caller colour by luminance, so the
@@ -103,6 +109,44 @@ void main()
         vec4 g = texture2D(uAtlas, uT0);
         a = g.a;
         rgb = uColor.rgb * g.r;
+    }
+    else if (uShape < 7.5)
+    {
+        // Question mark: a circular hook, a short stem and a dot share the cross's edge profile.
+        vec2 q = (p - uCenter) / uRadius;
+        vec2 rel = q - vec2(0.0, -0.5);
+        vec2 arcEnd = vec2(0.35355339, 0.35355339);
+        float hook = abs(length(rel) - 0.5);
+        if (rel.y > 0.0 && rel.x < rel.y)
+        {
+            hook = min(distance(rel, vec2(-0.5, 0.0)), distance(rel, arcEnd));
+        }
+        float stem = segDist(q, arcEnd + vec2(0.0, -0.5), vec2(0.0, 0.05));
+        float dotDist = distance(p, uCenter + vec2(0.0, uRadius)) + uLen * 0.25;
+        float dl = min(min(hook, stem) * uRadius, dotDist);
+        a = 1.0 - smoothstep(uLen - uFeather, uLen, dl);
+    }
+    else
+    {
+        vec2 q = (p - uCenter) / uRadius;
+        float body = roundedBoxDist(q - vec2(0.0, 0.12), vec2(0.9, 0.62), 0.10);
+        float wire = min(segDist(q, vec2(-0.52, -0.42), vec2(-0.52, -0.80)),
+                         min(segDist(q, vec2(-0.52, -0.80), vec2(0.12, -0.80)),
+                             segDist(q, vec2(0.12, -0.80), vec2(0.12, -0.42)))) - 0.08;
+        a = 1.0 - smoothstep(-uFeather, 0.0, min(body, wire) * uRadius);
+
+        float detail = roundedBoxDist(q - vec2(-0.20, -0.20), vec2(0.40, 0.12), 0.02);
+        detail = min(detail, roundedBoxDist(q - vec2(0.55, 0.10), vec2(0.13, 0.38), 0.03));
+        for (int row = 0; row < 2; row++)
+        {
+            for (int column = 0; column < 3; column++)
+            {
+                vec2 key = vec2(-0.48 + float(column) * 0.24, 0.14 + float(row) * 0.24);
+                detail = min(detail, roundedBoxDist(q - key, vec2(0.075, 0.055), 0.01));
+            }
+        }
+        float ink = 1.0 - smoothstep(-0.4, 0.4, detail * uRadius);
+        rgb = mix(uColor.rgb, uColor.rgb * 0.20, ink);
     }
 
     vec2 cd = abs(vScreen - uClipCenter);

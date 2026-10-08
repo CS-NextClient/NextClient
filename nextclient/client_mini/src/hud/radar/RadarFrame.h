@@ -5,8 +5,8 @@
 #include "RadarTeam.h"
 #include "RadarView.h"
 
-// highlight_* follows the observed player while spectating; local_* always reflects
-// the local entity, which is what the bomb and hostage draws gate on.
+// highlight_team follows the observed player; highlight_idx is zero outside a player view.
+// local_* always reflects the local entity, which gates bomb and hostage visibility.
 struct FrameContext
 {
     goldsrc::cl_entity_t* local;
@@ -15,6 +15,7 @@ struct FrameContext
     int highlight_idx;
     RadarTeam highlight_team;
     RadarTeam local_team;
+    bool free_camera;
 };
 
 struct RadarFrame

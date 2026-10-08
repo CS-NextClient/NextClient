@@ -328,6 +328,7 @@ namespace nitroapi
         UserMsg_HostagePos,
         UserMsg_HostageK,
         UserMsg_ResetHUD,
+        UserMsg_Radar,
 
         // SDL2.dll
         SDL_DestroyWindow = 1500,

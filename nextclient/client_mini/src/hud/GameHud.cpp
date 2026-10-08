@@ -66,6 +66,11 @@ void GameHud::PrepareRadar()
     radar_advanced_->PrepareHudTextZone();
 }
 
+void GameHud::UpdateRadarScoreboard(bool hud_visible)
+{
+    radar_advanced_->UpdateScoreboard(hud_visible);
+}
+
 void GameHud::DrawRadar(float time)
 {
     radar_advanced_->Draw(time);

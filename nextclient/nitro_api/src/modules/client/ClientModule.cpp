@@ -31,6 +31,7 @@ namespace nitroapi
         RegisterFuncCdecl<StaticHookId::UserMsg_HostagePos>(&client_data_->UserMsg_HostagePos);
         RegisterFuncCdecl<StaticHookId::UserMsg_HostageK>(&client_data_->UserMsg_HostageK);
         RegisterFuncCdecl<StaticHookId::UserMsg_ResetHUD>(&client_data_->UserMsg_ResetHUD);
+        RegisterFuncCdecl<StaticHookId::UserMsg_Radar>(&client_data_->UserMsg_Radar);
 
         RegisterFuncCdecl<StaticHookId::CLDLL_Initialize>(&client_data_->CLDLL_Initialize);
         RegisterFuncCdecl<StaticHookId::HUD_Init>(&client_data_->HUD_Init);

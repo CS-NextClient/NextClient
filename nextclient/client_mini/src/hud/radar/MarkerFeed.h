@@ -13,7 +13,8 @@
 // entities the local snapshot carries and the positions the server broadcasts for everything else.
 // A thing both feeds carry is reported once, from the snapshot, and a broadcast position is played
 // back over the interval its messages arrive at, so a marker outside the PVS walks instead of
-// stepping. A thing leaving the snapshot starts from where the snapshot last showed it.
+// stepping. Source transitions preserve the last drawn position; returning to the snapshot
+// blends out the position difference before tracking it directly.
 class MarkerFeed
 {
 public:
@@ -32,6 +33,7 @@ public:
         // Further than the thing can travel in one interval, so a respawn or a teleport jumps
         // instead of sweeping across the map.
         float snap_dist = 600.0f; // world units
+        float fallback_speed = 250.0f; // world units per second without a usable report pair
     };
 
     struct Marker
@@ -60,13 +62,13 @@ public:
 
     // Drops the playback, so the next report places its marker instead of walking it there.
     void ResetMotion();
+    void ResetMotion(int index);
 
     // Drops the pairs as well; the level is their lifetime.
     void Reset();
 
 private:
-    // The segment between the last two reported positions of one index, collapsed onto the snapshot
-    // position while the snapshot carries the thing.
+    // Broadcast playback and position correction when its entity returns to the snapshot.
     struct Motion
     {
         bool used;
@@ -76,6 +78,12 @@ private:
         ncl_math::Vector2 to;
         float start; // client time the segment began
         float duration; // seconds, the interval the previous two reports were apart
+        ncl_math::Vector2 shown;
+        bool snapshot{};
+        ncl_math::Vector2 snapshot_pos;
+        ncl_math::Vector2 snapshot_offset;
+        float snapshot_time{};
+        float snapshot_speed{};
     };
 
     Params params_;
@@ -86,10 +94,12 @@ private:
     // Both feeds at once, since a broadcast position the snapshot does not cover adds a marker.
     std::array<Marker, kRadarMaxMarkers * 2> markers_{};
     int marker_count_{};
+    float last_time_{};
 
     // nullptr when every slot is taken.
     Motion* AcquireMotion(int index, ncl_math::Vector2 pos, std::uint32_t seq, float time);
 
-    void PinMotion(int index, ncl_math::Vector2 pos, std::uint32_t seq, float time);
+    float ComputeCorrectionSpeed(const MarkerIdentity::Observation& report) const;
+    ncl_math::Vector2 UpdateSnapshot(ncl_math::Vector2 pos, const MarkerIdentity::Observation& report, float time);
     ncl_math::Vector2 Interpolate(int index, ncl_math::Vector2 pos, std::uint32_t seq, float time);
 };

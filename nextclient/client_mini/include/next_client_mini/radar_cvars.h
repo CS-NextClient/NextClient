@@ -15,6 +15,7 @@ inline constexpr RadarCvarDef kRadarCvarDefs[] = {
     {"hud_radar_opacity", "100", 0.0f, 100.0f},
     {"hud_radar_round", "1", 0.0f, 1.0f},
     {"hud_radar_fullmap", "0", 0.0f, 1.0f},
+    {"hud_radar_shift_scoreboard", "1", 0.0f, 1.0f},
     {"hud_radar_rotate", "1", 0.0f, 1.0f},
     {"hud_radar_names", "0", 0.0f, 1.0f},
     {"hud_radar_health", "0", 0.0f, 1.0f},

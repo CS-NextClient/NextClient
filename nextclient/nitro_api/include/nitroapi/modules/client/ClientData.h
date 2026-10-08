@@ -163,5 +163,7 @@ namespace nitroapi
         NitroFunction<int, const char*, int, void*>                UserMsg_ResetHUD;
 
         goldsrc::cl_enginefunc_t* gEngfuncs = nullptr;
+
+        NitroFunction<int, const char*, int, void*> UserMsg_Radar;
     };
 }

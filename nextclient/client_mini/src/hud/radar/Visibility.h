@@ -21,10 +21,9 @@ public:
 private:
     struct Spotted
     {
-        float last_seen;
         ncl_math::Vector2 pos;
         float yaw;
-        bool valid;
+        bool visible;
     };
 
     struct Viewer
@@ -55,9 +54,7 @@ public:
         return gating_;
     }
 
-    // out_alpha is 0..1, fading over the memory window; pos and yaw freeze when sight is
-    // lost.
-    bool ShouldShowEnemy(int player_id, float time, ncl_math::Vector2& out_pos, float& out_yaw, float& out_alpha) const;
+    bool IsEnemyVisible(int player_id, ncl_math::Vector2& out_pos, float& out_yaw) const;
 
     // Reads the viewer set Update builds.
     bool CheckPointVisible(const ncl_math::Vector3& origin, float time);

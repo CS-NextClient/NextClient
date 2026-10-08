@@ -10,8 +10,14 @@
 #include <data_types/MessageReader.h>
 #include <goldsrc/client_api.h>
 #include <goldsrc/event_api.h>
+#include <interface.h>
+#include <vgui/IPanel.h>
+#include <vgui/ISurface.h>
+#include <vgui/IVGui.h>
 
 #include "RadarBroadcast.h"
+#include "RadarScoreboard.h"
+#include "RadarView.h"
 #include "HudTextBuffer.h"
 #include "SmokeRegistry.h"
 
@@ -99,6 +105,77 @@ namespace
         }
 
         next->Invoke(name, cb);
+    }
+
+    struct ScoreboardUi
+    {
+        vgui2::IPanel* panels{};
+        vgui2::ISurface* surface{};
+        vgui2::IVGui* vgui{};
+        vgui2::VPANEL panel{};
+        vgui2::VPANEL root{};
+    };
+
+    void SolvePanelTree(vgui2::IPanel& panels, vgui2::VPANEL panel)
+    {
+        panels.Solve(panel);
+        int child_count = panels.GetChildCount(panel);
+        for (int i = 0; i < child_count; i++)
+        {
+            SolvePanelTree(panels, panels.GetChild(panel, i));
+        }
+    }
+
+    bool FindScoreboard(ScoreboardUi& ui, vgui2::HPanel tracked_panel = vgui2::INVALID_PANEL)
+    {
+        CreateInterfaceFn factory = Sys_GetFactory("vgui2.dll");
+        void** surface_ptr = eng()->vgui2_surface;
+        if (!factory || !surface_ptr || !*surface_ptr)
+        {
+            return false;
+        }
+        ui.panels = static_cast<vgui2::IPanel*>(factory(VGUI_PANEL_INTERFACE_VERSION_GS, nullptr));
+        ui.vgui = static_cast<vgui2::IVGui*>(factory(VGUI_IVGUI_INTERFACE_VERSION_GS, nullptr));
+        ui.surface = static_cast<vgui2::ISurface*>(*surface_ptr);
+        if (!ui.panels || !ui.vgui)
+        {
+            return false;
+        }
+        ui.root = ui.surface->GetEmbeddedPanel();
+        if (tracked_panel != vgui2::INVALID_PANEL)
+        {
+            ui.panel = ui.vgui->HandleToPanel(tracked_panel);
+            if (ui.panel)
+            {
+                return true;
+            }
+        }
+        int child_count = ui.panels->GetChildCount(ui.root);
+        for (int i = 0; i < child_count; i++)
+        {
+            ui.panel = RadarScoreboard_FindVisiblePanel(*ui.panels, ui.panels->GetChild(ui.root, i));
+            if (ui.panel)
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    int UserMsg_RadarHandler(const char* name, int size, void* data, UserMsg_RadarMsgNext next)
+    {
+        MessageReader reader(data, size);
+        int index = reader.ReadByte();
+        float x = reader.ReadCoord();
+        float y = reader.ReadCoord();
+        float z = reader.ReadCoord();
+
+        if (g_Sinks.broadcast)
+        {
+            g_Sinks.broadcast->SetPlayer(index, {x, y, z}, gEngfuncs.GetClientTime());
+        }
+
+        return next->Invoke(name, size, data);
     }
 
     int UserMsg_BombDropHandler(const char* name, int size, void* data, UserMsg_RadarMsgNext next)
@@ -227,11 +304,71 @@ void RadarHooks_InvalidateGlyphMetrics()
     g_TextBuffer.InvalidateGlyphMetrics();
 }
 
+bool RadarHooks_IsScoreboardVisible()
+{
+    ScoreboardUi ui;
+    return FindScoreboard(ui);
+}
+
+void RadarHooks_UpdateScoreboard(RadarScoreboard& placement, const RadarBox* radar)
+{
+    if (!radar && !placement.is_shifted())
+    {
+        return;
+    }
+    ScoreboardUi ui;
+    // The stock client has multiple scoreboard panels with the same name.
+    // Restore the exact panel we moved, even after it becomes hidden.
+    if (!FindScoreboard(ui, placement.is_shifted() ? placement.get_panel() : vgui2::INVALID_PANEL))
+    {
+        placement.Reset();
+        return;
+    }
+
+    for (vgui2::VPANEL parent = ui.panel; parent && parent != ui.root; parent = ui.panels->GetParent(parent))
+    {
+        if (!ui.panels->IsVisible(parent))
+        {
+            radar = nullptr;
+            break;
+        }
+    }
+
+    int screen_w, screen_h, x, y, wide, tall, local_x, local_y;
+    ui.surface->GetScreenSize(screen_w, screen_h);
+    ui.panels->Solve(ui.panel);
+    ui.panels->GetAbsPos(ui.panel, x, y);
+    ui.panels->GetSize(ui.panel, wide, tall);
+    ui.panels->GetPos(ui.panel, local_x, local_y);
+
+    ncl_math::Aabb2 radar_bounds{};
+    if (radar)
+    {
+        // HUD coordinates can differ from VGUI pixels when the engine scales the HUD.
+        float scale_x = (float)screen_w / radar->screen_w;
+        float scale_y = (float)screen_h / radar->screen_h;
+        radar_bounds = {{radar->x * scale_x, radar->y * scale_y}, {(radar->x + radar->size) * scale_x, (radar->y + radar->size) * scale_y}};
+    }
+    ncl_math::Vector2 pos = placement.Update(
+        ui.vgui->PanelToHandle(ui.panel),
+        {{(float)x, (float)y}, {(float)(x + wide), (float)(y + tall)}},
+        {(float)screen_w, (float)screen_h},
+        radar ? &radar_bounds : nullptr
+    );
+    if (pos.x != (float)x || pos.y != (float)y)
+    {
+        ui.panels->SetPos(ui.panel, local_x + (int)pos.x - x, local_y + (int)pos.y - y);
+        // Child clip rectangles and hit regions must follow in this frame as well.
+        SolvePanelTree(*ui.panels, ui.panel);
+    }
+}
+
 void RadarHooks_Subscribe(nitroapi::NitroApiInterface* nitro_api, std::vector<std::shared_ptr<nitroapi::Unsubscriber>>& unsub)
 {
     nitroapi::ClientData* client_data = nitro_api->GetClientData();
     unsub.emplace_back(nitro_api->GetEngineData()->VGUI2_Draw_SetTextColor |= VGUI2_Draw_SetTextColorHandler);
     unsub.emplace_back(nitro_api->GetEngineData()->CL_HookEvent |= CL_HookEventHandler);
+    unsub.emplace_back(client_data->UserMsg_Radar |= UserMsg_RadarHandler);
     unsub.emplace_back(client_data->UserMsg_BombDrop |= UserMsg_BombDropHandler);
     unsub.emplace_back(client_data->UserMsg_BombPickup |= UserMsg_BombPickupHandler);
     unsub.emplace_back(client_data->UserMsg_HostagePos |= UserMsg_HostagePosHandler);

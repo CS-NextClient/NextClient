@@ -62,7 +62,8 @@ namespace nitroapi
         { StaticHookId::UserMsg_BombPickup,         SearchConfig(0x4E000) },
         { StaticHookId::UserMsg_HostagePos,         SearchConfig(0x4E090) },
         { StaticHookId::UserMsg_HostageK,           SearchConfig(0x4E0C0) },
-        { StaticHookId::UserMsg_ResetHUD,           SearchConfig(0x4DF80) }
+        { StaticHookId::UserMsg_ResetHUD,           SearchConfig(0x4DF80) },
+        { StaticHookId::UserMsg_Radar,              SearchConfig(0x4AF00) }
     };
 
     const std::unordered_map<std::string, SearchConfig> ClientAddressProvider8684Windows::addresses_str_
