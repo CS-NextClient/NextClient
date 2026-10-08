@@ -3,7 +3,7 @@
 #include <vgui/IInput.h>
 #include <vgui/IPanel.h>
 #include <vgui/ISurfaceNext.h>
-#include <VGUI/IInputInternal.h>
+#include <vgui/IInputInternal.h>
 #include <KeyValues.h>
 
 using namespace vgui2;

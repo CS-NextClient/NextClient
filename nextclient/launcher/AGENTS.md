@@ -1,7 +1,8 @@
 # Launcher and updater
 
-The launcher owns the process, engine startup and relaunch. `src/updater_gui_app` owns the update
-workflow; the GUI's cancellation request and the end of HTTP or file work are separate events.
+The launcher owns the process, engine startup and relaunch. On Windows, `src/updater_gui_app` owns
+the update workflow; the GUI's cancellation request and the end of HTTP or file work are separate
+events. The updater GUI is not ported to Linux.
 
 ## Shutdown and HTTP work
 
@@ -28,7 +29,8 @@ workflow; the GUI's cancellation request and the end of HTTP or file work are se
 
 ## Verification
 
-`updater-test` is available with `NEXTCLIENT_BUILD_TESTS` and `NEXT_LAUNCHER_ENABLE_UPDATER` enabled.
+`updater-test` is available on Windows with `NEXTCLIENT_BUILD_TESTS` and
+`NEXT_LAUNCHER_ENABLE_UPDATER` enabled.
 Run its CTest cases sequentially (`ctest --test-dir <test-build> -C <config> -j 1 --output-on-failure`).
 `NextUpdaterTestFixture.h` allocates ports from a process-local counter starting at 59873, so parallel
 CTest processes can choose the same port. A connection or download failure under parallel execution

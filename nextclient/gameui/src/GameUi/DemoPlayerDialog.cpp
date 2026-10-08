@@ -177,12 +177,12 @@ void CDemoPlayerDialog::Update()
     }
     else if ( m_DemoPlayer->IsLoading() )
     {
-        swprintf( title, L"Loading %hs ...", m_DemoPlayer->GetFileName() );
+        swprintf( title, sizeof(title) / sizeof(title[0]), L"Loading %hs ...", m_DemoPlayer->GetFileName() );
         SetTitle( title, false);
     }
     else
     {
-        swprintf(title, L"%hs", m_DemoPlayer->GetFileName());
+        swprintf(title, sizeof(title) / sizeof(title[0]), L"%hs", m_DemoPlayer->GetFileName());
         SetTitle(title, false);
     }
 

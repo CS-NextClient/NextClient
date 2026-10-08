@@ -38,8 +38,6 @@ protected:
 
     virtual void	ReceiveSignal(ISystemModule * module, unsigned int signal);
 
-    typedef vgui2::Frame BaseClass;
-
     void Update();	// updates all visible data fields
     bool LoadModules();	// get other modules (world, demo player etc)
 

@@ -17,7 +17,7 @@ namespace nitroapi
 }
 #endif
 
-class ISteamMatchmakingServers;
+class MatchmakingServersInterface;
 
 class EngineMiniInterface : public IBaseInterface
 {
@@ -33,11 +33,12 @@ public:
     virtual bool AddCmdLogger(CommandLoggerInterface* logger) = 0;
     virtual bool RemoveCmdLogger(CommandLoggerInterface* logger) = 0;
 
-    virtual ISteamMatchmakingServers* GetSteamMatchmakingServers() = 0;
+    virtual MatchmakingServersInterface* GetSteamMatchmakingServers() = 0;
     virtual void SetNclmVerificator(NclmVerificatorInterface* handler) = 0;
 
+    // Returns nullptr when the platform uses the stock text renderer.
     virtual TextRenderInterface* GetTextRender() = 0;
 };
 
-#define ENGINE_MINI_INTERFACE_VERSION "EngineMini012"
+#define ENGINE_MINI_INTERFACE_VERSION "EngineMini013"
 

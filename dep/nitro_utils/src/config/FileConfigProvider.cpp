@@ -252,6 +252,48 @@ namespace nitro_utils
         return true;
     }
 
+    bool FileConfigProvider::remove_value(const std::string &key_value_section, const std::string &key_remove, bool update_config_file)
+    {
+        auto section_it = key_value_sections_.find(key_value_section);
+        if (section_it != key_value_sections_.end())
+            section_it->second.erase(key_remove);
+
+        if (!update_config_file)
+            return true;
+
+        int value_line = 0;
+
+        ParseFile(file_path_,
+                  [](const std::string& section, const std::string& list_item, int line) { },
+                  [key_value_section, key_remove, &value_line](const std::string& section, const std::string& key, const std::string& value, int line)
+        {
+            if (key_value_section == section && key_remove == key && value_line == 0)
+                value_line = line;
+        });
+
+        // nothing to remove from the file
+        if (value_line == 0)
+            return true;
+
+        std::vector<std::string> lines = ReadAllLinesFromConfig();
+
+        std::fstream file(file_path_, std::ios::out);
+        if (!file.is_open())
+            return false;
+
+        for (int i = 0; i < lines.size(); i++)
+        {
+            if (i + 1 == value_line)
+                continue;
+
+            file << lines[i] << std::endl;
+        }
+
+        file.close();
+
+        return true;
+    }
+
     std::vector<std::string> FileConfigProvider::ReadAllLinesFromConfig()
     {
         std::vector<std::string> lines;

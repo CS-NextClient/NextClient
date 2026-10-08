@@ -25,5 +25,3 @@ void Netchan_UpdateProgress(goldsrc::netchan_t* chan);
 void Netchan_Clear(goldsrc::netchan_t* chan);
 goldsrc::qboolean NET_GetPacket(goldsrc::netsrc_t sock);
 goldsrc::qboolean NET_GetPacket_0();
-
-void NET_SendPacketPost(goldsrc::netsrc_t sock, int length, void* data, goldsrc::netadr_t to, int result);

@@ -224,7 +224,7 @@ namespace nitroapi
         }
 
         size_t engine_size = engine_file.tellg();
-        if (engine_size == 1641376)
+        if (engine_size == 1641376 || engine_size == 9330714)
             build_version_ = BuildVersion{8684};
         else
             LOG(INFO) << "Unsupported engine version";

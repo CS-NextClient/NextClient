@@ -22,10 +22,17 @@
 #include <goldsrc/studio_api.h>
 #include <goldsrc/types.h>
 #include <goldsrc/view.h>
+#ifdef _WIN32
 #include <Windows.h>
+#else
+using HDC = void*;
+using HGLRC = void*;
+#endif
 #include <FileSystem.h>
 
 #include <steam/steamtypes.h>
+
+struct sockaddr;
 
 namespace nitroapi
 {
@@ -208,8 +215,8 @@ namespace nitroapi
         // void MSG_WriteString(goldsrc::sizebuf_t *sb, const char *s)
         NitroFunctionVoid<goldsrc::sizebuf_t*, const char*> MSG_WriteString;
 
-        // int NET_SendPacket(goldsrc::netsrc_t sock, int length, void *data, goldsrc::netadr_t to)
-        NitroFunction<int, goldsrc::netsrc_t, int, void*, goldsrc::netadr_t> NET_SendPacket;
+        // void NET_SendPacket(goldsrc::netsrc_t sock, int length, void *data, goldsrc::netadr_t to)
+        NitroFunctionVoid<goldsrc::netsrc_t, int, void*, goldsrc::netadr_t> NET_SendPacket;
         // goldsrc::qboolean NET_GetPacket(goldsrc::netsrc_t sock)
         NitroFunction<goldsrc::qboolean, goldsrc::netsrc_t> NET_GetPacket;
         // goldsrc::qboolean NET_GetPacket_0()
@@ -666,5 +673,17 @@ namespace nitroapi
 
         // bool VGui_InitInterfacesList(const char* module, CreateInterfaceFn* factories, int count)
         NitroFunction<bool, const char*, void*, int>    VGui_InitInterfacesList;
+
+        int* ip_sockets{};
+        int* ipx_sockets{};
+        NitroFunctionVoid<goldsrc::netsrc_t, int, void*, goldsrc::netadr_t> NET_SendLoopPacket;
+        NitroFunction<int, goldsrc::netsrc_t, int, const char*, int, int, const sockaddr*, int> NET_SendLong;
+        NitroFunctionVoid<goldsrc::netadr_t*, sockaddr*> NET_AdrToSockadr;
+        NitroFunction<char*, int> NET_ErrorString;
+        NitroFunction<void*, const char*> Sys_LoadModule;
+        NitroFunction<goldsrc::model_t*, const char*, goldsrc::qboolean, goldsrc::qboolean> Mod_ForName;
+        NitroFunction<void*, goldsrc::model_t*> Mod_Extradata;
+        NitroFunctionVoid<> R_ForceCVars_part;
+        NitroFunctionVoid<const char*> Cbuf_AddFilteredText;
     };
 }

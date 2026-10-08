@@ -227,6 +227,14 @@
   },
   "declarations": [
     {
+      "name": "alight_s",
+      "header": "goldsrc/studio_api.h"
+    },
+    {
+      "name": "miptex_s",
+      "header": "goldsrc/format/wad.h"
+    },
+    {
       "name": "color24",
       "header": "goldsrc/types.h"
     },
@@ -978,10 +986,6 @@
       "type": "vec3_t",
       "reason": "a mathlib class; the layout matches, so such a field is compared by offset only"
     },
-    "alight_s": {
-      "type": "alight_t",
-      "reason": "an engine type reached through a pointer only"
-    },
     "con_nprint_s": {
       "type": "con_nprint_t",
       "reason": "an engine type reached through a pointer only"
@@ -1008,10 +1012,6 @@
     }
   },
   "opaque": {
-    "alight_t": {
-      "tag": "struct",
-      "reason": "an engine type reached through a pointer only"
-    },
     "con_nprint_t": {
       "tag": "struct",
       "reason": "an engine type reached through a pointer only"

@@ -4,6 +4,7 @@
 #include <ranges>
 #include <cctype>
 #include <locale>
+#include <string_view>
 #include <vector>
 #include <sstream>
 
@@ -118,6 +119,19 @@ namespace nitro_utils
         std::string copy = s;
         trim(copy);
         return copy;
+    }
+
+    // The text without its leading and trailing trim_chars; the view points into the text
+    [[nodiscard]] constexpr std::string_view trim_view(std::string_view s, std::string_view trim_chars)
+    {
+        size_t first = s.find_first_not_of(trim_chars);
+
+        if (first == std::string_view::npos)
+        {
+            return {};
+        }
+
+        return s.substr(first, s.find_last_not_of(trim_chars) - first + 1);
     }
 
     // Drops redundant fractional zeros from a decimal-number string
@@ -296,6 +310,14 @@ namespace nitro_utils
     [[nodiscard]] std::string ConvertCurrentCodepageToUtf8(const std::string_view& str);
 #endif
 
+    // Empty for text that does not convert
+    [[nodiscard]] std::wstring utf8_to_wide(std::string_view str);
+    [[nodiscard]] std::string wide_to_utf8(std::wstring_view str);
+
+    // Lowers the letters of every script; to_lower(std::string&) lowers the ASCII ones
+    void to_lower(std::wstring& str);
+    [[nodiscard]] std::wstring to_lower_copy(std::wstring_view str);
+
     //
     // VARIOUS FUNCTIONS
     //
@@ -321,11 +343,14 @@ namespace nitro_utils
         return a == b;
     }
 
+    [[nodiscard]] constexpr bool is_alpha_ascii(char c) noexcept
+    {
+        return (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z');
+    }
+
     [[nodiscard]] constexpr bool is_alpha_numeric_ascii(char c) noexcept
     {
-        return (c >= 'A' && c <= 'Z') ||
-            (c >= 'a' && c <= 'z') ||
-            (c >= '0' && c <= '9');
+        return is_alpha_ascii(c) || (c >= '0' && c <= '9');
     }
 
     [[nodiscard]] constexpr bool start_with(std::string_view str, std::string_view sub, CompareOptions compare_options = CompareOptions::None)

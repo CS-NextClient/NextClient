@@ -33,6 +33,7 @@ namespace nitro_utils
         [[nodiscard]] std::optional<transparent_string_map<std::string>> get_all_values(const std::string& key_value_section) override;
 
         bool set_value(const std::string &key_value_section, const std::string &key, const std::string &value, bool update_config_file = false);
+        bool remove_value(const std::string &key_value_section, const std::string &key, bool update_config_file = false);
 
         [[nodiscard]] std::string file_path() const { return file_path_; }
 

@@ -76,6 +76,7 @@ namespace goldsrc
     struct local_state_t;
     struct lumpinfo_t;
     struct medge_t;
+    struct miptex_t;
     struct mleaf_s;
     struct mnode_t;
     struct mod_known_info_t;

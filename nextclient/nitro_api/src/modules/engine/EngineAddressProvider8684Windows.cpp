@@ -103,6 +103,8 @@ namespace nitroapi
         { StaticHookId::Mod_ClearAll,                    SearchConfig(0x3FDC0) },
         { StaticHookId::Mod_FindName,                    SearchConfig(0x3FE20) },
         { StaticHookId::Mod_LoadModel,                   SearchConfig(0x40030) },
+        { StaticHookId::Mod_ForName,                     SearchConfig() },
+        { StaticHookId::Mod_Extradata,                   SearchConfig() },
         { StaticHookId::Mod_Print,                       SearchConfig(0x42BA0) },
         { StaticHookId::Mod_ValidateCRC,                 SearchConfig(0x3FF30) },
         { StaticHookId::Mod_NeedCRC,                     SearchConfig(0x3FF90) },
@@ -230,6 +232,8 @@ namespace nitroapi
         { StaticHookId::VGui_InitInterfacesList,    SearchConfig(0xDB320) },
         { StaticHookId::DT_SetRenderState,          SearchConfig(0x33CA0) },
         { StaticHookId::R_ForceCVars,               SearchConfig(0x45390) },
+        { StaticHookId::R_ForceCVars_part,          SearchConfig() },
+        { StaticHookId::Cbuf_AddFilteredText,       SearchConfig() },
         { StaticHookId::GL_LoadTexture2,            SearchConfig(0x3EFA0) },
         { StaticHookId::DT_LoadDetailTexture,       SearchConfig(0x338E0) },
         { StaticHookId::CL_ClearState,              SearchConfig(0x177B0) },
@@ -242,6 +246,11 @@ namespace nitroapi
         { StaticHookId::Netchan_Clear,              SearchConfig(0x64C20) },
         { StaticHookId::StopLoadingProgressBar,     SearchConfig(0x7750) },
         { StaticHookId::CL_HookEvent,               SearchConfig(0x1EEA0) },
+        { StaticHookId::NET_SendLoopPacket,         SearchConfig(0x67950) },
+        { StaticHookId::NET_SendLong,               SearchConfig(0x686C0) },
+        { StaticHookId::NET_AdrToSockadr,           SearchConfig(0x66DB0) },
+        { StaticHookId::NET_ErrorString,            SearchConfig(0x675F0) },
+        { StaticHookId::Sys_LoadModule,             SearchConfig() },
     };
 
     const std::unordered_map<std::string, SearchConfig> EngineAddressProvider8684Windows::addresses_str_
@@ -330,5 +339,7 @@ namespace nitroapi
         { "gLoadSky",                               SearchConfig(0x64345C) },
         { "lightmap_textures",                      SearchConfig(0x643200) },
         { "vgui2_surface",                          SearchConfig(0x7E4CCC) },
+        { "ip_sockets",                             SearchConfig(0x657F40) },
+        { "ipx_sockets",                            SearchConfig(0x657F4C) },
     };
 }

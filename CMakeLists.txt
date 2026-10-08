@@ -1,5 +1,21 @@
 cmake_minimum_required(VERSION 3.21)
-project(NextClient VERSION 2.5.3)
+
+# a clone made without Git LFS holds pointer files in place of the LFS objects, and BUILD_ALL would install them;
+# checked ahead of project(), whose toolchain file runs the whole vcpkg install. One file per pattern of .gitattributes
+string(HEX "version https://git-lfs" NEXTCLIENT_LFS_POINTER_HEAD)
+
+foreach (NEXTCLIENT_LFS_FILE
+        "assets/platform/servers/geoip_country.mmdb"
+        "assets/platform/servers/icon_country_column.tga"
+        "dep/optic/bin/OptickCore.dll")
+    file(READ "${CMAKE_CURRENT_SOURCE_DIR}/${NEXTCLIENT_LFS_FILE}" NEXTCLIENT_LFS_FILE_HEAD LIMIT 23 HEX)
+
+    if (NEXTCLIENT_LFS_FILE_HEAD STREQUAL NEXTCLIENT_LFS_POINTER_HEAD)
+        message(FATAL_ERROR "${NEXTCLIENT_LFS_FILE} is a Git LFS pointer file: install Git LFS and run 'git lfs pull'")
+    endif ()
+endforeach ()
+
+project(NextClient VERSION 2.5.4)
 
 set(NEXTCLIENT_ROOT ${CMAKE_CURRENT_SOURCE_DIR})
 
@@ -66,7 +82,7 @@ if (MSVC)
     )
 endif ()
 
-# external dependencies
+# external dependencies (needed by engine_mini as well as the launcher)
 add_subdirectory(dep/cpr)
 add_subdirectory(dep/easyloggingpp)
 add_subdirectory(dep/bzip2)
@@ -105,12 +121,12 @@ add_subdirectory(nextclient/nitro_api)
 unset(CMAKE_CXX_STANDARD)
 
 add_subdirectory(nextclient/packages)
-add_subdirectory(nextclient/launcher)
 add_subdirectory(nextclient/engine_mini)
-add_subdirectory(nextclient/filesystem_proxy)
-add_subdirectory(nextclient/client_mini)
 add_subdirectory(nextclient/gameui)
+add_subdirectory(nextclient/client_mini)
 add_subdirectory(nextclient/steam_api_proxy)
+add_subdirectory(nextclient/filesystem_proxy)
+add_subdirectory(nextclient/launcher)
 
 # Windows 7 compatibility
 if (MSVC)
@@ -138,6 +154,7 @@ endif ()
 # custom build target
 if (NOT NEXTCLIENT_BUILD_TESTS)
     add_custom_target(BUILD_ALL ALL)
+
     add_dependencies(BUILD_ALL
             next_launcher
             engine_mini
@@ -149,7 +166,7 @@ if (NOT NEXTCLIENT_BUILD_TESTS)
             vgui2
     )
 
-    if (NEXTCLIENT_INSTALL_DIR)
+    if (WIN32 AND NEXTCLIENT_INSTALL_DIR)
         add_custom_command(TARGET BUILD_ALL POST_BUILD
                 COMMENT "Installing libraries and assets to ${NEXTCLIENT_INSTALL_DIR}..."
                 COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:next_launcher> ${NEXTCLIENT_INSTALL_DIR}/cstrike.exe
@@ -163,6 +180,22 @@ if (NOT NEXTCLIENT_BUILD_TESTS)
                 COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/dep/optic/bin/OptickCore.dll ${NEXTCLIENT_INSTALL_DIR}/OptickCore.dll
                 COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_CURRENT_SOURCE_DIR}/assets ${NEXTCLIENT_INSTALL_DIR}
                 COMMAND ${CMAKE_COMMAND} -E copy ${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/tools/sentry-native/crashpad_handler.exe ${NEXTCLIENT_INSTALL_DIR}/crashpad_handler.exe
+        )
+    elseif (UNIX AND NEXTCLIENT_INSTALL_DIR)
+        # hw.so loads cstrike/cl_dlls/gameui.so by that exact name; ours replaces Valve's vgui2.so
+        add_custom_command(TARGET BUILD_ALL POST_BUILD
+                COMMENT "Installing libraries and assets to ${NEXTCLIENT_INSTALL_DIR}..."
+                COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:next_launcher> ${NEXTCLIENT_INSTALL_DIR}/cstrike.exe
+                COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:engine_mini> ${NEXTCLIENT_INSTALL_DIR}/next_engine_mini.dll
+                COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:filesystem_proxy> ${NEXTCLIENT_INSTALL_DIR}/FileSystem_Proxy.dll
+                COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:client_mini> ${NEXTCLIENT_INSTALL_DIR}/cstrike/cl_dlls/client_mini.dll
+                COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:gameui> ${NEXTCLIENT_INSTALL_DIR}/cstrike/cl_dlls/gameui.so
+                COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:steam_api_proxy> ${NEXTCLIENT_INSTALL_DIR}/steam_api.dll
+                COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:nitro_api> ${NEXTCLIENT_INSTALL_DIR}/nitro_api2.dll
+                COMMAND ${CMAKE_COMMAND} -DVGUI2_PATH=${NEXTCLIENT_INSTALL_DIR}/vgui2.so -P ${NEXTCLIENT_ROOT}/cmake/BackupValveVgui2.cmake
+                COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:vgui2> ${NEXTCLIENT_INSTALL_DIR}/vgui2.so
+                COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/nextclient/launcher/linux/nextclient.sh ${NEXTCLIENT_INSTALL_DIR}/nextclient.sh
+                COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_CURRENT_SOURCE_DIR}/assets ${NEXTCLIENT_INSTALL_DIR}
         )
     endif ()
 endif ()

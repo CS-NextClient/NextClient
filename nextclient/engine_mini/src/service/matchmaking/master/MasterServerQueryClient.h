@@ -28,16 +28,16 @@ public:
         std::chrono::milliseconds query_delay = std::chrono::milliseconds{kDefaultQueryDelay},
         std::chrono::milliseconds query_timeout = std::chrono::milliseconds{kDefaultQueryTimeout});
 
-    concurrencpp::result<std::vector<netadr_t>> GetServerAddressesAsync(
-        std::function<void(const netadr_t&)> address_received_callback,
+    concurrencpp::result<std::vector<MasterServerEntry>> GetServerListAsync(
+        std::function<void(const MasterServerEntry&)> entry_received_callback,
         std::shared_ptr<taskcoro::CancellationToken> cancellation_token
     ) override;
 
 private:
-    concurrencpp::result<std::vector<netadr_t>> GetServerAddressesInternalAsync(
+    concurrencpp::result<std::vector<MasterServerEntry>> GetServerListInternalAsync(
         SOCKET sock,
         uint32_t request_num,
-        std::function<void(const netadr_t&)> address_received_callback,
+        std::function<void(const MasterServerEntry&)> entry_received_callback,
         std::shared_ptr<taskcoro::CancellationToken> cancellation_token
     );
 

@@ -10,7 +10,7 @@ namespace nitro_utils
     {
         void* handle;
 
-        handle = dlopen(name, RTLD_NOLOAD);
+        handle = dlopen(name, RTLD_NOW | RTLD_NOLOAD);
 
         if (handle == nullptr)
             return nullptr;
@@ -49,6 +49,12 @@ namespace nitro_utils
 
     SysModule LoadSysModule(const char* name)
     {
+        // Valve's hw.so/client.so are built for hl_linux, whose global scope has no
+        // libtier0. Ours does (the launcher links it), and without DEEPBIND its
+        // symbols win over the module's own - e.g. hw.so's g_Thread ended up with
+        // tier0's CThread vtable and died on a pure virtual call.
+        constexpr int kFlags = RTLD_NOW | RTLD_DEEPBIND;
+
         void* module  = nullptr;
         char szAbsoluteModuleName[1024];
         if (name[0] != '/')
@@ -59,12 +65,12 @@ namespace nitro_utils
                 szCwd[strlen(szCwd) - 1] = '\0';
 
             snprintf(szAbsoluteModuleName, sizeof(szAbsoluteModuleName), "%s/%s", szCwd, name);
-            module = dlopen(szAbsoluteModuleName, RTLD_NOW);
+            module = dlopen(szAbsoluteModuleName, kFlags);
         }
         else
         {
             snprintf(szAbsoluteModuleName, sizeof(szAbsoluteModuleName), "%s", name);
-            module = dlopen(name, RTLD_NOW);
+            module = dlopen(name, kFlags);
         }
 
         if (!module)
@@ -73,7 +79,7 @@ namespace nitro_utils
 
             printf("Error: %s\n", dlerror());
             snprintf(str, sizeof(str), "%s.so", szAbsoluteModuleName);
-            module = dlopen(str, RTLD_NOW);
+            module = dlopen(str, kFlags);
         }
 
         return module;

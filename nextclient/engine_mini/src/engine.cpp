@@ -4,12 +4,14 @@
 #include <Registry.h>
 #include <easylogging++.h>
 #include <graphics/gl_draw.h>
+#include <cvars/cvar_defaults.h>
 #include <next_engine_mini/engine_mini.h>
 #include <nitro_utils/PtrValidator.h>
 #include <nitro_utils/poor_reflection_utils.h>
 #include <nitro_utils/string_utils.h>
 #include <service/matchmaking/MatchmakingService.h>
 #include <service/matchmaking/MatchmakingSteamComp.h>
+#include <service/discord/DiscordPresence.h>
 #include <taskcoro/TaskCoro.h>
 #include <taskcoro/impl/TaskCoroImpl.h>
 #include <tier2/tier2.h>
@@ -31,6 +33,7 @@
 
 #include "common/common.h"
 #include "common/net_chan.h"
+#include "common/net_ws.h"
 #include "common/model.h"
 #include "common/zone.h"
 #include "common/host.h"
@@ -41,6 +44,8 @@
 #include "graphics/text/text_render.h"
 #include "graphics/text/text_surface.h"
 #include "graphics/vgui2.h"
+#include "graphics/preview/preview.h"
+#include "graphics/preview/preview_model.h"
 #include "client/client.h"
 #include "client/cl_main.h"
 #include "client/download.h"
@@ -129,6 +134,8 @@ goldsrc::sfx_t** p_known_sfx;
 int* p_num_sfx;
 int* p_gHostSpawnCount;
 goldsrc::netadr_t* p_net_local_adr;
+int* p_ip_sockets;
+int* p_ipx_sockets;
 goldsrc::netadr_t* p_g_GameServerAddress;
 float* p_g_LastScreenUpdateTime;
 int* p_maxTransObjs;
@@ -178,7 +185,13 @@ static void EngineMiniUninitialize()
     CL_DeleteHttpDownloadManager();
     KV_UninitializeKeyValuesSystem();
 
+#ifdef _WIN32
     JSAPI_Shutdown();
+#endif
+
+    // MultiSourceQuery's thread only exits once its owner is destroyed, and
+    // TaskCoro::UnInitialize waits for every thread it runs
+    g_pMatchmakingServers = nullptr;
 
     taskcoro::TaskCoro::UnInitialize();
     g_pTaskCoroImpl = nullptr;
@@ -244,6 +257,8 @@ static void EngineMiniUninitialize()
     p_num_sfx = nullptr;
     p_gHostSpawnCount = nullptr;
     p_net_local_adr = nullptr;
+    p_ip_sockets = nullptr;
+    p_ipx_sockets = nullptr;
     p_g_GameServerAddress = nullptr;
     p_g_LastScreenUpdateTime = nullptr;
     p_maxTransObjs = nullptr;
@@ -306,6 +321,10 @@ static void OnGameUninitializing()
     if (g_pTaskCoroImpl)
         g_pTaskCoroImpl->ShutdownUpdateExecutor();
 
+    Preview_Shutdown();
+    PreviewModel_RestoreStudioApi();
+
+    DiscordPresence_Shutdown();
     PROTECTOR_Shutdown();
     CL_CvarsSandboxShutdown();
     CL_StringRegistryShutdown();
@@ -328,7 +347,11 @@ static void OnGameInitializing(void* mainwindow, HDC* pmaindc, HGLRC* pbaseRC, c
     v.Assign(cl, GET_VARIABLE_NAME(cl), eng()->client_state);
     v.Assign(cls, GET_VARIABLE_NAME(cls), eng()->client_static);
 
+#ifdef _WIN32
     CreateInterfaceFn gameui_factory = Sys_GetFactory("gameui.dll");
+#else
+    CreateInterfaceFn gameui_factory = Sys_GetFactory("gameui.so");
+#endif
     v.Assign(g_pGameUi, GET_VARIABLE_NAME(g_pGameUi), (IGameUI*)InitializeInterface(GAMEUI_INTERFACE_VERSION_GS, &gameui_factory, 1));
     v.Assign(g_GameConsoleNext, GET_VARIABLE_NAME(g_GameConsoleNext), (IGameConsoleNext*)InitializeInterface(GAMECONSOLE_NEXT_INTERFACE_VERSION, &gameui_factory, 1));
     v.Assign(g_GameConsole, GET_VARIABLE_NAME(g_GameConsole), (IGameConsole*)InitializeInterface(GAMECONSOLE_INTERFACE_VERSION_GS, &gameui_factory, 1));
@@ -407,16 +430,26 @@ static void OnGameInitializing(void* mainwindow, HDC* pmaindc, HGLRC* pbaseRC, c
     v.Assign(p_num_sfx, GET_VARIABLE_NAME(p_num_sfx), eng()->num_sfx);
     v.Assign(p_gHostSpawnCount, GET_VARIABLE_NAME(p_gHostSpawnCount), eng()->gHostSpawnCount);
     v.Assign(p_net_local_adr, GET_VARIABLE_NAME(p_net_local_adr), eng()->net_local_adr);
+    v.Assign(p_ip_sockets, GET_VARIABLE_NAME(p_ip_sockets), eng()->ip_sockets);
+#ifdef _WIN32
+    v.Assign(p_ipx_sockets, GET_VARIABLE_NAME(p_ipx_sockets), eng()->ipx_sockets);
+#else
+    // The Linux engine has no IPX support at all, so these sockets are never open
+    static int no_ipx_sockets[goldsrc::NS_MAX]{};
+    p_ipx_sockets = no_ipx_sockets;
+#endif
     v.Assign(p_g_GameServerAddress, GET_VARIABLE_NAME(p_g_GameServerAddress), eng()->g_GameServerAddress);
     v.Assign(p_g_LastScreenUpdateTime, GET_VARIABLE_NAME(p_g_LastScreenUpdateTime), eng()->g_LastScreenUpdateTime);
     v.Assign(p_maxTransObjs, GET_VARIABLE_NAME(p_maxTransObjs), eng()->maxTransObjs);
 
     if (v.HasNullPtr())
     {
+        std::string error = std::format(BREADCRUMBS_TAG " OnGameInitializing: PtrValidator failed: {}", nitro_utils::join(v.GetNullPtrNames().cbegin(), v.GetNullPtrNames().cend(), ", "));
+        nitroapi::NitroApiInterface* nitro_api = g_NitroApi;
+
         EngineMiniUninitialize();
 
-        std::string error = std::format(BREADCRUMBS_TAG " OnGameInitializing: PtrValidator failed: {}", nitro_utils::join(v.GetNullPtrNames().cbegin(), v.GetNullPtrNames().cend(), ", "));
-        g_NitroApi->GetEngineData()->Sys_Error.InvokeChained(error.c_str());
+        nitro_api->GetEngineData()->Sys_Error.InvokeChained(error.c_str());
         return;
     }
 
@@ -426,8 +459,8 @@ static void OnGameInitializing(void* mainwindow, HDC* pmaindc, HGLRC* pbaseRC, c
     //
     // Hooks that completely replace engine functions
     //
-    g_Unsubs.emplace_back(eng()->Netchan_CopyFileFragments |=
-                          [](goldsrc::netchan_t* chan, const auto& next) { return Netchan_CopyFileFragments(chan); });
+    g_Unsubs.emplace_back(eng()->NET_SendPacket              |= [](goldsrc::netsrc_t sock, int length, void* data, goldsrc::netadr_t to, const auto& next) { NET_SendPacket(sock, length, data, to); });
+    g_Unsubs.emplace_back(eng()->Netchan_CopyFileFragments   |= [](goldsrc::netchan_t* chan, const auto& next)                                  { return Netchan_CopyFileFragments(chan); } );
     g_Unsubs.emplace_back(eng()->SVC_TimeScale               |= [](const auto& next)                                                   { CL_Parse_Timescale(); });
     g_Unsubs.emplace_back(eng()->SVC_SendCvarValue           |= [](const auto& next)                                                   { CL_Send_CvarValue(); });
     g_Unsubs.emplace_back(eng()->CL_HTTPUpdate               |= [](const auto& next)                                                   { CL_HTTPUpdate(); } );
@@ -442,14 +475,15 @@ static void OnGameInitializing(void* mainwindow, HDC* pmaindc, HGLRC* pbaseRC, c
     g_Unsubs.emplace_back(eng()->Mod_FindName |=
                           [](goldsrc::qboolean trackCRC, const char* name, const auto& next) { return Mod_FindName(trackCRC, name); });
     g_Unsubs.emplace_back(eng()->Mod_Print                   |= [](const auto& next)                                                   { Mod_Print(); });
-    g_Unsubs.emplace_back(eng()->Mod_ValidateCRC |=
-                          [](const char* name, goldsrc::CRC32_t crc, const auto& next) { return Mod_ValidateCRC(name, crc); });
-    g_Unsubs.emplace_back(eng()->Mod_NeedCRC |=
-                          [](const char* name, goldsrc::qboolean needCRC, const auto& next) { Mod_NeedCRC(name, needCRC); });
-    g_Unsubs.emplace_back(eng()->Mod_LoadModel |=
-                          [](goldsrc::model_t* mod, goldsrc::qboolean crash, goldsrc::qboolean trackCRC, const auto& next) {
-                              return Mod_LoadModel(mod, crash, trackCRC);
-                          });
+    g_Unsubs.emplace_back(eng()->Mod_ValidateCRC             |= [](const char* name, goldsrc::CRC32_t crc, const auto& next)                    { return Mod_ValidateCRC(name, crc); });
+    g_Unsubs.emplace_back(eng()->Mod_NeedCRC                 |= [](const char* name, goldsrc::qboolean needCRC, const auto& next)               { Mod_NeedCRC(name, needCRC); });
+    g_Unsubs.emplace_back(eng()->Mod_LoadModel               |= [](goldsrc::model_t* mod, goldsrc::qboolean crash, goldsrc::qboolean trackCRC, const auto& next)  { return Mod_LoadModel(mod, crash, trackCRC); });
+#ifndef _WIN32
+    // GCC split hw.so's Mod_LoadModel into a Mod_LoadModel.part.2 clone that these two jump
+    // into directly, skipping the hooked entry and handing our mod_known entries to the engine's loader
+    g_Unsubs.emplace_back(eng()->Mod_ForName                 |= [](const char* name, goldsrc::qboolean crash, goldsrc::qboolean trackCRC, const auto& next) { return Mod_ForName(name, crash, trackCRC); });
+    g_Unsubs.emplace_back(eng()->Mod_Extradata               |= [](goldsrc::model_t* mod, const auto& next)                                     { return Mod_Extradata(mod); });
+#endif
     g_Unsubs.emplace_back(eng()->SPR_Init                    |= [](const auto& next)                                                   { return SPR_Init(); });
     g_Unsubs.emplace_back(eng()->SPR_Shutdown                |= [](const auto& next)                                                   { return SPR_Shutdown(); });
     g_Unsubs.emplace_back(eng()->SPR_Shutdown_NoModelFree    |= [](const auto& next)                                                   { return SPR_Shutdown_NoModelFree(); });
@@ -496,17 +530,25 @@ static void OnGameInitializing(void* mainwindow, HDC* pmaindc, HGLRC* pbaseRC, c
     g_Unsubs.emplace_back(eng()->GL_UnloadTexture            |= [](const char* identifier, const auto& next)                           { GL_UnloadTexture(identifier); });
     g_Unsubs.emplace_back(eng()->GL_Bind                     |= [](int texnum, const auto& next)                                       { GL_Bind(texnum); });
     g_Unsubs.emplace_back(eng()->Draw_Init                   |= [](const auto& next)                                                   { Draw_Init(); });
+#ifdef _WIN32
     // The engine resolves its surface here, and schemes create their fonts right after, so this is
     // the last moment at which the text slots can be replaced before the first font is made.
     g_Unsubs.emplace_back(eng()->VGui_InitInterfacesList      += [](const char*, void*, int, bool)                                      { VGUI2_InstallTextSurface(); });
     g_Unsubs.emplace_back(eng()->Draw_Shutdown               |= [](const auto& next)                                                   { VGUI2_UninstallTextSurface(); TextRender_ReleaseGl(); Draw_Shutdown(); });
+#else
+    g_Unsubs.emplace_back(eng()->Draw_Shutdown |= [](const auto& next) { Draw_Shutdown(); });
+#endif
     g_Unsubs.emplace_back(eng()->Draw_PicFromWad             |= [](const char* name, const auto& next)                                 { return Draw_PicFromWad(name); });
     g_Unsubs.emplace_back(eng()->V_UpdatePalette             |= [](const auto& next)                                                   { V_UpdatePalette(); });
     g_Unsubs.emplace_back(eng()->V_CheckGamma                |= [](const auto& next)                                                   { return V_CheckGamma(); });
     g_Unsubs.emplace_back(eng()->BuildGammaTable             |= [](float g, const auto& next)                                          { next->Invoke(g); BuildGammaTable(g); });
     g_Unsubs.emplace_back(eng()->DT_SetRenderState           |= [](int diffuseId, const auto& next)                                    { return DT_SetRenderState(diffuseId); });
     g_Unsubs.emplace_back(eng()->DT_LoadDetailTexture        |= [](const char *diffuseName, int diffuseId, const auto& next)           { DT_LoadDetailTexture(diffuseName, diffuseId); });
-    g_Unsubs.emplace_back(eng()->R_ForceCVars |= [](goldsrc::qboolean mp, const auto& next) { R_ForceCVars(mp); });
+    g_Unsubs.emplace_back(eng()->R_ForceCVars                |= [](goldsrc::qboolean mp, const auto& next)                                      { R_ForceCVars(mp); });
+#ifndef _WIN32
+    // R_Clear and R_SetupFrame call this split-out body directly, and only in multiplayer
+    g_Unsubs.emplace_back(eng()->R_ForceCVars_part           |= [](const auto& next)                                                   { R_ForceCVars(true); });
+#endif
 
     //
     // The rest of the hooks and subscribers
@@ -533,15 +575,13 @@ static void OnGameInitializing(void* mainwindow, HDC* pmaindc, HGLRC* pbaseRC, c
         CL_HTTPCancel_f();
     });
 
-    g_Unsubs.emplace_back(eng()->NET_SendPacket += [](goldsrc::netsrc_t sock, int length, void* data, goldsrc::netadr_t to, int result) {
-        NET_SendPacketPost(sock, length, data, to, result);
-    });
-
-    g_Unsubs.emplace_back(eng()->Cbuf_AddText += [](const char* text, goldsrc::sizebuf_t* buf, char* result) {
+    g_Unsubs.emplace_back(eng()->Cbuf_AddText += [](const char *text, goldsrc::sizebuf_t *buf, char* result) {
         // for cases when client downloading files through dlfile
         // give him a chance to use http download again
+        // called directly: pfnClientCmd adds a command and its "\n" in two Cbuf_AddText calls and
+        // this runs in between, so a queued "httpstop" glued onto the console's "disconnect"
         if (std::strncmp(text, "disconnect", 10) == 0)
-            gEngfuncs.pfnClientCmd("httpstop");
+            CL_HTTPStop_f();
     });
 
     g_Unsubs.emplace_back(eng()->Sys_InitGame += [](char *pOrgCmdLine, char *pBaseDir, void *pwnd, int bIsDedicated, bool ret) {
@@ -589,8 +629,14 @@ static void OnGameInitializing(void* mainwindow, HDC* pmaindc, HGLRC* pbaseRC, c
         }
     });
 
-    g_Unsubs.emplace_back(client()->HUD_GetStudioModelInterface +=
-                          [](int version, goldsrc::r_studio_interface_t** ppinterface, goldsrc::engine_studio_api_t* pstudio, int result) {
+    g_Unsubs.emplace_back(client()->HUD_GetStudioModelInterface |= [](int version, goldsrc::r_studio_interface_t** ppinterface, goldsrc::engine_studio_api_t* pstudio, const auto& next) {
+        // The client copies the table when it answers, so the patch has to be in before the call.
+        PreviewModel_PatchStudioApi(pstudio);
+
+        return next->Invoke(version, ppinterface, pstudio);
+    });
+
+    g_Unsubs.emplace_back(client()->HUD_GetStudioModelInterface += [](int version, goldsrc::r_studio_interface_t **ppinterface, goldsrc::engine_studio_api_t *pstudio, int result) {
         pStudioAPI = *ppinterface;
     });
 
@@ -599,6 +645,8 @@ static void OnGameInitializing(void* mainwindow, HDC* pmaindc, HGLRC* pbaseRC, c
         {
             g_pTaskCoroImpl->Update();
         }
+
+        DiscordPresence_Frame();
     });
 
     g_Unsubs.emplace_back(eng()->S_StartDynamicSound |= S_StartDynamicSoundHook);
@@ -610,7 +658,11 @@ static void OnGameInitialized()
 {
     nitro_utils::PtrValidator v;
 
+#ifdef _WIN32
     CreateInterfaceFn vgui2_factory = Sys_GetFactory("vgui2.dll");
+#else
+    CreateInterfaceFn vgui2_factory = Sys_GetFactory("vgui2.so");
+#endif
     g_pLocalize = v.Validate((vgui2::ILocalize*)InitializeInterface(VGUI_LOCALIZE_INTERFACE_VERSION, &vgui2_factory, 1), GET_VARIABLE_NAME(localize));
     g_pLocalize->AddFile(g_pFileSystem, "resource/nextclient_%language%.txt");
 
@@ -643,17 +695,23 @@ static void OnGameInitialized()
 
     if (v.HasNullPtr())
     {
+        std::string error = std::format(BREADCRUMBS_TAG " OnGameInitialize: PtrValidator failed: {}", nitro_utils::join(v.GetNullPtrNames().cbegin(), v.GetNullPtrNames().cend(), ", "));
+        nitroapi::NitroApiInterface* nitro_api = g_NitroApi;
+
         EngineMiniUninitialize();
 
-        std::string error = std::format(BREADCRUMBS_TAG " OnGameInitialize: PtrValidator failed: {}", nitro_utils::join(v.GetNullPtrNames().cbegin(), v.GetNullPtrNames().cend(), ", "));
-        g_NitroApi->GetEngineData()->Sys_Error.InvokeChained(error.c_str());
+        nitro_api->GetEngineData()->Sys_Error.InvokeChained(error.c_str());
         return;
     }
 
-    viewmodel_fov = gEngfuncs.pfnRegisterVariable("viewmodel_fov", std::to_string(90.f).c_str(), goldsrc::FCVAR_ARCHIVE);
+    viewmodel_fov = gEngfuncs.pfnRegisterVariable(cvars::kViewmodelFov.name, cvars::kViewmodelFov.value, goldsrc::FCVAR_ARCHIVE);
+
+    Preview_Init();
 
     CL_CreateHttpDownloadManager(g_pGameUi, g_pLocalize, g_SettingGuard);
+#ifdef _WIN32
     JSAPI_Init();
+#endif
     CL_CvarsSandboxInit();
     CL_StringRegistryInit();
     CL_NclEntitySyncInit();
@@ -661,6 +719,7 @@ static void OnGameInitialized()
     CL_NclEntitySyncRegisterType(static_cast<uint8_t>(ncl_entity::EntityTypeId::Weapon), std::make_unique<WeaponSyncSystem>());
     CL_NclEntitySyncOverlayInit();
     PROTECTOR_Init(g_SettingGuard);
+    DiscordPresence_Init();
 }
 
 class EngineMini : public EngineMiniInterface
@@ -710,8 +769,6 @@ public:
         if (g_Analytics)
             g_Analytics->AddBreadcrumb("info", BREADCRUMBS_TAG " EngineMini::Uninitialize");
 
-        g_pMatchmakingServers = nullptr;
-
         for (auto &unsubscriber : unsubs_)
             unsubscriber->Unsubscribe();
         unsubs_.clear();
@@ -722,7 +779,7 @@ public:
     void GetVersion(char* buffer, int size) override
     {
         if (buffer != nullptr)
-            strcpy_s(buffer, size,  ENGINE_MINI_INTERFACE_VERSION ", " __DATE__ " " __TIME__);
+            snprintf(buffer, size, "%s", ENGINE_MINI_INTERFACE_VERSION ", " __DATE__ " " __TIME__);
     }
 
     HttpDownloadManagerInterface* GetHttpDownloadManager() override
@@ -750,7 +807,7 @@ public:
         return PROTECTOR_RemoveCmdLogger(logger);
     }
 
-    ISteamMatchmakingServers* GetSteamMatchmakingServers() override
+    MatchmakingServersInterface* GetSteamMatchmakingServers() override
     {
         return g_pMatchmakingServers.get();
     }
@@ -762,7 +819,11 @@ public:
 
     TextRenderInterface* GetTextRender() override
     {
+#ifdef _WIN32
         return TextRender_Get();
+#else
+        return nullptr;
+#endif
     }
 };
 

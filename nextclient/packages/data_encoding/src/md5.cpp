@@ -33,6 +33,8 @@ documentation and/or software.
 /* interface header */
 #include <data_encoding/md5.h>
 
+#include <cstring>
+
 /* system implementation headers */
 #include <cstdio>
 

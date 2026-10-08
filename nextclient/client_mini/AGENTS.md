@@ -17,8 +17,8 @@ behavior. The radar has additional [local rules](src/hud/radar/AGENTS.md).
 
 ## Stock client boundaries
 
-- The stock `client.dll` has its own engine function table, reached through NitroApi's
-  `ClientData::gEngfuncs`. It is distinct from this module's `gEngfuncs` copy. A hook intended to
+- The stock `client.dll` (`client.so` on Linux) has its own engine function table, reached through
+  NitroApi's `ClientData::gEngfuncs`. It is distinct from this module's `gEngfuncs` copy. A hook intended to
   intercept stock HUD drawing must patch the former; changing the latter misses those calls.
 - When wrapping a draw callback, preserve its return value and state changes as well as its
   pixels. String width, final cursor position, glyph advance and ambient text color have different
@@ -32,8 +32,9 @@ behavior. The radar has additional [local rules](src/hud/radar/AGENTS.md).
 
 ## Verification
 
-Build `client_mini` and run the affected cases in `client_mini-tests`. Keep geometry, policy and
-buffering decisions independent of the engine so those tests can exercise them. Engine callback
+Build `client_mini` and run the affected cases in `client_mini-tests`, `view-tests` and
+`crosshair-tests`. Keep geometry, policy and buffering decisions independent of the engine so those
+tests can exercise them. Engine callback
 fakes verify arguments, return values and ordering; they do not verify the actual GL output.
 
 For public header or callback changes, also build their consumers, particularly `gameui` for

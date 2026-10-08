@@ -22,6 +22,7 @@ private:
 public:
     void CalcFrustum(GLdouble& left, GLdouble& right, GLdouble& bottom, GLdouble& top);
 
-private:
+    // The vertical field a horizontal one is drawn through, over a fixed 4:3 so that a
+    // view model keeps its size whatever the screen is shaped like.
     static float CalcVerticalFov(float fov);
 };

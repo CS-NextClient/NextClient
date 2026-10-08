@@ -10,6 +10,9 @@ namespace nitroapi
 {
     class HookStorage
     {
+        // Keyed by address. A function that wasn't found gets no hook: every one of them has
+        // address 0, and those of the same signature would share a single hook object, which the
+        // first of them to unload deletes from under the others.
         std::unordered_map<uint32_t, HookInterface*> hooks_;
 
     public:
@@ -28,6 +31,9 @@ namespace nitroapi
         template<StaticHookId HookId, CallingConventions TConv, class TResult, class... TArgs>
         GenericHookInterface<TResult, TArgs...>* GetStaticHook(uint32_t address)
         {
+            if (address == 0)
+                return nullptr;
+
             auto result = hooks_.find(address);
             if (result != hooks_.end())
                 return dynamic_cast<GenericHookInterface<TResult, TArgs...>*>(result->second);
@@ -44,6 +50,9 @@ namespace nitroapi
         template<StaticHookId HookId, class TResult, class... TArgs>
         GenericHookInterface<TResult, TArgs...>* GetStaticVaformatHook(uint32_t address)
         {
+            if (address == 0)
+                return nullptr;
+
             auto result = hooks_.find(address);
             if (result != hooks_.end())
                 return dynamic_cast<GenericHookInterface<TResult, TArgs...>*>(result->second);
@@ -60,6 +69,9 @@ namespace nitroapi
         template<CallingConventions TConv, class TResult, class... TArgs>
         GenericHookInterface<TResult, TArgs...>* GetJitHook(uint32_t address)
         {
+            if (address == 0)
+                return nullptr;
+
             auto result = hooks_.find(address);
             if (result != hooks_.end())
                 return dynamic_cast<GenericHookInterface<TResult, TArgs...>*>(result->second);

@@ -8,6 +8,7 @@ find_package(SDL2 REQUIRED)
 find_package(imageinfo CONFIG REQUIRED)
 find_package(EASTL CONFIG REQUIRED)
 find_package(unordered_dense CONFIG REQUIRED)
+find_package(maxminddb CONFIG REQUIRED)
 
 set(CMAKE_POLICY_DEFAULT_CMP0077 NEW)
 set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
@@ -30,6 +31,14 @@ file(GLOB_RECURSE ENGINE_MINI_SOURCES
         "src/*.hpp"
         "src/*.h")
 
+if (NOT WIN32)
+    # src/binding/jsapi is the CEF-based in-game browser's JS API - real CEF isn't
+    # ported to Linux here (see the ncl-hl1-source-sdk fork), so it's excluded for now.
+    list(FILTER ENGINE_MINI_SOURCES EXCLUDE REGEX "/binding/jsapi/")
+    # The shared text backend uses GDI and the Windows surface calling convention.
+    list(FILTER ENGINE_MINI_SOURCES EXCLUDE REGEX "/graphics/text/")
+endif ()
+
 add_library(${PROJECT_NAME} ${LIBRARY_BUILD_TYPE}
         ${ENGINE_MINI_SOURCES}
 )
@@ -50,6 +59,8 @@ target_link_libraries(${PROJECT_NAME} ${TARGET_LIBRARIES_SCOPE}
         TaskCoro::TaskCoro
         ncl_utils::ncl_utils
         hwid_collector::hwid_collector
+        cvars::cvars
+        ncl_math::ncl_math
         easyloggingpp::easyloggingpp
         cpr::cpr
         optic::optic
@@ -61,12 +72,18 @@ target_link_libraries(${PROJECT_NAME} ${TARGET_LIBRARIES_SCOPE}
         stb::stb
         EASTL
         unordered_dense::unordered_dense
-        crypt32
-        advapi32
-        wbemuuid
-        ole32
-        oleaut32
+        maxminddb::maxminddb
 )
+
+if (WIN32)
+    target_link_libraries(${PROJECT_NAME} ${TARGET_LIBRARIES_SCOPE}
+            crypt32
+            advapi32
+            wbemuuid
+            ole32
+            oleaut32
+    )
+endif ()
 
 if (MSVC)
     target_compile_options(${PROJECT_NAME} PRIVATE
@@ -82,7 +99,11 @@ target_compile_definitions(${PROJECT_NAME} PRIVATE
         USE_OPTICK=$<BOOL:${USE_PROFILER}>
         _HAS_STATIC_RTTI=0 #disable rtti things in stl
         BREADCRUMBS_TAG="[${PROJECT_NAME}]"
-        #easyloggingpp options
+)
+
+# easyloggingpp options, public in a test build: the library's source is compiled into every target that links
+# it, and each copy has to see the same options
+target_compile_definitions(${PROJECT_NAME} ${TARGET_LIBRARIES_SCOPE}
         ELPP_THREAD_SAFE
         ELPP_WINSOCK2
         ELPP_DISABLE_DEFAULT_CRASH_HANDLING

@@ -6,6 +6,7 @@
 
 #define MAX_INIT_MSG		20480	// max length of possible message
 
+void NET_SendPacket(goldsrc::netsrc_t sock, int length, void* data, goldsrc::netadr_t to);
 void NET_ClearLagData(goldsrc::qboolean bClient, goldsrc::qboolean bServer);
 const char* NET_AdrToString(goldsrc::netadr_t a);
 goldsrc::qboolean NET_LeaveGroup(goldsrc::netsrc_t sock, goldsrc::netadr_t addr);

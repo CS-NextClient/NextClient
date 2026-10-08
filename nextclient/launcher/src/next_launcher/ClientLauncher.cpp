@@ -1,6 +1,7 @@
 #include "ClientLauncher.h"
 
 #include <clocale>
+#include <cstdio>
 #include <easylogging++.h>
 #include <filesystem>
 #include <format>
@@ -8,6 +9,12 @@
 #include <magic_enum/magic_enum.hpp>
 #include <string>
 #include <thread>
+
+#ifndef _WIN32
+    #include <fcntl.h>
+    #include <sys/file.h>
+    #include <unistd.h>
+#endif
 
 #ifdef SENTRY_ENABLE
 #include <sentry.h>
@@ -30,7 +37,9 @@
 #include "RegistryUserStorage.h"
 #include "EngineCommons.h"
 #include "exception_handler.h"
+#ifdef _WIN32
 #include "taskbar_icon.h"
+#endif
 
 static const char* NITRO_API_LOG_TAG = "launcher";
 
@@ -56,7 +65,11 @@ ClientLauncher::ClientLauncher(HINSTANCE module_instance, const char* cmd_line) 
     hl_registry_ = std::make_shared<CRegistry>(kHlRegistry);
     hl_registry_->Init();
 
+#ifdef _WIN32
     is_relaunch_ = GetEnvironmentVariableA(kRelaunchEnvVar, nullptr, 0) > 0;
+#else
+    is_relaunch_ = getenv(kRelaunchEnvVar) != nullptr;
+#endif
 
     if (is_relaunch_)
     {
@@ -65,14 +78,26 @@ ClientLauncher::ClientLauncher(HINSTANCE module_instance, const char* cmd_line) 
 
     InitializeCmdLine(cmd_line);
 
+#ifdef _WIN32
     global_win_mutex_ = CreateMutexA(nullptr, FALSE, "ValveHalfLifeLauncherMutex");
+#else
+    // No named mutex outside Windows - a lock file in /tmp plus flock() does the same
+    // job (single instance across the whole machine, released automatically on close).
+    global_win_mutex_fd_ = open("/tmp/ValveHalfLifeLauncherMutex.lock", O_CREAT | O_RDWR, 0666);
+    global_lock_acquired_ = global_win_mutex_fd_ >= 0 && flock(global_win_mutex_fd_, LOCK_EX | LOCK_NB) == 0;
+#endif
     g_SaveFullDumps = cmd_line_->CheckParm("-fulldump");
 }
 
 ClientLauncher::~ClientLauncher()
 {
+#ifdef _WIN32
     ReleaseMutex(global_win_mutex_);
     CloseHandle(global_win_mutex_);
+#else
+    if (global_win_mutex_fd_ >= 0)
+        close(global_win_mutex_fd_);
+#endif
 }
 
 void ClientLauncher::Run()
@@ -90,12 +115,16 @@ void ClientLauncher::Run()
 
     if (!GlobalMutexCheck())
     {
+#ifdef _WIN32
         MessageBoxA(
             NULL,
             "The game could not be started because it is already running.\n"
             "If it is not, then end the process in the task manager.",
             kErrorTitle,
             MB_OK | MB_ICONERROR | MB_DEFAULT_DESKTOP_ONLY);
+#else
+        fprintf(stderr, "%s: The game could not be started because it is already running.\n", kErrorTitle);
+#endif
 
         UninitializeAnalytics();
         UninitializeSentry();
@@ -126,7 +155,11 @@ void ClientLauncher::Run()
 
     if (next_process_)
     {
+#ifdef _WIN32
         SetEnvironmentVariableA(kRelaunchEnvVar, "1");
+#else
+        setenv(kRelaunchEnvVar, "1", 1);
+#endif
     }
 }
 
@@ -194,7 +227,7 @@ ClientLauncher::EngineSessionResult ClientLauncher::RunEngine()
     if (nitro_api == nullptr)
         return EngineSessionResult::Exit;
 
-    auto [filesystem, filesystem_module] = LoadModule<IFileSystem>("filesystem_proxy.dll", FILESYSTEM_INTERFACE_VERSION);
+    auto [filesystem, filesystem_module] = LoadModule<IFileSystem>("FileSystem_Proxy.dll", FILESYSTEM_INTERFACE_VERSION);
     if (filesystem == nullptr)
         return EngineSessionResult::Exit;
 
@@ -202,11 +235,11 @@ ClientLauncher::EngineSessionResult ClientLauncher::RunEngine()
     if (engine_mini == nullptr)
         return EngineSessionResult::Exit;
 
-    auto [client_mini, client_mini_module] = LoadModule<ClientMiniInterface>("cstrike\\cl_dlls\\client_mini.dll", CLIENT_MINI_INTERFACE_VERSION);
+    auto [client_mini, client_mini_module] = LoadModule<ClientMiniInterface>("cstrike/cl_dlls/client_mini.dll", CLIENT_MINI_INTERFACE_VERSION);
     if (client_mini == nullptr)
         return EngineSessionResult::Exit;
 
-    auto [gameui_next, gameui_next_module] = LoadModule<IGameUINext>("cstrike\\cl_dlls\\gameui.dll", GAMEUI_NEXT_INTERFACE_VERSION);
+    auto [gameui_next, gameui_next_module] = LoadModule<IGameUINext>(kGameUiDll, GAMEUI_NEXT_INTERFACE_VERSION);
     if (gameui_next == nullptr)
         return EngineSessionResult::Exit;
 
@@ -216,7 +249,11 @@ ClientLauncher::EngineSessionResult ClientLauncher::RunEngine()
         std::string error = "Module steam_api.dll not found";
 
         analytics_->SendCrashMonitoringEvent("LoadModule Error", error.c_str(), true);
+#ifdef _WIN32
         MessageBoxA(NULL, error.c_str(), kErrorTitle, MB_OK | MB_ICONERROR | MB_DEFAULT_DESKTOP_ONLY);
+#else
+        fprintf(stderr, "%s: %s\n", kErrorTitle, error.c_str());
+#endif
         return EngineSessionResult::Exit;
     }
 
@@ -227,7 +264,11 @@ ClientLauncher::EngineSessionResult ClientLauncher::RunEngine()
                             "Make sure you use the steam_api.dll from NextClient and not the original steam_api.dll";
 
         analytics_->SendCrashMonitoringEvent("LoadModule Error", error.c_str(), true);
+#ifdef _WIN32
         MessageBoxA(NULL, error.c_str(), kErrorTitle, MB_OK | MB_ICONERROR | MB_DEFAULT_DESKTOP_ONLY);
+#else
+        fprintf(stderr, "%s: %s\n", kErrorTitle, error.c_str());
+#endif
         return EngineSessionResult::Exit;
     }
     steam_proxy_set_seh(ExceptionHandler);
@@ -248,6 +289,7 @@ ClientLauncher::EngineSessionResult ClientLauncher::RunEngine()
         HUD_InitHandler();
     });
 
+#ifdef _WIN32
     unsubscribers.emplace_back(
         nitro_api->GetEngineData()->Sys_InitGame += [](char* lpOrgCmdLine, char* pBaseDir, void* pwnd, int bIsDedicated, bool ret) {
             if (ret)
@@ -258,6 +300,27 @@ ClientLauncher::EngineSessionResult ClientLauncher::RunEngine()
             }
         }
     );
+#else
+    // The Windows engine finds cl_dlls/GameUI.dll through the filesystem, so the
+    // mod's copy wins. hw.so hardcodes Valve's one instead - point it at ours.
+    unsubscribers.emplace_back(
+        nitro_api->GetEngineData()->Sys_LoadModule |= [](const char* module_name, const auto& next) {
+            if (std::string_view(module_name) == "valve/cl_dlls/gameui.so")
+                return next->Invoke(kGameUiDll);
+
+            return next->Invoke(module_name);
+        }
+    );
+
+    // steamclient.so sets LC_ALL=C in SteamAPI_Init and the engine's font code then picks it
+    // up, after which hw.so's VGUI2_DrawString drops every non-ASCII char as unprintable.
+    // Only the character classes come back: LC_NUMERIC has to stay C for the engine's atof.
+    unsubscribers.emplace_back(
+        nitro_api->GetEngineData()->Sys_InitGame += [](char* lpOrgCmdLine, char* pBaseDir, void* pwnd, int bIsDedicated, bool ret) {
+            setlocale(LC_CTYPE, "C.UTF-8");
+        }
+    );
+#endif
 
     auto [engine, engine_module] = LoadModule<IEngineAPI>(kEngineDll, VENGINE_LAUNCHER_API_VERSION);
     if (engine == nullptr)
@@ -276,9 +339,17 @@ ClientLauncher::EngineSessionResult ClientLauncher::RunEngine()
     LOG(INFO) << "IEngineAPI::Run";
     analytics_->AddBreadcrumb("Info", "IEngineAPI::Run");
 
+#ifdef _WIN32
+    std::string base_dir;
+#else
+    // Unlike hw.dll, hw.so doesn't work out the game directory by itself; Valve's
+    // own hl_linux passes it in here
+    std::string base_dir = GetCurrentProcessDirectoryAbsoulute().string();
+#endif
+
     EngineRunResult engine_run_result = engine->Run(
         module_instance_,
-        "",
+        base_dir.c_str(),
         cmd_line_->GetCmdLine(),
         post_restart_cmd_line,
         Sys_GetFactoryThis(),
@@ -369,6 +440,7 @@ UpdaterResult ClientLauncher::RunUpdater(UpdaterFlags updater_flags)
 
 void ClientLauncher::CreateConsoleWindowAndRedirectOutput()
 {
+#ifdef _WIN32
     AllocConsole();
 
     CPINFOEXA cp_info;
@@ -378,6 +450,9 @@ void ClientLauncher::CreateConsoleWindowAndRedirectOutput()
     FILE* dummy_file;
     freopen_s(&dummy_file, "CONOUT$", "w", stdout);
     freopen_s(&dummy_file, "CONOUT$", "w", stderr);
+#endif
+    // No console to allocate outside Windows - a Linux launch already has stdout/
+    // stderr attached to whatever terminal (or none) started it.
 }
 
 bool ClientLauncher::OnVideoModeFailed()
@@ -387,12 +462,19 @@ bool ClientLauncher::OnVideoModeFailed()
     hl_registry_->WriteInt("ScreenHeight", kDefaultHeight);
     hl_registry_->WriteString("EngineDLL", "hw.dll");
 
+#ifdef _WIN32
     return MessageBoxA(
         NULL,
         "The specified rendering mode is not supported.\n"
         "Restart the game?",
         kErrorTitle,
         MB_OKCANCEL | MB_ICONERROR | MB_ICONQUESTION | MB_DEFAULT_DESKTOP_ONLY) == IDOK;
+#else
+    // No dialog to ask outside Windows (gui_app_core isn't ported) - default to
+    // restarting, since silently giving up would leave the user stuck.
+    fprintf(stderr, "%s: The specified rendering mode is not supported. Restarting with reset video settings.\n", kErrorTitle);
+    return true;
+#endif
 }
 
 void ClientLauncher::FixScreenResolution()
@@ -409,6 +491,7 @@ void ClientLauncher::FixScreenResolution()
 
 bool ClientLauncher::GlobalMutexCheck()
 {
+#ifdef _WIN32
     DWORD result = WaitForSingleObject(global_win_mutex_, 0);
     if (result != WAIT_OBJECT_0 &&
         result != WAIT_ABANDONED &&
@@ -416,6 +499,12 @@ bool ClientLauncher::GlobalMutexCheck()
     {
         return false;
     }
+#else
+    if (!global_lock_acquired_ && !cmd_line_->CheckParm("-hijack"))
+    {
+        return false;
+    }
+#endif
 
     return true;
 }
@@ -580,6 +669,7 @@ void ClientLauncher::CheckVideoModeCrash()
 
     hl_registry_->WriteInt("CrashInitializingVideoMode", 0);
 
+#ifdef _WIN32
     if (MessageBoxA(
         NULL,
         "It looks like a previous attempt to run the game failed due to a rendering subsystem error.\n"
@@ -589,6 +679,11 @@ void ClientLauncher::CheckVideoModeCrash()
     {
         return;
     }
+#else
+    // No dialog to ask outside Windows - default to resetting, same reasoning as
+    // OnVideoModeFailed above.
+    fprintf(stderr, "%s: Previous run crashed initializing video mode. Resetting resolution settings.\n", kErrorTitle);
+#endif
 
     hl_registry_->WriteInt("ScreenBPP", 32);
     hl_registry_->WriteInt("ScreenWidth", kDefaultWidth);

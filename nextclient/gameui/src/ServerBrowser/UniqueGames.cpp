@@ -28,7 +28,9 @@ const std::vector<GameListColumnType> CUniqueGames::PageColumns
     GameListColumnType::Password,
     GameListColumnType::Bots,
     GameListColumnType::Secure,
+    GameListColumnType::Country,
     GameListColumnType::ServerName,
+    GameListColumnType::GameMode,
     GameListColumnType::ServerDesc,
     GameListColumnType::GameDesc,
     GameListColumnType::Players,
@@ -83,7 +85,11 @@ void CUniqueGames::ServerResponded(serveritem_t &server)
         else if (percentDone > 99)
             percentDone = 100;
 
-        itoa(percentDone, tempPercent, 10);
+        #ifdef _WIN32
+            itoa(percentDone, tempPercent, 10);
+        #else
+            snprintf(tempPercent, sizeof(tempPercent), "%d", percentDone);
+        #endif
         g_pVGuiLocalize->ConvertANSIToUnicode(tempPercent, unicodePercent, sizeof(unicodePercent));
         g_pVGuiLocalize->ConstructString(unicode, sizeof(unicode), g_pVGuiLocalize->Find("#ServerBrowser_RefreshingPercentDone"), 1, unicodePercent);
         ServerBrowserDialog().UpdateStatusText(unicode);

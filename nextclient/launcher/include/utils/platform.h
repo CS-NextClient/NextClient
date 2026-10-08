@@ -1,10 +1,18 @@
 #pragma once
 
 #include <filesystem>
-#include <Windows.h>
+
+#ifdef _WIN32
+    #include <Windows.h>
+#endif
 
 std::filesystem::path GetCurrentProcessPath();
 std::filesystem::path GetCurrentProcessPathAbsoulute();
 std::filesystem::path GetCurrentProcessDirectory();
 std::filesystem::path GetCurrentProcessDirectoryAbsoulute();
-std::string GetWinErrorString(DWORD error);
+
+#ifdef _WIN32
+    std::string GetWinErrorString(DWORD error);
+#else
+    std::string GetWinErrorString(int error);
+#endif

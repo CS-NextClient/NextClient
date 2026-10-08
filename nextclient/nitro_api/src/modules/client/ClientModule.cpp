@@ -7,6 +7,29 @@
 
 namespace nitroapi
 {
+    namespace
+    {
+        // Where CHud keeps a member, in the Windows client.dll and in the Linux client.so. GCC
+        // aligns the double m_flTimeDelta to 4 rather than 8, which moves everything after it,
+        // and the 4-byte wchar_t there makes goldsrc::cstrike::CHudMessage twice as big, which moves the end of
+        // the class by a lot more. The Linux numbers are from client.so's debug info, ptype /o CHud.
+        constexpr uint32 HudOffset(uint32 windows_offset, uint32 linux_offset)
+        {
+#ifdef _WIN32
+            return windows_offset;
+#else
+            return linux_offset;
+#endif
+        }
+
+#ifndef _WIN32
+        // the HUD elements are used through our own copies of their classes, which have to match
+        static_assert(sizeof(goldsrc::cstrike::CHudAmmo) == 112);
+        static_assert(sizeof(goldsrc::cstrike::CHudHealth) == 352);
+        static_assert(sizeof(goldsrc::cstrike::CHudNightVision) == 32);
+#endif
+    }
+
     ClientModule::ClientModule(std::shared_ptr<HookStorage> hook_storage,
                                std::shared_ptr<AddressProviderBase> addr_provider) :
         ModuleBase(std::move(hook_storage), std::move(addr_provider))
@@ -109,29 +132,29 @@ namespace nitroapi
         client_data_->gHUD->m_flMouseSensitivity = (float*)(hud + 0x18);
         client_data_->gHUD->m_flTime = (float*)(hud + 0x24);
         client_data_->gHUD->m_fOldTime = (float*)(hud + 0x28);
-        client_data_->gHUD->m_flTimeDelta = (double*)(hud + 0x30);
-        client_data_->gHUD->m_vecOrigin = (Vector*)(hud + 0x38);
-        client_data_->gHUD->m_vecAngles = (Vector*)(hud + 0x44);
-        client_data_->gHUD->m_iKeyBits = (int*)(hud + 0x50);
-        client_data_->gHUD->m_iHideHUDDisplay = (int*)(hud + 0x54);
-        client_data_->gHUD->m_iFOV = (int*)(hud + 0x58);
-        client_data_->gHUD->m_Teamplay = (int*)(hud + 0x5C);
-        client_data_->gHUD->m_iRes = (int*)(hud + 0x60);
-        client_data_->gHUD->m_pPlayerFOV = reinterpret_cast<int(*)[64]>(hud + 0x6C);
-        client_data_->gHUD->m_iFontHeight = (int*)(hud + 0x16C);
-        client_data_->gHUD->m_iFontEngineHeight = (int*)(hud + 0x170);
-        client_data_->gHUD->m_rghSprites = reinterpret_cast<goldsrc::HSPRITE_t**>(hud + 0x178);
-        client_data_->gHUD->m_rgrcRects = reinterpret_cast<goldsrc::wrect_t**>(hud + 0x17C);
+        client_data_->gHUD->m_flTimeDelta = (double*)(hud + HudOffset(0x30, 0x2C));
+        client_data_->gHUD->m_vecOrigin = (Vector*)(hud + HudOffset(0x38, 0x34));
+        client_data_->gHUD->m_vecAngles = (Vector*)(hud + HudOffset(0x44, 0x40));
+        client_data_->gHUD->m_iKeyBits = (int*)(hud + HudOffset(0x50, 0x4C));
+        client_data_->gHUD->m_iHideHUDDisplay = (int*)(hud + HudOffset(0x54, 0x50));
+        client_data_->gHUD->m_iFOV = (int*)(hud + HudOffset(0x58, 0x54));
+        client_data_->gHUD->m_Teamplay = (int*)(hud + HudOffset(0x5C, 0x58));
+        client_data_->gHUD->m_iRes = (int*)(hud + HudOffset(0x60, 0x5C));
+        client_data_->gHUD->m_pPlayerFOV = reinterpret_cast<int(*)[64]>(hud + HudOffset(0x6C, 0x68));
+        client_data_->gHUD->m_iFontHeight = (int*)(hud + HudOffset(0x16C, 0x168));
+        client_data_->gHUD->m_iFontEngineHeight = (int*)(hud + HudOffset(0x170, 0x16C));
+        client_data_->gHUD->m_rghSprites = reinterpret_cast<goldsrc::HSPRITE_t**>(hud + HudOffset(0x178, 0x174));
+        client_data_->gHUD->m_rgrcRects = reinterpret_cast<goldsrc::wrect_t**>(hud + HudOffset(0x17C, 0x178));
 
-        client_data_->gHUD->m_rgszSpriteNames = reinterpret_cast<char**>(hud + 0x180);
-        client_data_->gHUD->m_iWeaponBits = (int*)(hud + 0x4748);
-        client_data_->gHUD->m_fPlayerDead = (bool*)(hud + 0x474C);
+        client_data_->gHUD->m_rgszSpriteNames = reinterpret_cast<char**>(hud + HudOffset(0x180, 0x17C));
+        client_data_->gHUD->m_iWeaponBits = (int*)(hud + HudOffset(0x4748, 0x6B40));
+        client_data_->gHUD->m_fPlayerDead = (bool*)(hud + HudOffset(0x474C, 0x6B44));
 
         // Commented offsets below confirmed against client.dll (Windows) by disassembly; Linux (client.so) not checked.
         // UNVERIFIED = offset not confirmed by disassembly and likely wrong; verify before enabling.
 
 //        client_data_->gHUD->m_iIntermission = (int*)(hud + 0x6B4C); // UNVERIFIED
-        client_data_->gHUD->m_HUD_number_0 = (int*)(hud + 0x4754);
+        client_data_->gHUD->m_HUD_number_0 = (int*)(hud + HudOffset(0x4754, 0x6B4C));
 //        client_data_->gHUD->m_flCheatCheckTime = (float*)(hud + 0x4758);
 //        client_data_->gHUD->m_flExpensiveCheckTime = (float*)(hud + 0x475C);
 //        client_data_->gHUD->m_bRenderGunSmoke = (bool*)(hud + 0x6B5C); // UNVERIFIED
@@ -141,9 +164,9 @@ namespace nitroapi
 //        client_data_->gHUD->m_bShowTimer = (bool*)(hud + 0x6B69); // UNVERIFIED
 //        client_data_->gHUD->m_autoBuyStringSent = (bool*)(hud + 0x6B6A); // UNVERIFIED
 //        client_data_->gHUD->m_rebuyStringSent = (bool*)(hud + 0x6B6C); // UNVERIFIED
-        client_data_->gHUD->m_Ammo = (goldsrc::cstrike::CHudAmmo*)(hud + 0x184);
-        client_data_->gHUD->m_Health = (goldsrc::cstrike::CHudHealth*)(hud + 0x1F4);
-        client_data_->gHUD->m_Spectator = (goldsrc::cstrike::CHudSpectator*)(hud + 0x358);
+        client_data_->gHUD->m_Ammo = (goldsrc::cstrike::CHudAmmo*)(hud + HudOffset(0x184, 0x180));
+        client_data_->gHUD->m_Health = (goldsrc::cstrike::CHudHealth*)(hud + HudOffset(0x1F4, 0x1F0));
+        client_data_->gHUD->m_Spectator = (goldsrc::cstrike::CHudSpectator*)(hud + HudOffset(0x358, 0x350));
 //        client_data_->gHUD->m_Geiger = (goldsrc::cstrike::CHudGeiger*)(hud + 0x1AC0);
 //        client_data_->gHUD->m_Battery = (goldsrc::cstrike::CHudBattery*)(hud + 0x1AD8);
 //        client_data_->gHUD->m_Train = (goldsrc::cstrike::CHudTrain*)(hud + 0x1B08);
@@ -159,7 +182,7 @@ namespace nitroapi
 //        client_data_->gHUD->m_accountBalance = (goldsrc::cstrike::CHudAccountBalance*)(hud + 0x3EB0);
 //        client_data_->gHUD->m_roundTimer = (goldsrc::cstrike::CHudRoundTimer*)(hud + 0x3FA0);
 //        client_data_->gHUD->m_progressBar = (goldsrc::cstrike::CHudProgressBar*)(hud + 0x3FDC);
-        client_data_->gHUD->m_NightVision = (goldsrc::cstrike::CHudNightVision*)(hud + 0x4048);
+        client_data_->gHUD->m_NightVision = (goldsrc::cstrike::CHudNightVision*)(hud + HudOffset(0x4048, 0x6040));
 //        client_data_->gHUD->m_careerTaskTimer = (goldsrc::cstrike::CHudCareerTaskTimer*)(hud + 0x400C);
 //        client_data_->gHUD->m_scenarioStatus = (goldsrc::cstrike::CHudScenarioStatus*)(hud + 0x4068);
 //        client_data_->gHUD->m_sniperScope = (goldsrc::cstrike::CHudSniperScope*)(hud + 0x40DC);

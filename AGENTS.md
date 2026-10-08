@@ -1,7 +1,7 @@
 # NextClient
 
-A modification of the Counter-Strike 1.6 client. It ships replacement DLLs alongside the stock game and
-patches Valve's engine (`hw.dll`) at run time rather than replacing it. A Steam copy of the game is
+A modification of the Counter-Strike 1.6 client. It ships replacement libraries alongside the stock game and
+patches Valve's engine (`hw.dll` on Windows, `hw.so` on Linux) at run time rather than replacing it. A Steam copy of the game is
 required.
 
 ## Modules
@@ -11,22 +11,22 @@ required.
 | [`nextclient/launcher`](nextclient/launcher/AGENTS.md) | `cstrike.exe` | process entry point, updater, whole-process relaunch |
 | [`nextclient/engine_mini`](nextclient/engine_mini/AGENTS.md) | `next_engine_mini.dll` | runtime detours and byte patches of the stock `hw.dll` |
 | [`nextclient/client_mini`](nextclient/client_mini/AGENTS.md) | `cstrike/cl_dlls/client_mini.dll` | HUD, view, weapons, radar |
-| [`nextclient/gameui`](nextclient/gameui/AGENTS.md) | `cstrike/cl_dlls/GameUI.dll` | VGUI menus and the CEF-backed HTML UI |
+| [`nextclient/gameui`](nextclient/gameui/AGENTS.md) | `cstrike/cl_dlls/GameUI.dll` (Windows), `cstrike/cl_dlls/gameui.so` (Linux) | VGUI menus; CEF-backed HTML UI on Windows |
 | `nextclient/filesystem_proxy` | `FileSystem_Proxy.dll` | filesystem interposer |
 | `nextclient/steam_api_proxy` | `steam_api.dll` | Steam API interposer |
-| [`nextclient/packages`](nextclient/packages/AGENTS.md) | static libs | shared code: `ncl_math`, `ncl_utils`, `ncl_gl`, `task_coro`, `data_*`, `hwid_collector` |
+| [`nextclient/packages`](nextclient/packages/AGENTS.md) | static libs | shared code: `ncl_math`, `ncl_utils`, `ncl_gl`, `task_coro`, `data_*`, `hwid_collector`, `gameplay` |
 | [`nextclient/nitro_api`](nextclient/nitro_api/AGENTS.md) | `nitro_api2.dll` | engine address and hook layer |
 | [`nextclient/goldsrc_abi`](nextclient/goldsrc_abi/AGENTS.md) | headers only | clean-room declarations of the stock engine ABI, namespace `goldsrc` |
-| `dep/ncl-hl1-source-sdk` | `vgui2.dll` | HL1 SDK fork: `tier1`, `tier2`, `vgui2`, `mathlib`, `cef`, HLTV |
-| `assets/` | copied into the game directory | resources, schemes, localisation, shaders |
+| `dep/ncl-hl1-source-sdk` | `vgui2.dll` (Windows), `vgui2.so` (Linux) | HL1 SDK fork: `tier1`, `tier2`, `vgui2`, `mathlib`, `cef`, HLTV |
+| `assets/` | copied into the game directory | resources, schemes, localization, shaders |
 
-Everything is 32-bit (`x86-windows-static`), because the engine it loads into is. Third-party
+Everything is 32-bit (`x86-windows-static` on Windows, `x86-linux` on Linux), because the engine it loads into is. Third-party
 dependencies come from the vendored `vcpkg/`, wired in by the `base` configure preset.
 
 ## Build
 
-Tracked configure presets are `ninja`, `vs2022`, `vs2022-tests` and `vs2026`; the build presets that go
-with them are `ninja-debug`, `ninja-release` and the `vs*` pairs. `CMakeUserPresets.json` is untracked
+Tracked configure presets are `ninja`, `vs2022`, `vs2022-tests`, `vs2026` and `linux`; the build presets that go
+with them are `ninja-debug`, `ninja-release` and the `vs*` and `linux-*` pairs. `CMakeUserPresets.json` is untracked
 and machine-local: that is where a developer adds `ninja-local`-style presets carrying their own
 `NEXTCLIENT_INSTALL_DIR` and, if they want them, Ninja test builds. The Ninja generator is
 Multi-Config, so every build names a configuration.
@@ -56,7 +56,9 @@ hand and check the timestamps. This is the most common reason a change appears t
 cmake --build --preset vs2022-tests-release --target client_mini-tests
 ```
 
-Test targets are `client_mini-tests`, `engine_mini-tests`, `data_types-tests` and `updater-test`. They exist only where
+Test targets are `client_mini-tests`, `engine_mini-tests`, `gameui-tests`, `data_types-tests`,
+`view-tests`, `crosshair-tests` and `updater-test`. The updater tests additionally require Windows
+and `NEXT_LAUNCHER_ENABLE_UPDATER=ON`. They exist only where
 `NEXTCLIENT_BUILD_TESTS` is on, which among the tracked presets means `vs2022-tests`; a Ninja test
 build comes from a local preset or `-D NEXTCLIENT_BUILD_TESTS=ON`. They cover what runs without the
 engine, so the engine-free half of a module is the only half that can be tested at all; keeping logic
@@ -120,7 +122,7 @@ success rather than an answer. A third-person verb already reads as a question a
 An accessor that has to load or compute first is not plain and says so on the declaration.
 
 **Comments.** Sparse, English only, explaining what the code cannot: an ordering constraint, a
-workaround, a non-local invariant, the engine or driver behaviour that forced the shape of the code.
+workaround, a non-local invariant, the engine or driver behavior that forced the shape of the code.
 No banners, no line-by-line narration, no doc comment above a function by default, nothing that
 restates the name or the signature. A comment on a function states a property of that function, never
 where it is called from today nor what a caller does with the answer: callers change, and such a
@@ -155,7 +157,7 @@ occur should fail loudly rather than be papered over.
 
 ## Traps
 
-- Line endings are mixed across the tree. Preserve whatever a file already uses; never normalise a whole
+- Line endings are mixed across the tree. Preserve whatever a file already uses; never normalize a whole
   file, or the diff stops showing the change.
 - `assets/cstrike/resource/nextclient_*.txt` are UTF-16 LE and the English one carries a double BOM.
   Edit them through PowerShell `Get-Content`/`Set-Content -Encoding Unicode`; a plain text edit corrupts
@@ -163,4 +165,4 @@ occur should fail loudly rather than be papered over.
 - Engine facts (addresses, globals, function signatures) belong in NitroApi, which resolves them per
   build, not in a hardcoded copy next to the code that needs them.
 - Anything shipped to the player also has to exist under `assets/`: a new cvar, scheme entry or
-  localisation string is only half done in C++.
+  localization string is only half done in C++.

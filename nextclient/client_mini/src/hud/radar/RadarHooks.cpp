@@ -12,7 +12,7 @@
 #include <goldsrc/event_api.h>
 #include <interface.h>
 #include <vgui/IPanel.h>
-#include <vgui/ISurface.h>
+#include <vgui/ISurfaceNext.h>
 #include <vgui/IVGui.h>
 
 #include "RadarBroadcast.h"
@@ -128,16 +128,25 @@ namespace
 
     bool FindScoreboard(ScoreboardUi& ui, vgui2::HPanel tracked_panel = vgui2::INVALID_PANEL)
     {
+#ifdef _WIN32
         CreateInterfaceFn factory = Sys_GetFactory("vgui2.dll");
         void** surface_ptr = eng()->vgui2_surface;
         if (!factory || !surface_ptr || !*surface_ptr)
         {
             return false;
         }
+        ui.surface = static_cast<vgui2::ISurface*>(*surface_ptr);
+#else
+        CreateInterfaceFn factory = Sys_GetFactory("vgui2.so");
+        if (!factory)
+        {
+            return false;
+        }
+        ui.surface = static_cast<vgui2::ISurfaceNext*>(factory(VGUI_SURFACE_NEXT_INTERFACE_VERSION, nullptr));
+#endif
         ui.panels = static_cast<vgui2::IPanel*>(factory(VGUI_PANEL_INTERFACE_VERSION_GS, nullptr));
         ui.vgui = static_cast<vgui2::IVGui*>(factory(VGUI_IVGUI_INTERFACE_VERSION_GS, nullptr));
-        ui.surface = static_cast<vgui2::ISurface*>(*surface_ptr);
-        if (!ui.panels || !ui.vgui)
+        if (!ui.surface || !ui.panels || !ui.vgui)
         {
             return false;
         }

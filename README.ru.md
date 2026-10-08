@@ -72,6 +72,9 @@ NextClient это модификация для Counter-Strike 1.6, нацеле
 | hud_deathnotice_old | 0             | No                          | Enable the old style of killfeed. |
 | http_max_active_requests | 5             | No                          |  |
 | http_max_requests_retries | 3             | No                          |   |
+| cl_discordrpc | 1             | No                          | Show what you're playing in Discord. |
+| cl_discordrpc_server | 1             | No                          | Show the server name in Discord. When 0, friends can't join you either. |
+| cl_discordrpc_join | 1             | No                          | Let Discord friends join your server. |
 
 *Может ли сервер изменять значение квара, используя функцию песочницы кваров.
 </details>
@@ -116,6 +119,7 @@ NextClient это модификация для Counter-Strike 1.6, нацеле
 Требования:
  - Последняя версия MSVC 2022 или новее
  - CMake 3.21 или выше
+ - Git LFS, настроенный командой `git lfs install` до клонирования (в клоне, сделанном без него, выполните `git lfs pull`)
  - Ninja (необязательно)
 
 Запустите x86 Native Tools Command Prompt for VS

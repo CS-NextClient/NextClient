@@ -12,6 +12,7 @@
 #include <utils/TaskRun.h>
 #include <IGameClientExports.h>
 #include <next_engine_mini/engine_mini.h>
+#include <next_engine_mini/ScenePreviewInterface.h>
 
 #include "LoadingDialog.h"
 
@@ -100,7 +101,7 @@ private:
 
     std::shared_ptr<TaskCoroImpl> task_run_impl_;
 
-    class ContainerExtensionGameUiApi* browserExtensionGameUiApi;
+    class ContainerExtensionGameUiApi* browserExtensionGameUiApi = nullptr;
 };
 
 extern CGameUI& GameUI();
@@ -110,5 +111,6 @@ extern goldsrc::cl_enginefunc_t* engine;
 extern vgui2::DHANDLE<CLoadingDialog> g_hLoadingDialog;
 extern IGameClientExports* GameClientExports();
 extern EngineMiniInterface* EngineMini();
+extern ScenePreviewInterface* ScenePreview();
 
 #endif

@@ -39,8 +39,6 @@ private:
     CCvarSlider					*m_pHEVSlider;
     CCvarSlider					*m_pMP3Slider;
     CLabeledCommandComboBox		*m_pSoundQualityCombo;
-
-    typedef vgui2::PropertyPage BaseClass;
 };
 
 

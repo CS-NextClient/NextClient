@@ -36251,6 +36251,150 @@
    "used_methods": [],
    "used": true,
    "required": "by_value"
+  },
+  "dep/NclNitroApi/dep/ncl-hl1-source-sdk/common/com_model.h:302:16": {
+   "key": "dep/NclNitroApi/dep/ncl-hl1-source-sdk/common/com_model.h:302:16",
+   "file": "dep/NclNitroApi/dep/ncl-hl1-source-sdk/common/com_model.h",
+   "tag": "struct",
+   "name": "alight_s",
+   "typedef_name": null,
+   "pack": null,
+   "bases": [],
+   "fields": [
+    {
+     "key": "dep/NclNitroApi/dep/ncl-hl1-source-sdk/common/com_model.h:304:8",
+     "name": "ambientlight",
+     "type": "int",
+     "desugared": null,
+     "bits": null,
+     "access": "public",
+     "offset": 0,
+     "bit_range": null
+    },
+    {
+     "key": "dep/NclNitroApi/dep/ncl-hl1-source-sdk/common/com_model.h:305:8",
+     "name": "shadelight",
+     "type": "int",
+     "desugared": null,
+     "bits": null,
+     "access": "public",
+     "offset": 4,
+     "bit_range": null
+    },
+    {
+     "key": "dep/NclNitroApi/dep/ncl-hl1-source-sdk/common/com_model.h:306:10",
+     "name": "color",
+     "type": "vec3_t",
+     "desugared": "float[3]",
+     "bits": null,
+     "access": "public",
+     "offset": 8,
+     "bit_range": null
+    },
+    {
+     "key": "dep/NclNitroApi/dep/ncl-hl1-source-sdk/common/com_model.h:307:10",
+     "name": "plightvec",
+     "type": "float *",
+     "desugared": null,
+     "bits": null,
+     "access": "public",
+     "offset": 20,
+     "bit_range": null
+    }
+   ],
+   "methods": [],
+   "nested": [],
+   "enums": [],
+   "typedefs": [],
+   "variables": [],
+   "scope": "",
+   "layout": {
+    "size": 24,
+    "align": 4,
+    "bases": [],
+    "pointers": []
+   },
+   "used": true,
+   "required": "by_value",
+   "used_fields": [
+    "ambientlight",
+    "shadelight",
+    "color",
+    "plightvec"
+   ],
+   "used_methods": []
+  },
+  "dep/NclNitroApi/dep/ncl-hl1-source-sdk/engine/bspfile.h:92:16": {
+   "key": "dep/NclNitroApi/dep/ncl-hl1-source-sdk/engine/bspfile.h:92:16",
+   "file": "dep/NclNitroApi/dep/ncl-hl1-source-sdk/engine/bspfile.h",
+   "tag": "struct",
+   "name": "miptex_s",
+   "typedef_name": null,
+   "pack": null,
+   "bases": [],
+   "fields": [
+    {
+     "key": "dep/NclNitroApi/dep/ncl-hl1-source-sdk/engine/bspfile.h:94:9",
+     "name": "name",
+     "type": "char[16]",
+     "desugared": null,
+     "bits": null,
+     "access": "public",
+     "offset": 0,
+     "bit_range": null
+    },
+    {
+     "key": "dep/NclNitroApi/dep/ncl-hl1-source-sdk/engine/bspfile.h:95:12",
+     "name": "width",
+     "type": "unsigned int",
+     "desugared": null,
+     "bits": null,
+     "access": "public",
+     "offset": 16,
+     "bit_range": null
+    },
+    {
+     "key": "dep/NclNitroApi/dep/ncl-hl1-source-sdk/engine/bspfile.h:96:12",
+     "name": "height",
+     "type": "unsigned int",
+     "desugared": null,
+     "bits": null,
+     "access": "public",
+     "offset": 20,
+     "bit_range": null
+    },
+    {
+     "key": "dep/NclNitroApi/dep/ncl-hl1-source-sdk/engine/bspfile.h:97:12",
+     "name": "offsets",
+     "type": "unsigned int[4]",
+     "desugared": null,
+     "bits": null,
+     "access": "public",
+     "offset": 24,
+     "bit_range": null
+    }
+   ],
+   "methods": [],
+   "nested": [],
+   "enums": [],
+   "typedefs": [],
+   "variables": [],
+   "scope": "",
+   "layout": {
+    "size": 40,
+    "align": 4,
+    "bases": [],
+    "pointers": []
+   },
+   "used": true,
+   "required": "by_value",
+   "used_fields": [
+    "name",
+    "width",
+    "height",
+    "offsets"
+   ],
+   "used_methods": []
   }
  },
  "typedefs": {
@@ -40753,6 +40897,26 @@
    "scope": "",
    "used": true,
    "required": "by_value"
+  },
+  "dep/NclNitroApi/dep/ncl-hl1-source-sdk/common/com_model.h:308:3": {
+   "key": "dep/NclNitroApi/dep/ncl-hl1-source-sdk/common/com_model.h:308:3",
+   "file": "dep/NclNitroApi/dep/ncl-hl1-source-sdk/common/com_model.h",
+   "name": "alight_t",
+   "type": "struct alight_s",
+   "desugared": null,
+   "scope": "",
+   "used": true,
+   "required": "by_value"
+  },
+  "dep/NclNitroApi/dep/ncl-hl1-source-sdk/engine/bspfile.h:98:3": {
+   "key": "dep/NclNitroApi/dep/ncl-hl1-source-sdk/engine/bspfile.h:98:3",
+   "file": "dep/NclNitroApi/dep/ncl-hl1-source-sdk/engine/bspfile.h",
+   "name": "miptex_t",
+   "type": "struct miptex_s",
+   "desugared": null,
+   "scope": "",
+   "used": true,
+   "required": "by_value"
   }
  },
  "enums": {
@@ -42742,16 +42906,6 @@
     }
    ],
    "type": "class Vector"
-  },
-  "alight_s": {
-   "need": "by_pointer",
-   "needed_by": [
-    "dep/NclNitroApi/dep/ncl-hl1-source-sdk/common/r_studioint.h:62:12",
-    "dep/NclNitroApi/dep/ncl-hl1-source-sdk/common/r_studioint.h:63:12",
-    "dep/NclNitroApi/dep/ncl-hl1-source-sdk/common/r_studioint.h:64:12"
-   ],
-   "declarations": [],
-   "type": null
   },
   "con_nprint_s": {
    "need": "by_pointer",
@@ -62637,5 +62791,34 @@
   "clang-query": "LLVM version 22.1.3",
   "clang-cl": "clang version 22.1.3 (https://github.com/llvm/llvm-project e9846648fd6183ee6d8cbdb4502213fcf902a211)"
  },
- "problems": []
+ "problems": [],
+ "supplements": [
+  {
+   "records": [
+    "dep/NclNitroApi/dep/ncl-hl1-source-sdk/common/com_model.h:302:16",
+    "dep/NclNitroApi/dep/ncl-hl1-source-sdk/engine/bspfile.h:92:16"
+   ],
+   "typedefs": [
+    "dep/NclNitroApi/dep/ncl-hl1-source-sdk/common/com_model.h:308:3",
+    "dep/NclNitroApi/dep/ncl-hl1-source-sdk/engine/bspfile.h:98:3"
+   ],
+   "sources": {
+    "sdk": {
+     "commit": "c9f95e6f91f67d79002a79df13244a7538ab799f",
+     "paths": [
+      "common/com_model.h",
+      "engine/bspfile.h"
+     ]
+    }
+   },
+   "tools": {
+    "clang-cl": "clang version 22.1.3 (https://github.com/llvm/llvm-project e9846648fd6183ee6d8cbdb4502213fcf902a211)"
+   },
+   "target": "i686-pc-windows-msvc",
+   "self_check": {
+    "assertions": 13,
+    "exit_code": 0
+   }
+  }
+ ]
 }

@@ -114,6 +114,11 @@ namespace nitroapi
 
             return (TFunc)this->hook_->GetOriginalFunctionAddress();
         }
+
+        inline TFunc GetChainedFunc() const
+        {
+            return (TFunc)this->hook_->GetOriginalFunctionAddress();
+        }
     };
 
     // ------------------------------------------------------------------------------------------
@@ -160,6 +165,11 @@ namespace nitroapi
             if (this->hook_->IsHookActive())
                 return (TFunc)this->hook_->GetTrampolineAddress();
 
+            return (TFunc)this->hook_->GetOriginalFunctionAddress();
+        }
+
+        inline TFunc GetChainedFunc() const
+        {
             return (TFunc)this->hook_->GetOriginalFunctionAddress();
         }
     };

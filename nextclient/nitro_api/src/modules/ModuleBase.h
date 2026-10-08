@@ -124,7 +124,7 @@ namespace nitroapi
         template<class TResult, class... TArgs>
         void RegisterFuncStdcall(NitroFunctionBase<TResult, TArgs...>* nitro_function, std::function<uint32_t(nitro_utils::SysModule)>&& pointer_getter)
         {
-            RegisterFunc<CallingConventions::Stdcall>(nitro_function, std::move(pointer_getter), "[JIT] " + typeid(nitro_function).name());
+            RegisterFunc<CallingConventions::Stdcall>(nitro_function, std::move(pointer_getter), std::string("[JIT] ") + typeid(nitro_function).name());
         }
 
         template<CallingConventions Convention, class TResult, class... TArgs>
@@ -135,7 +135,7 @@ namespace nitroapi
                 nitro_function->SetHook(hook);
             };
 
-            RegisterFunc(nitro_function, std::move(on_lib_loaded), "[JIT] " + typeid(nitro_function).name());
+            RegisterFunc(nitro_function, std::move(on_lib_loaded), std::string("[JIT] ") + typeid(nitro_function).name());
         }
 // region end JIT HOOKS
 

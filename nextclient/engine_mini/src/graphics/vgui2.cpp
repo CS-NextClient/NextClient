@@ -24,6 +24,7 @@ void VGUI2_Draw_SetTextColor(int r, int g, int b)
 // pointer is ours to redirect, so the text slots of the object they share are replaced instead.
 void VGUI2_InstallTextSurface()
 {
+#ifdef _WIN32
     void* surface = eng()->vgui2_surface ? *eng()->vgui2_surface : nullptr;
 
     if (!surface)
@@ -33,10 +34,13 @@ void VGUI2_InstallTextSurface()
     }
 
     TextSurface_Install(surface);
+#endif
 }
 
 // Undo of VGUI2_InstallTextSurface, for the engine shutdown that precedes unloading this module.
 void VGUI2_UninstallTextSurface()
 {
+#ifdef _WIN32
     TextSurface_Uninstall();
+#endif
 }

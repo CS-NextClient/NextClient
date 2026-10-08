@@ -1,10 +1,14 @@
 #pragma once
 
+#include <algorithm>
+#include <cmath>
 #include <cstdint>
 #include <type_traits>
 
 #include "scalar.h"
 
+// RGBA color value types: Color with 8-bit channels and ColorF with normalized
+// float channels. Float-to-byte conversion truncates.
 namespace ncl_math
 {
     struct ColorF;
@@ -14,7 +18,8 @@ namespace ncl_math
         std::uint8_t r{}, g{}, b{}, a{255};
 
         constexpr Color() = default;
-        // int channels (0..255) so loose ints brace-init without a narrowing error.
+        // Channels are taken as int (0..255) so that int arguments
+        // brace-initialize without a narrowing error.
         constexpr Color(int red, int green, int blue, int alpha = 255) :
             r(static_cast<std::uint8_t>(red)),
             g(static_cast<std::uint8_t>(green)),
@@ -23,6 +28,7 @@ namespace ncl_math
         {
         }
 
+        // Packed 0x00RRGGBB (alpha defaults to opaque).
         static Color FromPacked(std::uint32_t rgb)
         {
             return {(std::uint8_t)((rgb >> 16) & 0xFF), (std::uint8_t)((rgb >> 8) & 0xFF), (std::uint8_t)(rgb & 0xFF), 255};
@@ -69,6 +75,8 @@ namespace ncl_math
         return {r / 255.0f, g / 255.0f, b / 255.0f, a / 255.0f};
     }
 
+    // Per-channel linear blend; the byte overload blends in float space and
+    // truncates back.
     inline Color Lerp(const Color& a, const Color& b, float t)
     {
         return {(std::uint8_t)Clamp(Lerp((float)a.r, (float)b.r, t), 0.0f, 255.0f),
@@ -80,5 +88,64 @@ namespace ncl_math
     inline ColorF Lerp(const ColorF& a, const ColorF& b, float t)
     {
         return {Lerp(a.r, b.r, t), Lerp(a.g, b.g, t), Lerp(a.b, b.b, t), Lerp(a.a, b.a, t)};
+    }
+
+    // h, s and v in [0, 1]. Alpha is 1.
+    inline ColorF HsvToRgb(float h, float s, float v)
+    {
+        float sector = std::fmod(h, 1.0f) * 6.0f;
+        int index = static_cast<int>(sector);
+        float fraction = sector - index;
+
+        float p = v * (1.0f - s);
+        float q = v * (1.0f - s * fraction);
+        float t = v * (1.0f - s * (1.0f - fraction));
+
+        switch (index % 6)
+        {
+        case 0: return {v, t, p};
+        case 1: return {q, v, p};
+        case 2: return {p, v, t};
+        case 3: return {p, q, v};
+        case 4: return {t, p, v};
+        default: return {v, p, q};
+        }
+    }
+
+    // Inverse of HsvToRgb over the color's rgb; alpha is ignored. A gray color has no hue,
+    // and h is then left as passed in.
+    inline void RgbToHsv(const ColorF& rgb, float& h, float& s, float& v)
+    {
+        float high = std::max({rgb.r, rgb.g, rgb.b});
+        float low = std::min({rgb.r, rgb.g, rgb.b});
+        float span = high - low;
+
+        v = high;
+        s = high > 0.0f ? span / high : 0.0f;
+
+        if (span <= 0.0f)
+        {
+            return;
+        }
+
+        if (high == rgb.r)
+        {
+            h = (rgb.g - rgb.b) / span;
+        }
+        else if (high == rgb.g)
+        {
+            h = 2.0f + (rgb.b - rgb.r) / span;
+        }
+        else
+        {
+            h = 4.0f + (rgb.r - rgb.g) / span;
+        }
+
+        h /= 6.0f;
+
+        if (h < 0.0f)
+        {
+            h += 1.0f;
+        }
     }
 } // namespace ncl_math

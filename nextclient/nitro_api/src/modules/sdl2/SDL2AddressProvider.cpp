@@ -11,5 +11,5 @@ namespace nitroapi
         { StaticHookId::SDL_GL_GetProcAddress,      SearchConfig("SDL_GL_GetProcAddress", SearchType::ExportFunc) },
     };
 
-    const std::unordered_map<std::string, SearchConfig> SDL2AddressProvider::addresses_str_{{}};
+    const std::unordered_map<std::string, SearchConfig> SDL2AddressProvider::addresses_str_{};
 }

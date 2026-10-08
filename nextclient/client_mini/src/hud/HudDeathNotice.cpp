@@ -12,9 +12,14 @@
 #include <goldsrc/pmove.h>
 #include <goldsrc/triangle_api.h>
 
-constexpr static auto KILL_RARITY_SPRITE = "sprites/kill_rarity.spr";
-constexpr static int DEATHNOTICE_TOP = 32;
-constexpr static int DEATHNOTICE_RIGHT = 16;
+#include <iterator>
+#include <string_view>
+
+constexpr static auto kKillRaritySprite = "sprites/kill_rarity.spr";
+constexpr static int kDeathNoticeTop = 32;
+constexpr static int kDeathNoticeRight = 16;
+
+constexpr static int kSpectatorTopBarHeight = 64;
 
 static int MsgFunc_DeathMsg(const char* pszName, int iSize, void* pbuf) {
 	MessageReader reader(pbuf, iSize);
@@ -49,7 +54,7 @@ static int MsgFunc_DeathMsg(const char* pszName, int iSize, void* pbuf) {
 	auto hud = g_GameHud->get_deathnotice();
 	HudDeathNotice::notice_row_t notice{};
 
-	hud->HandleAmxxKillAssistCaseIfSo(killer_id, assistant_id, &notice);
+	hud->ApplyKillAssistRename(killer_id, assistant_id, &notice);
 
 	if(hud->IsValidClientIndex(killer_id)) {
 		goldsrc::hud_player_info_t killer_info;
@@ -153,81 +158,107 @@ static int MsgFunc_DeathMsgWpnIcon(const char* pszName, int iSize, void* pbuf) {
 	return 1;
 }
 
-void HudDeathNotice::SVC_UpdateUserInfo() {
-	int id = eng()->MSG_ReadByte();
-	int userId = eng()->MSG_ReadLong();
+namespace {
+	constexpr std::string_view kKillAssistDelim = " + ";
+	constexpr float kKillAssistMinKillerNamePercent = 25.0f;
 
-	auto userinfo = eng()->MSG_ReadString();
-	auto current_name = client_state()->players[id].name;
-	auto incoming_name = pmove->PM_Info_ValueForKey(userinfo, "name");
+	// True when combined is "<original> + <assistant>" as built by the AMXX Kill Assist plugin,
+	// which trims either part down to the engine name limit and marks the cut with trailing dots.
+	// assistant_name receives the trimmed assistant part, so it is a prefix of the real nickname.
+	bool SplitKillAssistName(std::string_view original, std::string_view combined, std::string_view& assistant_name) {
+		if(original.empty()) return false;
 
-	if(current_name[0] && std::string(current_name) != incoming_name)
-		last_player_name_[id + 1] = current_name;
-}
+		size_t matched = 0;
+		while(matched < original.size() && matched < combined.size() && original[matched] == combined[matched])
+			matched++;
 
-float calculateMatchingPercentage(const std::string& old_name, const std::string& new_name, size_t& mismatchPosition) {
-    size_t m = 0;
-    mismatchPosition = std::string::npos;
+		if(static_cast<float>(matched) / original.size() * 100.0f < kKillAssistMinKillerNamePercent)
+			return false;
 
-    for (m = 0; m < old_name.size(); m++) {
-		if(m >= new_name.size() || old_name[m] != new_name[m])
-			break;
-    }
+		size_t delim_pos = matched;
+		while(delim_pos < combined.size() && combined[delim_pos] == '.')
+			delim_pos++;
 
-	while(m < new_name.size() && new_name[m] == '.')
-		m++;
+		if(!combined.substr(delim_pos).starts_with(kKillAssistDelim)) return false;
 
-	mismatchPosition = m;
+		assistant_name = combined.substr(delim_pos + kKillAssistDelim.size());
 
-    return (static_cast<float>(m) / old_name.size()) * 100.0;
-}
+		size_t last_kept = assistant_name.find_last_not_of('.');
+		if(last_kept == std::string_view::npos) return false;
 
-bool HudDeathNotice::HandleAmxxKillAssistCaseIfSo(int killer_id, int& assistant_id, HudDeathNotice::notice_row_t* notice) {
-	if(!last_player_name_.contains(killer_id)) return false;
+		assistant_name = assistant_name.substr(0, last_kept + 1);
 
-	std::string old_name = last_player_name_[killer_id];
-
-	if(assistant_id != 0) {
-		notice->killer_name = old_name;
 		return true;
 	}
+}
 
+void HudDeathNotice::SVC_UpdateUserInfo() {
+	int id = eng()->MSG_ReadByte();
+	eng()->MSG_ReadLong();
+
+	auto client = client_state();
+	if(id < 0 || id >= static_cast<int>(std::size(client->players))) return;
+
+	auto userinfo = eng()->MSG_ReadString();
+	auto current_name = client->players[id].name;
+	auto incoming_name = pmove->PM_Info_ValueForKey(userinfo, "name");
+
+	if(current_name[0] && std::string_view(current_name) != incoming_name)
+		previous_player_names_[id + 1] = current_name;
+}
+
+std::string_view HudDeathNotice::get_player_name(int client_index) {
 	goldsrc::hud_player_info_t player_info;
-	cl_enginefunc()->pfnGetPlayerInfo(killer_id, &player_info);
-	if(player_info.name == nullptr) return false;
-	
-	std::string new_name = player_info.name;
+	cl_enginefunc()->pfnGetPlayerInfo(client_index, &player_info);
 
-	constexpr const char* delim = " + ";
-	constexpr size_t delim_len = std::string_view(delim).size();
-	constexpr size_t min_name_len = delim_len + 2;
+	return player_info.name != nullptr ? player_info.name : "";
+}
 
-	if(new_name.length() < min_name_len || old_name.length() >= new_name.length()) return false;
-	if(!new_name.contains(delim)) return false;
+// Returns the connected player whose name starts with name_prefix, preferring an exact match,
+// or 0 when nothing or an empty prefix is given.
+int HudDeathNotice::FindPlayerByNamePrefix(std::string_view name_prefix, int skip_client_index) {
+	if(name_prefix.empty()) return 0;
 
-	size_t mismatch_pos;
-	if(calculateMatchingPercentage(old_name, new_name, mismatch_pos) < 25.0) return false;
+	int prefix_match = 0;
 
-	size_t actual_delim_pos = mismatch_pos == std::string::npos ? old_name.length() : mismatch_pos;
-	if(new_name.compare(actual_delim_pos, delim_len, delim, delim_len) != 0) return false;
+	for(int i = 1; i <= goldsrc::cstrike::MAX_PLAYERS; i++) {
+		if(i == skip_client_index) continue;
 
-	std::string dirty_assistant_name = new_name.substr(actual_delim_pos + delim_len);
-	size_t first_dot_pos = dirty_assistant_name.find_last_not_of(".");
-	if(first_dot_pos != std::string::npos && first_dot_pos != dirty_assistant_name.length() - 1)
-		dirty_assistant_name.erase(first_dot_pos + 1);
- 
-	for (int i = 1; i < goldsrc::cstrike::MAX_PLAYERS; i++)
-	{
-		goldsrc::hud_player_info_t player_info;
-		cl_enginefunc()->pfnGetPlayerInfo(i, &player_info);
+		std::string_view name = get_player_name(i);
+		if(name.empty()) continue;
 
-		if(player_info.name && std::string(player_info.name).starts_with(dirty_assistant_name)) {
-			notice->killer_name = old_name;
-			assistant_id = i;
-			return true;
-		}
+		if(name == name_prefix) return i;
+
+		if(prefix_match == 0 && name.starts_with(name_prefix))
+			prefix_match = i;
 	}
-	return false;
+
+	return prefix_match;
+}
+
+// Undoes the killer rename the AMXX Kill Assist plugin performs when the server has no native
+// assist support: restores the killer name the notice should carry and, when the server did not
+// send an assistant index itself, recovers it from the appended part of the name.
+void HudDeathNotice::ApplyKillAssistRename(int killer_id, int& assistant_id, notice_row_t* notice) {
+	if(!IsValidClientIndex(killer_id)) return;
+
+	const std::string& previous_name = previous_player_names_[killer_id];
+	if(previous_name.empty()) return;
+
+	std::string_view assistant_name;
+	if(!SplitKillAssistName(previous_name, get_player_name(killer_id), assistant_name)) return;
+
+	if(assistant_id == 0)
+		assistant_id = FindPlayerByNamePrefix(assistant_name, killer_id);
+	else if(!get_player_name(assistant_id).starts_with(assistant_name))
+		return;
+
+	notice->killer_name = previous_name;
+
+	if(!IsValidClientIndex(assistant_id)) {
+		notice->assistant_name = assistant_name;
+		notice->assistant_color = sprite_icons_color_;
+	}
 }
 
 HudDeathNotice::HudDeathNotice(nitroapi::NitroApiInterface* nitro_api)
@@ -247,6 +278,13 @@ HudDeathNotice::HudDeathNotice(nitroapi::NitroApiInterface* nitro_api)
 		*eng()->msg_readcount = readcount;
 
 		next->Invoke();
+	});
+
+	DeferUnsub(eng()->CL_ParseServerMessage |= [this](goldsrc::qboolean normal_message, const auto& next) {
+		next->Invoke(normal_message);
+
+		for(std::string& name : previous_player_names_)
+			name.clear();
 	});
 }
 
@@ -272,7 +310,7 @@ void HudDeathNotice::Init() {
 }
 
 void HudDeathNotice::VidInit() {
-	kill_rarity_sprite_ = LoadSprite(KILL_RARITY_SPRITE);
+	kill_rarity_sprite_ = LoadSprite(kKillRaritySprite);
 
 	skull_sprite_index_ = gHUD()->GetSpriteIndex("d_skull");
 	draw_string_font_height_ = DrawConsoleStringHeight();
@@ -387,6 +425,13 @@ void HudDeathNotice::Draw(float flTime) {
 	int screen_w, screen_h;
 	GetScreenResolution(screen_w, screen_h);
 
+	int notices_top_units = kDeathNoticeTop;
+
+	if(g_iUser1 != 0)
+		notices_top_units += kSpectatorTopBarHeight;
+
+	const int notices_top = static_cast<int>(notices_top_units * (screen_h / 480.0f) + 0.5f);
+
 	for(auto notice = notice_rows_.begin(); notice != notice_rows_.end(); ) {
 		if(notice->display_time < flTime) {
 			notice = notice_rows_.erase(notice);
@@ -405,12 +450,9 @@ void HudDeathNotice::Draw(float flTime) {
 			weapon_sprite_h = gHUD()->GetSpriteHeight(notice->weapon_sprite_index);
 		}
 
-		y = (DEATHNOTICE_TOP * (screen_h / 480.0f) + 0.5f) 
+		y = notices_top
 			+ ((notice_box_height_ + notice_box_outline_width_ * 2 + notice_boxes_gap_) * i);
-		x = screen_w - DEATHNOTICE_RIGHT - weapon_sprite_full_w;
-
-		if(g_iUser1 != 0)
-			y += 80;
+		x = screen_w - kDeathNoticeRight - weapon_sprite_full_w;
 
 		int weapon_sprite_optimal_y = y + ((notice_box_height_ - weapon_sprite_h) / 2);
 		int kill_rarity_sprite_optimal_y = y + ((notice_box_height_ - kill_rarity_sprite_height_) / 2);
@@ -439,14 +481,14 @@ void HudDeathNotice::Draw(float flTime) {
 		if(notice->is_should_dead_highlight) {
 			DrawRect(
 				x - notice_box_padding_x_, y, 
-				screen_w - DEATHNOTICE_RIGHT + notice_box_padding_x_, y + notice_box_height_,
+				screen_w - kDeathNoticeRight + notice_box_padding_x_, y + notice_box_height_,
 				150, 0, 20, 100
 			);
 		}
 		else if(notice->is_should_kill_highlight) {
 			DrawOutlinedRect(
 				x - notice_box_padding_x_, y, 
-				screen_w - DEATHNOTICE_RIGHT + notice_box_padding_x_, y + notice_box_height_, 
+				screen_w - kDeathNoticeRight + notice_box_padding_x_, y + notice_box_height_,
 				0, 0, 0, 100, 
 				notice_box_outline_width_, 230, 20, 0, 255
 			);
@@ -454,7 +496,7 @@ void HudDeathNotice::Draw(float flTime) {
 		else {
 			DrawRect(
 				x - notice_box_padding_x_, y, 
-				screen_w - DEATHNOTICE_RIGHT + notice_box_padding_x_, y + notice_box_height_,
+				screen_w - kDeathNoticeRight + notice_box_padding_x_, y + notice_box_height_,
 				0, 0, 0, 100
 			);
 		}

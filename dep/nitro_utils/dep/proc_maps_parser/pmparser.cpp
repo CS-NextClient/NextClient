@@ -57,7 +57,7 @@ procmaps_iterator* pmparser_parse(int pid){
         sscanf(addr1,"%lx",(long unsigned *)&tmp->addr_start );
         sscanf(addr2,"%lx",(long unsigned *)&tmp->addr_end );
         //size
-        tmp->length=(unsigned long)((unsigned long*)tmp->addr_end - (unsigned long*)tmp->addr_start);
+        tmp->length=(unsigned long)((char*)tmp->addr_end - (char*)tmp->addr_start);
         //perm
         strcpy(tmp->perm,perm);
         tmp->is_r=(perm[0]=='r');

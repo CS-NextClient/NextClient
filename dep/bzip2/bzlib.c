@@ -1427,8 +1427,10 @@ BZFILE * bzopen_or_bzdopen
    } else {
 #ifdef BZ_STRICT_ANSI
       fp = NULL;
-#else
+#elif defined(_WIN32)
       fp = _fdopen(fd,mode2);
+#else
+      fp = fdopen(fd,mode2);
 #endif
    }
    if (fp == NULL) return NULL;

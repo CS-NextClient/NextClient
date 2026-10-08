@@ -34,7 +34,7 @@ files and localized strings form one feature; resources are shipped under `asset
 
 ## Verification
 
-Build `gameui`; changes to shared radar definitions also need `client_mini`. Check resource control
-names against the C++ bindings and localization keys against the shipped language files. A build
-does not validate VGUI layout, posted-signal timing or the in-game focus transition; describe those
-limits when handing off a UI change.
+Build `gameui` and run the affected `gameui-tests`; changes to shared gameplay definitions also
+need `client_mini`. Check resource control names against the C++ bindings and localization keys
+against the shipped language files. A build does not validate VGUI layout, posted-signal timing or
+the in-game focus transition; describe those limits when handing off a UI change.

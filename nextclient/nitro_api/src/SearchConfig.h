@@ -10,6 +10,7 @@ namespace nitroapi
         Pattern,
         PatternEx,
         ExportFunc,
+        Symbol,
         Offset,
         PatternAndOffset,
         PatternExAndOffset,

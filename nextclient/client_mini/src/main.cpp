@@ -21,6 +21,7 @@
 #include "fov.h"
 #include "color_chat_in_console.h"
 #include "inspect.h"
+#include "commands.h"
 #include "invert_mouse.h"
 #include "hud/radar/RadarHooks.h"
 #include "hud/radar/HudTextZone.h"
@@ -80,7 +81,7 @@ static void HUD_InitPost()
 #ifdef _WIN32
         "cstrike\\cl_dlls\\gameui.dll"
 #else
-        "cl_dlls/gameui.so"  // in linux version we have only original gameui under valve folder
+        "gameui.so"
 #endif
         );
 
@@ -97,6 +98,7 @@ static void HUD_InitPost()
     ViewInit();
     FovInit();
     InspectInit();
+    CommandsInit();
     CameraInit();
     g_GameHud->Init();
 
@@ -253,9 +255,9 @@ static int UserMsg_ResetHUDHandler(const char* name, int size, void* data, UserM
 static int UserMsg_TextMsgHandler(const char* name, int size, void* data, UserMsg_TextMsgNext next)
 {
     static const std::string hiddenServerCmds[] = {
-        "client_chat_open\n",
-        "client_chat_team_open\n",
-        "client_chat_close\n",
+        "client_chat_open",
+        "client_chat_team_open",
+        "client_chat_close",
     };
 
     MessageReader reader(data, size);
@@ -266,7 +268,11 @@ static int UserMsg_TextMsgHandler(const char* name, int size, void* data, UserMs
         std::string message = reader.ReadString();
         if (message == "#Game_unknown_command")
         {
+            // the Linux cs.so sends the bare command, other servers with a newline after it
             std::string command = reader.ReadString();
+            while (!command.empty() && (command.back() == '\n' || command.back() == '\r'))
+                command.pop_back();
+
             if (std::ranges::contains(hiddenServerCmds, command))
             {
                 return 1;
@@ -330,9 +336,8 @@ public:
 
         g_GameHud = std::make_unique<GameHud>(nitro_api);
         g_Unsub.emplace_back(client_data->HUD_Shutdown += [] { g_GameHud.reset(); });
-
-        // Sys_Error exits the process without Host_Shutdown, so HUD_Shutdown never fires on that path.
         g_Unsub.emplace_back(eng()->Sys_Error |= [](const char* error, const auto& next) {
+            // Sys_Error exits the process without Host_Shutdown, so HUD_Shutdown never fires on that path.
             g_GameHud.reset();
             next->Invoke(error);
         });

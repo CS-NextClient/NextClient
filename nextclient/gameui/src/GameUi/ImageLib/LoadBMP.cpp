@@ -1,7 +1,11 @@
 #include "LoadBMP.h"
 #include <FileSystem.h>
 #include <tier2/tier2.h>
+#ifdef _WIN32
 #include <Windows.h>
+#else
+#include "utils/bmp_compat.h"
+#endif
 
 int LoadBMP(const char *szFilename, unsigned char *buffer, int bufferSize, int *width, int *height)
 {

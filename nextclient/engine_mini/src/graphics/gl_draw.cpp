@@ -1182,7 +1182,9 @@ void Draw_Init()
     VGUI2_InstallTextSurface();
 
     Cmd_AddCommand("gl_texels", GL_Texels_f);
+#ifdef _WIN32
     TextRender_RegisterDiagnostics();
+#endif
     Cvar_RegisterVariable(&gl_max_size);
     Cvar_RegisterVariable(&gl_round_down);
     Cvar_RegisterVariable(&gl_picmip);

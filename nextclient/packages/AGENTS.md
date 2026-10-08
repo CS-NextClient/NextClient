@@ -32,5 +32,6 @@ Coroutine lifetime rules are in [task_coro/AGENTS.md](task_coro/AGENTS.md).
 
 Build affected consumers, not just the static archive. Public headers can expose new dependencies
 or compile errors only when another DLL includes them. Protocol changes have `data_types-tests`;
-math changes are also exercised by the engine-free client tests. Select checks for the changed
+math changes are also exercised by the engine-free client tests. Shared gameplay logic has
+`view-tests` and `crosshair-tests`. Select checks for the changed
 contract instead of assuming every package has a standalone test target.

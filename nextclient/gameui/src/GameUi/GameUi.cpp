@@ -4,7 +4,13 @@
 #include <format>
 
 #include <sys/types.h>
+#ifdef _WIN32
 #include <direct.h>
+#include <Windows.h>
+#include <shellapi.h>
+#else
+#include <sys/stat.h>
+#endif
 #include <tier1/tier1.h>
 #include <tier2/tier2.h>
 #include <IEngineVGui.h>
@@ -19,8 +25,6 @@
 #include <vgui_controls/AnimationController.h>
 #include <utils/TaskRun.h>
 #include <utils/TaskRunImpl.h>
-#include <Windows.h>
-#include <shellapi.h>
 #include <goldsrc/client_api.h>
 
 #include "vgui_controls/Controls.h"
@@ -34,11 +38,14 @@
 #include "OptionsDialog/HudRadarDialog.h"
 #include "OptionsSubMiscellaneous.h"
 #include "IClientVGUI.h"
+
+#ifdef _WIN32
 #include "Browser/AcceptedDomains.h"
 #include "Browser/ExtensionCommon.h"
 #include "Browser/ExtensionMatchmaking.h"
 #include "Browser/ExtensionMatchmakingListings.h"
 #include "Browser/ExtensionGameUiApi.h"
+#endif
 
 namespace fs = std::filesystem;
 
@@ -46,6 +53,7 @@ static IServerBrowserEx *g_pServerBrowser = nullptr;
 static IBaseSystem* g_pBaseSystem = nullptr;
 static IGameClientExports* g_pGameClientExports = nullptr;
 static EngineMiniInterface* g_pEngineMini = nullptr;
+static ScenePreviewInterface* g_pScenePreview;
 static vgui2::DHANDLE<CDemoPlayerDialog> g_hDemoPlayerDialog;
 static vgui2::DHANDLE<CHudRadarDialog> g_hHudRadarDialog;
 vgui2::DHANDLE<CLoadingDialog> g_hLoadingDialog;
@@ -75,8 +83,10 @@ void CGameUI::OpenHudRadarDialog()
     }
 }
 static CGameUI g_GameUI;
+#ifdef _WIN32
 static HWND g_MainWindow = nullptr;
 static WNDPROC g_MainWindowProc = nullptr;
+#endif
 
 goldsrc::cl_enginefunc_t* engine = nullptr;
 
@@ -84,6 +94,7 @@ CGameUI &GameUI() { return g_GameUI; }
 IBaseSystem* SystemWrapper() { return g_pBaseSystem; }
 IGameClientExports* GameClientExports() { return g_pGameClientExports; }
 EngineMiniInterface* EngineMini() { return g_pEngineMini; }
+ScenePreviewInterface* ScenePreview() { return g_pScenePreview; }
 
 namespace vgui2
 {
@@ -108,6 +119,10 @@ namespace vgui2
     }
 }
 
+#ifdef _WIN32
+// Only ever invoked by the Windows message pump, so this whole function is
+// meaningless until GoldSrc's Linux windowing exists (SDL2 has its own,
+// differently-shaped drag-and-drop event, not a WndProc callback).
 LRESULT CALLBACK WindowGlobalProcedure(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
     switch (uMsg)
@@ -139,6 +154,7 @@ LRESULT CALLBACK WindowGlobalProcedure(HWND hwnd, UINT uMsg, WPARAM wParam, LPAR
     }
     return CallWindowProc(g_MainWindowProc, hwnd, uMsg, wParam, lParam);
 }
+#endif
 
 EXPOSE_SINGLE_INTERFACE_GLOBALVAR(CGameUI, IGameUI, GAMEUI_INTERFACE_VERSION_GS, g_GameUI);
 
@@ -156,7 +172,9 @@ CGameUI::~CGameUI()
 
 void CGameUI::Initialize(CreateInterfaceFn *factories, int count)
 {
+#ifdef _WIN32
     g_MainWindow = GetActiveWindow();
+#endif
 
     ConnectTier1Libraries(factories, count);
     ConnectTier2Libraries(factories, count);
@@ -164,7 +182,9 @@ void CGameUI::Initialize(CreateInterfaceFn *factories, int count)
     if (!vgui2::VGui_InitInterfacesList("GameUI", factories, count))
         return;
 
+#ifdef _WIN32
     g_MainWindowProc = (WNDPROC)SetWindowLongPtr(g_MainWindow, GWLP_WNDPROC, (LONG_PTR)WindowGlobalProcedure);
+#endif
 
     for (int i = 0; i < count; ++i)
     {
@@ -173,7 +193,8 @@ void CGameUI::Initialize(CreateInterfaceFn *factories, int count)
     }
 
     g_pServerBrowser = (IServerBrowserEx*)CreateInterface(SERVERBROWSEREX_INTERFACE_VERSION, NULL);
-    g_pEngineMini = (EngineMiniInterface*)Sys_GetFactory("next_engine_mini.dll")(ENGINE_MINI_INTERFACE_VERSION, NULL);
+    g_pEngineMini = reinterpret_cast<EngineMiniInterface*>(Sys_GetFactory("next_engine_mini.dll")(ENGINE_MINI_INTERFACE_VERSION, NULL));
+    g_pScenePreview = reinterpret_cast<ScenePreviewInterface*>(Sys_GetFactory("next_engine_mini.dll")(SCENE_PREVIEW_INTERFACE_VERSION, NULL));
 
     g_pVGuiLocalize->AddFile(g_pFullFileSystem, "resource/gameui_%language%.txt");
     g_pVGuiLocalize->AddFile(g_pFullFileSystem, "resource/valve_%language%.txt");
@@ -195,7 +216,11 @@ void CGameUI::Initialize(CreateInterfaceFn *factories, int count)
 
         g_pFullFileSystem->AddSearchPath(szConfigDir, "PLATFORMCONFIG");
 
+#ifdef _WIN32
         _mkdir(szConfigDir);
+#else
+        mkdir(szConfigDir, 0755);
+#endif
 
         vgui2::ivgui()->DPrintf("Platform config directory: %s\n", szConfigDir);
 
@@ -238,12 +263,14 @@ void CGameUI::Start(goldsrc::cl_enginefunc_t* engineFuncs, int interfaceVersion,
         g_pServerBrowser->Reactivate();
     }
 
+#ifdef _WIN32
     RegisterCommonJsApi(engineFuncs);
     RegisterMatchmakingJsApi();
     RegisterMatchmakingListingsJsApi();
     LoadAcceptedDomainsForJsApiFromDisk("platform/accepted_domains.txt");
 
     browserExtensionGameUiApi = new ContainerExtensionGameUiApi();
+#endif
 }
 
 void CGameUI::Shutdown(void)
@@ -267,7 +294,9 @@ void CGameUI::Shutdown(void)
     DisconnectTier1Libraries();
     DisconnectTier2Libraries();
 
+#ifdef _WIN32
     delete browserExtensionGameUiApi;
+#endif
 }
 
 int CGameUI::ActivateGameUI(void)
@@ -289,8 +318,10 @@ int CGameUI::ActivateGameUI(void)
         g_hLoadingDialog = NULL;
     }
 
+#ifdef _WIN32
     if(!IsGameUIActive())
         browserExtensionGameUiApi->OnActivateGameUI();
+#endif
 
     BasePanel()->OnGameUIActivated();
     BasePanel()->SetVisible(true);
@@ -333,7 +364,9 @@ void CGameUI::RunFrame(void)
     if (BasePanel()->IsVisible())
         BasePanel()->RunFrame();
 
+#ifdef _WIN32
     browserExtensionGameUiApi->RunFrame();
+#endif
     task_run_impl_->OnUpdate();
 }
 
@@ -389,7 +422,9 @@ void CGameUI::HideGameUI()
         g_hLoadingDialog = NULL;
     }
 
+#ifdef _WIN32
     browserExtensionGameUiApi->OnHideGameUI();
+#endif
 }
 
 bool CGameUI::BeginPanelOverGame(vgui2::Panel* panel)

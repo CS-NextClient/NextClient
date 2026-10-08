@@ -3,11 +3,20 @@
 #include <cstddef>
 
 #include <goldsrc/fwd.h>
+#include <goldsrc/types.h>
 
 namespace goldsrc
 {
     inline constexpr int STUDIO_RENDER = 0x00000001;
     inline constexpr int STUDIO_EVENTS = 0x00000002;
+
+    struct alight_t
+    {
+        int ambientlight;
+        int shadelight;
+        vec3_t color;
+        float* plightvec;
+    };
 
     struct engine_studio_api_t
     {

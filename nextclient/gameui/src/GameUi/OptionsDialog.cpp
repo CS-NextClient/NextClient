@@ -14,6 +14,7 @@
 #include "vgui/IVGui.h"
 
 #include "OptionsSubMultiplayer.h"
+#include "OptionsSubGame.h"
 #include "OptionsSubKeyboard.h"
 #include "OptionsSubMouse.h"
 #include "OptionsSubAudio.h"
@@ -29,11 +30,12 @@
 
 COptionsDialog::COptionsDialog(vgui2::Panel *parent) : PropertyDialog(parent, "OptionsDialog")
 {
-    SetBounds(0, 0, 545, 406);
+    SetBounds(0, 0, 599, 466);
     SetSizeable(false);
     SetTitle("#GameUI_Options", true);
 
     m_pOptionsSubMultiplayer = NULL;
+    m_pOptionsSubGame = NULL;
     m_pOptionsSubKeyboard = NULL;
     m_pOptionsSubMouse = NULL;
     m_pOptionsSubAudio = NULL;
@@ -44,6 +46,7 @@ COptionsDialog::COptionsDialog(vgui2::Panel *parent) : PropertyDialog(parent, "O
     if ((ModInfo().IsMultiplayerOnly() && !ModInfo().IsSinglePlayerOnly()) || (!ModInfo().IsMultiplayerOnly() && !ModInfo().IsSinglePlayerOnly()))
         m_pOptionsSubMultiplayer = new COptionsSubMultiplayer(this);
 
+    m_pOptionsSubGame = new COptionsSubGame(this);
     m_pOptionsSubKeyboard = new COptionsSubKeyboard(this);
     m_pOptionsSubMouse = new COptionsSubMouse(this);
     m_pOptionsSubAudio = new COptionsSubAudio(this);
@@ -57,6 +60,7 @@ COptionsDialog::COptionsDialog(vgui2::Panel *parent) : PropertyDialog(parent, "O
     m_pOptionsSubMiscellaneous = new OptionsSubMiscellaneous(this);
 
     AddPage(m_pOptionsSubMultiplayer, "#GameUI_Multiplayer");
+    AddPage(m_pOptionsSubGame, "#GameUI_Game");
     AddPage(m_pOptionsSubKeyboard, "#GameUI_Keyboard");
     AddPage(m_pOptionsSubMouse, "#GameUI_Mouse");
     AddPage(m_pOptionsSubAudio, "#GameUI_Audio");
@@ -65,6 +69,7 @@ COptionsDialog::COptionsDialog(vgui2::Panel *parent) : PropertyDialog(parent, "O
     AddPage(m_pOptionsSubMiscellaneous, "#GameUI_Miscellaneous");
 
     m_tabNames.Insert("multiplayer", m_pOptionsSubMultiplayer);
+    m_tabNames.Insert("game", m_pOptionsSubGame);
     m_tabNames.Insert("keyboard", m_pOptionsSubKeyboard);
     m_tabNames.Insert("mouse", m_pOptionsSubMouse);
     m_tabNames.Insert("audio", m_pOptionsSubAudio);
@@ -124,6 +129,14 @@ void COptionsDialog::OpenTab(const char* tabName) {
         if (GetActivePage() != page)
             GetPropertySheet()->SetActivePage(page);
     }
+}
+
+void COptionsDialog::OpenCrosshairSettings()
+{
+    OpenTab("game");
+
+    if (m_pOptionsSubGame)
+        m_pOptionsSubGame->ShowCrosshairTab();
 }
 
 void COptionsDialog::OnClose(void)

@@ -26,14 +26,16 @@ private:
     time_point start_time_;
     cpr::AsyncResponse response_;
     std::shared_ptr<Shared> shared_data_;
+    std::shared_ptr<cpr::Session> session_;
 
 public:
-    RequestContext(ResourceDescriptor file_resource, int retry, time_point start_time, std::shared_ptr<Shared> shared_data, cpr::AsyncResponse &&response):
+    RequestContext(ResourceDescriptor file_resource, int retry, time_point start_time, std::shared_ptr<Shared> shared_data, cpr::AsyncResponse &&response, std::shared_ptr<cpr::Session> session):
             resource_descriptor(std::move(file_resource)),
             retry_(retry),
             start_time_(start_time),
+            response_(std::move(response)),
             shared_data_(std::move(shared_data)),
-            response_(std::move(response))
+            session_(std::move(session))
     { }
 
     RequestContext(const RequestContext &) = delete;
@@ -44,7 +46,8 @@ public:
             retry_(other.retry_),
             start_time_(other.start_time_),
             response_(std::move(other.response_)),
-            shared_data_(std::move(other.shared_data_))
+            shared_data_(std::move(other.shared_data_)),
+            session_(std::move(other.session_))
     { }
 
     RequestContext &operator=(RequestContext &&other) noexcept
@@ -54,6 +57,7 @@ public:
         start_time_ = other.start_time_;
         response_ = std::move(other.response_);
         shared_data_ = std::move(other.shared_data_);
+        session_ = std::move(other.session_);
 
         return *this;
     }
@@ -62,6 +66,7 @@ public:
     cpr::AsyncResponse &get_response() { return response_; }
     [[nodiscard]] const ResourceDescriptor& get_file_resource() const { return resource_descriptor; }
     [[nodiscard]] std::shared_ptr<Shared> get_shared_data() const { return shared_data_; }
+    [[nodiscard]] std::shared_ptr<cpr::Session> get_session() const { return session_; }
     [[nodiscard]] int get_retry() const { return retry_; }
     void set_retry(int retry) { retry_ = retry; }
 };

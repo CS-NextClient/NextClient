@@ -13,6 +13,8 @@
 #include <goldsrc/types.h>
 #include <goldsrc/view.h>
 
+#include <cvars/cvar_defaults.h>
+
 /* animate camera using a viewmodel attachment */
 
 static goldsrc::cvar_t* camera_movement_scale;
@@ -20,8 +22,11 @@ static goldsrc::cvar_t* camera_movement_interp;
 
 void CameraInit()
 {
-	camera_movement_scale = gEngfuncs.pfnRegisterVariable("camera_movement_scale", "1", goldsrc::FCVAR_ARCHIVE);
-	camera_movement_interp = gEngfuncs.pfnRegisterVariable("camera_movement_interp", "0", goldsrc::FCVAR_ARCHIVE);
+	camera_movement_scale = gEngfuncs.pfnRegisterVariable(
+		cvars::kCameraMovementScale.name, cvars::kCameraMovementScale.value, goldsrc::FCVAR_ARCHIVE);
+
+	camera_movement_interp = gEngfuncs.pfnRegisterVariable(
+		cvars::kCameraMovementInterp.name, cvars::kCameraMovementInterp.value, goldsrc::FCVAR_ARCHIVE);
 }
 
 static goldsrc::mstudioanim_t* GetAnim(goldsrc::studiohdr_t* hdr, goldsrc::model_t* model, goldsrc::mstudioseqdesc_t* seqdesc)

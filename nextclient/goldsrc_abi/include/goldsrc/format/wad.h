@@ -16,6 +16,14 @@ namespace goldsrc
         char name[16];
     };
 
+    struct miptex_t
+    {
+        char name[16];
+        unsigned int width;
+        unsigned int height;
+        unsigned int offsets[4];
+    };
+
     struct qpic_t
     {
         int width;

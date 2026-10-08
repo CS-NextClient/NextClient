@@ -21,7 +21,7 @@ is reached through NitroApi; local wrappers must keep its ABI and callback order
 
 ## Rendering and DLL boundaries
 
-- Release GL objects explicitly while the context is live. `Draw_Shutdown` currently uninstalls
+- Release GL objects explicitly while the context is live. On Windows, `Draw_Shutdown` uninstalls
   the text surface adapter and releases the text renderer before shutting down drawing. Static
   destruction after engine teardown is too late for GL calls or access to engine-owned objects.
 - Save and restore the GL state actually touched by a draw path, including active texture unit,

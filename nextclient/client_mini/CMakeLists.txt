@@ -54,6 +54,8 @@ add_library(${PROJECT_NAME} SHARED
         src/color_chat_in_console.h
         src/inspect.cpp
         src/inspect.h
+        src/commands.cpp
+        src/commands.h
         src/camera.cpp
         src/camera.h
         src/hud/HudDamageDirection.cpp
@@ -171,6 +173,9 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
         ncl_gl::ncl_gl
         ncl_utils::ncl_utils
         ${PROJECT_NAME}::rc
+        view::view
+        cvars::cvars
+        crosshair::crosshair
 )
 
 if (MSVC)

@@ -36,9 +36,9 @@ void CCommandLine::CreateCmdLine(const char* commandline)
             std::string szFileName(pszSource, uiFileNameLength);
             pszSource += uiFileNameLength;
 
-            FILE* pParamFile;
             //Try to open it, if successful, read all options and add them.
-            if (fopen_s(&pParamFile, szFileName.c_str(), "r") == 0)
+            FILE* pParamFile = fopen(szFileName.c_str(), "r");
+            if (pParamFile != nullptr)
             {
                 char szLine[1024];
                 while (fgets(szLine, sizeof(szLine), pParamFile))
@@ -69,7 +69,7 @@ void CCommandLine::CreateCmdLine(const char* commandline)
 
     const size_t iLen = szFull.size() + 1;
     char* result = new char[iLen];
-    strcpy_s(result, iLen, szFull.c_str());
+    snprintf(result, iLen, "%s", szFull.c_str());
 
     delete[] m_pszCmdLine;
     m_pszCmdLine = result;
@@ -88,14 +88,14 @@ void CCommandLine::CreateCmdLine(int argc, char** argv)
         {
             *pszDest++ = '"';
 
-            strncat_s(pszDest, sizeof(szFull), argv[i], (sizeof(szFull) - 1) - (pszDest - szFull));
+            strncat(pszDest, argv[i], (sizeof(szFull) - 1) - (pszDest - szFull));
             pszDest += strlen(argv[i]);
 
             *pszDest++ = '"';
         }
         else
         {
-            strncat_s(pszDest, sizeof(szFull), argv[i], (sizeof(szFull) - 1) - (pszDest - szFull));
+            strncat(pszDest, argv[i], (sizeof(szFull) - 1) - (pszDest - szFull));
             pszDest += strlen(argv[i]);
         }
     }
@@ -228,13 +228,13 @@ void CCommandLine::AppendParm(const char* pszParm, const char* pszValues)
         int iLen = uiParmLength + 1;
         m_pszCmdLine = new char[iLen];
 
-        strcpy_s(m_pszCmdLine, iLen, pszParm);
+        snprintf(m_pszCmdLine, iLen, "%s", pszParm);
 
         if (pszValues)
         {
             m_pszCmdLine[uiParmNameLength] = ' ';
             m_pszCmdLine[uiParmNameLength + 1] = '\0';
-            strcat_s(m_pszCmdLine, iLen, pszValues);
+            strcat(m_pszCmdLine, pszValues);
         }
     }
 }

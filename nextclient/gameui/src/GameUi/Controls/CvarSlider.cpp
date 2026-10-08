@@ -1,9 +1,10 @@
 #include "GameUi.h"
 #include "CvarSlider.h"
+#include "cvar_context_menu.h"
 #include <stdio.h>
 #include "tier1/KeyValues.h"
 #include <vgui/IVGui.h>
-#include <vgui_controls/propertypage.h>
+#include <vgui_controls/PropertyPage.h>
 #include <goldsrc/client_api.h>
 
 #define CVARSLIDER_SCALE_FACTOR 100.0f
@@ -14,6 +15,8 @@ DECLARE_BUILD_FACTORY(CCvarSlider);
 
 CCvarSlider::CCvarSlider(Panel *parent, const char *name) : Slider(parent, name)
 {
+    m_pContextMenu = NULL;
+
     SetupSlider(0, 1, "", false);
     m_bCreatedInCode = false;
 
@@ -22,6 +25,8 @@ CCvarSlider::CCvarSlider(Panel *parent, const char *name) : Slider(parent, name)
 
 CCvarSlider::CCvarSlider(Panel *parent, const char *panelName, char const *caption, float minValue, float maxValue, char const *cvarname, bool bAllowOutOfRange) : Slider(parent, panelName)
 {
+    m_pContextMenu = NULL;
+
     AddActionSignalTarget(this);
     SetupSlider(minValue, maxValue, cvarname, bAllowOutOfRange);
 
@@ -32,8 +37,10 @@ void CCvarSlider::SetupSlider(float minValue, float maxValue, const char *cvarna
 {
     m_flMinValue = minValue;
     m_flMaxValue = maxValue;
+    m_flScale = CVARSLIDER_SCALE_FACTOR;
+    m_iPrintPrecision = 2;
 
-    SetRange((int)(CVARSLIDER_SCALE_FACTOR * minValue), (int)(CVARSLIDER_SCALE_FACTOR * maxValue));
+    SetRange(static_cast<int>(m_flScale * minValue), static_cast<int>(m_flScale * maxValue));
 
     char szMin[32];
     char szMax[32];
@@ -44,6 +51,9 @@ void CCvarSlider::SetupSlider(float minValue, float maxValue, const char *cvarna
     SetTickCaptions(szMin, szMax);
 
     Q_strncpy(m_szCvarName, cvarname, sizeof(m_szCvarName));
+
+    m_flDefaultValue = 0.0f;
+    m_bHasDefaultValue = false;
 
     m_bModifiedOnce = false;
     m_bAllowOutOfRange = bAllowOutOfRange;
@@ -99,9 +109,41 @@ void CCvarSlider::SetCVarName(char const *cvarname)
     Reset();
 }
 
+void CCvarSlider::SetDefaultValue(float value)
+{
+    m_flDefaultValue = value;
+    m_bHasDefaultValue = true;
+}
+
+bool CCvarSlider::ResetToDefaultValue()
+{
+    if (!m_bHasDefaultValue)
+        return false;
+
+    SetSliderValue(m_flDefaultValue);
+
+    return true;
+}
+
+void CCvarSlider::OnMousePressed(vgui2::MouseCode code)
+{
+    if (code == vgui2::MOUSE_RIGHT && CvarContextMenu_Show(this, m_pContextMenu, m_szCvarName, m_bHasDefaultValue))
+    {
+        return;
+    }
+
+    BaseClass::OnMousePressed(code);
+}
+
+void CCvarSlider::OnResetToDefault(void)
+{
+    if (ResetToDefaultValue())
+        PostActionSignal(new KeyValues("ControlModified"));
+}
+
 void CCvarSlider::SetMinMaxValues(float minValue, float maxValue, bool bSetTickDisplay)
 {
-    SetRange((int)(CVARSLIDER_SCALE_FACTOR * minValue), (int)(CVARSLIDER_SCALE_FACTOR * maxValue));
+    SetRange(static_cast<int>(m_flScale * minValue), static_cast<int>(m_flScale * maxValue));
 
     if (bSetTickDisplay)
     {
@@ -117,6 +159,24 @@ void CCvarSlider::SetMinMaxValues(float minValue, float maxValue, bool bSetTickD
     Reset();
 }
 
+void CCvarSlider::SetScale(float scale, int print_precision)
+{
+    m_flScale = scale;
+    m_iPrintPrecision = print_precision;
+
+    SetRange(static_cast<int>(m_flScale * m_flMinValue), static_cast<int>(m_flScale * m_flMaxValue));
+
+    char szMin[32];
+    char szMax[32];
+
+    Q_snprintf(szMin, sizeof(szMin), "%.*f", print_precision, m_flMinValue);
+    Q_snprintf(szMax, sizeof(szMax), "%.*f", print_precision, m_flMaxValue);
+
+    SetTickCaptions(szMin, szMax);
+
+    Reset();
+}
+
 void CCvarSlider::SetTickColor(Color color)
 {
     m_TickColor = color;
@@ -128,7 +188,7 @@ void CCvarSlider::Paint(void)
 
     if (curvalue != m_fStartValue)
     {
-        int val = (int)(CVARSLIDER_SCALE_FACTOR * curvalue);
+        int val = static_cast<int>(m_flScale * curvalue);
         m_fStartValue = curvalue;
         m_fCurrentValue = curvalue;
 
@@ -151,10 +211,10 @@ void CCvarSlider::ApplyChanges(void)
         if (m_bAllowOutOfRange)
             m_fStartValue = m_fCurrentValue;
         else
-            m_fStartValue = (float)m_iStartValue / CVARSLIDER_SCALE_FACTOR;
+            m_fStartValue = static_cast<float>(m_iStartValue) / m_flScale;
 
         char value[128];
-        Q_snprintf(value, sizeof(value), "%.2f", m_fStartValue);
+        Q_snprintf(value, sizeof(value), "%.*f", m_iPrintPrecision, m_fStartValue);
         engine->Cvar_Set(m_szCvarName, value);
     }
 }
@@ -164,12 +224,12 @@ float CCvarSlider::GetSliderValue(void)
     if (m_bAllowOutOfRange)
         return m_fCurrentValue;
     else
-        return ((float)GetValue()) / CVARSLIDER_SCALE_FACTOR;
+        return static_cast<float>(GetValue()) / m_flScale;
 }
 
 void CCvarSlider::SetSliderValue(float fValue)
 {
-    int nVal = (int)(CVARSLIDER_SCALE_FACTOR * fValue);
+    int nVal = static_cast<int>(m_flScale * fValue);
     SetValue(nVal, false);
 
     m_iLastSliderValue = GetValue();
@@ -186,7 +246,7 @@ void CCvarSlider::Reset(void)
     m_fStartValue = engine->pfnGetCvarFloat(m_szCvarName);
     m_fCurrentValue = m_fStartValue;
 
-    int value = (int)(CVARSLIDER_SCALE_FACTOR * m_fStartValue);
+    int value = static_cast<int>(m_flScale * m_fStartValue);
     SetValue(value, false);
 
     m_iStartValue = GetValue();
@@ -208,7 +268,7 @@ void CCvarSlider::OnSliderMoved(void)
         if (m_iLastSliderValue != GetValue())
         {
             m_iLastSliderValue = GetValue();
-            m_fCurrentValue = ((float) m_iLastSliderValue) / CVARSLIDER_SCALE_FACTOR;
+            m_fCurrentValue = static_cast<float>(m_iLastSliderValue) / m_flScale;
         }
 
         PostActionSignal(new KeyValues("ControlModified"));
