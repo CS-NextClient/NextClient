@@ -11,7 +11,7 @@ add_library(settings_code::settings_code ALIAS ${PROJECT_NAME})
 target_include_directories(${PROJECT_NAME} PUBLIC include)
 
 target_link_libraries(${PROJECT_NAME}
-        PUBLIC cvars::cvars
+        PUBLIC cvars::cvars crosshair::crosshair
         PRIVATE data_encoding::data_encoding
 )
 

@@ -36,9 +36,9 @@ namespace
     static_assert(std::size(kSectionCaptions) == settings_code::kSectionCount);
 }
 
-CShareSettingsDialog::CShareSettingsDialog(Panel* parent, std::function<void()> apply_page, std::function<void()> reload_page) :
+CShareSettingsDialog::CShareSettingsDialog(Panel* parent, std::function<settings_code::Values()> read_page, std::function<void()> reload_page) :
     BaseClass(parent, "ShareSettingsDialog"),
-    apply_page_(std::move(apply_page)),
+    read_page_(std::move(read_page)),
     reload_page_(std::move(reload_page))
 {
     SetTitle("#GameUI_ShareSettingsTitle", true);
@@ -118,7 +118,9 @@ void CShareSettingsDialog::PerformLayout()
     for (int i = 0; i < 3; i++)
     {
         if (Panel* button = FindChildByName(buttons[i]))
+        {
             button->SetBounds(kLeft + i * (kButtonWide + 8), buttons_y, kButtonWide, kRowTall);
+        }
     }
 }
 
@@ -147,8 +149,10 @@ void CShareSettingsDialog::OnCommand(const char* command)
 
 void CShareSettingsDialog::OnTextChanged(Panel* panel)
 {
-    if (panel != code_field_ || filling_field_)
+    if (panel != code_field_)
+    {
         return;
+    }
 
     char code[128];
     code_field_->GetText(code, sizeof(code));
@@ -166,7 +170,9 @@ uint8_t CShareSettingsDialog::CheckedSections() const
     for (int i = 0; i < settings_code::kSectionCount; i++)
     {
         if (section_checks_[i]->IsSelected())
+        {
             sections |= 1 << i;
+        }
     }
 
     return sections;
@@ -175,18 +181,22 @@ uint8_t CShareSettingsDialog::CheckedSections() const
 void CShareSettingsDialog::UpdateSectionChecks(uint8_t sections)
 {
     for (int i = 0; i < settings_code::kSectionCount; i++)
+    {
         section_checks_[i]->SetEnabled((sections >> i) & 1);
+    }
 }
 
 void CShareSettingsDialog::CopyCode()
 {
-    apply_page_();
+    uint8_t sections = CheckedSections();
+    if (sections == 0)
+    {
+        status_->SetText("#GameUI_ShareSettingsNoTabs");
+        return;
+    }
 
-    std::string code = settings_code::Encode(settings_share::ReadCvars(), CheckedSections());
-
-    filling_field_ = true;
+    std::string code = settings_code::Encode(read_page_(), sections);
     code_field_->SetText(code.c_str());
-    filling_field_ = false;
 
     UpdateSectionChecks(settings_code::kAllSections);
 
@@ -207,6 +217,11 @@ void CShareSettingsDialog::ApplyCode()
     }
 
     decoded->sections &= CheckedSections();
+    if (decoded->sections == 0)
+    {
+        status_->SetText("#GameUI_ShareSettingsNoTabs");
+        return;
+    }
 
     settings_share::WriteCvars(*decoded);
     reload_page_();
