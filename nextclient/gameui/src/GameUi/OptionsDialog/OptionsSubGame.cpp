@@ -14,6 +14,7 @@
 #include <vgui_controls/Tooltip.h>
 
 #include "Controls/PixelPanel.h"
+#include "ShareSettingsDialog.h"
 
 namespace
 {
@@ -179,12 +180,17 @@ void COptionsSubGame::BuildShell()
     defaults_button_ = new vgui2::Button(this, "Defaults", "#GameUI_ViewDefaultsBtn");
     defaults_button_->SetCommand("Defaults");
 
+    share_button_ = new vgui2::Button(this, "ShareSettings", "#GameUI_ShareSettingsBtn");
+    share_button_->SetCommand("ShareSettings");
+
     tabs_ = new vgui2::PropertySheet(this, "GameTabs");
 }
 
-CCvarSlider* COptionsSubGame::AddSlider(CSettingsGridPage* page, const char* name, const char* caption, float min, float max, const char* cvar, const char* format, vgui2::TextEntry*& text)
+CCvarSlider* COptionsSubGame::AddSlider(CSettingsGridPage* page, const char* name, const char* caption, settings_code::FieldId field, const char* format, vgui2::TextEntry*& text)
 {
-    CCvarSlider* slider = new CCvarSlider(page, name, caption, min, max, cvar);
+    const settings_code::Field& desc = settings_code::kFields[field];
+    const char* cvar = desc.cvar;
+    CCvarSlider* slider = new CCvarSlider(page, name, caption, desc.min, desc.max, cvar);
 
     char text_name[64];
     Q_snprintf(text_name, sizeof(text_name), "%sText", name);
@@ -199,7 +205,7 @@ CCvarSlider* COptionsSubGame::AddSlider(CSettingsGridPage* page, const char* nam
     if (default_value)
         slider->SetDefaultValue(static_cast<float>(atof(default_value)));
 
-    rows_.push_back(SliderRow{slider, text, format});
+    rows_.push_back(SliderRow{slider, text, format, field});
 
     return slider;
 }
@@ -271,15 +277,15 @@ void COptionsSubGame::BuildBobbingTab()
     style_combo_->AddItem("#GameUI_BobStyleModern", KeyValues::AutoDelete(new KeyValues("", "style", view_bob::kStyleModern)));
     style_combo_->AddActionSignalTarget(this);
 
-    bob_slider_ = AddSlider(bobbing_page_, "BobAmount", "#GameUI_BobAmount", 0.0f, 0.05f, cvars::kBob.name, " %.3f", bob_text_);
+    bob_slider_ = AddSlider(bobbing_page_, "BobAmount", "#GameUI_BobAmount", settings_code::kBob, " %.3f", bob_text_);
     bob_slider_->SetScale(1000.0f, 3);
 
-    cycle_slider_ = AddSlider(bobbing_page_, "BobCycle", "#GameUI_BobCycle", 0.1f, 2.0f, cvars::kBobCycle.name, " %.2f", cycle_text_);
-    up_slider_ = AddSlider(bobbing_page_, "BobUp", "#GameUI_BobUp", 0.05f, 0.95f, cvars::kBobUp.name, " %.2f", up_text_);
-    amt_vert_slider_ = AddSlider(bobbing_page_, "BobAmtVert", "#GameUI_BobAmtVert", 0.0f, 0.4f, cvars::kBobAmtVert.name, " %.2f", amt_vert_text_);
-    amt_lat_slider_ = AddSlider(bobbing_page_, "BobAmtLat", "#GameUI_BobAmtLat", 0.0f, 0.8f, cvars::kBobAmtLat.name, " %.2f", amt_lat_text_);
+    cycle_slider_ = AddSlider(bobbing_page_, "BobCycle", "#GameUI_BobCycle", settings_code::kBobCycle, " %.2f", cycle_text_);
+    up_slider_ = AddSlider(bobbing_page_, "BobUp", "#GameUI_BobUp", settings_code::kBobUp, " %.2f", up_text_);
+    amt_vert_slider_ = AddSlider(bobbing_page_, "BobAmtVert", "#GameUI_BobAmtVert", settings_code::kBobAmtVert, " %.2f", amt_vert_text_);
+    amt_lat_slider_ = AddSlider(bobbing_page_, "BobAmtLat", "#GameUI_BobAmtLat", settings_code::kBobAmtLat, " %.2f", amt_lat_text_);
 
-    lower_slider_ = AddSlider(bobbing_page_, "BobLowerAmt", "#GameUI_BobLowerAmt", 0.0f, 30.0f, cvars::kBobLowerAmt.name, " %.0f", lower_text_);
+    lower_slider_ = AddSlider(bobbing_page_, "BobLowerAmt", "#GameUI_BobLowerAmt", settings_code::kBobLowerAmt, " %.0f", lower_text_);
     lower_slider_->SetScale(1.0f, 0);
 
     bobbing_page_->AddCell("#GameUI_BobStyle", style_combo_, nullptr, kComboTall);
@@ -326,11 +332,11 @@ void COptionsSubGame::BuildModelTab()
 {
     model_page_ = new CSettingsGridPage(this, "ModelPage");
 
-    offset_x_slider_ = AddSlider(model_page_, "OffsetX", "#GameUI_ViewmodelOffsetX", -8.0f, 8.0f, cvars::kViewmodelOffsetX.name, " %.2f", offset_x_text_);
-    offset_y_slider_ = AddSlider(model_page_, "OffsetY", "#GameUI_ViewmodelOffsetY", -8.0f, 8.0f, cvars::kViewmodelOffsetY.name, " %.2f", offset_y_text_);
-    offset_z_slider_ = AddSlider(model_page_, "OffsetZ", "#GameUI_ViewmodelOffsetZ", -8.0f, 8.0f, cvars::kViewmodelOffsetZ.name, " %.2f", offset_z_text_);
+    offset_x_slider_ = AddSlider(model_page_, "OffsetX", "#GameUI_ViewmodelOffsetX", settings_code::kViewmodelOffsetX, " %.2f", offset_x_text_);
+    offset_y_slider_ = AddSlider(model_page_, "OffsetY", "#GameUI_ViewmodelOffsetY", settings_code::kViewmodelOffsetY, " %.2f", offset_y_text_);
+    offset_z_slider_ = AddSlider(model_page_, "OffsetZ", "#GameUI_ViewmodelOffsetZ", settings_code::kViewmodelOffsetZ, " %.2f", offset_z_text_);
 
-    viewmodel_fov_slider_ = AddSlider(model_page_, "ViewmodelFov", "#GameUI_ViewmodelFov", 70.0f, 100.0f, cvars::kViewmodelFov.name, " %.0f", viewmodel_fov_text_);
+    viewmodel_fov_slider_ = AddSlider(model_page_, "ViewmodelFov", "#GameUI_ViewmodelFov", settings_code::kViewmodelFov, " %.0f", viewmodel_fov_text_);
     viewmodel_fov_slider_->SetScale(1.0f, 0);
 
     disable_shift_check_ = AddCheck(model_page_, "DisableShift", "#GameUI_ViewmodelDisableShift", cvars::kViewmodelDisableShift.name);
@@ -373,9 +379,9 @@ void COptionsSubGame::BuildInertiaTab()
     lag_style_combo_->AddItem("#GameUI_ViewLagCSS", KeyValues::AutoDelete(new KeyValues("", "style", 2)));
     lag_style_combo_->AddActionSignalTarget(this);
 
-    lag_scale_slider_ = AddSlider(inertia_page_, "LagScale", "#GameUI_ViewLagScale", 0.0f, 5.0f, cvars::kViewmodelLagScale.name, " %.2f", lag_scale_text_);
+    lag_scale_slider_ = AddSlider(inertia_page_, "LagScale", "#GameUI_ViewLagScale", settings_code::kLagScale, " %.2f", lag_scale_text_);
 
-    lag_speed_slider_ = AddSlider(inertia_page_, "LagSpeed", "#GameUI_ViewLagSpeed", 1.0f, 20.0f, cvars::kViewmodelLagSpeed.name, " %.1f", lag_speed_text_);
+    lag_speed_slider_ = AddSlider(inertia_page_, "LagSpeed", "#GameUI_ViewLagSpeed", settings_code::kLagSpeed, " %.1f", lag_speed_text_);
     lag_speed_slider_->SetScale(10.0f, 1);
 
     inertia_page_->AddCell("#GameUI_ViewLagStyle", lag_style_combo_, nullptr, kComboTall);
@@ -408,14 +414,14 @@ void COptionsSubGame::BuildCameraTab()
 {
     camera_page_ = new CSettingsGridPage(this, "CameraPage");
 
-    roll_angle_slider_ = AddSlider(camera_page_, "RollAngle", "#GameUI_RollAngle", 0.0f, 10.0f, cvars::kRollAngle.name, " %.1f", roll_angle_text_);
+    roll_angle_slider_ = AddSlider(camera_page_, "RollAngle", "#GameUI_RollAngle", settings_code::kRollAngle, " %.1f", roll_angle_text_);
     roll_angle_slider_->SetScale(10.0f, 1);
 
-    roll_speed_slider_ = AddSlider(camera_page_, "RollSpeed", "#GameUI_RollSpeed", 10.0f, 400.0f, cvars::kRollSpeed.name, " %.0f", roll_speed_text_);
+    roll_speed_slider_ = AddSlider(camera_page_, "RollSpeed", "#GameUI_RollSpeed", settings_code::kRollSpeed, " %.0f", roll_speed_text_);
     roll_speed_slider_->SetScale(1.0f, 0);
 
-    camera_move_scale_slider_ = AddSlider(camera_page_, "CameraMoveScale", "#GameUI_CameraMoveScale", 0.0f, 2.0f, cvars::kCameraMovementScale.name, " %.2f", camera_move_scale_text_);
-    camera_move_interp_slider_ = AddSlider(camera_page_, "CameraMoveInterp", "#GameUI_CameraMoveInterp", 0.0f, 0.5f, cvars::kCameraMovementInterp.name, " %.2f", camera_move_interp_text_);
+    camera_move_scale_slider_ = AddSlider(camera_page_, "CameraMoveScale", "#GameUI_CameraMoveScale", settings_code::kCameraMovementScale, " %.2f", camera_move_scale_text_);
+    camera_move_interp_slider_ = AddSlider(camera_page_, "CameraMoveInterp", "#GameUI_CameraMoveInterp", settings_code::kCameraMovementInterp, " %.2f", camera_move_interp_text_);
 
     camera_check_ = AddCheck(camera_page_, "CameraBob", "#GameUI_BobCamera", cvars::kBobCamera.name);
     camera_check_->GetTooltip()->SetText("#GameUI_BobCameraTooltip");
@@ -557,6 +563,10 @@ void COptionsSubGame::PerformLayout()
     int defaults_wide, defaults_caption_tall;
     defaults_button_->GetContentSize(defaults_wide, defaults_caption_tall);
     defaults_button_->SetBounds(kMargin, defaults_y, defaults_wide + kButtonPadding, kDefaultsTall);
+
+    int share_wide, share_caption_tall;
+    share_button_->GetContentSize(share_wide, share_caption_tall);
+    share_button_->SetBounds(kMargin + defaults_wide + kButtonPadding + kGap, defaults_y, share_wide + kButtonPadding, kDefaultsTall);
 }
 
 // The page is not rebuilt when the video mode changes under it, and the preview is shaped
@@ -723,6 +733,13 @@ void COptionsSubGame::OnCommand(const char* command)
     if (!stricmp(command, "Defaults"))
     {
         SetDefaults();
+        return;
+    }
+
+    if (!stricmp(command, "ShareSettings"))
+    {
+        CShareSettingsDialog* dialog = new CShareSettingsDialog(this, [this] { return GetShareValues(); }, [this] { OnResetData(); });
+        dialog->Activate();
         return;
     }
 
@@ -927,6 +944,31 @@ int COptionsSubGame::GetSelectedLagStyle() const
     KeyValues* style_data = lag_style_combo_->GetActiveItemUserData();
 
     return style_data ? style_data->GetInt("style") : 0;
+}
+
+settings_code::Values COptionsSubGame::GetShareValues() const
+{
+    settings_code::Values values{};
+
+    for (const SliderRow& row : rows_)
+    {
+        values[row.field] = row.slider->GetSliderValue();
+    }
+
+    // the combo rows are in cvar value order
+    values[settings_code::kCrosshairType] = static_cast<float>(crosshair_type_combo_->GetActiveItem());
+    values[settings_code::kCrosshairSize] = static_cast<float>(crosshair_size_combo_->GetActiveItem());
+    values[settings_code::kCrosshairColorR] = crosshair_color_.r;
+    values[settings_code::kCrosshairColorG] = crosshair_color_.g;
+    values[settings_code::kCrosshairColorB] = crosshair_color_.b;
+    values[settings_code::kCrosshairTranslucent] = crosshair_translucent_check_->IsSelected() ? 1.0f : 0.0f;
+    values[settings_code::kDynamicCrosshair] = crosshair_dynamic_check_->IsSelected() ? 1.0f : 0.0f;
+    values[settings_code::kBobStyle] = static_cast<float>(GetSelectedStyle());
+    values[settings_code::kViewmodelDisableShift] = disable_shift_check_->IsSelected() ? 1.0f : 0.0f;
+    values[settings_code::kLagStyle] = static_cast<float>(GetSelectedLagStyle());
+    values[settings_code::kBobCamera] = camera_check_->IsSelected() ? 1.0f : 0.0f;
+
+    return values;
 }
 
 void COptionsSubGame::UpdateControlStates()

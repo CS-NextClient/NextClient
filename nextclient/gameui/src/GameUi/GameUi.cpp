@@ -33,6 +33,7 @@
 #include "LoadingDialog.h"
 #include "DemoPlayerDialog.h"
 #include "OptionsSubMiscellaneous.h"
+#include "SettingsShare.h"
 #include "IClientVGUI.h"
 
 #ifdef _WIN32
@@ -231,6 +232,8 @@ void CGameUI::Start(cl_enginefuncs_s *engineFuncs, int interfaceVersion, void *s
 {
     engine = engineFuncs;
     g_pBaseSystem = (IBaseSystem*)system;
+
+    settings_share::RegisterCommands();
 
     ModInfo().LoadCurrentGameInfo();
 
