@@ -2,10 +2,10 @@ Language: EN | [RU](README.ru.md)
 
 # Life Stats
 
-This is the C++ reference for the [bundled Rust plugin](../rust-life-stats/README.md).
-The two implementations have identical metadata, settings and output and share
-one plugin ID. Install only one implementation. The C++ DLL is available as the
-`plugin_life_stats_cpp` target; the normal client bundle includes the Rust DLL.
+The bundled Rust implementation of Life Stats. Its metadata, settings and output
+match the [C++ reference](../cpp-life-stats/README.md). Both use the same plugin ID;
+install only one implementation. Replacing the DLL requires approval again,
+while the existing Output setting is preserved.
 
 Enable **Life Stats** in the Plugins menu and accept its **Display messages in
 local chat** permission. Its plugin-specific Output control needs no UI permission.
@@ -56,7 +56,29 @@ At most 4,096 timeline entries and 512 named kills/assists are retained per life
 continue accumulating. A missing round-end signal does not generate a late report
 at the next round's start.
 
-Standalone C++ builds produce `life_stats.dll`; client test builds name the
-reference DLL `life_stats_cpp.dll` and do not install it. Standalone builds use the C++ SDK headers and `taocpp-json`, available through the
-same vcpkg setup as the client. The example consumes SDK events and player snapshots
-only; it does not use game headers or memory hooks.
+## Build
+
+The normal Windows NextClient `BUILD_ALL` build compiles this Rust plugin and
+includes it as `plugins/life_stats.dll`, disabled until approved. Install Rust
+1.85 or later and its `i686-pc-windows-msvc` target before configuring NextClient.
+CMake finds Cargo and rustc on PATH or beside each other; portable installations
+can set `NEXTCLIENT_CARGO_EXECUTABLE` and `NEXTCLIENT_RUSTC_EXECUTABLE`.
+The client build also links its existing Windows 7 compatibility object.
+Linux client builds omit the native plugin runtime and this DLL.
+
+For a standalone Windows x86 build, with the MSVC linker and Windows SDK installed:
+
+```powershell
+rustup target add i686-pc-windows-msvc
+cd sdk/examples/rust-life-stats
+cargo build --release --locked
+```
+
+Copy `target/i686-pc-windows-msvc/release/life_stats.dll` to `plugins/`.
+The included Cargo configuration selects x86 and a static CRT. Keep
+`panic = "unwind"` to contain callback panics. The plugin uses the public Rust SDK
+and `serde_json`, with no C++ source, game headers or memory hooks.
+
+`plugin-tests` runs the same behavior suite against the Rust and C++ DLLs,
+compares their manifests, replays events to compare output bytes and delivery
+timing, and checks saved settings when replacing either implementation.

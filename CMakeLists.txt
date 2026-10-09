@@ -91,8 +91,9 @@ endif ()
 add_subdirectory(nextclient/packages)
 add_subdirectory(dep/NclNitroApi)
 if (NEXTCLIENT_WITH_PLUGINS)
+    add_subdirectory(sdk/examples/rust-life-stats)
+    add_subdirectory(sdk/examples/cpp-life-stats EXCLUDE_FROM_ALL)
     add_subdirectory(nextclient/plugins)
-    add_subdirectory(sdk/examples/cpp-life-stats)
 endif ()
 add_subdirectory(nextclient/engine_mini)
 add_subdirectory(nextclient/gameui)
@@ -124,7 +125,7 @@ if (MSVC)
         target_link_libraries(${_tgt} PRIVATE "${YY_THUNKS_WIN7_OBJ}")
     endforeach ()
     if (NEXTCLIENT_WITH_PLUGINS)
-        foreach (_tgt next_plugins plugin_life_stats)
+        foreach (_tgt next_plugins plugin_life_stats_cpp)
             target_link_libraries(${_tgt} PRIVATE "${YY_THUNKS_WIN7_OBJ}")
         endforeach ()
     endif ()
@@ -158,7 +159,7 @@ if (NOT NEXTCLIENT_BUILD_TESTS)
             add_custom_command(TARGET BUILD_ALL POST_BUILD
                     COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:next_plugins> ${NEXTCLIENT_INSTALL_DIR}/next_plugins.dll
                     COMMAND ${CMAKE_COMMAND} -E make_directory ${NEXTCLIENT_INSTALL_DIR}/plugins
-                    COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:plugin_life_stats> ${NEXTCLIENT_INSTALL_DIR}/plugins/life_stats.dll
+                    COMMAND ${CMAKE_COMMAND} -E copy "${NEXTCLIENT_LIFE_STATS_DLL}" ${NEXTCLIENT_INSTALL_DIR}/plugins/life_stats.dll
             )
         endif ()
     endif ()

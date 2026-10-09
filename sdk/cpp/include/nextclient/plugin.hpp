@@ -1,5 +1,6 @@
 #pragma once
 #include "plugin.h"
+#include <algorithm>
 #include <exception>
 #include <string>
 
@@ -74,6 +75,35 @@ namespace nextclient
         void checkbox(const char* id, const char* tab_id, const char* en, const char* ru = "", bool initial = false) const
         {
             control({sizeof(NcControl), id, tab_id, NC_CHECKBOX, en, ru, initial ? 1 : 0, 0, 1, "", ""});
+        }
+        void plugin_checkbox(const char* id, const char* en, const char* ru = "", bool initial = false) const
+        {
+            checkbox(id, NC_PLUGIN_SETTINGS_TAB, en, ru, initial);
+        }
+        void plugin_slider(const char* id, const char* en, const char* ru, int32_t initial, int32_t minimum, int32_t maximum) const
+        {
+            control({sizeof(NcControl), id, NC_PLUGIN_SETTINGS_TAB, NC_SLIDER, en, ru, initial, minimum, maximum, "", ""});
+        }
+        void plugin_choice(
+            const char* id,
+            const char* en,
+            const char* ru,
+            int32_t initial,
+            const char* choices_en,
+            const char* choices_ru = ""
+        ) const
+        {
+            if (!choices_en)
+            {
+                throw std::exception();
+            }
+            const std::string choices(choices_en);
+            const int32_t maximum = static_cast<int32_t>(std::count(choices.begin(), choices.end(), '\n'));
+            control({sizeof(NcControl), id, NC_PLUGIN_SETTINGS_TAB, NC_CHOICE, en, ru, initial, 0, maximum, choices_en, choices_ru});
+        }
+        void plugin_button(const char* id, const char* en, const char* ru = "") const
+        {
+            control({sizeof(NcControl), id, NC_PLUGIN_SETTINGS_TAB, NC_BUTTON, en, ru, 0, 0, 0, "", ""});
         }
         int32_t setting(const char* id, int32_t fallback = 0) const
         {

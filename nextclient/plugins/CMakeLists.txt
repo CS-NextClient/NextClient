@@ -23,6 +23,12 @@ if(NEXTCLIENT_BUILD_TESTS)
     find_package(GTest CONFIG REQUIRED)
     include(GoogleTest)
     add_plugin_fixture(plugin-settings tests/settings.cpp)
+    add_plugin_fixture(plugin-settings-shared tests/settings.cpp)
+    target_compile_definitions(plugin-settings-shared PRIVATE NC_SHARED_SETTINGS)
+    add_plugin_fixture(plugin-settings-other tests/settings.cpp)
+    target_compile_definitions(plugin-settings-other PRIVATE NC_SHARED_SETTINGS NC_SETTINGS_OTHER_OWNER)
+    add_plugin_fixture(plugin-settings-custom tests/settings.cpp)
+    target_compile_definitions(plugin-settings-custom PRIVATE NC_CUSTOM_PLUGIN_TAB)
     foreach(fixture probe dependent)
         add_plugin_fixture(plugin-${fixture} tests/probe.cpp)
     endforeach()
@@ -73,8 +79,14 @@ if(NEXTCLIENT_BUILD_TESTS)
         PLUGIN_GAME_PATH="$<TARGET_FILE:plugin-game-api>" PLUGIN_GAME_ALL_PATH="$<TARGET_FILE:plugin-game-api-all>"
         PLUGIN_GAME_READ_PATH="$<TARGET_FILE:plugin-game-api-read>" PLUGIN_GAME_CONNECT_PATH="$<TARGET_FILE:plugin-game-api-connect>"
         PLUGIN_GAME_OTHER_PATH="$<TARGET_FILE:plugin-game-api-other>" PLUGIN_GAME_PRINT_PATH="$<TARGET_FILE:plugin-game-api-print>"
-        PLUGIN_LIFE_STATS_PATH="$<TARGET_FILE:plugin_life_stats>")
-    add_dependencies(plugin-tests plugin-game-api-long plugin-game-api plugin-game-api-all plugin-game-api-read plugin-game-api-connect plugin-game-api-other plugin-game-api-print plugin_life_stats)
+        PLUGIN_LIFE_STATS_PATH="${NEXTCLIENT_LIFE_STATS_DLL}"
+        PLUGIN_CPP_LIFE_STATS_PATH="$<TARGET_FILE:plugin_life_stats_cpp>")
+    add_dependencies(plugin-tests plugin-game-api-long plugin-game-api plugin-game-api-all plugin-game-api-read plugin-game-api-connect plugin-game-api-other plugin-game-api-print plugin_life_stats plugin_life_stats_cpp)
+    add_dependencies(plugin-tests plugin-settings-shared plugin-settings-custom plugin-settings-other)
+    target_compile_definitions(plugin-tests PRIVATE
+        PLUGIN_SHARED_SETTINGS_PATH="$<TARGET_FILE:plugin-settings-shared>"
+        PLUGIN_CUSTOM_SETTINGS_PATH="$<TARGET_FILE:plugin-settings-custom>"
+        PLUGIN_OTHER_SETTINGS_PATH="$<TARGET_FILE:plugin-settings-other>")
     target_compile_definitions(plugin-tests PRIVATE PLUGIN_FIXTURE_PATH="$<TARGET_FILE:plugin-settings>")
     target_compile_definitions(plugin-tests PRIVATE PLUGIN_DISPATCH_A_PATH="$<TARGET_FILE:plugin-dispatch-a>" PLUGIN_DISPATCH_B_PATH="$<TARGET_FILE:plugin-dispatch-b>")
     add_dependencies(plugin-tests plugin-dispatch-a plugin-dispatch-b)

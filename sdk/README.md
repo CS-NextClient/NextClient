@@ -83,7 +83,7 @@ call; declaring a `capabilities` entry does not grant permission.
 
 | Permission | Allows |
 | --- | --- |
-| `ui.settings` | Add settings tabs and controls to plugin or built-in pages |
+| `ui.settings` | Create custom settings tabs or add controls outside the shared Plugins page |
 | `ui.draw` | Receive gameplay draw callbacks and draw rectangles/text |
 | `ui.hide` | Hide the HUD, crosshair, health, radar, or death notices |
 | `player.write` | Apply changes to outgoing buttons, view angles, and movement |
@@ -129,6 +129,13 @@ Use `Plugin`, `Host`, `Control`, and `export_plugin!`; see the complete example.
 No crates.io dependencies, bindgen, build script, or C++ source are required.
 Keep `panic = "unwind"` so the SDK can contain panics at callback boundaries.
 
+[Life Stats](examples/rust-life-stats/README.md) is a complete Rust plugin bundled
+by the normal client build as `plugins/life_stats.dll`. It uses this SDK and
+`serde_json`, with the same manifest, behavior and scoped Output setting as the
+[C++ reference](examples/cpp-life-stats/README.md). Its default output is Console;
+**Options → Plugins → Life Stats → Output** also offers **Console + Chat**.
+It requests only `chat.print` and is disabled until approved.
+
 ```rust
 fn load(&mut self, host: &Host<'_>) -> Result {
     host.subscribe_event("player.health", true)?;
@@ -147,30 +154,81 @@ cmake -S sdk/examples/cpp-life-stats -B build/plugin-example -A Win32 -DCMAKE_TO
 cmake --build build/plugin-example --config Release
 ```
 
-Copy the resulting `life_stats.dll` to `plugins/`. `BUILD_ALL` packages this C++
-example, disabled until approved. It requests only `chat.print` and uses the
+Copy the resulting `life_stats.dll` to `plugins/` to use the C++ reference in place
+of the bundled Rust version. They share a plugin ID and must not be installed together.
+The client `plugin_life_stats_cpp` target produces `life_stats_cpp.dll` for comparison
+tests; `BUILD_ALL` packages only the Rust version. The C++ reference requests only
+`chat.print` and uses the
 project's existing `taocpp-json` dependency to read event payloads. The SDK itself
 is header-only and does not require a JSON library.
 
 Life Stats reports received damage totals, kills, and the killer named by a death
 message after the local player dies or the round ends. Known weapons and fatal
-headshots are included. Console output is immediate; local chat lines are spaced
-out. Nothing is sent to other players. See [the example](examples/cpp-life-stats/README.md).
+headshots are included. Console output is immediate and enabled by default.
+**Options → Plugins → Life Stats → Output** also offers **Console + Chat**, with
+local chat lines spaced out. Nothing is sent to other players. See [the example](examples/cpp-life-stats/README.md).
 
 ## Settings and callbacks
 
 Register tabs and controls during `load` only. Tab IDs are scoped to their owner.
-Tabs/controls require `ui.settings`. Register non-UI integer settings with
-`register_setting(id, initial, min, max)` without that permission. A control
+Plugin-specific controls in **Options → Plugins** need no permissions. Use the
+`plugin_checkbox`, `plugin_slider`, `plugin_choice`, and `plugin_button` helpers;
+they take local control IDs and labels, with no tab argument. Creating custom tabs
+or adding controls to other settings pages requires `ui.settings`. Register non-UI
+integer settings with `register_setting(id, initial, min, max)` without permissions. A control
 registers its own setting automatically; reuse of a separately registered setting
 must have matching defaults and bounds. `set_setting` saves immediately and does
 not invoke `setting_changed` recursively. It only addresses the calling plugin's
 registered settings. It is not undone by closing Options with Cancel.
+`setting(id, fallback)` also reads only the calling plugin's registered settings.
+Two plugins can use the same local ID without sharing values. Foreign or
+unregistered IDs return the supplied fallback and cannot be set, even with
+`ui.settings`; there is no SDK API for reading another plugin's settings.
+
 A control may target the plugin's own tab or a built-in anchor: `multiplayer`,
 `game`, `keyboard`, `mouse`, `audio`, `video`, `voice`, `miscellaneous`. Existing
 tabs gain **Standard / Plugins** sections; custom tabs appear at the top level.
 Scrollable controls and an overflow tab dropdown keep larger extensions reachable.
-Built-in anchor names are reserved and cannot be used for custom tabs.
+These built-in anchor names are reserved and cannot be used for custom tabs.
+
+The `plugin_*` control helpers place controls in **Options → Plugins** without
+calling `add_tab` or requiring `ui.settings`. Each contributing plugin gets a collapsible section,
+in plugin load order, with its localized manifest name. The first section expands
+when Options opens; opening another collapses it, and clicking the open header
+collapses all sections. Switching tabs or pressing Apply preserves expansion.
+The Plugins tab remains visible but disabled when it has no available controls.
+Controls on other tabs and non-UI settings do not enable it; action buttons do.
+
+C++ (`nextclient::Plugin::load`):
+
+```cpp
+plugin_checkbox("enabled", "Enabled", "Включено", true);
+plugin_slider("amount", "Amount", "Количество", 3, 0, 10);
+plugin_choice("output", "Output", "Вывод", 0, "Console\nConsole + Chat", "Консоль\nКонсоль + чат");
+plugin_button("reset", "Reset", "Сбросить");
+const int32_t output = setting("output");
+```
+
+Rust (`Plugin::load`, with a `Host` argument named `host`):
+
+```rust
+host.plugin_checkbox("enabled", "Enabled", "Включено", true)?;
+host.plugin_slider("amount", "Amount", "Количество", 3, 0, 10)?;
+host.plugin_choice("output", "Output", "Вывод", 0, "Console\nConsole + Chat", "Консоль\nКонсоль + чат")?;
+host.plugin_button("reset", "Reset", "Сбросить")?;
+let output = host.setting("output", 0);
+```
+
+Neither example needs UI permissions. In C, set `NcControl.tab` to
+`NC_PLUGIN_SETTINGS_TAB` (an empty string); `NULL` has the same meaning. This
+explicit shared destination remains shared even if the plugin creates a custom
+tab named `"plugins"`. Older hosts reject the empty destination.
+
+For compatibility, `"plugins"` also targets the shared page when the owner has no
+custom tab with that ID. An explicit custom `"plugins"` tab still takes precedence
+for controls using that string, and creating it requires `ui.settings`. Collapsing a section preserves pending
+edits; Apply/OK saves edits from collapsed sections too, and Cancel discards
+unapplied edits. A failed save keeps the edits available for retry.
 
 Controls support checkboxes, bounded integer sliders, indexed dropdowns, and
 action buttons. Labels/dropdown entries support English and Russian, falling back
@@ -251,6 +309,9 @@ Snapshots can be stored by value. Subscribe to `map.changed` and
 and spectator flags for a populated player slot. Iterate `1..=max_clients`;
 empty/disconnected slots return false/None. Names/model/map are bounded,
 NUL-terminated arrays; Rust provides `name()`, `model()`, and `map_name()` helpers.
+These helpers convert non-UTF-8 bytes lossily. To preserve engine text exactly,
+use the original arrays with `console_print_bytes` or `chat_print_bytes`, which
+reject embedded NUL bytes and retain host UTF-8 validation and permissions.
 `world_to_screen([x, y, z])` projects world coordinates to screen pixels using the
 current camera. Points behind the camera return false/None; successful points may
 be off-screen. Projection is most useful inside `draw`, after the camera update.
@@ -400,3 +461,6 @@ cargo test --manifest-path sdk/rust/Cargo.toml --target i686-pc-windows-msvc
 ```
 
 The CI workflow builds the C++ and Rust examples and runs their integration tests.
+Life Stats runs the same behavior suite against both DLLs and compares complete
+manifests, output bytes and delivery timing. Replacement tests preserve the
+`output` setting in both directions while requiring approval of the changed DLL.

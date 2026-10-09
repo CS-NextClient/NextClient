@@ -10,6 +10,7 @@
 #if NEXTCLIENT_WITH_PLUGINS
 #include "PluginLocalization.h"
 #include "PluginSettingsPage.h"
+#include "PluginSettingsGroupsPage.h"
 #include <nextclient/runtime.h>
 #include <vgui_controls/MessageBox.h>
 #endif
@@ -95,7 +96,10 @@ COptionsDialog::COptionsDialog(vgui2::Panel* parent) :
     builtin("multiplayer", m_pOptionsSubMultiplayer, "#GameUI_Multiplayer");
     builtin("game", m_pOptionsSubGame, "#GameUI_Game");
 #if NEXTCLIENT_WITH_PLUGINS
-    // Plugin-created tabs sit next to the built-in top-level settings tabs.
+    m_pluginGroups = new CPluginSettingsGroupsPage(this, plugins, m_pluginSettings);
+    AddPage(m_pluginGroups, "#NextPlugins_Title");
+    m_tabNames.Insert("plugins", m_pluginGroups);
+    SetPageEnabled(m_pluginGroups, m_pluginGroups->has_available_controls());
     for (const auto& p : plugins.get_array())
         for (const auto& t : p.at("tabs").get_array())
         {
@@ -130,11 +134,14 @@ bool COptionsDialog::OnOK(bool applyOnly)
 #if NEXTCLIENT_WITH_PLUGINS
     tao::json::value values = tao::json::empty_array;
     const PluginSettingsSnapshot current(PluginSettings_Parse(nc_runtime_ui()));
+    RefreshPluginAvailability(current);
     for (auto* page : m_pluginPages)
         page->Collect(values, current);
+    m_pluginGroups->Collect(values, current);
     if (!values.get_array().empty())
     {
         const char* error = nc_runtime_settings(tao::json::to_string(values).c_str());
+        OnPluginSettingsRefresh();
         if (*error)
         {
             auto* box = new vgui2::MessageBox(PluginToken("#NextPlugins_Title").c_str(), PluginWide(PluginDiagnostic(error)).c_str(), this);
@@ -154,9 +161,28 @@ void COptionsDialog::ResetAllData()
 {
 #if NEXTCLIENT_WITH_PLUGINS
     m_pluginSettings = PluginSettingsSnapshot(PluginSettings_Parse(nc_runtime_ui()));
+    m_pluginGroups->BeginSession(m_pluginSettings);
+    RefreshPluginAvailability(m_pluginSettings);
 #endif
     BaseClass::ResetAllData();
 }
+
+#if NEXTCLIENT_WITH_PLUGINS
+void COptionsDialog::RefreshPluginAvailability(const PluginSettingsSnapshot& current)
+{
+    for (CPluginSettingsPage* page : m_pluginPages)
+    {
+        page->RefreshAvailability(current);
+    }
+    m_pluginGroups->RefreshAvailability(current);
+    SetPageEnabled(m_pluginGroups, m_pluginGroups->has_available_controls());
+}
+
+void COptionsDialog::OnPluginSettingsRefresh()
+{
+    RefreshPluginAvailability(PluginSettingsSnapshot(PluginSettings_Parse(nc_runtime_ui())));
+}
+#endif
 
 void COptionsDialog::OnKeyCodeTyped(vgui2::KeyCode code)
 {

@@ -107,7 +107,13 @@ const char* nc_runtime_ui()
                 for (auto& c : controls.get_array())
                     c["value"] = setting_value(*p, c);
                 list.push_back(
-                    Json{{"id", p->item.manifest.id}, {"name", p->item.manifest.name}, {"tabs", p->tabs}, {"controls", controls}}
+                    Json{
+                        {"id", p->item.manifest.id},
+                        {"name", p->item.manifest.name},
+                        {"translations", p->item.manifest.translations},
+                        {"tabs", p->tabs},
+                        {"controls", controls}
+                    }
                 );
             }
         output = tao::json::to_string(list);

@@ -7,6 +7,7 @@
 #define NC_ABI_VERSION 1u
 #define NC_API_VERSION 1u
 #define NC_SDK_VERSION "1.0.0"
+#define NC_PLUGIN_SETTINGS_TAB ""
 #if defined(_WIN32)
 #define NC_CALL __cdecl
 #define NC_EXPORT __declspec(dllexport)
@@ -46,7 +47,7 @@ typedef struct NcPlayer
 typedef struct NcControl
 {
     uint32_t size;
-    const char *id, *tab;
+    const char *id, *tab; /* Empty or NULL tab places controls in the plugin's shared settings section. */
     uint32_t kind;
     const char *label_en, *label_ru;
     int32_t initial, minimum, maximum;

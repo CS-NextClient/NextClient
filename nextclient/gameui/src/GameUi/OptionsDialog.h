@@ -39,6 +39,9 @@ private:
 #if NEXTCLIENT_WITH_PLUGINS
     std::vector<class CPluginSettingsPage *> m_pluginPages;
     PluginSettingsSnapshot m_pluginSettings;
+    class CPluginSettingsGroupsPage *m_pluginGroups{};
+    void RefreshPluginAvailability(const PluginSettingsSnapshot &current);
+    MESSAGE_FUNC(OnPluginSettingsRefresh, "PluginSettingsRefresh");
 #endif
     class COptionsSubKeyboard *m_pOptionsSubKeyboard;
     class COptionsSubMouse *m_pOptionsSubMouse;

@@ -77,19 +77,24 @@ namespace plugins::runtime
         try
         {
             auto* p = static_cast<Loaded*>(ctx);
-            if (!permitted(p, NC_PERMISSION_UI_SETTINGS) || !p->registering || !c || c->size < sizeof(NcControl) ||
-                p->controls.get_array().size() >= 128)
+            if (!available(p) || !p->registering || !c || c->size < sizeof(NcControl) || p->controls.get_array().size() >= 128)
+            {
                 return 0;
+            }
             auto id = text(c->id, 96), tab = text(c->tab, 96);
-            if (!valid_id(id) || !valid_id(tab) || c->kind < NC_CHECKBOX || c->kind > NC_BUTTON || c->minimum > c->maximum ||
-                c->initial < c->minimum || c->initial > c->maximum)
+            if (!valid_id(id) || (!tab.empty() && !valid_id(tab)) || c->kind < NC_CHECKBOX || c->kind > NC_BUTTON ||
+                c->minimum > c->maximum || c->initial < c->minimum || c->initial > c->maximum)
+            {
                 return 0;
-            bool exists = builtin_tabs.count(tab) != 0;
-            for (const auto& t : p->tabs.get_array())
-                if (t.at("id") == tab)
-                    exists = true;
-            if (!exists)
+            }
+            const bool custom_tab = std::any_of(p->tabs.get_array().begin(), p->tabs.get_array().end(), [&](const auto& value) {
+                return value.at("id") == tab;
+            });
+            const bool plugin_settings = tab.empty() || (tab == "plugins" && !custom_tab);
+            if (!plugin_settings && (!permitted(p, NC_PERMISSION_UI_SETTINGS) || (!custom_tab && !builtin_tabs.count(tab))))
+            {
                 return 0;
+            }
             for (const auto& value : p->controls.get_array())
                 if (value.at("id") == id)
                     return 0;

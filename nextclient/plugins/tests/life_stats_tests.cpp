@@ -1,10 +1,14 @@
-#include "plugin_game_state.h"
+#include <array>
+#include <filesystem>
+#include <fstream>
+#include <string_view>
+#include <tuple>
 #include <gtest/gtest.h>
 #include <nextclient/runtime.h>
 #include <windows.h>
-#include "tracker.h"
 #include "catalog.h"
-#include <filesystem>
+#include "plugin_game_state.h"
+#include "tracker.h"
 
 using life_stats::Tracker;
 TEST(LifeStats, RecordsDamageAndKillsAndWaitsForFinalDamageUpdate)
@@ -192,9 +196,12 @@ namespace
 {
     std::vector<std::string> console, chat;
     int network_calls;
+    int g_ChatCalls{};
     bool alive, spectator, accept_chat;
     int current_health;
     NcSession current_session;
+    std::array<std::string, 33> g_Names;
+    bool g_InfoAvailable{};
     int32_t Player(NcPlayerState* value)
     {
         *value = {};
@@ -211,10 +218,14 @@ namespace
     }
     int32_t Info(int32_t index, NcPlayerInfo* value)
     {
+        if (!g_InfoAvailable)
+        {
+            return 0;
+        }
         *value = {};
         value->size = sizeof(*value);
         value->index = index;
-        strcpy_s(value->name, index == 2 ? "Alice" : "Bob");
+        strcpy_s(value->name, g_Names[index].c_str());
         return 1;
     }
     void Print(const char* text)
@@ -223,6 +234,7 @@ namespace
     }
     int32_t Chat(const char* text)
     {
+        ++g_ChatCalls;
         if (!accept_chat)
             return 0;
         chat.emplace_back(text);
@@ -234,7 +246,7 @@ namespace
         return 1;
     }
 } // namespace
-class LifeStatsPlugin : public ::testing::Test
+class LifeStatsPlugin : public ::testing::TestWithParam<const char*>
 {
 protected:
     std::filesystem::path dir;
@@ -243,8 +255,12 @@ protected:
         console.clear();
         chat.clear();
         network_calls = 0;
+        g_ChatCalls = 0;
         alive = accept_chat = true;
         current_health = 100;
+        g_InfoAvailable = true;
+        g_Names.fill("Bob");
+        g_Names[2] = "Alice";
         spectator = false;
         current_session = {};
         current_session.size = sizeof(current_session);
@@ -254,7 +270,7 @@ protected:
         dir = std::filesystem::temp_directory_path() /
               (L"life-stats-test-" + std::to_wstring(GetCurrentProcessId()) + L"-" + std::to_wstring(GetTickCount64()));
         std::filesystem::create_directories(dir / L"plugins");
-        std::filesystem::copy_file(PLUGIN_LIFE_STATS_PATH, dir / L"plugins/life_stats.dll");
+        std::filesystem::copy_file(GetParam(), dir / L"plugins/life_stats.dll");
         NcClientServices services{};
         services.get_player = Player;
         services.get_player_info = Info;
@@ -287,13 +303,105 @@ protected:
             nc_runtime_frame(&current_session);
         }
     }
+    void SetOutput(int value)
+    {
+        const tao::json::value edits =
+            tao::json::value::array({tao::json::value{{"owner", "org.nextclient.life_stats"}, {"id", "output"}, {"value", value}}});
+        ASSERT_STREQ(nc_runtime_settings(tao::json::to_string(edits).c_str()), "");
+    }
+    void Restart()
+    {
+        nc_runtime_stop();
+        nc_runtime_start(dir.c_str(), 0);
+        ASSERT_TRUE(plugins::parse(nc_runtime_catalog()).at("plugins").at(0).at("running").get_boolean());
+        Frame();
+    }
     void Backlog(int count)
     {
         for (int i = 0; i < count; ++i)
             nc_runtime_event("player.joined", R"({"index":2,"name":"Alice"})");
     }
 };
-TEST_F(LifeStatsPlugin, DeferredHealthDoesNotTurnAnOlderUpdateIntoHealing)
+TEST_P(LifeStatsPlugin, SharedOutputSettingDefaultsToConsoleWithoutChatCalls)
+{
+    const auto ui = plugins::parse(nc_runtime_ui());
+    ASSERT_EQ(ui.get_array().size(), 1u);
+    EXPECT_TRUE(ui.at(0).at("tabs").get_array().empty());
+    const auto& controls = ui.at(0).at("controls").get_array();
+    ASSERT_EQ(controls.size(), 1u);
+    EXPECT_EQ(controls[0].at("id"), "output");
+    EXPECT_EQ(controls[0].at("tab"), NC_PLUGIN_SETTINGS_TAB);
+    EXPECT_EQ(controls[0].at("kind").as<unsigned>(), NC_CHOICE);
+    EXPECT_EQ(controls[0].at("value"), 0);
+    EXPECT_EQ(controls[0].at("choices_en"), "Console\nConsole + Chat");
+    EXPECT_EQ(controls[0].at("choices_ru"), "Консоль\nКонсоль + чат");
+    nc_runtime_event("round.end", "{}");
+    Frame(100);
+    ASSERT_EQ(console.size(), 1u);
+    EXPECT_TRUE(chat.empty());
+    EXPECT_EQ(g_ChatCalls, 0);
+    EXPECT_EQ(network_calls, 0);
+}
+
+TEST_P(LifeStatsPlugin, BothOutputChoicesPersistAcrossReload)
+{
+    SetOutput(1);
+    Restart();
+    EXPECT_EQ(plugins::parse(nc_runtime_ui()).at(0).at("controls").at(0).at("value"), 1);
+    nc_runtime_event("round.end", "{}");
+    Frame(100);
+    ASSERT_EQ(console.size(), 1u);
+    ASSERT_EQ(chat.size(), 1u);
+    SetOutput(0);
+    Restart();
+    EXPECT_EQ(plugins::parse(nc_runtime_ui()).at(0).at("controls").at(0).at("value"), 0);
+    const int calls = g_ChatCalls;
+    nc_runtime_event("round.end", "{}");
+    Frame(100);
+    EXPECT_EQ(console.size(), 2u);
+    EXPECT_EQ(chat.size(), 1u);
+    EXPECT_EQ(g_ChatCalls, calls);
+    EXPECT_EQ(network_calls, 0);
+}
+
+TEST_P(LifeStatsPlugin, ConsoleModeDropsChatThatCouldNotBeDisplayed)
+{
+    SetOutput(1);
+    accept_chat = false;
+    nc_runtime_event("round.end", "{}");
+    Frame(30);
+    ASSERT_EQ(console.size(), 1u);
+    ASSERT_GT(g_ChatCalls, 0);
+    EXPECT_TRUE(chat.empty());
+    SetOutput(0);
+    const int calls = g_ChatCalls;
+    accept_chat = true;
+    Frame(100);
+    EXPECT_EQ(g_ChatCalls, calls);
+    EXPECT_TRUE(chat.empty());
+    SetOutput(1);
+    Frame(100);
+    EXPECT_TRUE(chat.empty());
+    EXPECT_EQ(console.size(), 1u);
+}
+
+TEST_P(LifeStatsPlugin, EnablingChatDoesNotReplayEarlierConsoleReports)
+{
+    nc_runtime_event("round.end", "{}");
+    Frame(30);
+    ASSERT_EQ(console.size(), 1u);
+    SetOutput(1);
+    Frame(100);
+    EXPECT_TRUE(chat.empty());
+    nc_runtime_event("round.start", "{}");
+    Frame();
+    nc_runtime_event("round.end", "{}");
+    Frame(100);
+    EXPECT_EQ(console.size(), 2u);
+    EXPECT_EQ(chat.size(), 1u);
+}
+
+TEST_P(LifeStatsPlugin, DeferredHealthDoesNotTurnAnOlderUpdateIntoHealing)
 {
     Backlog(129);
     nc_runtime_event("player.health", R"({"health":75,"time":1})");
@@ -310,7 +418,7 @@ TEST_F(LifeStatsPlugin, DeferredHealthDoesNotTurnAnOlderUpdateIntoHealing)
     ASSERT_FALSE(console.empty());
     EXPECT_NE(console[0].find("100 HP, 0 armor. Overkill: 50 HP"), std::string::npos);
 }
-TEST_F(LifeStatsPlugin, DeferredFatalEventsArriveBeforeReportTimerStarts)
+TEST_P(LifeStatsPlugin, DeferredFatalEventsArriveBeforeReportTimerStarts)
 {
     current_session.frame_time = 0.3f;
     Backlog(600);
@@ -325,7 +433,7 @@ TEST_F(LifeStatsPlugin, DeferredFatalEventsArriveBeforeReportTimerStarts)
     EXPECT_NE(console[0].find("100 HP"), std::string::npos);
     EXPECT_NE(console.back().find("Damage from Alice"), std::string::npos);
 }
-TEST_F(LifeStatsPlugin, OverflowInvalidatesLifeUntilBacklogDrainsAndNewBoundaryArrives)
+TEST_P(LifeStatsPlugin, OverflowInvalidatesLifeUntilBacklogDrainsAndNewBoundaryArrives)
 {
     nc_runtime_event("player.damage", R"({"health":25,"armor":0,"time":1})");
     Frame();
@@ -335,6 +443,8 @@ TEST_F(LifeStatsPlugin, OverflowInvalidatesLifeUntilBacklogDrainsAndNewBoundaryA
     Frame(50);
     ASSERT_EQ(console.size(), 1u);
     EXPECT_NE(console[0].find("Events were lost"), std::string::npos);
+    EXPECT_TRUE(chat.empty());
+    EXPECT_EQ(g_ChatCalls, 0);
     nc_runtime_event("round.end", "{}");
     Frame(30);
     EXPECT_EQ(console.size(), 1u);
@@ -346,8 +456,9 @@ TEST_F(LifeStatsPlugin, OverflowInvalidatesLifeUntilBacklogDrainsAndNewBoundaryA
     ASSERT_EQ(console.size(), 3u);
     EXPECT_NE(console[1].find("10 HP"), std::string::npos);
 }
-TEST_F(LifeStatsPlugin, ReportsDeathBeforeRespawnWithColoredPrivateSummaryAndConsoleTimeline)
+TEST_P(LifeStatsPlugin, ReportsDeathBeforeRespawnWithColoredPrivateSummaryAndConsoleTimeline)
 {
+    SetOutput(1);
     nc_runtime_event("player.damage", R"({"health":25,"armor":10,"bits":2,"time":0.01})");
     nc_runtime_event("player.death", R"({"killer":1,"victim":2,"weapon":"ak47","headshot":true,"time":0.01})");
     nc_runtime_event("player.death", R"({"killer":3,"victim":1,"weapon":"deagle","headshot":false,"time":0.02})");
@@ -373,7 +484,7 @@ TEST_F(LifeStatsPlugin, ReportsDeathBeforeRespawnWithColoredPrivateSummaryAndCon
     Frame(30);
     EXPECT_EQ(console.size(), 4u);
 }
-TEST_F(LifeStatsPlugin, HudRefreshPreservesDamageKillsAndRemainingHealth)
+TEST_P(LifeStatsPlugin, HudRefreshPreservesDamageKillsAndRemainingHealth)
 {
     nc_runtime_event("player.health", R"({"health":70,"time":1})");
     nc_runtime_event("player.damage", R"({"health":30,"armor":5,"bits":2,"time":1})");
@@ -395,7 +506,7 @@ TEST_F(LifeStatsPlugin, HudRefreshPreservesDamageKillsAndRemainingHealth)
     EXPECT_NE(console[2].find("Killed Alice (ak47)"), std::string::npos);
     EXPECT_NE(console[3].find("Damage from Bob (deagle) -70 HP (10 HP overkill) (Death)"), std::string::npos);
 }
-TEST_F(LifeStatsPlugin, RapidRespawnKeepsPendingDeathReportAndStartsFreshLife)
+TEST_P(LifeStatsPlugin, RapidRespawnKeepsPendingDeathReportAndStartsFreshLife)
 {
     nc_runtime_event("player.health", R"({"health":75,"time":1})");
     nc_runtime_event("player.damage", R"({"health":25,"armor":0,"bits":2,"time":1})");
@@ -420,7 +531,7 @@ TEST_F(LifeStatsPlugin, RapidRespawnKeepsPendingDeathReportAndStartsFreshLife)
     EXPECT_NE(console[4].find("Round ended. Damage taken: 10 HP, 0 armor. Kills: 0."), std::string::npos);
     EXPECT_NE(console[5].find("-10 HP"), std::string::npos);
 }
-TEST_F(LifeStatsPlugin, DeadHudRefreshPreservesPendingDamageWithoutDuplicateReports)
+TEST_P(LifeStatsPlugin, DeadHudRefreshPreservesPendingDamageWithoutDuplicateReports)
 {
     nc_runtime_event("player.health", R"({"health":0,"time":1})");
     nc_runtime_event("player.death", R"({"killer":2,"victim":1,"weapon":"ak47","headshot":false,"time":1})");
@@ -442,7 +553,7 @@ TEST_F(LifeStatsPlugin, DeadHudRefreshPreservesPendingDamageWithoutDuplicateRepo
     Frame(30);
     EXPECT_EQ(console.size(), 2u);
 }
-TEST_F(LifeStatsPlugin, HudRefreshDoesNotReopenReportedRound)
+TEST_P(LifeStatsPlugin, HudRefreshDoesNotReopenReportedRound)
 {
     nc_runtime_event("player.health", R"({"health":90,"time":1})");
     nc_runtime_event("player.damage", R"({"health":10,"armor":0,"bits":2,"time":1})");
@@ -465,7 +576,7 @@ TEST_F(LifeStatsPlugin, HudRefreshDoesNotReopenReportedRound)
     ASSERT_EQ(console.size(), 3u);
     EXPECT_NE(console[2].find("Round ended. Damage taken: 0 HP, 0 armor. Kills: 0."), std::string::npos);
 }
-TEST_F(LifeStatsPlugin, SpectatorHudHealthAfterRefreshDoesNotStartLife)
+TEST_P(LifeStatsPlugin, SpectatorHudHealthAfterRefreshDoesNotStartLife)
 {
     spectator = true;
     alive = false;
@@ -479,7 +590,7 @@ TEST_F(LifeStatsPlugin, SpectatorHudHealthAfterRefreshDoesNotStartLife)
     EXPECT_TRUE(console.empty());
     EXPECT_TRUE(chat.empty());
 }
-TEST_F(LifeStatsPlugin, ReportsSurvivorBeforeNextRoundAndResetsOnMapChange)
+TEST_P(LifeStatsPlugin, ReportsSurvivorBeforeNextRoundAndResetsOnMapChange)
 {
     nc_runtime_event("player.damage", R"({"health":30,"armor":0,"time":0.01})");
     nc_runtime_event("round.end", R"({"reason":"#CTs_Win","time":1.125})");
@@ -497,8 +608,9 @@ TEST_F(LifeStatsPlugin, ReportsSurvivorBeforeNextRoundAndResetsOnMapChange)
     ASSERT_EQ(console.size(), 3u);
     EXPECT_NE(console[2].find("0 HP, 0 armor"), std::string::npos);
 }
-TEST_F(LifeStatsPlugin, RetriesLocalChatWhenTheHudIsTemporarilyUnavailable)
+TEST_P(LifeStatsPlugin, RetriesLocalChatWhenTheHudIsTemporarilyUnavailable)
 {
+    SetOutput(1);
     accept_chat = false;
     nc_runtime_event("round.end", "{}");
     Frame(30);
@@ -510,8 +622,9 @@ TEST_F(LifeStatsPlugin, RetriesLocalChatWhenTheHudIsTemporarilyUnavailable)
     EXPECT_EQ(console.size(), 1u);
 }
 
-TEST_F(LifeStatsPlugin, OptionalDeathDetailsEnrichConsoleAndCountOnlyReportedLocalAssists)
+TEST_P(LifeStatsPlugin, OptionalDeathDetailsEnrichConsoleAndCountOnlyReportedLocalAssists)
 {
+    SetOutput(1);
     // Remote scoreboard health must not end the local life.
     nc_runtime_event("player.health", R"({"player":2,"reported_health":0,"time":0.01})");
     nc_runtime_event("player.health", R"({"player":2,"reported_health":null,"time":0.01})");
@@ -562,7 +675,7 @@ TEST(LifeStats, AssistCountsDoNotLeakAcrossLivesOrIncludeSuicidesAndPosthumousAs
     EXPECT_EQ(next.console[0].find("Assists"), std::string::npos);
 }
 
-TEST_F(LifeStatsPlugin, VipAndEscapeWireOutcomesReportSurvivorsBeforeNextRound)
+TEST_P(LifeStatsPlugin, VipAndEscapeWireOutcomesReportSurvivorsBeforeNextRound)
 {
     PluginGameState state;
     for (const auto* reason :
@@ -584,4 +697,159 @@ TEST_F(LifeStatsPlugin, VipAndEscapeWireOutcomesReportSurvivorsBeforeNextRound)
         Frame();
         EXPECT_EQ(console.size(), before + 1);
     }
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    Implementations,
+    LifeStatsPlugin,
+    ::testing::Values(PLUGIN_LIFE_STATS_PATH, PLUGIN_CPP_LIFE_STATS_PATH),
+    [](const ::testing::TestParamInfo<const char*>& info) { return info.index == 0 ? "Rust" : "Cpp"; }
+);
+
+TEST(LifeStats, RustAndCppManifestsMatchExactly)
+{
+    const auto read = [](const char* path) {
+        std::ifstream input(path, std::ios::binary);
+        const std::vector<unsigned char> bytes{std::istreambuf_iterator<char>(input), {}};
+        return plugins::parse(plugins::pe_manifest(bytes));
+    };
+    EXPECT_EQ(read(PLUGIN_LIFE_STATS_PATH), read(PLUGIN_CPP_LIFE_STATS_PATH));
+}
+
+TEST_P(LifeStatsPlugin, PreservesEngineNamesAndSanitizesFormattingWithoutSplittingUtf8)
+{
+    SetOutput(1);
+    g_Names[2] = std::string("Alice\n%s1\x03") + "ё";
+    g_Names[3] = std::string(47, 'x') + "абв";
+    nc_runtime_event("player.death", R"({"killer":1,"victim":2,"weapon":"ak47","headshot":true,"time":1})");
+    nc_runtime_event("player.health", R"({"health":0,"time":2})");
+    nc_runtime_event("player.death", R"({"killer":3,"victim":1,"weapon":"deagle","headshot":false,"time":2})");
+    nc_runtime_event("player.damage", R"({"health":100,"armor":0,"bits":2,"time":2})");
+    alive = false;
+    Frame(200);
+    ASSERT_EQ(console.size(), 3u);
+    ASSERT_EQ(chat.size(), 3u);
+    EXPECT_EQ(chat[1], "\x04[Life Stats]\x01 Killed by " + std::string(47, 'x') + " (deagle).");
+    EXPECT_EQ(chat[2], "\x04[Life Stats]\x01 Killed Alice  s1 " + std::string("ё") + " (ak47, headshot).");
+    EXPECT_EQ(console[1], "\x04[Life Stats]\x01 Killed Alice  s1 " + std::string("ё") + " (ak47, headshot) (-00:01.000)\n");
+}
+
+TEST_P(LifeStatsPlugin, ReplacingOneImplementationWithTheOtherPreservesOutputChoice)
+{
+    SetOutput(1);
+    nc_runtime_stop();
+    const char* other = std::string_view(GetParam()) == PLUGIN_LIFE_STATS_PATH ? PLUGIN_CPP_LIFE_STATS_PATH : PLUGIN_LIFE_STATS_PATH;
+    std::filesystem::copy_file(other, dir / L"plugins/life_stats.dll", std::filesystem::copy_options::overwrite_existing);
+    nc_runtime_start(dir.c_str(), 0);
+    auto rows = plugins::parse(nc_runtime_catalog()).at("plugins");
+    EXPECT_FALSE(rows.at(0).at("running").get_boolean());
+    rows.at(0)["enabled"] = rows.at(0)["consent"] = true;
+    ASSERT_STREQ(nc_runtime_save(tao::json::to_string(rows).c_str()), "");
+    Restart();
+    EXPECT_EQ(plugins::parse(nc_runtime_ui()).at(0).at("controls").at(0).at("value"), 1);
+    nc_runtime_event("round.end", "{}");
+    Frame(100);
+    ASSERT_EQ(console.size(), 1u);
+    ASSERT_EQ(chat.size(), 1u);
+    EXPECT_EQ(network_calls, 0);
+}
+
+TEST_P(LifeStatsPlugin, RustAndCppReportsAndDeliveryTimingMatchForTheSameReplay)
+{
+    const auto replay = [this]() {
+        console.clear();
+        chat.clear();
+        g_ChatCalls = 0;
+        current_session.time = 0;
+        current_session.frame_time = 0.01f;
+        current_health = 100;
+        alive = true;
+        accept_chat = true;
+        nc_runtime_event("hud.init", "{}");
+        nc_runtime_event("round.start", "{}");
+        SetOutput(1);
+        Frame();
+        std::vector<std::array<size_t, 3>> delivery;
+        const auto frames = [this, &delivery](int count) {
+            for (int i = 0; i < count; ++i)
+            {
+                Frame();
+                delivery.push_back({console.size(), chat.size(), static_cast<size_t>(g_ChatCalls)});
+            }
+        };
+        nc_runtime_event("player.health", R"({"health":20,"time":0.1})");
+        nc_runtime_event("player.damage", R"({"health":80,"armor":5,"bits":64,"time":0.1})");
+        nc_runtime_event("player.health", R"({"health":50,"time":0.2})");
+        nc_runtime_event("hud.reset", "{}");
+        nc_runtime_event("player.health", R"({"health":50,"time":0.2})");
+        nc_runtime_event("player.death", R"({"killer":1,"victim":2,"weapon":"awp","headshot":true,"time":0.3,"assister":3,
+            "kill_details":{"killer_blind":true,"noscope":true,"penetrated":true,"through_smoke":true,"in_air":true,
+            "domination_began":true,"domination":true,"revenge":true}})");
+        nc_runtime_event("player.death", R"({"killer":3,"victim":2,"weapon":"ak47","headshot":false,"time":0.4,"assister":1,
+            "kill_details":{"assisted_flash":true}})");
+        nc_runtime_event("player.health", R"({"health":0,"time":0.5})");
+        nc_runtime_event("player.death", R"({"killer":2,"victim":1,"weapon":"deagle","headshot":false,"time":0.5})");
+        nc_runtime_event("player.damage", R"({"health":95,"armor":10,"bits":2,"time":0.5})");
+        alive = false;
+        accept_chat = false;
+        frames(90);
+        accept_chat = true;
+        frames(240);
+        nc_runtime_event("round.end", "{}");
+        frames(30);
+        alive = true;
+        current_health = 100;
+        nc_runtime_event("round.start", "{}");
+        nc_runtime_event("hud.reset", "{}");
+        nc_runtime_event("player.health", R"({"health":100})");
+        frames(1);
+        for (int i = 0; i < 520; ++i)
+        {
+            nc_runtime_event("player.death", R"({"killer":1,"victim":2,"weapon":"ak47","headshot":false,"time":4})");
+        }
+        for (int i = 0; i < 4200; ++i)
+        {
+            nc_runtime_event("player.damage", R"({"health":0,"armor":1,"bits":32,"time":4})");
+            if (i % 64 == 0)
+            {
+                frames(1);
+            }
+        }
+        nc_runtime_event("round.end", R"({"time":5.0005})");
+        frames(100);
+        SetOutput(0);
+        frames(100);
+        nc_runtime_event("connection.changed", R"({"connected":false})");
+        nc_runtime_event("map.changed", "{}");
+        frames(1);
+        nc_runtime_event("player.damage", R"({"health":10,"armor":0,"bits":16384,"time":10})");
+        nc_runtime_event("round.end", R"({"time":11})");
+        frames(30);
+        return std::tuple{console, chat, delivery};
+    };
+    const auto first = replay();
+    nc_runtime_stop();
+    const char* other = std::string_view(GetParam()) == PLUGIN_LIFE_STATS_PATH ? PLUGIN_CPP_LIFE_STATS_PATH : PLUGIN_LIFE_STATS_PATH;
+    std::filesystem::copy_file(other, dir / L"plugins/life_stats.dll", std::filesystem::copy_options::overwrite_existing);
+    nc_runtime_start(dir.c_str(), 0);
+    auto rows = plugins::parse(nc_runtime_catalog()).at("plugins");
+    rows.at(0)["enabled"] = rows.at(0)["consent"] = true;
+    ASSERT_STREQ(nc_runtime_save(tao::json::to_string(rows).c_str()), "");
+    Restart();
+    EXPECT_EQ(first, replay());
+    EXPECT_EQ(network_calls, 0);
+}
+
+TEST_P(LifeStatsPlugin, InvalidEngineTextIsRejectedWithoutLossySubstitution)
+{
+    SetOutput(1);
+    g_Names[2] = std::string("Alice") + static_cast<char>(0xff);
+    nc_runtime_event("player.death", R"({"killer":1,"victim":2,"weapon":"ak47","headshot":false,"time":1})");
+    nc_runtime_event("round.end", R"({"time":2})");
+    Frame(200);
+    ASSERT_EQ(console.size(), 1u);
+    ASSERT_EQ(chat.size(), 1u);
+    EXPECT_EQ(g_ChatCalls, 1);
+    EXPECT_NE(console[0].find("Kills: 1."), std::string::npos);
+    EXPECT_TRUE(plugins::parse(nc_runtime_catalog()).at("plugins").at(0).at("running").get_boolean());
 }

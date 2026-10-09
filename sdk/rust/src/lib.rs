@@ -344,6 +344,7 @@ pub enum Kind {
     Choice = 3,
     Button = 4,
 }
+pub const PLUGIN_SETTINGS_TAB: &str = "";
 pub struct Control<'a> {
     pub id: &'a str,
     pub tab: &'a str,
@@ -514,7 +515,11 @@ impl Host<'_> {
         status(unsafe { (self.raw.disconnect)(self.raw.context) })
     }
     pub fn chat_print(&self, text: &str) -> Result {
-        let [text] = strings([text])?;
+        self.chat_print_bytes(text.as_bytes())
+    }
+    /// Passes copied engine text unchanged; the host still validates UTF-8.
+    pub fn chat_print_bytes(&self, text: &[u8]) -> Result {
+        let text = CString::new(text).map_err(|_| Error)?;
         status(unsafe { (self.raw.chat_print)(self.raw.context, text.as_ptr()) })
     }
     /// Returns serialized JSON, including the string "null" for a stored JSON null.
@@ -537,6 +542,10 @@ impl Host<'_> {
     }
     /// Permission-free console output with no plugin ID prefix.
     pub fn console_print(&self, text: &str) -> Result {
+        self.console_print_bytes(text.as_bytes())
+    }
+    /// Passes copied engine text unchanged; the host still validates UTF-8.
+    pub fn console_print_bytes(&self, text: &[u8]) -> Result {
         let text = CString::new(text).map_err(|_| Error)?;
         status(unsafe { (self.raw.console_print)(self.raw.context, text.as_ptr()) })
     }
@@ -599,6 +608,68 @@ impl Host<'_> {
             initial: i32::from(initial),
             min: 0,
             max: 1,
+            choices_en: "",
+            choices_ru: "",
+        })
+    }
+    pub fn plugin_checkbox(&self, id: &str, en: &str, ru: &str, initial: bool) -> Result {
+        self.checkbox(id, PLUGIN_SETTINGS_TAB, en, ru, initial)
+    }
+    pub fn plugin_slider(
+        &self,
+        id: &str,
+        en: &str,
+        ru: &str,
+        initial: i32,
+        min: i32,
+        max: i32,
+    ) -> Result {
+        self.control(Control {
+            id,
+            tab: PLUGIN_SETTINGS_TAB,
+            kind: Kind::Slider,
+            en,
+            ru,
+            initial,
+            min,
+            max,
+            choices_en: "",
+            choices_ru: "",
+        })
+    }
+    pub fn plugin_choice(
+        &self,
+        id: &str,
+        en: &str,
+        ru: &str,
+        initial: i32,
+        choices_en: &str,
+        choices_ru: &str,
+    ) -> Result {
+        let max = i32::try_from(choices_en.split('\n').count() - 1).map_err(|_| Error)?;
+        self.control(Control {
+            id,
+            tab: PLUGIN_SETTINGS_TAB,
+            kind: Kind::Choice,
+            en,
+            ru,
+            initial,
+            min: 0,
+            max,
+            choices_en,
+            choices_ru,
+        })
+    }
+    pub fn plugin_button(&self, id: &str, en: &str, ru: &str) -> Result {
+        self.control(Control {
+            id,
+            tab: PLUGIN_SETTINGS_TAB,
+            kind: Kind::Button,
+            en,
+            ru,
+            initial: 0,
+            min: 0,
+            max: 0,
             choices_en: "",
             choices_ru: "",
         })

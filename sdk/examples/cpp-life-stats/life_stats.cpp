@@ -7,8 +7,8 @@
 
 NC_MANIFEST(R"json({
   "schema":1,"id":"org.nextclient.life_stats","name":"Life Stats","author":"NextClient",
-  "description":"Shows damage taken, kills, assists and your killer in local chat and console after death or round end.",
-  "translations":{"ru":{"name":"Статистика жизни","description":"Показывает полученный урон, убийства, помощь в убийствах и вашего убийцу в локальном чате и консоли после смерти или окончания раунда."}},
+  "description":"Shows damage taken, kills, assists and your killer in the console, with optional local chat, after death or round end.",
+  "translations":{"ru":{"name":"Статистика жизни","description":"Показывает полученный урон, убийства, помощь в убийствах и вашего убийцу в консоли после смерти или окончания раунда; по выбору добавляет вывод в локальный чат."}},
   "version":"1.0.0","sdk":"1.0.0","abi":1,"api":1,"compatibility_revision":1,
   "permissions":["chat.print"]
 })json")
@@ -19,7 +19,7 @@ class LifeStats final : public nextclient::Plugin
     std::array<std::string, 33> names_;
     std::deque<std::string> chat_;
     double clock_{}, next_chat_{}, game_time_{};
-    bool discard_backlog_{}, await_boundary_{};
+    bool discard_backlog_{}, await_boundary_{}, chat_enabled_{};
 
     void Reset()
     {
@@ -60,6 +60,8 @@ class LifeStats final : public nextclient::Plugin
 public:
     void load() override
     {
+        plugin_choice("output", "Output", "Вывод", 0, "Console\nConsole + Chat", "Консоль\nКонсоль + чат");
+        chat_enabled_ = setting("output") == 1;
         Reset();
         for (const auto* name :
              {"player.damage",
@@ -76,6 +78,18 @@ public:
             if (!subscribe_event(name))
                 throw std::exception();
     }
+    void setting_changed(const char* id, int32_t value) override
+    {
+        if (std::string_view(id) == "output")
+        {
+            chat_enabled_ = value == 1;
+            if (!chat_enabled_)
+            {
+                chat_.clear();
+            }
+            next_chat_ = clock_;
+        }
+    }
     void event(const char* raw, const char* json) override
     {
         const std::string_view name(raw);
@@ -86,7 +100,10 @@ public:
             discard_backlog_ = await_boundary_ = true;
             const auto warning = Colored("[Life Stats] Events were lost; statistics resume at the next spawn or round.");
             console_print(warning.c_str());
-            chat_.push_back(warning);
+            if (chat_enabled_)
+            {
+                chat_.push_back(warning);
+            }
             return;
         }
         // An overflow notice precedes the surviving old queue. Even a reset in
@@ -200,9 +217,16 @@ public:
         const auto report = tracker_.TakeReport();
         for (const auto& line : report.console)
             console_print(Colored(line).c_str());
-        for (const auto& line : report.chat)
-            if (chat_.size() < 1024)
-                chat_.push_back(Colored(line));
+        if (chat_enabled_)
+        {
+            for (const auto& line : report.chat)
+            {
+                if (chat_.size() < 1024)
+                {
+                    chat_.push_back(Colored(line));
+                }
+            }
+        }
         if (!chat_.empty() && clock_ >= next_chat_)
         {
             if (chat_print(chat_.front().c_str()))

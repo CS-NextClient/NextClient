@@ -214,6 +214,103 @@ TEST_F(Runtime, DiscoveryDoesNotLoadAndSaveRequiresRestart)
     EXPECT_EQ(parse(nc_runtime_ui()).at(0).at("tabs").at(0).at("id"), "tools");
 }
 
+TEST_F(Runtime, PluginSettingsNeedNoPermissionsAndPersistWithLocalizedMetadata)
+{
+    nc_runtime_stop();
+    fs::copy_file(PLUGIN_SHARED_SETTINGS_PATH, dir / L"plugins" / L"settings.dll", fs::copy_options::overwrite_existing);
+    nc_runtime_start(dir.c_str(), 0);
+    enable();
+    restart();
+    const auto ui = parse(nc_runtime_ui());
+    ASSERT_EQ(ui.get_array().size(), 1u);
+    EXPECT_TRUE(ui.at(0).at("tabs").get_array().empty());
+    EXPECT_TRUE(catalog().at(0).at("permissions").get_array().empty());
+    ASSERT_EQ(ui.at(0).at("controls").get_array().size(), 4u);
+    for (const auto& control : ui.at(0).at("controls").get_array())
+    {
+        EXPECT_EQ(control.at("tab"), NC_PLUGIN_SETTINGS_TAB);
+    }
+    EXPECT_EQ(ui.at(0).at("translations").at("ru").at("name"), "Настройки");
+    const auto late =
+        reinterpret_cast<int32_t(NC_CALL*)()>(GetProcAddress(GetModuleHandleW(L"settings.dll"), "nc_register_late_shared_control"));
+    ASSERT_NE(late, nullptr);
+    EXPECT_EQ(late(), 0);
+    ASSERT_STREQ(nc_runtime_settings(R"([{"owner":"test.settings","id":"enabled","value":1}])"), "");
+    EXPECT_EQ(move(NC_PLAYER_VALID).buttons, 3u);
+    restart();
+    EXPECT_EQ(parse(nc_runtime_ui()).at(0).at("controls").at(0).at("value"), 1);
+    nc_runtime_action("test.settings", "reset");
+    EXPECT_EQ(parse(nc_runtime_ui()).at(0).at("controls").at(0).at("value"), 0);
+}
+
+TEST_F(Runtime, PluginSettingsAreScopedToTheirOwnerWithoutPermissions)
+{
+    nc_runtime_stop();
+    fs::copy_file(PLUGIN_SHARED_SETTINGS_PATH, dir / L"plugins" / L"settings.dll", fs::copy_options::overwrite_existing);
+    fs::copy_file(PLUGIN_OTHER_SETTINGS_PATH, dir / L"plugins" / L"other-settings.dll");
+    nc_runtime_start(dir.c_str(), 0);
+    auto rows = catalog();
+    ASSERT_EQ(rows.get_array().size(), 2u);
+    for (auto& row : rows.get_array())
+    {
+        EXPECT_TRUE(row.at("permissions").get_array().empty());
+        row["enabled"] = row["consent"] = true;
+    }
+    ASSERT_STREQ(nc_runtime_save(tao::json::to_string(rows).c_str()), "");
+    restart();
+    const Json running = catalog();
+    for (const auto& row : running.get_array())
+    {
+        ASSERT_TRUE(row.at("running").get_boolean());
+    }
+    const auto read = [](const wchar_t* module, const char* id, int32_t fallback) {
+        const auto function =
+            reinterpret_cast<int32_t(NC_CALL*)(const char*, int32_t)>(GetProcAddress(GetModuleHandleW(module), "nc_read_own_setting"));
+        EXPECT_NE(function, nullptr);
+        return function ? function(id, fallback) : INT32_MIN;
+    };
+    const auto write = [](const wchar_t* module, const char* id, int32_t value) {
+        const auto function =
+            reinterpret_cast<int32_t(NC_CALL*)(const char*, int32_t)>(GetProcAddress(GetModuleHandleW(module), "nc_write_own_setting"));
+        EXPECT_NE(function, nullptr);
+        return function ? function(id, value) : -1;
+    };
+    EXPECT_EQ(read(L"settings.dll", "enabled", -1), 0);
+    EXPECT_EQ(read(L"other-settings.dll", "enabled", -1), 0);
+    EXPECT_EQ(read(L"settings.dll", "private", -1), -1);
+    EXPECT_EQ(read(L"other-settings.dll", "private", -1), 7);
+    EXPECT_EQ(write(L"settings.dll", "private", 0), 0);
+    EXPECT_EQ(read(L"settings.dll", "test.settings.other.enabled", -1), -1);
+    EXPECT_EQ(write(L"settings.dll", "test.settings.other.enabled", 1), 0);
+    ASSERT_STREQ(nc_runtime_settings(R"([{"owner":"test.settings","id":"enabled","value":1}])"), "");
+    EXPECT_EQ(read(L"settings.dll", "enabled", -1), 1);
+    EXPECT_EQ(read(L"other-settings.dll", "enabled", -1), 0);
+    EXPECT_EQ(write(L"other-settings.dll", "enabled", 1), 1);
+    EXPECT_EQ(write(L"settings.dll", "enabled", 0), 1);
+    EXPECT_EQ(read(L"settings.dll", "enabled", -1), 0);
+    EXPECT_EQ(read(L"other-settings.dll", "enabled", -1), 1);
+    restart();
+    EXPECT_EQ(read(L"settings.dll", "enabled", -1), 0);
+    EXPECT_EQ(read(L"other-settings.dll", "enabled", -1), 1);
+    EXPECT_EQ(read(L"settings.dll", "private", -1), -1);
+    EXPECT_EQ(read(L"other-settings.dll", "private", -1), 7);
+}
+
+TEST_F(Runtime, ExistingCustomPluginsTabStillRegisters)
+{
+    nc_runtime_stop();
+    fs::copy_file(PLUGIN_CUSTOM_SETTINGS_PATH, dir / L"plugins" / L"settings.dll", fs::copy_options::overwrite_existing);
+    nc_runtime_start(dir.c_str(), 0);
+    enable();
+    restart();
+    const auto ui = parse(nc_runtime_ui());
+    ASSERT_EQ(ui.get_array().size(), 1u);
+    EXPECT_EQ(ui.at(0).at("tabs").at(0).at("id"), "plugins");
+    EXPECT_EQ(ui.at(0).at("controls").at(0).at("tab"), "plugins");
+    ASSERT_EQ(ui.at(0).at("controls").get_array().size(), 2u);
+    EXPECT_EQ(ui.at(0).at("controls").at(1).at("tab"), NC_PLUGIN_SETTINGS_TAB);
+}
+
 TEST_F(Runtime, CatalogIncludesTranslationsWithoutLoadingThePlugin)
 {
     const auto rows = catalog();
@@ -880,6 +977,12 @@ TEST_F(PermissionRuntime, SafeApisWorkAndImpactfulApisAreDeniedByDefault)
     EXPECT_EQ(cvar_writes, 0);
     EXPECT_FALSE(nc_runtime_ui_hidden(NC_UI_CROSSHAIR));
     EXPECT_TRUE(parse(nc_runtime_ui()).at(0).at("tabs").get_array().empty());
+    EXPECT_EQ(PermissionResults("nc_shared_control_result"), 1u);
+    EXPECT_EQ(PermissionResults("nc_native_control_result"), 1u);
+    EXPECT_EQ(PermissionResults("nc_builtin_control_result"), 0u);
+    EXPECT_EQ(PermissionResults("nc_custom_control_result"), 0u);
+    ASSERT_EQ(parse(nc_runtime_ui()).at(0).at("controls").get_array().size(), 2u);
+    EXPECT_EQ(parse(nc_runtime_ui()).at(0).at("controls").at(0).at("tab"), "plugins");
     EXPECT_EQ(registered_commands, (std::vector<std::string>{"nc.test.permissions.inspect"}));
     const char* args[]{"nc.test.permissions.inspect", "hello"};
     nc_runtime_console(2, args);
@@ -891,6 +994,10 @@ TEST_F(PermissionRuntime, SafeApisWorkAndImpactfulApisAreDeniedByDefault)
 TEST_F(PermissionRuntime, GrantedApisWorkOnlyInTheirValidContexts)
 {
     install(PLUGIN_PERMISSION_PATH);
+    EXPECT_EQ(PermissionResults("nc_shared_control_result"), 1u);
+    EXPECT_EQ(PermissionResults("nc_native_control_result"), 1u);
+    EXPECT_EQ(PermissionResults("nc_builtin_control_result"), 1u);
+    EXPECT_EQ(PermissionResults("nc_custom_control_result"), 1u);
     EXPECT_EQ(PermissionResults("nc_extension_results"), 127u);
     EXPECT_EQ(sounds, (std::vector<std::string>{"buttons/blip1.wav"}));
     EXPECT_EQ(console_output, (std::vector<std::string>{"value: %s %n\n"}));

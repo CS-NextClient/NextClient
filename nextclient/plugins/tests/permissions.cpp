@@ -23,6 +23,7 @@ namespace
 {
     uint32_t results{}, extension_results{}, frame_calls{};
     const NcHost* test_host{};
+    uint32_t g_SharedControlResult{}, g_NativeControlResult{}, g_BuiltinControlResult{}, g_CustomControlResult{};
 } // namespace
 extern "C" NC_EXPORT uint32_t NC_CALL nc_permission_results()
 {
@@ -40,6 +41,24 @@ extern "C" NC_EXPORT int32_t NC_CALL nc_print_again(const char* text)
 {
     return test_host->console_print(test_host->context, text);
 }
+extern "C" NC_EXPORT uint32_t NC_CALL nc_shared_control_result()
+{
+    return g_SharedControlResult;
+}
+
+extern "C" NC_EXPORT uint32_t NC_CALL nc_native_control_result()
+{
+    return g_NativeControlResult;
+}
+extern "C" NC_EXPORT uint32_t NC_CALL nc_builtin_control_result()
+{
+    return g_BuiltinControlResult;
+}
+extern "C" NC_EXPORT uint32_t NC_CALL nc_custom_control_result()
+{
+    return g_CustomControlResult;
+}
+
 class Permissions : public nextclient::Plugin
 {
 public:
@@ -47,6 +66,14 @@ public:
     {
         results = extension_results = frame_calls = 0;
         test_host = host_;
+        const NcControl shared{sizeof(NcControl), "shared", "plugins", NC_CHECKBOX, "Shared", "", 0, 0, 1, "", ""};
+        g_SharedControlResult = host_->add_control(host_->context, &shared);
+        const NcControl native{sizeof(NcControl), "native", nullptr, NC_BUTTON, "Action", "", 0, 0, 0, "", ""};
+        g_NativeControlResult = host_->add_control(host_->context, &native);
+        const NcControl builtin{sizeof(NcControl), "builtin", "game", NC_CHECKBOX, "Builtin", "", 0, 0, 1, "", ""};
+        g_BuiltinControlResult = host_->add_control(host_->context, &builtin);
+        const NcControl custom{sizeof(NcControl), "custom", "tab", NC_CHECKBOX, "Custom", "", 0, 0, 1, "", ""};
+        g_CustomControlResult = 0;
         if (register_setting("count", 0, 0, 100) && set_setting("count", 1) && setting("count") == 1)
             results |= 1;
         if (register_command("inspect"))
@@ -63,7 +90,10 @@ public:
         if (weapon(7, weapon_state) && weapon_state.clip == 19)
             results |= 16;
         if (host_->add_tab(host_->context, "tab", "Tab", ""))
+        {
             results |= 32;
+        }
+        g_CustomControlResult = host_->add_control(host_->context, &custom);
         std::string value;
         if (read_cvar("speed", value) && value == "250")
             results |= 64;

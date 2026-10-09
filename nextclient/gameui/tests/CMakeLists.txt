@@ -5,6 +5,8 @@ find_package(GTest CONFIG REQUIRED)
 include(GoogleTest)
 
 add_executable(${TARGET_NAME}
+        PropertyPagePickerTests.cpp
+        PropertyPageNavigationTests.cpp
         ServerBrowserTextTests.cpp
         ServerFilterCountsTests.cpp
         ServerGameModeNamesTests.cpp
@@ -39,6 +41,9 @@ target_link_libraries(${TARGET_NAME} PRIVATE
 
 if (NEXTCLIENT_WITH_PLUGINS)
     target_sources(${TARGET_NAME} PRIVATE
+            PluginSettingsGroupsTests.cpp
+            ${CMAKE_CURRENT_SOURCE_DIR}/../src/GameUi/PluginSettingsGroupsState.cpp
+            ${CMAKE_CURRENT_SOURCE_DIR}/../src/GameUi/PluginSettingsState.cpp
             PluginsDialogStateTests.cpp
             PluginTextTests.cpp
             PluginWindowStateTests.cpp

@@ -123,7 +123,7 @@ Plugins are currently Windows-only. Linux builds omit the runtime, plugin menus,
 `NEXTCLIENT_WITH_PLUGINS` defaults to `ON` on Windows and `OFF` on Linux; enabling it on Linux is unsupported.
 Open **Plugins** to enable modules and set their order; **OK** saves and restarts only when changes are pending.
 
-The bundled **Life Stats** plugin reports damage taken, kills, and your killer in local chat and console after death or round end.
+The bundled [**Life Stats** plugin](sdk/examples/rust-life-stats/README.md), written in Rust, reports damage taken, kills, and your killer in the console after death or round end. Choose **Console + Chat** in **Options → Plugins → Life Stats** to also show local chat summaries.
 Use `-noplugins` for recovery.
 
 ## Building
@@ -131,6 +131,7 @@ Requirements:
  - The latest version of MSVC 2022 or later
  - CMake 3.21 or higher
  - Git LFS, set up with `git lfs install` before cloning (in a clone made without it, run `git lfs pull`)
+ - Rust 1.85 or later with `rustup target add i686-pc-windows-msvc` for Windows plugin builds
  - Ninja (optional)
 
 Run x86 Native Tools Command Prompt for VS
