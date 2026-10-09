@@ -107,20 +107,16 @@ namespace
         {
             return g_RegisterMessage(name, handler);
         }
-        // Capture consumers during registration; subscriptions never replace engine handlers.
-        const int result = g_RegisterMessage(name, handler ? DispatchMessage : nullptr);
-        if (result)
+        // GoldSrc returns zero after installing a new handler.
+        if (handler)
         {
-            if (handler)
-            {
-                g_MessageHandlers[name] = handler;
-            }
-            else
-            {
-                g_MessageHandlers.erase(name);
-            }
+            g_MessageHandlers[name] = handler;
         }
-        return result;
+        else
+        {
+            g_MessageHandlers.erase(name);
+        }
+        return g_RegisterMessage(name, handler ? DispatchMessage : nullptr);
     }
     void InstallMessageWrappers()
     {

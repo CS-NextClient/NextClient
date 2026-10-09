@@ -60,16 +60,16 @@ namespace
     std::map<std::string, pfnUserMsgHook> message_hooks;
     int hud_message_calls{};
     int registration_calls{};
-    bool reject_registration{};
     int HookMessage(const char* name, pfnUserMsgHook handler)
     {
         ++registration_calls;
-        if (reject_registration)
+        const auto existing = message_hooks.find(name);
+        if (existing != message_hooks.end() && existing->second == handler)
         {
-            return 0;
+            return handler != nullptr;
         }
         message_hooks[name] = handler;
-        return 1;
+        return 0;
     }
     void ConsolePrintf(const char* format, ...)
     {
@@ -126,7 +126,6 @@ protected:
         gEngfuncs.pfnHookUserMsg = HookMessage;
         message_hooks.clear();
         hud_message_calls = registration_calls = 0;
-        reject_registration = false;
         engine_table.pfnHookUserMsg = HookMessage;
         stock_client_table = engine_table;
         eng()->cl_enginefunc = &engine_table;
@@ -182,7 +181,7 @@ TEST_F(PluginMessageBridge, CustomSubscriptionPreservesEarlierAndLaterHandlers)
         ++hud_message_calls;
         return 23;
     };
-    gEngfuncs.pfnHookUserMsg("Custom", earlier);
+    EXPECT_EQ(gEngfuncs.pfnHookUserMsg("Custom", earlier), 0);
     const auto* api = host->query_interface(host->context, "nextclient.messages", 1);
     ASSERT_NE(api, nullptr);
     const auto result = api->call(host->context, "subscribe", R"({"name":"Custom"})");
@@ -193,7 +192,7 @@ TEST_F(PluginMessageBridge, CustomSubscriptionPreservesEarlierAndLaterHandlers)
     char bytes[]{1, 2, 3};
     EXPECT_EQ(message_hooks.at("Custom")("Custom", sizeof(bytes), bytes), 17);
     EXPECT_EQ(hud_message_calls, 1);
-    gEngfuncs.pfnHookUserMsg("Custom", later);
+    EXPECT_EQ(gEngfuncs.pfnHookUserMsg("Custom", later), 1);
     EXPECT_EQ(message_hooks.at("Custom")("Custom", sizeof(bytes), bytes), 23);
     EXPECT_EQ(hud_message_calls, 2);
     PluginBridge_Shutdown();
@@ -246,14 +245,10 @@ TEST_F(PluginMessageBridge, SubscriptionCanRetryAfterAnObservedRegistration)
     };
     EXPECT_FALSE(subscribe());
     const auto consumer = +[](const char*, int, void*) { return 31; };
-    reject_registration = true;
     EXPECT_EQ(stock_client_table.pfnHookUserMsg("Custom", consumer), 0);
-    EXPECT_FALSE(subscribe());
-    reject_registration = false;
-    EXPECT_EQ(stock_client_table.pfnHookUserMsg("Custom", consumer), 1);
     EXPECT_TRUE(subscribe());
     EXPECT_EQ(message_hooks.at("Custom")("Custom", 0, nullptr), 31);
-    stock_client_table.pfnHookUserMsg("Custom", nullptr);
+    EXPECT_EQ(stock_client_table.pfnHookUserMsg("Custom", nullptr), 0);
     EXPECT_EQ(message_hooks.at("Custom"), nullptr);
     EXPECT_FALSE(subscribe());
 }
@@ -307,6 +302,29 @@ TEST_F(PluginMessageBridge, PresentationHideSkipsOriginalWithoutBlockingFutureRe
     api->set_filter(host->context, "ScreenShake", nullptr, nullptr);
     EXPECT_EQ(message_hooks.at("ScreenShake")("ScreenShake", sizeof(bytes), bytes), 17);
     EXPECT_EQ(hud_message_calls, 1);
+}
+
+TEST_F(PluginBridge, HudInitializationMessagesReachStockConsumersWithPluginsDisabled)
+{
+    nc_runtime_stop();
+    nc_runtime_start(dir.c_str(), 1);
+    const auto consumer = +[](const char*, int, void*) {
+        ++hud_message_calls;
+        return 17;
+    };
+    char packet{};
+    for (const char* name : {"InitHUD", "ResetHUD", "VGUIMenu"})
+    {
+        EXPECT_EQ(stock_client_table.pfnHookUserMsg(name, consumer), 0);
+        ASSERT_NE(message_hooks.at(name), consumer);
+        EXPECT_EQ(message_hooks.at(name)(name, sizeof(packet), &packet), 17);
+    }
+    EXPECT_EQ(hud_message_calls, 3);
+    PluginBridge_Shutdown();
+    for (const char* name : {"InitHUD", "ResetHUD", "VGUIMenu"})
+    {
+        EXPECT_EQ(message_hooks.at(name), consumer);
+    }
 }
 
 TEST_F(PluginBridge, PlayerSnapshotOnJoinDoesNotRequireBatteryHud)
