@@ -57,7 +57,7 @@ void CGameConsoleNext::ColorPrintfWide(uint8_t r, uint8_t g, uint8_t b, const wc
 
     va_list params;
     va_start(params, format);
-    int symbols_written = V_vsnwprintf(msg, sizeof(msg), format, params);
+    int symbols_written = V_vsnwprintf(msg, sizeof(msg) / sizeof(wchar_t), format, params);
     msg[sizeof(msg) / sizeof(wchar_t) - 1] = '\0';
     va_end(params);
 
