@@ -12,6 +12,7 @@
 #include <vgui_controls/TextEntry.h>
 
 #include <cvars/cvar_defaults.h>
+#include <settings_code/settings_code.h>
 #include <view/view_bob.h>
 
 #include "CvarToggleCheckButton.h"
@@ -40,6 +41,7 @@ class COptionsSubGame : public vgui2::PropertyPage, public CColorPickerDialog::I
         CCvarSlider* slider;
         vgui2::TextEntry* text;
         const char* format;
+        settings_code::FieldId field;
     };
 
     struct Tab
@@ -160,8 +162,9 @@ private:
     void BuildInertiaTab();
     void BuildCameraTab();
 
-    // a slider with its value entry, registered with the page as its action signal target
-    CCvarSlider* AddSlider(CSettingsGridPage* page, const char* name, const char* caption, float min, float max, const char* cvar, const char* format, vgui2::TextEntry*& text);
+    // a slider with its value entry over the field's range, registered with the page as its
+    // action signal target
+    CCvarSlider* AddSlider(CSettingsGridPage* page, const char* name, const char* caption, settings_code::FieldId field, const char* format, vgui2::TextEntry*& text);
     CCvarToggleCheckButton* AddCheck(CSettingsGridPage* page, const char* name, const char* caption, const char* cvar);
 
     const Tab* FindTab(vgui2::Panel* page) const;
@@ -173,6 +176,8 @@ private:
     void ResetSlider(CCvarSlider* slider);
     int GetSelectedStyle() const;
     int GetSelectedLagStyle() const;
+    // what the controls show, applied or not
+    settings_code::Values GetShareValues() const;
     void SetPreviewMove(PreviewMove move);
     void UpdateControlStates();
     void NotifyDataChanged();

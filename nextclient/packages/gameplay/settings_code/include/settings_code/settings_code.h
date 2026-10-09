@@ -7,11 +7,11 @@
 #include <string>
 #include <string_view>
 
+#include <crosshair/crosshair.h>
 #include <cvars/cvar_defaults.h>
 
-// A share code for the Game options tab. The values themselves are packed into the
-// string, so a player can hand their crosshair, bobbing and the rest to someone else
-// without a config file or a server to look the code up on.
+// A share code for the crosshair and view settings. The values themselves are packed into
+// the string, so the settings travel without a config file or a server to look the code up on.
 namespace settings_code
 {
     enum Section
@@ -26,7 +26,7 @@ namespace settings_code
 
     inline constexpr uint8_t kAllSections = (1 << kSectionCount) - 1;
 
-    // by Section, as the console commands take them
+    // by Section
     inline constexpr const char* kSectionNames[] = {"crosshair", "bobbing", "model", "inertia", "camera"};
 
     static_assert(std::size(kSectionNames) == kSectionCount);
@@ -68,9 +68,9 @@ namespace settings_code
         kFieldCount
     };
 
-    // A value is stored as its number of steps above min, so the ranges and steps match
-    // the tab's sliders and combos. cl_crosshair_size is stored as its index into
-    // crosshair::kSizes, and cl_crosshair_color takes three fields, one per channel.
+    // A value is stored as its number of steps above min, and min and max are the whole range
+    // a setting accepts. cl_crosshair_size is stored as its index into crosshair::kSizes, and
+    // cl_crosshair_color takes three fields, one per channel.
     struct Field
     {
         Section section;
@@ -84,7 +84,7 @@ namespace settings_code
     // end of a section together with a new format version.
     inline constexpr Field kFields[] = {
         {kCrosshair, cvars::kCrosshairType.name, 0, 3, 1},
-        {kCrosshair, cvars::kCrosshairSize.name, 0, 4, 1},
+        {kCrosshair, cvars::kCrosshairSize.name, 0, crosshair::kSizeCount - 1, 1},
         {kCrosshair, cvars::kCrosshairColor.name, 0, 255, 1},
         {kCrosshair, cvars::kCrosshairColor.name, 0, 255, 1},
         {kCrosshair, cvars::kCrosshairColor.name, 0, 255, 1},
