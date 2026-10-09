@@ -120,12 +120,25 @@ public:
         }
         const auto* timestamp = data.find("time");
         const double time = timestamp ? timestamp->as<double>() : game_time_;
+        if (name == "hud.reset")
+        {
+            if (!tracker_.Local())
+            {
+                Observe();
+            }
+            tracker_.ResetHud();
+            return;
+        }
         if (!tracker_.Local())
             Observe(true, time);
         if (name == "player.damage")
             tracker_.Damage(data.at("health").as<int>(), data.at("armor").as<int>(), data.optional<uint32_t>("bits").value_or(0), time);
         else if (name == "player.health" && data.find("health"))
-            tracker_.Health(data.at("health").as<int>(), time);
+        {
+            NcPlayerState state{};
+            const bool active_player = player(state) && (state.flags & NC_PLAYER_ACTIVE);
+            tracker_.Health(data.at("health").as<int>(), time, active_player);
+        }
         else if (name == "player.death")
         {
             const int killer = data.at("killer").as<int>(), victim = data.at("victim").as<int>();
@@ -157,11 +170,6 @@ public:
             tracker_.RoundEnd(time);
         else if (name == "round.start")
             tracker_.NewRound();
-        else if (name == "hud.reset")
-        {
-            tracker_.Spawn();
-            Observe(true, time);
-        }
     }
     void frame(const NcSession& state) override
     {

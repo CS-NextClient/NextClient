@@ -281,7 +281,7 @@ void nc_runtime_frame(const NcSession* context)
             auto& subscriptions = event.cvar.empty() ? p->events : p->cvar_watches;
             auto found = subscriptions.find(event.cvar.empty() ? event.name : event.cvar);
             if ((event.direct || (found != subscriptions.end() && event.serial >= found->second)) && permitted(p.get(), event.permission) &&
-                p->api.event)
+                (!event.service_request || Services_IsRequestPending(*p, event.service_request)) && p->api.event)
             {
                 const auto result =
                     invoke(*p, CallbackCategory::Event, [&] { return p->api.event(event.name.c_str(), event.json.c_str()); });
@@ -308,8 +308,11 @@ void nc_runtime_frame(const NcSession* context)
                 const auto& subscriptions = event.cvar.empty() ? p->events : p->cvar_watches;
                 const auto found = subscriptions.find(event.cvar.empty() ? event.name : event.cvar);
                 if ((event.direct || (found != subscriptions.end() && event.serial >= found->second)) &&
-                    permitted(p.get(), event.permission))
+                    permitted(p.get(), event.permission) &&
+                    (!event.service_request || Services_IsRequestPending(*p, event.service_request)))
+                {
                     ++deferred_callbacks;
+                }
             }
         }
     const auto frame_start = std::chrono::steady_clock::now();

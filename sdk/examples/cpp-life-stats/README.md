@@ -25,7 +25,8 @@ Console example:
 ```
 
 Each life is reported once. A death report is not repeated at round end.
-New lives and map changes clear previous totals. Spectating does not start a life.
+New lives and map changes clear previous totals. Ordinary HUD refreshes, such as
+`fullupdate`, preserve the active life's totals. Spectating does not start a life.
 The plugin waits 0.25 seconds for the final damage update, prints the report to
 the console, and displays chat lines 0.6 seconds apart. All output is local;
 the plugin does not request permission to send chat or change gameplay.

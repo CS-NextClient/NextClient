@@ -22,6 +22,7 @@ namespace plugins::runtime
         std::string name, json, cvar;
         uint32_t permission{};
         bool direct{};
+        uint64_t service_request{};
         Budget memory;
     };
     struct Loaded
@@ -165,5 +166,6 @@ namespace plugins::runtime
     Json extension_messages(Loaded&, const std::string&, const Json&);
     Json extension_ui(Loaded&, const std::string&, const Json&);
     Json extension_services(Loaded&, const std::string&, const Json&);
+    bool Services_IsRequestPending(const Loaded& provider, uint64_t request_id);
     std::string service_completion(Loaded&, const std::string&, const Json&);
 } // namespace plugins::runtime

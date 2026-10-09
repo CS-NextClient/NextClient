@@ -202,12 +202,19 @@ TEST_F(GameApiRuntime, AsyncStoreSerializesMutationsAndDrainsOnShutdown)
     auto result = extension("nextclient.storage", "commit", Json{{"set", Json{{"new", 2}}}, {"delete", Json::array({"old"})}});
     ASSERT_EQ(result.at("ok"), true);
     EXPECT_EQ(host->store_set(host->context, "old", "3"), 0);
+    EXPECT_EQ(host->store_delete(host->context, "old"), 0);
+    EXPECT_EQ(host->store_delete(host->context, "new"), 0);
+    EXPECT_EQ(host->store_delete(host->context, "missing"), 0);
     EXPECT_EQ(extension("nextclient.storage", "commit").at("ok"), false);
     EXPECT_EQ(get("old"), "1");
     restart();
     ASSERT_NE(host, nullptr);
     EXPECT_EQ(get("new"), "2");
     EXPECT_EQ(get("old"), "");
+    EXPECT_EQ(host->store_delete(host->context, "missing"), 1);
+    EXPECT_EQ(host->store_delete(host->context, "new"), 1);
+    restart();
+    EXPECT_EQ(get("new"), "");
 }
 TEST_F(GameApiRuntime, EventOverflowIsReportedAndFramesHaveDeliveryBudgets)
 {
@@ -381,7 +388,35 @@ TEST_F(GameApiRuntime, UnretainedServiceCancellationReleasesItsRequest)
         EXPECT_EQ(extension("nextclient.services", "cancel", args).at("state"), "complete");
         EXPECT_EQ(extension("nextclient.services", "status", args).at("ok"), false);
         frame();
+        ASSERT_EQ(count(), i + 1);
+        EXPECT_EQ(name(i), "sdk.reply");
     }
+}
+
+TEST_F(GameApiRuntime, ChoiceRegistrationBoundsOptionsAndAccountsForMenuItems)
+{
+    ASSERT_TRUE(SetEnvironmentVariableA("NEXTCLIENT_TEST_CHOICE_CONTROLS", "1"));
+    install(PLUGIN_GAME_ALL_PATH);
+    EXPECT_TRUE(SetEnvironmentVariableA("NEXTCLIENT_TEST_CHOICE_CONTROLS", nullptr));
+    ASSERT_NE(host, nullptr);
+    const auto stats = Symbol<const char*(NC_CALL*)(int)>(L"game-api.dll", "nc_test_choice_stats");
+    const auto result = Symbol<int(NC_CALL*)(int)>(L"game-api.dll", "nc_test_choice_result");
+    ASSERT_NE(stats, nullptr);
+    ASSERT_NE(result, nullptr);
+    const auto before = parse(stats(0));
+    const auto rejected = parse(stats(1));
+    const auto single = parse(stats(2));
+    const auto maximum = parse(stats(3));
+    EXPECT_EQ(result(0), 0);
+    EXPECT_EQ(result(1), 1);
+    EXPECT_EQ(result(2), 1);
+    EXPECT_EQ(rejected.at("host_memory_estimate"), before.at("host_memory_estimate"));
+    EXPECT_EQ(rejected.at("memory_rejections"), before.at("memory_rejections"));
+    EXPECT_GT(maximum.at("host_memory_estimate").as<uint64_t>() - single.at("host_memory_estimate").as<uint64_t>(), 128 * 1024u);
+    EXPECT_EQ(host->get_setting(host->context, "rejected_choice", -1), -1);
+    EXPECT_EQ(host->get_setting(host->context, "single_choice", -1), 0);
+    EXPECT_EQ(host->get_setting(host->context, "maximum_choice", -1), 63);
+    ASSERT_EQ(parse(nc_runtime_ui()).at(0).at("controls").get_array().size(), 2u);
 }
 
 TEST_F(GameApiRuntime, RejectedControlLabelsDoNotConsumeRegistrationMemory)
@@ -441,6 +476,52 @@ TEST_F(GameApiRuntime, CancelledServiceRequestsRejectLateReplies)
     EXPECT_EQ(extension("nextclient.services", "cancel", Json{{"request", request}}).at("state"), "complete");
     EXPECT_EQ(extension("nextclient.services", "reply", Json{{"request", request}, {"data", 42}}).at("ok"), false);
     EXPECT_EQ(extension("nextclient.services", "status", Json{{"request", request}}).at("result").at("ok"), false);
+    frame();
+    ASSERT_EQ(count(), 1);
+    EXPECT_EQ(name(0), "sdk.reply");
+    EXPECT_EQ(payload(0).at("result").at("error"), "Request cancelled");
+}
+
+TEST_F(GameApiRuntime, CancelledServiceWorkDoesNotCountAsDeferredCallbacks)
+{
+    install(PLUGIN_GAME_ALL_PATH);
+    ASSERT_TRUE(host->subscribe_event(host->context, "player.health", 1));
+    nc_runtime_event("player.health", "{}");
+    const auto result =
+        extension("nextclient.services", "request", Json{{"name", "test.game/test"}, {"version", 1}, {"method", "echo"}, {"data", 42}});
+    ASSERT_EQ(result.at("ok"), true);
+    ASSERT_EQ(extension("nextclient.services", "cancel", Json{{"request", result.at("request")}}).at("state"), "complete");
+    const uint64_t before = extension("nextclient.events", "stats").at("deferred_callbacks").as<uint64_t>();
+    mode(3);
+    frame();
+    ASSERT_EQ(count(), 1);
+    EXPECT_EQ(name(0), "player.health");
+    EXPECT_EQ(extension("nextclient.events", "stats").at("deferred_callbacks").as<uint64_t>() - before, 1u);
+    mode(0);
+    frame();
+    ASSERT_EQ(count(), 2);
+    EXPECT_EQ(name(1), "sdk.reply");
+}
+
+TEST_F(GameApiRuntime, CancellationAfterDeliveryPreservesProviderWorkAndRejectsItsReply)
+{
+    install(PLUGIN_GAME_ALL_PATH);
+    const auto result = extension(
+        "nextclient.services",
+        "request",
+        Json{{"name", "test.game/test"}, {"version", 1}, {"method", "echo"}, {"data", 42}, {"retain_completion", true}}
+    );
+    ASSERT_EQ(result.at("ok"), true);
+    const Json request{{"request", result.at("request")}};
+    frame();
+    ASSERT_EQ(count(), 1);
+    EXPECT_EQ(name(0), "sdk.service");
+    EXPECT_EQ(extension("nextclient.services", "cancel", request).at("state"), "complete");
+    EXPECT_EQ(extension("nextclient.services", "reply", Json{{"request", result.at("request")}, {"data", 42}}).at("ok"), false);
+    frame();
+    ASSERT_EQ(count(), 2);
+    EXPECT_EQ(name(1), "sdk.reply");
+    EXPECT_EQ(payload(1).at("result").at("error"), "Request cancelled");
 }
 
 TEST_F(GameApiRuntime, ServiceTimeoutRemainsQueryableAfterOverflow)
@@ -461,6 +542,15 @@ TEST_F(GameApiRuntime, ServiceTimeoutRemainsQueryableAfterOverflow)
     auto status = extension("nextclient.services", "status", Json{{"request", request}});
     EXPECT_EQ(status.at("state"), "complete");
     EXPECT_EQ(status.at("result").at("error"), "Request timed out");
+    for (int attempt = 0; attempt < 4096 && extension("nextclient.events", "stats").at("queued").as<size_t>(); ++attempt)
+    {
+        frame();
+    }
+    EXPECT_EQ(extension("nextclient.events", "stats").at("queued"), 0);
+    for (int i = 0; i < count(); ++i)
+    {
+        EXPECT_NE(name(i), "sdk.service");
+    }
 }
 
 TEST_F(GameApiRuntime, RetirementReleasesResourcesAndCancelsWorkersButKeepsModule)
@@ -642,6 +732,78 @@ TEST_F(GameApiRuntime, WindowListAndUtf8TextKeepAcceptedValuesAfterRejectedInput
     frame();
     EXPECT_EQ(count(), 2);
 }
+TEST_F(GameApiRuntime, NegativeSlidersAndEmptyListsRejectNonnegativeValues)
+{
+    install(PLUGIN_GAME_ALL_PATH);
+    Json window = parse(
+        R"({"title":{"en":"Bounds","ru":""},"surface":"all","interactive":true,"visible":true,"width":300,"height":200,
+        "items":[{"id":"negative","kind":"slider","text":{"en":"Negative","ru":""},"min":-100,"max":-1,"value":0}]})"
+    );
+    EXPECT_EQ(extension("nextclient.ui", "create", window).at("ok"), false);
+    window["items"].at(0)["value"] = -10;
+    const auto created = extension("nextclient.ui", "create", window);
+    ASSERT_EQ(created.at("ok"), true);
+    const std::string slider = std::to_string(created.at("handle").as<uint64_t>());
+    window["items"].at(0)["value"] = 0;
+    EXPECT_EQ(extension("nextclient.ui", "update", Json{{"handle", created.at("handle")}, {"window", window}}).at("ok"), false);
+    EXPECT_EQ(nc_runtime_window_action(slider.c_str(), "negative", "0"), 0);
+    EXPECT_EQ(nc_runtime_window_action(slider.c_str(), "negative", "18446744073709551615"), 0);
+    EXPECT_EQ(parse(nc_runtime_windows()).at(0).at("items").at(0).at("value"), -10);
+    EXPECT_EQ(nc_runtime_window_action(slider.c_str(), "negative", "-1"), 1);
+    EXPECT_EQ(nc_runtime_window_action(slider.c_str(), "negative", "-100"), 1);
+    window["items"] = parse(R"([{"id":"empty","kind":"list","text":{"en":"Empty","ru":""},"options":[],"value":0}])");
+    EXPECT_EQ(extension("nextclient.ui", "create", window).at("ok"), false);
+    window["items"].at(0)["value"] = -1;
+    const auto empty = extension("nextclient.ui", "create", window);
+    ASSERT_EQ(empty.at("ok"), true);
+    const std::string list = std::to_string(empty.at("handle").as<uint64_t>());
+    EXPECT_EQ(nc_runtime_window_action(list.c_str(), "empty", "0"), 0);
+    EXPECT_EQ(nc_runtime_window_action(list.c_str(), "empty", "-1"), 1);
+    for (const auto& current : parse(nc_runtime_windows()).get_array())
+    {
+        if (current.at("handle") == list)
+        {
+            EXPECT_EQ(current.at("items").at(0).at("value"), -1);
+        }
+    }
+}
+
+TEST_F(GameApiRuntime, RetiredCallerCannotDeliverQueuedServiceWork)
+{
+    install(PLUGIN_GAME_ALL_PATH);
+    nc_runtime_stop();
+    fs::copy_file(PLUGIN_SERVICE_CLIENT_PATH, dir / L"plugins" / L"services-client.dll");
+    nc_runtime_start(dir.c_str(), 0);
+    Json plugins = rows();
+    for (auto& row : plugins.get_array())
+    {
+        row["enabled"] = row["consent"] = true;
+    }
+    ASSERT_STREQ(nc_runtime_save(tao::json::to_string(plugins).c_str()), "");
+    restart();
+    ASSERT_NE(host, nullptr);
+    const auto getter = Symbol<const NcHost*(NC_CALL*)()>(L"services-client.dll", "nc_test_host");
+    const auto set_mode = Symbol<void(NC_CALL*)(int)>(L"services-client.dll", "nc_test_mode");
+    ASSERT_NE(getter, nullptr);
+    ASSERT_NE(set_mode, nullptr);
+    const NcHost* caller = getter();
+    const NcExtension* api = caller->query_interface(caller->context, "nextclient.services", 1);
+    const uint64_t handle = api->call(caller->context, "request", R"({"name":"test.game/test","version":1,"method":"echo","data":42})");
+    char buffer[512]{};
+    ASSERT_GT(api->read_result(caller->context, handle, buffer, sizeof(buffer)), 0u);
+    api->release_result(caller->context, handle);
+    ASSERT_EQ(parse(buffer).at("ok"), true);
+    set_mode(4);
+    NcCommand command{sizeof(NcCommand)};
+    const NcPlayer player{sizeof(NcPlayer)};
+    nc_runtime_command(&command, &player);
+    EXPECT_EQ(caller->permissions(caller->context), 0u);
+    EXPECT_NE(host->permissions(host->context), 0u);
+    frame();
+    EXPECT_EQ(count(), 0);
+    EXPECT_EQ(extension("nextclient.events", "stats").at("queued"), 0);
+}
+
 TEST_F(GameApiRuntime, ServicesCrossDeclaredDependenciesAndRetireWithProvider)
 {
     install(PLUGIN_GAME_ALL_PATH);

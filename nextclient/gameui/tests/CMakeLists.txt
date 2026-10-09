@@ -42,6 +42,7 @@ if (NEXTCLIENT_WITH_PLUGINS)
             PluginsDialogStateTests.cpp
             PluginTextTests.cpp
             PluginWindowStateTests.cpp
+            PluginControlAdaptersTests.cpp
             ${CMAKE_CURRENT_SOURCE_DIR}/../src/GameUi/PluginText.cpp
     )
     if (MSVC)

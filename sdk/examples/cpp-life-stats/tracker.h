@@ -27,7 +27,7 @@ namespace life_stats
     {
     public:
         void Observe(int local, bool alive, double time, int health = -1);
-        void Health(int health, double time);
+        void Health(int health, double time, bool active_player = true);
         void Damage(int health, int armor, uint32_t bits, double time);
         void Death(
             int killer,
@@ -40,7 +40,7 @@ namespace life_stats
         );
         void RoundEnd(double time);
         void NewRound();
-        void Spawn();
+        void ResetHud();
         void Reset();
         void Tick(double elapsed);
         Report TakeReport();
@@ -65,7 +65,7 @@ namespace life_stats
             std::string text;
         };
         int local_{}, remaining_health_{-1}, reported_health_{-1};
-        bool alive_{}, active_{}, round_closed_{};
+        bool alive_{}, active_{}, round_closed_{}, hud_reset_{};
         uint64_t health_{}, armor_{}, overkill_{}, kills_{}, assists_{};
         End end_{End::None};
         double end_time_{}, pending_elapsed_{};
@@ -74,6 +74,7 @@ namespace life_stats
         std::vector<std::string> victims_;
         Report reports_;
         void Begin();
+        void UpdateHealth(int health, double time);
         void Finish(End end, double time);
         void Flush();
     };

@@ -86,6 +86,21 @@ TEST(LifeStats, DeathMessageDoesNotTreatStaleAliveSnapshotAsRespawn)
     ASSERT_EQ(report.chat.size(), 2u);
     EXPECT_NE(report.chat[0].find("100 HP"), std::string::npos);
 }
+TEST(LifeStats, HudResetDoesNotConfirmRespawnFromStaleAliveSnapshot)
+{
+    Tracker tracker;
+    tracker.Observe(1, true, 0, 100);
+    tracker.Death(2, 1, "Bob", "ak47", false, 1);
+    tracker.ResetHud();
+    tracker.Observe(1, true, 1.1, 100);
+    EXPECT_TRUE(tracker.TakeReport().empty());
+    tracker.Damage(100, 0, 2, 1.1);
+    tracker.Tick(0.3);
+    const auto report = tracker.TakeReport();
+    ASSERT_EQ(report.console.size(), 2u);
+    EXPECT_NE(report.console[0].find("100 HP"), std::string::npos);
+    EXPECT_NE(report.console[1].find("Damage from Bob (ak47) -100 HP (Death)"), std::string::npos);
+}
 TEST(LifeStats, RoundReportIsOnceAndNextLifeStartsClean)
 {
     Tracker tracker;
@@ -101,7 +116,7 @@ TEST(LifeStats, RoundReportIsOnceAndNextLifeStartsClean)
     tracker.Tick(0.3);
     EXPECT_TRUE(tracker.TakeReport().empty());
     tracker.NewRound();
-    tracker.Spawn();
+    tracker.ResetHud();
     tracker.Observe(1, true, 4, 100);
     tracker.RoundEnd(5);
     tracker.Tick(0.3);
@@ -116,16 +131,16 @@ TEST(LifeStats, NewRoundDoesNotInventALateReportForAMissingRoundEnd)
     tracker.Damage(20, 0, 0, 0.5);
     tracker.NewRound();
     EXPECT_TRUE(tracker.TakeReport().empty());
-    tracker.Spawn();
+    tracker.ResetHud();
     tracker.Observe(1, true, 1, 100);
-    tracker.Spawn();
+    tracker.ResetHud();
     EXPECT_TRUE(tracker.TakeReport().empty());
 }
 TEST(LifeStats, SpectatorsUnrelatedDeathsAndWorldDeathsDoNotInventAttribution)
 {
     Tracker tracker;
     tracker.Observe(1, false, 0);
-    tracker.Spawn();
+    tracker.ResetHud();
     tracker.Observe(1, false, 1);
     tracker.Damage(100, 0, 0, 1);
     tracker.RoundEnd(1);
@@ -357,6 +372,112 @@ TEST_F(LifeStatsPlugin, ReportsDeathBeforeRespawnWithColoredPrivateSummaryAndCon
     nc_runtime_event("round.end", R"({"reason":"#CTs_Win"})");
     Frame(30);
     EXPECT_EQ(console.size(), 4u);
+}
+TEST_F(LifeStatsPlugin, HudRefreshPreservesDamageKillsAndRemainingHealth)
+{
+    nc_runtime_event("player.health", R"({"health":70,"time":1})");
+    nc_runtime_event("player.damage", R"({"health":30,"armor":5,"bits":2,"time":1})");
+    nc_runtime_event("player.death", R"({"killer":1,"victim":2,"weapon":"ak47","headshot":false,"time":2})");
+    current_health = 70;
+    Frame();
+    nc_runtime_event("hud.reset", R"({"time":3})");
+    nc_runtime_event("player.health", R"({"health":70,"time":3})");
+    Frame();
+    EXPECT_TRUE(console.empty());
+    nc_runtime_event("player.health", R"({"health":0,"time":4})");
+    nc_runtime_event("player.death", R"({"killer":3,"victim":1,"weapon":"deagle","headshot":false,"time":4})");
+    nc_runtime_event("player.damage", R"({"health":80,"armor":0,"bits":2,"time":4})");
+    alive = false;
+    Frame(30);
+    ASSERT_EQ(console.size(), 4u);
+    EXPECT_NE(console[0].find("100 HP, 5 armor. Overkill: 10 HP. Kills: 1."), std::string::npos);
+    EXPECT_NE(console[1].find("-30 HP, -5 armor"), std::string::npos);
+    EXPECT_NE(console[2].find("Killed Alice (ak47)"), std::string::npos);
+    EXPECT_NE(console[3].find("Damage from Bob (deagle) -70 HP (10 HP overkill) (Death)"), std::string::npos);
+}
+TEST_F(LifeStatsPlugin, RapidRespawnKeepsPendingDeathReportAndStartsFreshLife)
+{
+    nc_runtime_event("player.health", R"({"health":75,"time":1})");
+    nc_runtime_event("player.damage", R"({"health":25,"armor":0,"bits":2,"time":1})");
+    nc_runtime_event("player.death", R"({"killer":1,"victim":2,"weapon":"ak47","headshot":false,"time":2})");
+    current_health = 75;
+    Frame();
+    nc_runtime_event("player.health", R"({"health":0,"time":3})");
+    nc_runtime_event("player.death", R"({"killer":3,"victim":1,"weapon":"deagle","headshot":false,"time":3})");
+    nc_runtime_event("player.damage", R"({"health":90,"armor":0,"bits":2,"time":3})");
+    nc_runtime_event("hud.reset", R"({"time":4})");
+    nc_runtime_event("player.health", R"({"health":100,"time":4})");
+    nc_runtime_event("player.health", R"({"health":90,"time":5})");
+    nc_runtime_event("player.damage", R"({"health":10,"armor":0,"bits":2,"time":5})");
+    current_health = 90;
+    Frame();
+    ASSERT_EQ(console.size(), 4u);
+    EXPECT_NE(console[0].find("100 HP, 0 armor. Overkill: 15 HP. Kills: 1."), std::string::npos);
+    EXPECT_NE(console[3].find("Damage from Bob (deagle) -75 HP (15 HP overkill) (Death)"), std::string::npos);
+    nc_runtime_event("round.end", R"({"time":6})");
+    Frame(30);
+    ASSERT_EQ(console.size(), 6u);
+    EXPECT_NE(console[4].find("Round ended. Damage taken: 10 HP, 0 armor. Kills: 0."), std::string::npos);
+    EXPECT_NE(console[5].find("-10 HP"), std::string::npos);
+}
+TEST_F(LifeStatsPlugin, DeadHudRefreshPreservesPendingDamageWithoutDuplicateReports)
+{
+    nc_runtime_event("player.health", R"({"health":0,"time":1})");
+    nc_runtime_event("player.death", R"({"killer":2,"victim":1,"weapon":"ak47","headshot":false,"time":1})");
+    alive = false;
+    Frame();
+    nc_runtime_event("hud.reset", R"({"time":1.05})");
+    nc_runtime_event("player.health", R"({"health":0,"time":1.05})");
+    nc_runtime_event("player.damage", R"({"health":100,"armor":0,"bits":2,"time":1.05})");
+    Frame();
+    EXPECT_TRUE(console.empty());
+    Frame(30);
+    ASSERT_EQ(console.size(), 2u);
+    EXPECT_NE(console[0].find("100 HP, 0 armor. Kills: 0."), std::string::npos);
+    EXPECT_NE(console[1].find("Damage from Alice (ak47) -100 HP (Death)"), std::string::npos);
+    nc_runtime_event("hud.reset", R"({"time":2})");
+    nc_runtime_event("player.health", R"({"health":0,"time":2})");
+    Frame(30);
+    nc_runtime_event("round.end", R"({"time":3})");
+    Frame(30);
+    EXPECT_EQ(console.size(), 2u);
+}
+TEST_F(LifeStatsPlugin, HudRefreshDoesNotReopenReportedRound)
+{
+    nc_runtime_event("player.health", R"({"health":90,"time":1})");
+    nc_runtime_event("player.damage", R"({"health":10,"armor":0,"bits":2,"time":1})");
+    nc_runtime_event("round.end", R"({"time":2})");
+    current_health = 90;
+    Frame(30);
+    ASSERT_EQ(console.size(), 2u);
+    nc_runtime_event("hud.reset", R"({"time":3})");
+    nc_runtime_event("player.health", R"({"health":90,"time":3})");
+    Frame(30);
+    nc_runtime_event("round.end", R"({"time":4})");
+    Frame(30);
+    EXPECT_EQ(console.size(), 2u);
+    nc_runtime_event("round.start", R"({"time":5})");
+    nc_runtime_event("hud.reset", R"({"time":5})");
+    nc_runtime_event("player.health", R"({"health":100,"time":5})");
+    nc_runtime_event("round.end", R"({"time":6})");
+    current_health = 100;
+    Frame(30);
+    ASSERT_EQ(console.size(), 3u);
+    EXPECT_NE(console[2].find("Round ended. Damage taken: 0 HP, 0 armor. Kills: 0."), std::string::npos);
+}
+TEST_F(LifeStatsPlugin, SpectatorHudHealthAfterRefreshDoesNotStartLife)
+{
+    spectator = true;
+    alive = false;
+    nc_runtime_event("map.changed", R"({"old":"old","map":"new"})");
+    Frame();
+    nc_runtime_event("hud.reset", R"({"time":1})");
+    nc_runtime_event("player.health", R"({"health":100,"time":1})");
+    nc_runtime_event("player.damage", R"({"health":25,"armor":0,"bits":2,"time":2})");
+    nc_runtime_event("round.end", R"({"time":3})");
+    Frame(30);
+    EXPECT_TRUE(console.empty());
+    EXPECT_TRUE(chat.empty());
 }
 TEST_F(LifeStatsPlugin, ReportsSurvivorBeforeNextRoundAndResetsOnMapChange)
 {

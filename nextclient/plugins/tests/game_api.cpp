@@ -47,6 +47,8 @@ namespace
     int creation, mode;
     int rejected_control_acceptances, valid_control;
     std::string controls_before, controls_after;
+    int g_ChoiceResults[3]{};
+    std::string g_ChoiceStats[4];
     std::vector<std::pair<std::string, std::string>> events;
 } // namespace
 extern "C" NC_EXPORT const NcHost* NC_CALL nc_test_host()
@@ -80,6 +82,14 @@ extern "C" NC_EXPORT const char* NC_CALL nc_test_controls_stats(int after)
 extern "C" NC_EXPORT int NC_CALL nc_test_controls_result(int valid)
 {
     return valid ? valid_control : rejected_control_acceptances;
+}
+extern "C" NC_EXPORT int NC_CALL nc_test_choice_result(int index)
+{
+    return g_ChoiceResults[index];
+}
+extern "C" NC_EXPORT const char* NC_CALL nc_test_choice_stats(int index)
+{
+    return g_ChoiceStats[index].c_str();
 }
 class GameApi : public nextclient::Plugin
 {
@@ -137,6 +147,37 @@ public:
             control.label_en = "Valid";
             control.label_ru = "Настройка";
             valid_control = host->add_control(host->context, &control);
+        }
+        if (GetEnvironmentVariableA("NEXTCLIENT_TEST_CHOICE_CONTROLS", probe, sizeof(probe)) == 1 && probe[0] == '1')
+        {
+            g_ChoiceResults[0] = 0;
+            g_ChoiceStats[0] = extension("nextclient.events", "stats");
+            for (int count : {65, 4097})
+            {
+                const std::string choices(count - 1, '\n');
+                const NcControl control{
+                    sizeof(NcControl), "rejected_choice", "game", NC_CHOICE, "Choice", "", 0, 0, count - 1, choices.c_str(), ""
+                };
+                for (int attempt = 0; attempt < 32; ++attempt)
+                {
+                    g_ChoiceResults[0] += host->add_control(host->context, &control);
+                }
+            }
+            g_ChoiceStats[1] = extension("nextclient.events", "stats");
+            const NcControl single{sizeof(NcControl), "single_choice", "game", NC_CHOICE, "Single", "", 0, 0, 0, "Only", ""};
+            g_ChoiceResults[1] = host->add_control(host->context, &single);
+            g_ChoiceStats[2] = extension("nextclient.events", "stats");
+            const std::string choices(63, '\n');
+            const NcControl maximum{sizeof(NcControl), "maximum_choice", "game", NC_CHOICE, "Maximum", "", 63, 0, 63, choices.c_str(), ""};
+            g_ChoiceResults[2] = host->add_control(host->context, &maximum);
+            g_ChoiceStats[3] = extension("nextclient.events", "stats");
+        }
+    }
+    void command(NcCommand&, const NcPlayer&) override
+    {
+        if (mode == 4)
+        {
+            throw std::runtime_error("Command failure");
         }
     }
     void event(const char* name, const char* json) override

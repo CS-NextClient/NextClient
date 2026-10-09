@@ -135,7 +135,7 @@ namespace plugins
         if (value.is_unsigned())
         {
             auto number = value.get_unsigned();
-            check(number <= static_cast<uint64_t>(maximum), "#NextPlugins_ErrorIntegerRange");
+            check(maximum >= 0 && number <= static_cast<uint64_t>(maximum), "#NextPlugins_ErrorIntegerRange");
             check(static_cast<int64_t>(number) >= minimum, "#NextPlugins_ErrorIntegerRange");
             return static_cast<int64_t>(number);
         }

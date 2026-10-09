@@ -116,8 +116,9 @@ initialization follows the same rule. Never wait for unload to notice cancellati
 per-plugin JSON store is updated as one atomic transaction by a host worker.
 The response supplies a `request`. `sdk.storage` reports `{"request":N,"ok":true}`
 or `ok:false` after completion. Only one transaction per plugin may be pending;
-concurrent sync/async mutations are rejected. Reads show the last committed
-snapshot until the main thread processes completion. Accepted writes drain
+concurrent sync/async mutations are rejected, including deletion of a key absent
+from the committed snapshot. Reads show the last committed snapshot until the
+main thread processes completion. Accepted writes drain
 before shutdown; a failed write preserves the prior store. Synchronous and
 asynchronous persistence share limits of 1,024 keys, 64 KiB per value, and 1 MiB
 total. Completion notifications share the event queue;
@@ -192,7 +193,10 @@ The host owns panels, input release, scrolling, textures, and handle cleanup.
 closed. `menu` is optional. Text fields use explicit `en` and `ru` strings.
 Other item kinds are `slider` (`min`, `max`, integer `value`), `text` (string
 `value`, at most 1,024 bytes), `list` (`options` array of localized captions,
-integer selected `value`, -1 for none), and `image` (`texture` ID).
+integer selected `value`, -1 for none), and `image` (`texture` ID). Lists support
+up to 64 options; opening a window preserves -1 without selecting an option or
+emitting an input event. Slider values must be within both bounds, including
+when the entire range is negative.
 Items form scrollable rows; optional integer `row` groups items horizontally
 into equal-width cells. Supply a label item in the same row to label an input.
 Up to eight windows and 64 items per window are allowed. Escape/close hides a
@@ -257,7 +261,8 @@ independently of notification delivery. This uses the same version-1 interface:
 - `status`: `{request}` returns `{ok:true,request,state:"pending"}` or
   `{ok:true,request,state:"complete",result:{ok:true,data}}` (or an error result).
 - `cancel`: `{request}` makes a pending request terminal with an error. Late replies
-  are rejected; cancellation cannot undo provider work already performed.
+  are rejected. Provider callbacks still queued are skipped after cancellation or
+  timeout; work already delivered to the provider cannot be undone.
 - `ack`: `{request}` releases a terminal record after consuming it. A pending
   request cannot be acknowledged. Reads are repeatable until acknowledgement.
 

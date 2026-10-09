@@ -44,6 +44,12 @@ namespace plugins::runtime
             notify(*request.caller, "sdk.reply", Json{{"request", id}, {"result", value}});
         }
     } // namespace
+    bool Services_IsRequestPending(const Loaded& provider, uint64_t request_id)
+    {
+        const auto found = requests.find(request_id);
+        return found != requests.end() && found->second.provider == &provider && found->second.result.empty() &&
+               available(found->second.caller) && found->second.deadline > std::chrono::steady_clock::now();
+    }
     std::string service_completion(Loaded& p, const std::string& operation, const Json& args)
     {
         const auto id = args.at("request").as<uint64_t>();
@@ -172,7 +178,7 @@ namespace plugins::runtime
                 std::move(memory)
             }
         );
-        if (!enqueue(*service.owner, {++event_serial, "sdk.service", std::move(data), {}, 0, true}))
+        if (!enqueue(*service.owner, {++event_serial, "sdk.service", std::move(data), {}, 0, true, id}))
         {
             requests.erase(id);
             throw std::runtime_error("Provider queue full");

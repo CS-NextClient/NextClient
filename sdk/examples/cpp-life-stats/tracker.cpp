@@ -46,6 +46,7 @@ namespace life_stats
     void Tracker::Begin()
     {
         active_ = true;
+        hud_reset_ = false;
         end_ = End::None;
         health_ = armor_ = overkill_ = kills_ = assists_ = 0;
         remaining_health_ = reported_health_ = -1;
@@ -71,16 +72,38 @@ namespace life_stats
             if (!active_)
                 Begin();
         }
-        if (health >= 0)
-            Health(health, time);
+        if (health >= 0 && (alive || health == 0))
+        {
+            UpdateHealth(health, time);
+        }
         if (!alive && alive_)
             Finish(End::Death, time);
         alive_ = alive;
     }
-    void Tracker::Health(int health, double time)
+    void Tracker::Health(int health, double time, bool active_player)
     {
-        if (!active_ || health < 0)
+        if (health < 0)
+        {
             return;
+        }
+        if (hud_reset_)
+        {
+            hud_reset_ = false;
+            if (health > 0 && active_player && local_ && !round_closed_ && (!active_ || end_ == End::Death))
+            {
+                Flush();
+                Begin();
+                alive_ = true;
+            }
+        }
+        UpdateHealth(health, time);
+    }
+    void Tracker::UpdateHealth(int health, double time)
+    {
+        if (!active_)
+        {
+            return;
+        }
         // Health commonly arrives before its Damage message. Retain the previous
         // HP until Damage consumes it; increases represent healing, not damage.
         if (remaining_health_ < 0 && health > 0)
@@ -246,11 +269,13 @@ namespace life_stats
         // Do not invent a delayed round-end report at the next round's start.
         Flush();
         active_ = alive_ = round_closed_ = false;
+        hud_reset_ = true;
         end_ = End::None;
     }
-    void Tracker::Spawn()
+    void Tracker::ResetHud()
     {
-        NewRound();
+        // Full HUD updates also occur while alive or dead; only a new health event confirms respawn.
+        hud_reset_ = true;
     }
     void Tracker::Reset()
     {

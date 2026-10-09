@@ -103,6 +103,16 @@ TEST(PluginMetadata, RejectMalformedPeAndDeepJson)
     EXPECT_THROW(pe_manifest(std::vector<unsigned char>(512, 0)), std::exception);
     EXPECT_THROW(parse(std::string(30, '[') + "0" + std::string(30, ']')), std::exception);
 }
+TEST(PluginMetadata, IntegerBoundsRejectUnsignedValuesOutsideSignedRange)
+{
+    EXPECT_EQ(integer(parse("-100"), -100, -1), -100);
+    EXPECT_EQ(integer(parse("-1"), -100, -1), -1);
+    EXPECT_THROW(integer(parse("0"), -100, -1), std::exception);
+    EXPECT_THROW(integer(parse("18446744073709551615"), -100, -1), std::exception);
+    EXPECT_THROW(integer(parse("9223372036854775808"), INT64_MIN, INT64_MAX), std::exception);
+    EXPECT_EQ(integer(parse("9223372036854775807"), INT64_MIN, INT64_MAX), INT64_MAX);
+    EXPECT_EQ(integer(parse("0"), -1, 0), 0);
+}
 TEST(PluginMetadata, HashKnownVector)
 {
     EXPECT_EQ(sha256({'a', 'b', 'c'}), "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad");

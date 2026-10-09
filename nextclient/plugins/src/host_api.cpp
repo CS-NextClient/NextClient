@@ -7,6 +7,11 @@
 
 namespace plugins::runtime
 {
+    namespace
+    {
+        constexpr size_t kMaxChoiceOptions = 64;
+        constexpr size_t kChoiceOptionMemoryBytes = 4096;
+    } // namespace
     const std::set<std::string> builtin_tabs{"multiplayer", "game", "keyboard", "mouse", "audio", "video", "voice", "miscellaneous"};
     void NC_CALL log_message(void* ctx, const char* raw)
     {
@@ -93,10 +98,13 @@ namespace plugins::runtime
                 return 0;
             if (c->kind == NC_SLIDER && (static_cast<int64_t>(c->maximum) - c->minimum > 1000000))
                 return 0;
-            if (c->kind == NC_CHOICE &&
-                (en.empty() || c->minimum != 0 || c->maximum != static_cast<int32_t>(std::count(en.begin(), en.end(), '\n')) ||
-                 (!ru.empty() && std::count(ru.begin(), ru.end(), '\n') != c->maximum)))
+            const size_t choice_count = c->kind == NC_CHOICE ? static_cast<size_t>(std::count(en.begin(), en.end(), '\n')) + 1 : 0;
+            if (c->kind == NC_CHOICE && (en.empty() || choice_count > kMaxChoiceOptions || c->minimum != 0 ||
+                                         c->maximum != static_cast<int32_t>(choice_count - 1) ||
+                                         (!ru.empty() && std::count(ru.begin(), ru.end(), '\n') != c->maximum)))
+            {
                 return 0;
+            }
             auto control = Json{
                 {"id", id},
                 {"tab", tab},
@@ -109,7 +117,8 @@ namespace plugins::runtime
                 {"choices_en", en},
                 {"choices_ru", ru}
             };
-            Budget memory(8192 + 2 * (en.capacity() + ru.capacity()));
+            // Each option also creates a VGUI menu item when Options opens.
+            Budget memory(8192 + 2 * (en.capacity() + ru.capacity()) + choice_count * kChoiceOptionMemoryBytes);
             // Validate and allocate before registering the paired setting. Moving
             // the prepared JSON into this reserved slot cannot allocate afterwards.
             p->controls.get_array().reserve(p->controls.get_array().size() + 1);
@@ -605,8 +614,10 @@ namespace plugins::runtime
         {
             auto* p = static_cast<Loaded*>(ctx);
             const auto key = text(raw, 96);
-            if (!available(p) || !valid_id(key))
+            if (!available(p) || p->store_pending || !valid_id(key))
+            {
                 return 0;
+            }
             load_store(*p);
             if (!p->store.find(key))
                 return 1;

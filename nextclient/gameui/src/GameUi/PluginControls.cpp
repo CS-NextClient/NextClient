@@ -10,8 +10,15 @@
 #include <vgui_controls/Slider.h>
 #include <vgui_controls/TextEntry.h>
 
+#include "GameUi/PluginControlAdapters.h"
 #include "PluginLocalization.h"
 #include "PluginWindowState.h"
+
+namespace
+{
+    using plugin_slider_t = PluginSliderControl<vgui2::Slider>;
+    using plugin_list_t = PluginListControl<vgui2::ComboBox>;
+}
 
 const char* PluginControls_SettingKind(unsigned kind)
 {
@@ -82,9 +89,7 @@ vgui2::Panel* PluginControls_Create(vgui2::Panel* parent, const tao::json::value
     }
     else if (kind == "slider")
     {
-        vgui2::Slider* slider = new vgui2::Slider(parent, id);
-        slider->SetRange(spec.at("min").as<int>(), spec.at("max").as<int>());
-        widget = slider;
+        widget = new plugin_slider_t(parent, id, spec.at("min").as<int>(), spec.at("max").as<int>());
     }
     else if (kind == "text")
     {
@@ -94,7 +99,7 @@ vgui2::Panel* PluginControls_Create(vgui2::Panel* parent, const tao::json::value
     }
     else if (kind == "list")
     {
-        vgui2::ComboBox* combo = new vgui2::ComboBox(parent, id, 8, false);
+        plugin_list_t* combo = new plugin_list_t(parent, id);
         for (const auto& option : spec.at("options").get_array())
         {
             combo->AddItem(PluginWide(PluginLocalized(option)).c_str(), nullptr);
@@ -119,11 +124,11 @@ void PluginControls_SetValue(vgui2::Panel* widget, std::string_view kind, const 
     }
     else if (kind == "slider")
     {
-        static_cast<vgui2::Slider*>(widget)->SetValue(value.as<int>(), false);
+        static_cast<plugin_slider_t*>(widget)->SetControlValue(value.as<int>());
     }
     else if (kind == "list")
     {
-        static_cast<vgui2::ComboBox*>(widget)->SilentActivateItemByRow(value.as<int>());
+        static_cast<plugin_list_t*>(widget)->SetSelection(value.as<int>());
     }
     else if (kind == "text")
     {
@@ -142,11 +147,11 @@ std::optional<tao::json::value> PluginControls_Read(vgui2::Panel* widget, std::s
         }
         int SliderValue() const
         {
-            return static_cast<vgui2::Slider*>(widget)->GetValue();
+            return static_cast<plugin_slider_t*>(widget)->ReadControlValue();
         }
         int Selection() const
         {
-            return static_cast<vgui2::ComboBox*>(widget)->GetActiveItem();
+            return static_cast<plugin_list_t*>(widget)->get_selection();
         }
         std::string Text() const
         {

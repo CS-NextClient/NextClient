@@ -174,8 +174,11 @@ Built-in anchor names are reserved and cannot be used for custom tabs.
 
 Controls support checkboxes, bounded integer sliders, indexed dropdowns, and
 action buttons. Labels/dropdown entries support English and Russian, falling back
-to English. Dropdown choices are newline-separated, indexed from zero. Settings
-are namespaced by plugin ID. Register defaults, then call `setting` during load.
+to English. Dropdown choices are newline-separated, indexed from zero, with at
+most 64 choices per control. Their UI allocation cost counts toward the shared
+host budget. Sliders support negative bounds and integer ranges up to 1,000,000
+steps. Settings are namespaced by plugin ID. Register defaults, then call
+`setting` during load.
 `setting_changed` follows a successful Options Apply/OK save. Cancel preserves
 saved settings. Action buttons run immediately and are not undone by Cancel.
 
