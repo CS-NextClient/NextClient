@@ -32,7 +32,9 @@ namespace settings_share
             }
 
             if (sections == 0)
+            {
                 sections = kAllSections;
+            }
 
             std::string code = Encode(ReadCvars(), sections);
             vgui2::system()->SetClipboardText(code.c_str(), static_cast<int>(code.size()));
@@ -65,7 +67,9 @@ namespace settings_share
         Values values{};
 
         for (int i = 0; i < kFieldCount; i++)
+        {
             values[i] = engine->pfnGetCvarFloat(kFields[i].cvar);
+        }
 
         values[kCrosshairSize] = static_cast<float>(crosshair::SizeIndex(engine->pfnGetCvarString(cvars::kCrosshairSize.name)));
 
@@ -86,7 +90,9 @@ namespace settings_share
         for (int i = 0; i < kFieldCount; i++)
         {
             if (!((decoded.sections >> kFields[i].section) & 1))
+            {
                 continue;
+            }
 
             switch (i)
             {
@@ -95,7 +101,7 @@ namespace settings_share
                 break;
 
             case kCrosshairColorR:
-                Q_snprintf(value, sizeof(value), "%d %d %d",
+                V_snprintf(value, sizeof(value), "%d %d %d",
                     static_cast<int>(values[kCrosshairColorR]), static_cast<int>(values[kCrosshairColorG]), static_cast<int>(values[kCrosshairColorB]));
                 engine->Cvar_Set(kFields[i].cvar, value);
                 break;
@@ -106,7 +112,7 @@ namespace settings_share
 
             default:
                 // %g drops the float noise of the step arithmetic: 0.8000001 becomes 0.8
-                Q_snprintf(value, sizeof(value), "%g", values[i]);
+                V_snprintf(value, sizeof(value), "%g", values[i]);
                 engine->Cvar_Set(kFields[i].cvar, value);
                 break;
             }
@@ -117,10 +123,12 @@ namespace settings_share
     {
         for (int i = 0; i < kSectionCount; i++)
         {
-            if (Q_stricmp(name, kSectionNames[i]) == 0)
+            if (V_stricmp(name, kSectionNames[i]) == 0)
+            {
                 return i;
+            }
         }
-        
+
         return -1;
     }
 
