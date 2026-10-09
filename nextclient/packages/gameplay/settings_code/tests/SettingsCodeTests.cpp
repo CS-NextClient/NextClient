@@ -46,7 +46,9 @@ namespace
         for (int i = 0; i < kFieldCount; i++)
         {
             if ((sections >> kFields[i].section) & 1)
+            {
                 EXPECT_NEAR(expected[i], actual[i], kFields[i].step / 2) << kFields[i].cvar << " (field " << i << ")";
+            }
         }
     }
 }
