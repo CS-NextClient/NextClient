@@ -136,8 +136,17 @@ jobs:
       - name: Bootstrap vcpkg
         run: ./vcpkg/bootstrap-vcpkg.sh -disableMetrics
 
+      - name: Check GoldSrc ABI models
+        run: python3 nextclient/goldsrc_abi/tools/library.py check
+
+      - name: Test portable platform tools
+        run: python3 -m unittest discover -s nextclient/goldsrc_abi/tools -t nextclient/goldsrc_abi/tools -p "test_platforms.py"
+
       - name: Configure
         run: cmake --preset linux "-DNEXTCLIENT_INSTALL_DIR=$GITHUB_WORKSPACE/install"
+
+      - name: Check Linux x86 ABI layouts
+        run: cmake --build --preset linux-release --target goldsrc_abi_golden
 
       - name: Build
         run: cmake --build --preset linux-release --target BUILD_ALL

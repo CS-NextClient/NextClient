@@ -82,6 +82,21 @@ void CGameUI::OpenHudRadarDialog()
         g_hHudRadarDialog->RequestFocus();
     }
 }
+
+void CGameUI::CloseHudRadarDialog()
+{
+    CHudRadarDialog* dialog = g_hHudRadarDialog.Get();
+    if (!dialog)
+    {
+        return;
+    }
+
+    g_hHudRadarDialog = nullptr;
+    // Loading and disconnect must release the root-parented dialog without waiting for its fade.
+    dialog->DisableFadeEffect();
+    dialog->OnCommand("Close");
+}
+
 static CGameUI g_GameUI;
 #ifdef _WIN32
 static HWND g_MainWindow = nullptr;
@@ -389,10 +404,7 @@ void CGameUI::ConnectToServer(const char *game, int IP, int port)
 
 void CGameUI::DisconnectFromServer(void)
 {
-    // The level is gone, so the over-game state must not survive into the next session
-    // (a stale handle would make ActivateGameUI swallow Esc there); clear it before the
-    // menu activation below consults it.
-    m_hPanelOverGame = nullptr;
+    CloseHudRadarDialog();
 
     if (g_pServerBrowser)
         g_pServerBrowser->DisconnectFromGame();
@@ -466,8 +478,8 @@ bool CGameUI::IsGameUIActive(void)
 
 void CGameUI::LoadingStarted(const char *resourceType, const char *resourceName)
 {
+    CloseHudRadarDialog();
     m_bLoadlingLevel = true;
-    m_hPanelOverGame = nullptr;
 
     GameConsole().Hide();
     BasePanel()->OnLevelLoadingStarted(resourceName);
@@ -631,5 +643,5 @@ void CGameUI::NeedApplyMultiplayerGameSettings()
 void CGameUI::OnDisconnectFromServer(int eSteamLoginFailure, const char *username)
 {
     m_bNeedApplyMultiplayerGameSettings = false;
-    m_hPanelOverGame = nullptr;
+    CloseHudRadarDialog();
 }

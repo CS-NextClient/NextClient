@@ -1,5 +1,7 @@
 #pragma once
 
+#include <goldsrc/fwd.h>
+
 namespace goldsrc
 {
     inline constexpr int FCVAR_ARCHIVE = 0x00000001;

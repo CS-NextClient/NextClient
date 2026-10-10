@@ -7,6 +7,7 @@ import tempfile
 import unittest
 
 import library
+from tests.test_platforms import supplement
 
 # A stand-in for clang-format that never needs the real tool: it answers --version with a fixed line and
 # echoes stdin back unchanged, unless its first argument (baked in by _fake_clang_format's wrapper) appears
@@ -39,6 +40,15 @@ def _write(path, data):
         json.dump(data, stream)
 
 
+def _main(argv):
+    facts_path = argv[argv.index("--facts") + 1]
+    linux_path = facts_path + ".linux.json"
+    if os.path.isfile(facts_path):
+        with open(facts_path, encoding="utf-8") as stream:
+            _write(linux_path, supplement(json.load(stream)))
+    return library.main(argv + ["--linux-facts", linux_path])
+
+
 def _fake_clang_format(directory, fail_marker=""):
     """A path --clang-format can point at without the real tool installed. Windows will not execute a
     .py file directly, so this writes the interpreter-independent logic into fake_clang_format.py and
@@ -67,6 +77,23 @@ def _valid_map(header="goldsrc/cvar.h"):
 
 
 class CheckCommandTest(unittest.TestCase):
+    def test_check_reports_missing_linux_facts_without_a_traceback(self):
+        with tempfile.TemporaryDirectory() as directory:
+            facts_path = os.path.join(directory, "facts.json")
+            map_path = os.path.join(directory, "map.json")
+            linux_path = os.path.join(directory, "missing-linux.json")
+            _write(facts_path, _facts())
+            _write(map_path, _valid_map())
+            out = io.StringIO()
+            with contextlib.redirect_stdout(out), contextlib.redirect_stderr(io.StringIO()):
+                try:
+                    code = library.main(["check", "--facts", facts_path, "--map", map_path,
+                                         "--linux-facts", linux_path])
+                except SystemExit as error:
+                    code = error.code
+            self.assertEqual(code, 1)
+            self.assertIn(linux_path, out.getvalue())
+
     def test_check_reports_problems_and_returns_1(self):
         with tempfile.TemporaryDirectory() as directory:
             facts_path = os.path.join(directory, "facts.json")
@@ -76,7 +103,7 @@ class CheckCommandTest(unittest.TestCase):
 
             out = io.StringIO()
             with contextlib.redirect_stdout(out):
-                code = library.main(["check", "--facts", facts_path, "--map", map_path])
+                code = _main(["check", "--facts", facts_path, "--map", map_path])
             self.assertEqual(code, 1)
             self.assertIn("FCVAR_ARCHIVE", out.getvalue())
 
@@ -89,7 +116,7 @@ class CheckCommandTest(unittest.TestCase):
 
             out = io.StringIO()
             with contextlib.redirect_stdout(out):
-                code = library.main(["check", "--facts", facts_path, "--map", map_path])
+                code = _main(["check", "--facts", facts_path, "--map", map_path])
             self.assertEqual(code, 1)
             self.assertIn("namespace", out.getvalue())
 
@@ -102,7 +129,7 @@ class CheckCommandTest(unittest.TestCase):
 
             out = io.StringIO()
             with contextlib.redirect_stdout(out):
-                code = library.main(["check", "--facts", facts_path, "--map", map_path])
+                code = _main(["check", "--facts", facts_path, "--map", map_path])
             self.assertEqual(code, 0)
             # goldsrc/cvar.h and goldsrc/fwd.h, the two files the headers command writes for this map.
             self.assertIn("2 headers", out.getvalue())
@@ -116,7 +143,7 @@ class CheckCommandTest(unittest.TestCase):
 
             out = io.StringIO()
             with contextlib.redirect_stdout(out):
-                code = library.main(["check", "--facts", facts_path, "--map", map_path])
+                code = _main(["check", "--facts", facts_path, "--map", map_path])
             self.assertEqual(code, 1)
             self.assertIn(facts_path, out.getvalue())
 
@@ -128,7 +155,7 @@ class CheckCommandTest(unittest.TestCase):
 
             out = io.StringIO()
             with contextlib.redirect_stdout(out):
-                code = library.main(["check", "--facts", facts_path, "--map", map_path])
+                code = _main(["check", "--facts", facts_path, "--map", map_path])
             self.assertEqual(code, 1)
             self.assertIn(map_path, out.getvalue())
 
@@ -150,7 +177,7 @@ class HeadersCommandTest(unittest.TestCase):
 
             out = io.StringIO()
             with contextlib.redirect_stdout(out):
-                code = library.main(["headers", "--facts", facts_path, "--map", map_path, "--out", out_dir,
+                code = _main(["headers", "--facts", facts_path, "--map", map_path, "--out", out_dir,
                                      "--clang-format", clang_format])
             self.assertEqual(code, 0)
             self.assertIn("removed goldsrc/stale.h", out.getvalue())
@@ -170,7 +197,7 @@ class HeadersCommandTest(unittest.TestCase):
 
             out2 = io.StringIO()
             with contextlib.redirect_stdout(out2):
-                code2 = library.main(["headers", "--facts", facts_path, "--map", map_path, "--out", out_dir,
+                code2 = _main(["headers", "--facts", facts_path, "--map", map_path, "--out", out_dir,
                                       "--clang-format", clang_format])
             self.assertEqual(code2, 0)
             self.assertNotIn("removed", out2.getvalue())
@@ -188,7 +215,7 @@ class HeadersCommandTest(unittest.TestCase):
 
             out = io.StringIO()
             with contextlib.redirect_stdout(out):
-                code = library.main(["headers", "--facts", facts_path, "--map", map_path, "--out", out_dir])
+                code = _main(["headers", "--facts", facts_path, "--map", map_path, "--out", out_dir])
             self.assertEqual(code, 1)
             self.assertFalse(os.path.exists(out_dir))
 
@@ -219,7 +246,7 @@ class AtomicWriteTest(unittest.TestCase):
 
             out = io.StringIO()
             with contextlib.redirect_stdout(out):
-                code = library.main(["headers", "--facts", facts_path, "--map", map_path, "--out", out_dir,
+                code = _main(["headers", "--facts", facts_path, "--map", map_path, "--out", out_dir,
                                      "--clang-format", clang_format])
             self.assertEqual(code, 2)
             self.assertIn("fail_here", out.getvalue())
@@ -236,7 +263,7 @@ class AtomicWriteTest(unittest.TestCase):
 
             out = io.StringIO()
             with contextlib.redirect_stdout(out):
-                code = library.main(["headers", "--facts", facts_path, "--map", map_path, "--out", out_dir,
+                code = _main(["headers", "--facts", facts_path, "--map", map_path, "--out", out_dir,
                                      "--clang-format", missing_tool])
             self.assertEqual(code, 2)
             self.assertIn(missing_tool, out.getvalue())
@@ -255,7 +282,7 @@ class TestsCommandTest(unittest.TestCase):
 
             out = io.StringIO()
             with contextlib.redirect_stdout(out):
-                code = library.main(["tests", "--facts", facts_path, "--map", map_path, "--out", out_dir,
+                code = _main(["tests", "--facts", facts_path, "--map", map_path, "--out", out_dir,
                                      "--clang-format", clang_format])
             self.assertEqual(code, 0)
             self.assertIn("wrote 1 test file(s)", out.getvalue())
@@ -270,7 +297,7 @@ class TestsCommandTest(unittest.TestCase):
 
             out2 = io.StringIO()
             with contextlib.redirect_stdout(out2):
-                code2 = library.main(["tests", "--facts", facts_path, "--map", map_path, "--out", out_dir,
+                code2 = _main(["tests", "--facts", facts_path, "--map", map_path, "--out", out_dir,
                                       "--clang-format", clang_format])
             self.assertEqual(code2, 0)
             with open(golden_path, "rb") as stream:
@@ -287,7 +314,7 @@ class TestsCommandTest(unittest.TestCase):
 
             out = io.StringIO()
             with contextlib.redirect_stdout(out):
-                code = library.main(["tests", "--facts", facts_path, "--map", map_path, "--out", out_dir])
+                code = _main(["tests", "--facts", facts_path, "--map", map_path, "--out", out_dir])
             self.assertEqual(code, 1)
             self.assertFalse(os.path.exists(out_dir))
 
@@ -333,7 +360,7 @@ class ClangFormatTest(unittest.TestCase):
 
             out = io.StringIO()
             with contextlib.redirect_stdout(out):
-                code = library.main(["headers", "--facts", facts_path, "--map", map_path, "--out", out_dir])
+                code = _main(["headers", "--facts", facts_path, "--map", map_path, "--out", out_dir])
             self.assertEqual(code, 0)
 
             cvar_path = os.path.join(out_dir, "goldsrc", "cvar.h")

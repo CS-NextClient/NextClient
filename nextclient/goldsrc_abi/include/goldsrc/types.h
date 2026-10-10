@@ -2,6 +2,8 @@
 
 #include <cstdint>
 
+#include <goldsrc/fwd.h>
+
 namespace goldsrc
 {
     using CRC32_t = unsigned int;

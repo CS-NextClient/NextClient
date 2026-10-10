@@ -73,11 +73,11 @@ Repeat the applicable observations in separate series with:
 
 - `hud_radar_round 0`: square radar.
 - `hud_radar_rotate 0`: fixed map orientation.
-- `hud_radar_fullmap 1`: full map.
-- Selected values of `hud_radar_scale` from 0.5 to 3 and `hud_radar_map_scale` from 0.5 to 3.5.
+- `hud_radar_fullmap 1`: full map while TAB is held.
+- Selected values of `hud_radar_scale` from 0.5 to 3 and `hud_radar_map_scale` from 0.25 to 3.
 - `hud_radar_names 0` and `hud_radar_health 0`: labels and health bars disabled. Restore each setting to 1 afterward.
 
-For H02, enable `hud_radar_fullmap 1` before launch. Save the complete settings with the report. If a setting changes between steps, identify the step where it changed.
+For H02, enable `hud_radar_fullmap 1` and enter `+showscores` before launch to keep the full map visible during observations. Save the complete settings with the report. If a setting changes between steps, identify the step where it changed.
 
 <a id="visibility-rules"></a>
 ## Visibility rules
@@ -153,6 +153,7 @@ Variant **H02-CT**:
 
 ```text
 hud_radar_fullmap 1
++showscores
 nct_trace on
 nct_run radar_hostage_follow ct
 ```
@@ -183,7 +184,7 @@ Duplicate markers, a jump to an outdated position, or a stationary marker while 
 
 ### Reset and repetitions
 
-Save the result and use `nct_repeat` until five complete H02-CT repetitions are recorded. Restore `hud_radar_fullmap` to the selected baseline after the series and apply the shared cleanup.
+Save the result and use `nct_repeat` until five complete H02-CT repetitions are recorded. Enter `-showscores` and restore `hud_radar_fullmap` to the selected baseline after the series and apply the shared cleanup.
 
 <a id="h03"></a>
 ## H03: Hostage visibility

@@ -11,6 +11,34 @@ namespace ncl_math
         Vector2 pos;
         Vector2 uv;
     };
+    
+    // Emitting must keep the input vertices valid throughout the pass.
+    template <class Vertex, class SignedDistance, class Interpolate, class Emit>
+    void ClipPolygonHalfSpace(std::span<const Vertex> polygon, SignedDistance&& distance, Interpolate&& interpolate, Emit&& emit)
+    {
+        if (polygon.empty())
+        {
+            return;
+        }
+        using Scalar_t = decltype(distance(polygon.back()));
+        const Vertex* previous = &polygon.back();
+        Scalar_t previous_distance = distance(*previous);
+        for (const Vertex& current : polygon)
+        {
+            Scalar_t current_distance = distance(current);
+            if ((previous_distance >= Scalar_t{}) != (current_distance >= Scalar_t{}))
+            {
+                Scalar_t fraction = previous_distance / (previous_distance - current_distance);
+                emit(interpolate(*previous, current, fraction));
+            }
+            if (current_distance >= Scalar_t{})
+            {
+                emit(current);
+            }
+            previous = &current;
+            previous_distance = current_distance;
+        }
+    }
 
     // axis 0 = x, 1 = y; keep_greater keeps the >= side. out must hold in.size() + 1 vertices.
     inline int ClipHalfPlane(std::span<const UvVertex> in, int axis, float bound, bool keep_greater, std::span<UvVertex> out)

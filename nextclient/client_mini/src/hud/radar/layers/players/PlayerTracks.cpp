@@ -29,13 +29,19 @@ void PlayerTracks::Clear(int player)
     tracks_[player] = Buf{};
 }
 
-void PlayerTracks::Sample(int player, ncl_math::Vector2 pos, float time)
+bool PlayerTracks::is_sample_due(int player, float time) const
+{
+    const Buf& buf = tracks_[player];
+
+    // A backwards clock step must not leave the sample deadline in the future.
+    return !(time >= buf.last_time && time - buf.last_time < kInterval);
+}
+
+void PlayerTracks::Sample(int player, ncl_math::Vector3 pos, int layer, float time, bool break_on_jump)
 {
     Buf& buf = tracks_[player];
 
-    // CL_Parse_Time steps cl.time backwards on a clock reset without a level change, which
-    // would otherwise leave last_time in the future and freeze the trail.
-    if (time >= buf.last_time && time - buf.last_time < kInterval)
+    if (!is_sample_due(player, time))
     {
         return;
     }
@@ -48,18 +54,18 @@ void PlayerTracks::Sample(int player, ncl_math::Vector2 pos, float time)
     {
         int last = (buf.head - 1 + kMaxPoints) % kMaxPoints;
 
-        if (pos == buf.points[last])
+        if (pos == buf.points[last].pos && layer == buf.points[last].layer)
         {
             return;
         }
 
-        if ((pos - buf.points[last]).LengthSqr() > kJumpDist * kJumpDist)
+        if (break_on_jump && (pos - buf.points[last].pos).LengthSqr() > kJumpDist * kJumpDist)
         {
             buf.count = 0;
         }
     }
 
-    buf.points[buf.head] = pos;
+    buf.points[buf.head] = {pos, layer};
     buf.head = (buf.head + 1) % kMaxPoints;
 
     if (buf.count < kMaxPoints)
@@ -68,7 +74,7 @@ void PlayerTracks::Sample(int player, ncl_math::Vector2 pos, float time)
     }
 }
 
-int PlayerTracks::CopyPoints(int player, std::span<ncl_math::Vector2> out) const
+int PlayerTracks::CopyPoints(int player, std::span<PlayerTrackPoint> out) const
 {
     const Buf& buf = tracks_[player];
     int count = std::min<int>(buf.count, (int)out.size());

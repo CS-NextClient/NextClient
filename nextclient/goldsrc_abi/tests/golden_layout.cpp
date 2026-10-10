@@ -54,8 +54,13 @@ static_assert(offsetof(goldsrc::client_data_t, origin) == 0);
 static_assert(offsetof(goldsrc::client_data_t, viewangles) == 12);
 static_assert(offsetof(goldsrc::client_data_t, iWeaponBits) == 24);
 static_assert(offsetof(goldsrc::client_data_t, fov) == 28);
+#if defined(_WIN32)
 static_assert(sizeof(goldsrc::hud_player_info_t) == 32);
 static_assert(alignof(goldsrc::hud_player_info_t) == 8);
+#elif defined(__linux__)
+static_assert(sizeof(goldsrc::hud_player_info_t) == 28);
+static_assert(alignof(goldsrc::hud_player_info_t) == 4);
+#endif
 static_assert(offsetof(goldsrc::hud_player_info_t, name) == 0);
 static_assert(offsetof(goldsrc::hud_player_info_t, ping) == 4);
 static_assert(offsetof(goldsrc::hud_player_info_t, thisplayer) == 6);
@@ -64,7 +69,11 @@ static_assert(offsetof(goldsrc::hud_player_info_t, packetloss) == 8);
 static_assert(offsetof(goldsrc::hud_player_info_t, model) == 12);
 static_assert(offsetof(goldsrc::hud_player_info_t, topcolor) == 16);
 static_assert(offsetof(goldsrc::hud_player_info_t, bottomcolor) == 18);
+#if defined(_WIN32)
 static_assert(offsetof(goldsrc::hud_player_info_t, m_nSteamID) == 24);
+#elif defined(__linux__)
+static_assert(offsetof(goldsrc::hud_player_info_t, m_nSteamID) == 20);
+#endif
 static_assert(sizeof(goldsrc::cldll_func_t) == 172);
 static_assert(alignof(goldsrc::cldll_func_t) == 4);
 static_assert(offsetof(goldsrc::cldll_func_t, pInitFunc) == 0);
@@ -141,7 +150,11 @@ static_assert(offsetof(goldsrc::modfuncs_t, m_nVoid6) == 100);
 static_assert(offsetof(goldsrc::modfuncs_t, m_nVoid7) == 104);
 static_assert(offsetof(goldsrc::modfuncs_t, m_nVoid8) == 108);
 static_assert(offsetof(goldsrc::modfuncs_t, m_nVoid9) == 112);
+#if defined(_WIN32)
 static_assert(sizeof(goldsrc::cl_enginefunc_dst_t) == 488);
+#elif defined(__linux__)
+static_assert(sizeof(goldsrc::cl_enginefunc_dst_t) == 492);
+#endif
 static_assert(alignof(goldsrc::cl_enginefunc_dst_t) == 4);
 static_assert(offsetof(goldsrc::cl_enginefunc_dst_t, pfnSPR_Load) == 0);
 static_assert(offsetof(goldsrc::cl_enginefunc_dst_t, pfnSPR_Frames) == 4);
@@ -265,7 +278,12 @@ static_assert(offsetof(goldsrc::cl_enginefunc_dst_t, pfnFillRGBABlend) == 472);
 static_assert(offsetof(goldsrc::cl_enginefunc_dst_t, pfnGetAppID) == 476);
 static_assert(offsetof(goldsrc::cl_enginefunc_dst_t, pfnGetAliasList) == 480);
 static_assert(offsetof(goldsrc::cl_enginefunc_dst_t, pfnVguiWrap2_GetMouseDelta) == 484);
+#if defined(_WIN32)
 static_assert(sizeof(goldsrc::cl_enginefunc_t) == 536);
+#elif defined(__linux__)
+static_assert(offsetof(goldsrc::cl_enginefunc_dst_t, pfnFilteredClientCmd) == 488);
+static_assert(sizeof(goldsrc::cl_enginefunc_t) == 540);
+#endif
 static_assert(alignof(goldsrc::cl_enginefunc_t) == 4);
 static_assert(offsetof(goldsrc::cl_enginefunc_t, pfnSPR_Load) == 0);
 static_assert(offsetof(goldsrc::cl_enginefunc_t, pfnSPR_Frames) == 4);
@@ -401,8 +419,14 @@ static_assert(offsetof(goldsrc::cl_enginefunc_t, pfnFillRGBABlend) == 520);
 static_assert(offsetof(goldsrc::cl_enginefunc_t, pfnGetAppID) == 524);
 static_assert(offsetof(goldsrc::cl_enginefunc_t, pfnGetAliasList) == 528);
 static_assert(offsetof(goldsrc::cl_enginefunc_t, pfnVguiWrap2_GetMouseDelta) == 532);
+#if defined(_WIN32)
 static_assert(sizeof(goldsrc::cstrike::CHud) == 18304);
 static_assert(alignof(goldsrc::cstrike::CHud) == 8);
+#elif defined(__linux__)
+static_assert(offsetof(goldsrc::cl_enginefunc_t, pfnFilteredClientCmd) == 536);
+static_assert(sizeof(goldsrc::cstrike::CHud) == 27508);
+static_assert(alignof(goldsrc::cstrike::CHud) == 4);
+#endif
 static_assert(offsetof(goldsrc::cstrike::CHud, m_pHudList) == 0);
 static_assert(offsetof(goldsrc::cstrike::CHud, m_hsprLogo) == 4);
 static_assert(offsetof(goldsrc::cstrike::CHud, m_iLogo) == 8);
@@ -414,6 +438,7 @@ static_assert(offsetof(goldsrc::cstrike::CHud, m_iConcussionEffect) == 28);
 static_assert(offsetof(goldsrc::cstrike::CHud, m_hsprCursor) == 32);
 static_assert(offsetof(goldsrc::cstrike::CHud, m_flTime) == 36);
 static_assert(offsetof(goldsrc::cstrike::CHud, m_fOldTime) == 40);
+#if defined(_WIN32)
 static_assert(offsetof(goldsrc::cstrike::CHud, m_flTimeDelta) == 48);
 static_assert(offsetof(goldsrc::cstrike::CHud, m_vecOrigin) == 56);
 static_assert(offsetof(goldsrc::cstrike::CHud, m_vecAngles) == 68);
@@ -430,6 +455,24 @@ static_assert(offsetof(goldsrc::cstrike::CHud, m_iFontEngineHeight) == 368);
 static_assert(offsetof(goldsrc::cstrike::CHud, default_fov) == 372);
 static_assert(offsetof(goldsrc::cstrike::CHud, m_rghSprites) == 376);
 static_assert(offsetof(goldsrc::cstrike::CHud, m_rgrcRects) == 380);
+#elif defined(__linux__)
+static_assert(offsetof(goldsrc::cstrike::CHud, m_flTimeDelta) == 44);
+static_assert(offsetof(goldsrc::cstrike::CHud, m_vecOrigin) == 52);
+static_assert(offsetof(goldsrc::cstrike::CHud, m_vecAngles) == 64);
+static_assert(offsetof(goldsrc::cstrike::CHud, m_iKeyBits) == 76);
+static_assert(offsetof(goldsrc::cstrike::CHud, m_iHideHUDDisplay) == 80);
+static_assert(offsetof(goldsrc::cstrike::CHud, m_iFOV) == 84);
+static_assert(offsetof(goldsrc::cstrike::CHud, m_Teamplay) == 88);
+static_assert(offsetof(goldsrc::cstrike::CHud, m_iRes) == 92);
+static_assert(offsetof(goldsrc::cstrike::CHud, m_pCvarStealMouse) == 96);
+static_assert(offsetof(goldsrc::cstrike::CHud, m_pCvarDraw) == 100);
+static_assert(offsetof(goldsrc::cstrike::CHud, m_PlayerFOV) == 104);
+static_assert(offsetof(goldsrc::cstrike::CHud, m_iFontHeight) == 360);
+static_assert(offsetof(goldsrc::cstrike::CHud, m_iFontEngineHeight) == 364);
+static_assert(offsetof(goldsrc::cstrike::CHud, default_fov) == 368);
+static_assert(offsetof(goldsrc::cstrike::CHud, m_rghSprites) == 372);
+static_assert(offsetof(goldsrc::cstrike::CHud, m_rgrcRects) == 376);
+#endif
 static_assert(sizeof(goldsrc::cstrike::CHudBase) == 20);
 static_assert(alignof(goldsrc::cstrike::CHudBase) == 4);
 static_assert(offsetof(goldsrc::cstrike::CHudBase, m_pos) == 4);
@@ -468,14 +511,26 @@ static_assert(offsetof(goldsrc::cstrike::CHudAmmo::RGBA, b) == 2);
 static_assert(offsetof(goldsrc::cstrike::CHudAmmo::RGBA, a) == 3);
 static_assert(sizeof(goldsrc::cstrike::CHudAmmoSecondary) == 44);
 static_assert(alignof(goldsrc::cstrike::CHudAmmoSecondary) == 4);
+#if defined(_WIN32)
 static_assert(sizeof(goldsrc::cstrike::CHudMessage) == 8552);
+#elif defined(__linux__)
+static_assert(sizeof(goldsrc::cstrike::CHudMessage) == 16744);
+#endif
 static_assert(alignof(goldsrc::cstrike::CHudMessage) == 4);
+#if defined(_WIN32)
 static_assert(sizeof(goldsrc::cstrike::CHudMessage::client_message_t) == 524);
+#elif defined(__linux__)
+static_assert(sizeof(goldsrc::cstrike::CHudMessage::client_message_t) == 1036);
+#endif
 static_assert(alignof(goldsrc::cstrike::CHudMessage::client_message_t) == 4);
 static_assert(offsetof(goldsrc::cstrike::CHudMessage::client_message_t, pMessage) == 0);
 static_assert(offsetof(goldsrc::cstrike::CHudMessage::client_message_t, font) == 4);
 static_assert(offsetof(goldsrc::cstrike::CHudMessage::client_message_t, args) == 8);
+#if defined(_WIN32)
 static_assert(offsetof(goldsrc::cstrike::CHudMessage::client_message_t, numArgs) == 520);
+#elif defined(__linux__)
+static_assert(offsetof(goldsrc::cstrike::CHudMessage::client_message_t, numArgs) == 1032);
+#endif
 static_assert(sizeof(goldsrc::cstrike::CHudNightVision) == 32);
 static_assert(alignof(goldsrc::cstrike::CHudNightVision) == 4);
 static_assert(offsetof(goldsrc::cstrike::CHudNightVision, m_fOn) == 20);
@@ -560,7 +615,11 @@ static_assert(offsetof(goldsrc::packet_entities_t, num_entities) == 0);
 static_assert(offsetof(goldsrc::packet_entities_t, flags) == 4);
 static_assert(offsetof(goldsrc::packet_entities_t, entities) == 36);
 static_assert(sizeof(goldsrc::player_info_t) == 592);
+#if defined(_WIN32)
 static_assert(alignof(goldsrc::player_info_t) == 8);
+#elif defined(__linux__)
+static_assert(alignof(goldsrc::player_info_t) == 4);
+#endif
 static_assert(offsetof(goldsrc::player_info_t, userid) == 0);
 static_assert(offsetof(goldsrc::player_info_t, userinfo) == 4);
 static_assert(offsetof(goldsrc::player_info_t, name) == 260);
@@ -578,17 +637,28 @@ static_assert(offsetof(goldsrc::player_info_t, prevgaitorigin) == 392);
 static_assert(offsetof(goldsrc::player_info_t, customdata) == 404);
 static_assert(offsetof(goldsrc::player_info_t, hashedcdkey) == 568);
 static_assert(offsetof(goldsrc::player_info_t, m_nSteamID) == 584);
+#if defined(_WIN32)
 static_assert(sizeof(goldsrc::soundfade_t) == 32);
 static_assert(alignof(goldsrc::soundfade_t) == 8);
+#elif defined(__linux__)
+static_assert(sizeof(goldsrc::soundfade_t) == 28);
+static_assert(alignof(goldsrc::soundfade_t) == 4);
+#endif
 static_assert(offsetof(goldsrc::soundfade_t, nStartPercent) == 0);
 static_assert(offsetof(goldsrc::soundfade_t, nClientSoundFadePercent) == 4);
 static_assert(offsetof(goldsrc::soundfade_t, soundFadeStartTime) == 8);
 static_assert(offsetof(goldsrc::soundfade_t, soundFadeOutTime) == 16);
 static_assert(offsetof(goldsrc::soundfade_t, soundFadeHoldTime) == 20);
 static_assert(offsetof(goldsrc::soundfade_t, soundFadeInTime) == 24);
+#if defined(_WIN32)
 static_assert(sizeof(goldsrc::client_static_t) == 17608);
 static_assert(alignof(goldsrc::client_static_t) == 8);
+#elif defined(__linux__)
+static_assert(sizeof(goldsrc::client_static_t) == 17312);
+static_assert(alignof(goldsrc::client_static_t) == 4);
+#endif
 static_assert(offsetof(goldsrc::client_static_t, state) == 0);
+#if defined(_WIN32)
 static_assert(offsetof(goldsrc::client_static_t, netchan) == 8);
 static_assert(offsetof(goldsrc::client_static_t, datagram) == 9512);
 static_assert(offsetof(goldsrc::client_static_t, datagram_buf) == 9532);
@@ -639,8 +709,64 @@ static_assert(offsetof(goldsrc::client_static_t, fSecureClient) == 17580);
 static_assert(offsetof(goldsrc::client_static_t, isVAC2Secure) == 17584);
 static_assert(offsetof(goldsrc::client_static_t, GameServerSteamID) == 17592);
 static_assert(offsetof(goldsrc::client_static_t, build_num) == 17600);
+#elif defined(__linux__)
+static_assert(offsetof(goldsrc::client_static_t, netchan) == 4);
+static_assert(offsetof(goldsrc::client_static_t, datagram) == 9240);
+static_assert(offsetof(goldsrc::client_static_t, datagram_buf) == 9260);
+static_assert(offsetof(goldsrc::client_static_t, connect_time) == 13260);
+static_assert(offsetof(goldsrc::client_static_t, connect_retry) == 13268);
+static_assert(offsetof(goldsrc::client_static_t, challenge) == 13272);
+static_assert(offsetof(goldsrc::client_static_t, authprotocol) == 13276);
+static_assert(offsetof(goldsrc::client_static_t, userid) == 13280);
+static_assert(offsetof(goldsrc::client_static_t, trueaddress) == 13284);
+static_assert(offsetof(goldsrc::client_static_t, slist_time) == 13316);
+static_assert(offsetof(goldsrc::client_static_t, signon) == 13320);
+static_assert(offsetof(goldsrc::client_static_t, servername) == 13324);
+static_assert(offsetof(goldsrc::client_static_t, mapstring) == 13584);
+static_assert(offsetof(goldsrc::client_static_t, spawnparms) == 13648);
+static_assert(offsetof(goldsrc::client_static_t, userinfo) == 15696);
+static_assert(offsetof(goldsrc::client_static_t, nextcmdtime) == 15952);
+static_assert(offsetof(goldsrc::client_static_t, lastoutgoingcommand) == 15956);
+static_assert(offsetof(goldsrc::client_static_t, demonum) == 15960);
+static_assert(offsetof(goldsrc::client_static_t, demos) == 15964);
+static_assert(offsetof(goldsrc::client_static_t, demorecording) == 16476);
+static_assert(offsetof(goldsrc::client_static_t, demoplayback) == 16480);
+static_assert(offsetof(goldsrc::client_static_t, timedemo) == 16484);
+static_assert(offsetof(goldsrc::client_static_t, demostarttime) == 16488);
+static_assert(offsetof(goldsrc::client_static_t, demostartframe) == 16492);
+static_assert(offsetof(goldsrc::client_static_t, forcetrack) == 16496);
+static_assert(offsetof(goldsrc::client_static_t, demofile) == 16500);
+static_assert(offsetof(goldsrc::client_static_t, demoheader) == 16504);
+static_assert(offsetof(goldsrc::client_static_t, demowaiting) == 16508);
+static_assert(offsetof(goldsrc::client_static_t, demoappending) == 16512);
+static_assert(offsetof(goldsrc::client_static_t, demofilename) == 16516);
+static_assert(offsetof(goldsrc::client_static_t, demoframecount) == 16776);
+static_assert(offsetof(goldsrc::client_static_t, td_lastframe) == 16780);
+static_assert(offsetof(goldsrc::client_static_t, td_startframe) == 16784);
+static_assert(offsetof(goldsrc::client_static_t, td_starttime) == 16788);
+static_assert(offsetof(goldsrc::client_static_t, dl) == 16792);
+static_assert(offsetof(goldsrc::client_static_t, packet_loss) == 16924);
+static_assert(offsetof(goldsrc::client_static_t, packet_loss_recalc_time) == 16928);
+static_assert(offsetof(goldsrc::client_static_t, playerbits) == 16936);
+static_assert(offsetof(goldsrc::client_static_t, soundfade) == 16940);
+static_assert(offsetof(goldsrc::client_static_t, physinfo) == 16968);
+static_assert(offsetof(goldsrc::client_static_t, md5_clientdll) == 17224);
+static_assert(offsetof(goldsrc::client_static_t, game_stream) == 17240);
+static_assert(offsetof(goldsrc::client_static_t, connect_stream) == 17260);
+static_assert(offsetof(goldsrc::client_static_t, passive) == 17280);
+static_assert(offsetof(goldsrc::client_static_t, spectator) == 17284);
+static_assert(offsetof(goldsrc::client_static_t, director) == 17288);
+static_assert(offsetof(goldsrc::client_static_t, fSecureClient) == 17292);
+static_assert(offsetof(goldsrc::client_static_t, isVAC2Secure) == 17296);
+static_assert(offsetof(goldsrc::client_static_t, GameServerSteamID) == 17300);
+static_assert(offsetof(goldsrc::client_static_t, build_num) == 17308);
+#endif
 static_assert(sizeof(goldsrc::frame_t) == 17080);
+#if defined(_WIN32)
 static_assert(alignof(goldsrc::frame_t) == 8);
+#elif defined(__linux__)
+static_assert(alignof(goldsrc::frame_t) == 4);
+#endif
 static_assert(offsetof(goldsrc::frame_t, receivedtime) == 0);
 static_assert(offsetof(goldsrc::frame_t, latency) == 8);
 static_assert(offsetof(goldsrc::frame_t, invalid) == 16);
@@ -659,8 +785,13 @@ static_assert(offsetof(goldsrc::frame_t, eventbytes) == 17070);
 static_assert(offsetof(goldsrc::frame_t, usrbytes) == 17072);
 static_assert(offsetof(goldsrc::frame_t, voicebytes) == 17074);
 static_assert(offsetof(goldsrc::frame_t, msgbytes) == 17076);
+#if defined(_WIN32)
 static_assert(sizeof(goldsrc::client_state_t) == 1767024);
 static_assert(alignof(goldsrc::client_state_t) == 8);
+#elif defined(__linux__)
+static_assert(sizeof(goldsrc::client_state_t) == 1767016);
+static_assert(alignof(goldsrc::client_state_t) == 4);
+#endif
 static_assert(offsetof(goldsrc::client_state_t, max_edicts) == 0);
 static_assert(offsetof(goldsrc::client_state_t, resourcesonhand) == 4);
 static_assert(offsetof(goldsrc::client_state_t, resourcesneeded) == 140);
@@ -695,6 +826,7 @@ static_assert(offsetof(goldsrc::client_state_t, maxspeed) == 175988);
 static_assert(offsetof(goldsrc::client_state_t, pushmsec) == 175992);
 static_assert(offsetof(goldsrc::client_state_t, light_level) == 175996);
 static_assert(offsetof(goldsrc::client_state_t, intermission) == 176000);
+#if defined(_WIN32)
 static_assert(offsetof(goldsrc::client_state_t, mtime) == 176008);
 static_assert(offsetof(goldsrc::client_state_t, time) == 176024);
 static_assert(offsetof(goldsrc::client_state_t, oldtime) == 176032);
@@ -733,6 +865,46 @@ static_assert(offsetof(goldsrc::client_state_t, instanced_baseline_number) == 17
 static_assert(offsetof(goldsrc::client_state_t, mapCRC) == 1761260);
 static_assert(offsetof(goldsrc::client_state_t, events) == 1761264);
 static_assert(offsetof(goldsrc::client_state_t, downloadUrl) == 1766896);
+#elif defined(__linux__)
+static_assert(offsetof(goldsrc::client_state_t, mtime) == 176004);
+static_assert(offsetof(goldsrc::client_state_t, time) == 176020);
+static_assert(offsetof(goldsrc::client_state_t, oldtime) == 176028);
+static_assert(offsetof(goldsrc::client_state_t, frames) == 176036);
+static_assert(offsetof(goldsrc::client_state_t, commands) == 1269156);
+static_assert(offsetof(goldsrc::client_state_t, predicted_frames) == 1274020);
+static_assert(offsetof(goldsrc::client_state_t, delta_sequence) == 1686692);
+static_assert(offsetof(goldsrc::client_state_t, playernum) == 1686696);
+static_assert(offsetof(goldsrc::client_state_t, event_precache) == 1686700);
+static_assert(offsetof(goldsrc::client_state_t, model_precache) == 1690796);
+static_assert(offsetof(goldsrc::client_state_t, model_precache_count) == 1692844);
+static_assert(offsetof(goldsrc::client_state_t, sound_precache) == 1692848);
+static_assert(offsetof(goldsrc::client_state_t, consistency_list) == 1694896);
+static_assert(offsetof(goldsrc::client_state_t, num_consistency) == 1717424);
+static_assert(offsetof(goldsrc::client_state_t, highentity) == 1717428);
+static_assert(offsetof(goldsrc::client_state_t, levelname) == 1717432);
+static_assert(offsetof(goldsrc::client_state_t, maxclients) == 1717472);
+static_assert(offsetof(goldsrc::client_state_t, gametype) == 1717476);
+static_assert(offsetof(goldsrc::client_state_t, viewentity) == 1717480);
+static_assert(offsetof(goldsrc::client_state_t, worldmodel) == 1717484);
+static_assert(offsetof(goldsrc::client_state_t, free_efrags) == 1717488);
+static_assert(offsetof(goldsrc::client_state_t, num_entities) == 1717492);
+static_assert(offsetof(goldsrc::client_state_t, num_statics) == 1717496);
+static_assert(offsetof(goldsrc::client_state_t, viewent) == 1717500);
+static_assert(offsetof(goldsrc::client_state_t, cdtrack) == 1720500);
+static_assert(offsetof(goldsrc::client_state_t, looptrack) == 1720504);
+static_assert(offsetof(goldsrc::client_state_t, serverCRC) == 1720508);
+static_assert(offsetof(goldsrc::client_state_t, clientdllmd5) == 1720512);
+static_assert(offsetof(goldsrc::client_state_t, weaponstarttime) == 1720528);
+static_assert(offsetof(goldsrc::client_state_t, weaponsequence) == 1720532);
+static_assert(offsetof(goldsrc::client_state_t, fPrecaching) == 1720536);
+static_assert(offsetof(goldsrc::client_state_t, pLight) == 1720540);
+static_assert(offsetof(goldsrc::client_state_t, players) == 1720544);
+static_assert(offsetof(goldsrc::client_state_t, instanced_baseline) == 1739488);
+static_assert(offsetof(goldsrc::client_state_t, instanced_baseline_number) == 1761248);
+static_assert(offsetof(goldsrc::client_state_t, mapCRC) == 1761252);
+static_assert(offsetof(goldsrc::client_state_t, events) == 1761256);
+static_assert(offsetof(goldsrc::client_state_t, downloadUrl) == 1766888);
+#endif
 static_assert(sizeof(goldsrc::event_info_s) == 88);
 static_assert(alignof(goldsrc::event_info_s) == 4);
 static_assert(offsetof(goldsrc::event_info_s, index) == 0);
@@ -780,6 +952,7 @@ static_assert(offsetof(goldsrc::mod_known_info_t, initialCRC) == 8);
 static_assert(sizeof(goldsrc::mplane_t) == 20);
 static_assert(alignof(goldsrc::mplane_t) == 4);
 static_assert(offsetof(goldsrc::mplane_t, normal) == 0);
+static_assert(offsetof(goldsrc::mplane_t, dist) == 12);
 static_assert(sizeof(goldsrc::mspriteframe_t) == 28);
 static_assert(alignof(goldsrc::mspriteframe_t) == 4);
 static_assert(offsetof(goldsrc::mspriteframe_t, width) == 0);
@@ -912,10 +1085,19 @@ static_assert(alignof(goldsrc::downloadtime_t) == 4);
 static_assert(offsetof(goldsrc::downloadtime_t, bUsed) == 0);
 static_assert(offsetof(goldsrc::downloadtime_t, fTime) == 4);
 static_assert(offsetof(goldsrc::downloadtime_t, nBytesRemaining) == 8);
+#if defined(_WIN32)
 static_assert(sizeof(goldsrc::flowstats_t) == 16);
 static_assert(alignof(goldsrc::flowstats_t) == 8);
+#elif defined(__linux__)
+static_assert(sizeof(goldsrc::flowstats_t) == 12);
+static_assert(alignof(goldsrc::flowstats_t) == 4);
+#endif
 static_assert(offsetof(goldsrc::flowstats_t, size) == 0);
+#if defined(_WIN32)
 static_assert(offsetof(goldsrc::flowstats_t, time) == 8);
+#elif defined(__linux__)
+static_assert(offsetof(goldsrc::flowstats_t, time) == 4);
+#endif
 static_assert(sizeof(goldsrc::sizebuf_t) == 20);
 static_assert(alignof(goldsrc::sizebuf_t) == 4);
 static_assert(offsetof(goldsrc::sizebuf_t, buffername) == 0);
@@ -923,13 +1105,25 @@ static_assert(offsetof(goldsrc::sizebuf_t, flags) == 4);
 static_assert(offsetof(goldsrc::sizebuf_t, data) == 8);
 static_assert(offsetof(goldsrc::sizebuf_t, maxsize) == 12);
 static_assert(offsetof(goldsrc::sizebuf_t, cursize) == 16);
+#if defined(_WIN32)
 static_assert(sizeof(goldsrc::flow_t) == 536);
 static_assert(alignof(goldsrc::flow_t) == 8);
+#elif defined(__linux__)
+static_assert(sizeof(goldsrc::flow_t) == 404);
+static_assert(alignof(goldsrc::flow_t) == 4);
+#endif
 static_assert(offsetof(goldsrc::flow_t, stats) == 0);
+#if defined(_WIN32)
 static_assert(offsetof(goldsrc::flow_t, current) == 512);
 static_assert(offsetof(goldsrc::flow_t, nextcompute) == 520);
 static_assert(offsetof(goldsrc::flow_t, kbytespersec) == 528);
 static_assert(offsetof(goldsrc::flow_t, avgkbytespersec) == 532);
+#elif defined(__linux__)
+static_assert(offsetof(goldsrc::flow_t, current) == 384);
+static_assert(offsetof(goldsrc::flow_t, nextcompute) == 388);
+static_assert(offsetof(goldsrc::flow_t, kbytespersec) == 396);
+static_assert(offsetof(goldsrc::flow_t, avgkbytespersec) == 400);
+#endif
 static_assert(sizeof(goldsrc::fragbuf_t) == 1708);
 static_assert(alignof(goldsrc::fragbuf_t) == 4);
 static_assert(offsetof(goldsrc::fragbuf_t, next) == 0);
@@ -953,13 +1147,19 @@ static_assert(offsetof(goldsrc::netadr_t, type) == 0);
 static_assert(offsetof(goldsrc::netadr_t, ip) == 4);
 static_assert(offsetof(goldsrc::netadr_t, ipx) == 8);
 static_assert(offsetof(goldsrc::netadr_t, port) == 18);
+#if defined(_WIN32)
 static_assert(sizeof(goldsrc::netchan_t) == 9504);
 static_assert(alignof(goldsrc::netchan_t) == 8);
+#elif defined(__linux__)
+static_assert(sizeof(goldsrc::netchan_t) == 9236);
+static_assert(alignof(goldsrc::netchan_t) == 4);
+#endif
 static_assert(offsetof(goldsrc::netchan_t, sock) == 0);
 static_assert(offsetof(goldsrc::netchan_t, remote_address) == 4);
 static_assert(offsetof(goldsrc::netchan_t, player_slot) == 24);
 static_assert(offsetof(goldsrc::netchan_t, last_received) == 28);
 static_assert(offsetof(goldsrc::netchan_t, connect_time) == 32);
+#if defined(_WIN32)
 static_assert(offsetof(goldsrc::netchan_t, rate) == 40);
 static_assert(offsetof(goldsrc::netchan_t, cleartime) == 48);
 static_assert(offsetof(goldsrc::netchan_t, incoming_sequence) == 56);
@@ -988,6 +1188,36 @@ static_assert(offsetof(goldsrc::netchan_t, incomingfilename) == 8164);
 static_assert(offsetof(goldsrc::netchan_t, tempbuffer) == 8424);
 static_assert(offsetof(goldsrc::netchan_t, tempbuffersize) == 8428);
 static_assert(offsetof(goldsrc::netchan_t, flow) == 8432);
+#elif defined(__linux__)
+static_assert(offsetof(goldsrc::netchan_t, rate) == 36);
+static_assert(offsetof(goldsrc::netchan_t, cleartime) == 44);
+static_assert(offsetof(goldsrc::netchan_t, incoming_sequence) == 52);
+static_assert(offsetof(goldsrc::netchan_t, incoming_acknowledged) == 56);
+static_assert(offsetof(goldsrc::netchan_t, incoming_reliable_acknowledged) == 60);
+static_assert(offsetof(goldsrc::netchan_t, incoming_reliable_sequence) == 64);
+static_assert(offsetof(goldsrc::netchan_t, outgoing_sequence) == 68);
+static_assert(offsetof(goldsrc::netchan_t, reliable_sequence) == 72);
+static_assert(offsetof(goldsrc::netchan_t, last_reliable_sequence) == 76);
+static_assert(offsetof(goldsrc::netchan_t, connection_status) == 80);
+static_assert(offsetof(goldsrc::netchan_t, pfnNetchan_Blocksize) == 84);
+static_assert(offsetof(goldsrc::netchan_t, message) == 88);
+static_assert(offsetof(goldsrc::netchan_t, message_buf) == 108);
+static_assert(offsetof(goldsrc::netchan_t, reliable_length) == 4100);
+static_assert(offsetof(goldsrc::netchan_t, reliable_buf) == 4104);
+static_assert(offsetof(goldsrc::netchan_t, waitlist) == 8096);
+static_assert(offsetof(goldsrc::netchan_t, reliable_fragment) == 8104);
+static_assert(offsetof(goldsrc::netchan_t, reliable_fragid) == 8112);
+static_assert(offsetof(goldsrc::netchan_t, fragbufs) == 8120);
+static_assert(offsetof(goldsrc::netchan_t, fragbufcount) == 8128);
+static_assert(offsetof(goldsrc::netchan_t, frag_startpos) == 8136);
+static_assert(offsetof(goldsrc::netchan_t, frag_length) == 8140);
+static_assert(offsetof(goldsrc::netchan_t, incomingbufs) == 8144);
+static_assert(offsetof(goldsrc::netchan_t, incomingready) == 8152);
+static_assert(offsetof(goldsrc::netchan_t, incomingfilename) == 8160);
+static_assert(offsetof(goldsrc::netchan_t, tempbuffer) == 8420);
+static_assert(offsetof(goldsrc::netchan_t, tempbuffersize) == 8424);
+static_assert(offsetof(goldsrc::netchan_t, flow) == 8428);
+#endif
 static_assert(sizeof(goldsrc::_resourceinfo_t) == 4);
 static_assert(alignof(goldsrc::_resourceinfo_t) == 4);
 static_assert(offsetof(goldsrc::_resourceinfo_t, size) == 0);
@@ -1016,13 +1246,23 @@ static_assert(offsetof(goldsrc::customization_t, nUserData2) == 148);
 static_assert(offsetof(goldsrc::customization_t, pInfo) == 152);
 static_assert(offsetof(goldsrc::customization_t, pBuffer) == 156);
 static_assert(offsetof(goldsrc::customization_t, pNext) == 160);
+#if defined(_WIN32)
 static_assert(sizeof(goldsrc::server_static_t) == 136);
 static_assert(alignof(goldsrc::server_static_t) == 8);
+#elif defined(__linux__)
+static_assert(sizeof(goldsrc::server_static_t) == 132);
+static_assert(alignof(goldsrc::server_static_t) == 4);
+#endif
 static_assert(offsetof(goldsrc::server_static_t, dll_initialized) == 0);
 static_assert(offsetof(goldsrc::server_static_t, clients) == 4);
 static_assert(offsetof(goldsrc::server_static_t, maxclients) == 8);
+#if defined(_WIN32)
 static_assert(sizeof(goldsrc::server_t) == 287768);
 static_assert(alignof(goldsrc::server_t) == 8);
+#elif defined(__linux__)
+static_assert(sizeof(goldsrc::server_t) == 287756);
+static_assert(alignof(goldsrc::server_t) == 4);
+#endif
 static_assert(offsetof(goldsrc::server_t, active) == 0);
 static_assert(sizeof(goldsrc::sfx_t) == 72);
 static_assert(alignof(goldsrc::sfx_t) == 4);
@@ -1266,6 +1506,10 @@ static_assert(offsetof(goldsrc::event_args_t, iparam1) == 56);
 static_assert(offsetof(goldsrc::event_args_t, iparam2) == 60);
 static_assert(offsetof(goldsrc::event_args_t, bparam1) == 64);
 static_assert(offsetof(goldsrc::event_args_t, bparam2) == 68);
+static_assert(sizeof(goldsrc::dclipnode_t) == 8);
+static_assert(alignof(goldsrc::dclipnode_t) == 4);
+static_assert(offsetof(goldsrc::dclipnode_t, planenum) == 0);
+static_assert(offsetof(goldsrc::dclipnode_t, children) == 4);
 static_assert(sizeof(goldsrc::dmodel_t) == 64);
 static_assert(alignof(goldsrc::dmodel_t) == 4);
 static_assert(offsetof(goldsrc::dmodel_t, mins) == 0);
@@ -1614,7 +1858,11 @@ static_assert(offsetof(goldsrc::playermove_t, PM_PlaybackEventFull) == 325052);
 static_assert(offsetof(goldsrc::playermove_t, PM_PlayerTraceEx) == 325056);
 static_assert(offsetof(goldsrc::playermove_t, PM_TestPlayerPositionEx) == 325060);
 static_assert(offsetof(goldsrc::playermove_t, PM_TraceLineEx) == 325064);
+#if defined(_WIN32)
 static_assert(sizeof(goldsrc::enginefuncs_t) == 632);
+#elif defined(__linux__)
+static_assert(sizeof(goldsrc::enginefuncs_t) == 636);
+#endif
 static_assert(alignof(goldsrc::enginefuncs_t) == 4);
 static_assert(offsetof(goldsrc::enginefuncs_t, pfnPrecacheModel) == 0);
 static_assert(offsetof(goldsrc::enginefuncs_t, pfnPrecacheSound) == 4);
@@ -1774,6 +2022,9 @@ static_assert(offsetof(goldsrc::enginefuncs_t, pfnResetTutorMessageDecayData) ==
 static_assert(offsetof(goldsrc::enginefuncs_t, pfnQueryClientCvarValue) == 620);
 static_assert(offsetof(goldsrc::enginefuncs_t, pfnQueryClientCvarValue2) == 624);
 static_assert(offsetof(goldsrc::enginefuncs_t, pfnEngCheckParm) == 628);
+#if defined(__linux__)
+static_assert(offsetof(goldsrc::enginefuncs_t, pfnPEntityOfEntIndexAllEntities) == 632);
+#endif
 static_assert(sizeof(goldsrc::alight_t) == 24);
 static_assert(alignof(goldsrc::alight_t) == 4);
 static_assert(offsetof(goldsrc::alight_t, ambientlight) == 0);
@@ -2399,6 +2650,13 @@ static_assert(static_cast<long long>(goldsrc::SOLID_TRIGGER) == 1);
 static_assert(static_cast<long long>(goldsrc::SOLID_BBOX) == 2);
 static_assert(static_cast<long long>(goldsrc::SOLID_SLIDEBOX) == 3);
 static_assert(static_cast<long long>(goldsrc::SOLID_BSP) == 4);
+static_assert(static_cast<long long>(goldsrc::CONTENTS_LADDER) == -16);
+static_assert(static_cast<long long>(goldsrc::CONTENTS_SKY) == -6);
+static_assert(static_cast<long long>(goldsrc::CONTENTS_LAVA) == -5);
+static_assert(static_cast<long long>(goldsrc::CONTENTS_SLIME) == -4);
+static_assert(static_cast<long long>(goldsrc::CONTENTS_WATER) == -3);
+static_assert(static_cast<long long>(goldsrc::CONTENTS_SOLID) == -2);
+static_assert(static_cast<long long>(goldsrc::CONTENTS_EMPTY) == -1);
 static_assert(static_cast<long long>(goldsrc::HLBSP_VERSION) == 30);
 static_assert(static_cast<long long>(goldsrc::Q1BSP_VERSION) == 29);
 static_assert(static_cast<long long>(goldsrc::IDSPRITEHEADER) == 1347634249);

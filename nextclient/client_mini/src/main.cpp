@@ -1,6 +1,7 @@
 #include "main.h"
 #include <cstring>
 #include <ranges>
+#include <thread>
 #include <next_client_mini/client_mini.h>
 #include <data_types/MessageReader.h>
 #include <goldsrc/client_api.h>
@@ -14,6 +15,8 @@
 #include <goldsrc/view.h>
 #include <mathlib/mathlib.h>
 #include <strtools.h>
+#include <taskcoro/impl/TaskCoroImpl.h>
+#include <taskcoro/TaskCoro.h>
 
 #include "camera.h"
 #include "studiorenderer.h"
@@ -23,8 +26,8 @@
 #include "inspect.h"
 #include "commands.h"
 #include "invert_mouse.h"
-#include "hud/radar/RadarHooks.h"
-#include "hud/radar/HudTextZone.h"
+#include "hud/radar/integration/RadarHooks.h"
+#include "hud/radar/render/text/HudTextZone.h"
 
 nitroapi::NitroApiInterface* g_NitroApi;
 
@@ -307,6 +310,20 @@ static void HUD_ProcessPlayerStateHandler(goldsrc::entity_state_t* dst, const go
 
 class ClientMini : public ClientMiniInterface
 {
+    std::shared_ptr<taskcoro::TaskCoroImpl> task_runtime_;
+
+    void ShutdownHud()
+    {
+        RadarHooks_UnpatchHudText();
+        g_GameHud.reset();
+
+        if (task_runtime_)
+        {
+            taskcoro::TaskCoro::UnInitialize();
+            task_runtime_.reset();
+        }
+    }
+
 public:
     void Init(nitroapi::NitroApiInterface* nitro_api) override
     {
@@ -334,11 +351,13 @@ public:
         g_Unsub.emplace_back(client_data->UserMsg_ResetHUD |= UserMsg_ResetHUDHandler);
         g_Unsub.emplace_back(client_data->CL_CreateMove |= CL_CreateMoveHandler);
 
+        task_runtime_ = std::make_shared<taskcoro::TaskCoroImpl>(std::this_thread::get_id(), false);
+        taskcoro::TaskCoro::Initialize(task_runtime_);
         g_GameHud = std::make_unique<GameHud>(nitro_api);
-        g_Unsub.emplace_back(client_data->HUD_Shutdown += [] { g_GameHud.reset(); });
-        g_Unsub.emplace_back(eng()->Sys_Error |= [](const char* error, const auto& next) {
+        g_Unsub.emplace_back(client_data->HUD_Shutdown += [this] { ShutdownHud(); });
+        g_Unsub.emplace_back(eng()->Sys_Error |= [this](const char* error, const auto& next) {
             // Sys_Error exits the process without Host_Shutdown, so HUD_Shutdown never fires on that path.
-            g_GameHud.reset();
+            ShutdownHud();
             next->Invoke(error);
         });
     }
@@ -354,7 +373,7 @@ public:
         }
         g_Unsub.clear();
 
-        g_GameHud.reset();
+        ShutdownHud();
         g_NitroApi = nullptr;
         g_GameConsole = nullptr;
         g_GameConsoleNext = nullptr;

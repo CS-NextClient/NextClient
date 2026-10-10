@@ -33,9 +33,52 @@ float roundedBoxDist(vec2 p, vec2 halfSize, float radius)
     return length(max(q, 0.0)) + min(max(q.x, q.y), 0.0) - radius;
 }
 
+float signalArcDist(vec2 p, float radius)
+{
+    p.x = abs(p.x);
+    if (p.y <= -p.x)
+    {
+        return abs(length(p) - radius);
+    }
+    return distance(p, vec2(0.70710678, -0.70710678) * radius);
+}
+
+float TriangleCoverage(vec2 p, vec2 t0, vec2 t1, vec2 t2, float feather)
+{
+    float d0 = cross2(t1 - t0, p - t0);
+    float d1 = cross2(t2 - t1, p - t1);
+    float d2 = cross2(t0 - t2, p - t2);
+    bool inside = (d0 >= 0.0 && d1 >= 0.0 && d2 >= 0.0) || (d0 <= 0.0 && d1 <= 0.0 && d2 <= 0.0);
+    float dist = min(segDist(p, t0, t1), min(segDist(p, t1, t2), segDist(p, t2, t0)));
+    return 1.0 - smoothstep(-feather, feather, inside ? -dist : dist);
+}
+
+vec4 PlayerMarker(vec2 p, vec2 center, vec2 direction, bool offscreen, float radius, vec4 color)
+{
+    bool directed = dot(direction, direction) > 0.5;
+    vec2 perpendicular = vec2(-direction.y, direction.x);
+    if (offscreen && directed)
+    {
+        vec2 base = center - direction * (radius * 0.8);
+        float coverage = TriangleCoverage(p, center + direction * (radius * 1.7),
+            base + perpendicular * (radius * 1.2), base - perpendicular * (radius * 1.2), 1.1);
+        float alpha = color.a * coverage;
+        return vec4(color.rgb * alpha, alpha);
+    }
+    float disc = color.a * (1.0 - smoothstep(radius - 1.2, radius, distance(p, center)));
+    float heading = 0.0;
+    if (directed)
+    {
+        vec2 base = center + direction * (cos(0.62) * radius);
+        vec2 width = perpendicular * (sin(0.62) * radius);
+        heading = color.a * TriangleCoverage(p, center + direction * (radius * 2.0), base + width, base - width, 1.1);
+    }
+    return vec4(color.rgb * disc + vec3(240.0 / 255.0) * heading * (1.0 - disc), disc + heading * (1.0 - disc));
+}
+
 void main()
 {
-    float uShape = vShape.x; // 0 disc, 1 cone, 2 triangle, 3 cross, 4 ring, 5 solid, 6 glyph, 7 question mark, 8 bomb
+    float uShape = vShape.x; // 0 disc, 1 cone, 2 triangle, 3 cross, 4 ring, 5 solid, 6 glyph, 7 question mark, 8 bomb, 9 disconnected signal, 10 player marker fade
     float uFeather = vShape.y;
     float uRadius = vShape.z;
     float uLen = vShape.w;
@@ -73,14 +116,7 @@ void main()
     }
     else if (uShape < 2.5)
     {
-        float d0 = cross2(uT1 - uT0, p - uT0);
-        float d1 = cross2(uT2 - uT1, p - uT1);
-        float d2 = cross2(uT0 - uT2, p - uT2);
-        bool inside = (d0 >= 0.0 && d1 >= 0.0 && d2 >= 0.0) || (d0 <= 0.0 && d1 <= 0.0 && d2 <= 0.0);
-        float dist = min(segDist(p, uT0, uT1), min(segDist(p, uT1, uT2), segDist(p, uT2, uT0)));
-        float sd = inside ? -dist : dist;
-
-        a = 1.0 - smoothstep(-uFeather, uFeather, sd);
+        a = TriangleCoverage(p, uT0, uT1, uT2, uFeather);
     }
     else if (uShape < 3.5)
     {
@@ -126,7 +162,7 @@ void main()
         float dl = min(min(hook, stem) * uRadius, dotDist);
         a = 1.0 - smoothstep(uLen - uFeather, uLen, dl);
     }
-    else
+    else if (uShape < 8.5)
     {
         vec2 q = (p - uCenter) / uRadius;
         float body = roundedBoxDist(q - vec2(0.0, 0.12), vec2(0.9, 0.62), 0.10);
@@ -147,6 +183,28 @@ void main()
         }
         float ink = 1.0 - smoothstep(-0.4, 0.4, detail * uRadius);
         rgb = mix(uColor.rgb, uColor.rgb * 0.20, ink);
+    }
+    else if (uShape < 9.5)
+    {
+        vec2 q = p - uCenter;
+        vec2 rel = q - vec2(0.0, 0.5 * uRadius);
+        float arcs = min(signalArcDist(rel, 1.05 * uRadius), signalArcDist(rel, 0.60 * uRadius)) - uLen;
+        float dotDist = length(rel) - max(1.65, 0.14 * uRadius);
+        float slash = segDist(q, vec2(-0.85, 0.8) * uRadius, vec2(0.85, -0.85) * uRadius) - uLen;
+        float signal = max(min(arcs, dotDist), 0.65 - slash);
+        a = 1.0 - smoothstep(-uFeather, uFeather, min(signal, slash));
+    }
+    else
+    {
+        bool currentOffscreen = (uT2.x > 0.5 && uT2.x < 1.5) || uT2.x > 2.5;
+        bool previousOffscreen = uT2.x > 1.5;
+        vec4 current = PlayerMarker(p, uCenter, uT0, currentOffscreen, uRadius, uColor) * uSpread;
+        vec4 previous = PlayerMarker(p, uDir, uT1, previousOffscreen, uRadius, vec4(uColor.rgb, uLen)) * uT2.y;
+        // Blend the two premultiplied marker images once, including their shared pixels.
+        vec4 marker = current + previous;
+        a = marker.a;
+        rgb = a > 0.0 ? marker.rgb / a : uColor.rgb;
+        uColor.a = 1.0;
     }
 
     vec2 cd = abs(vScreen - uClipCenter);

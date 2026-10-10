@@ -227,6 +227,11 @@
   },
   "declarations": [
     {
+      "name": "dclipnode_s",
+      "header": "goldsrc/format/bsp.h",
+      "completeness": "complete"
+    },
+    {
       "name": "alight_s",
       "header": "goldsrc/studio_api.h"
     },
@@ -417,6 +422,11 @@
   ],
   "macros": {
     "families": [
+      {
+        "prefix": "CONTENTS_",
+        "file": "dep/NclNitroApi/dep/ncl-hl1-source-sdk/common/const.h",
+        "header": "goldsrc/format/bsp.h"
+      },
       {
         "prefix": "K_",
         "file": "dep/NclNitroApi/dep/ncl-hl1-source-sdk/engine/keydefs.h",

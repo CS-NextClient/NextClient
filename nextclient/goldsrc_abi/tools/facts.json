@@ -18767,7 +18767,8 @@
     "pointers": []
    },
    "used_fields": [
-    "normal"
+    "normal",
+    "dist"
    ],
    "used_methods": [],
    "used": true,

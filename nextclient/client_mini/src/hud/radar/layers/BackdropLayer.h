@@ -3,7 +3,7 @@
 #include <ncl_math/vec3.h>
 #include <goldsrc/engine/model.h>
 
-#include "hud/radar/Overview.h"
+#include "hud/radar/map/Overview.h"
 #include "hud/radar/RadarFrame.h"
 
 class SmokeRegistry;
@@ -31,11 +31,14 @@ class BackdropLayer
 public:
     explicit BackdropLayer(SmokeRegistry& smoke);
 
-    bool EnsureMap();
+    RadarMapStatus EnsureMap(RadarMapMode mode, const RadarMapLayers* layers, bool prepare_only = false);
+    RadarMapStatus EnsureLayerImage(const RadarMapLayers& layers, int layer, uint64_t frame);
+    RadarMapStatus EnsureTopMap(RadarMapMode mode, bool prepare_only = false, const RadarMapLayers* layers = nullptr);
+    void ResetLayerImages();
     void Draw(const RadarFrame& frame);
-    
+
     void OnVidInit();
-    
+
     const RadarOverview& get_overview() const
     {
         return overview_;

@@ -2,7 +2,7 @@
 
 #include <goldsrc/view.h>
 
-#include "RadarFade.h"
+#include "hud/radar/render/RadarFade.h"
 
 namespace
 {

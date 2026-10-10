@@ -1,10 +1,13 @@
 #pragma once
 
-#include "hud/radar/MapObjectives.h"
+#include <array>
+
+#include "hud/radar/map/MapObjectives.h"
+#include "hud/radar/markers/RadarLayerMarker.h"
 #include "hud/radar/RadarFrame.h"
-#include "objectives/BombMarker.h"
-#include "objectives/HostageMarkers.h"
-#include "objectives/ObjectiveEntities.h"
+#include "hud/radar/layers/objectives/BombMarker.h"
+#include "hud/radar/layers/objectives/HostageMarkers.h"
+#include "hud/radar/layers/objectives/ObjectiveEntities.h"
 
 class RadarVisibility;
 class RadarPolicy;
@@ -16,10 +19,13 @@ class ObjectivesLayer
     RadarText& text_;
 
     RadarMapObjectives objectives_;
+    std::array<RadarSiteLayerCache, RadarMapObjectives::kMaxSites> site_layer_cache_;
+    size_t objectives_revision_{};
 
     ObjectiveEntities objective_entities_;
     BombMarker bomb_;
     HostageMarkers hostages_;
+    bool spectating_{};
 
 public:
     explicit ObjectivesLayer(RadarVisibility& visibility, const RadarPolicy& policy, const RadarBroadcast& broadcast, RadarText& text);
@@ -31,6 +37,7 @@ public:
 
     void OnPlayerRespawn();
     void OnVidInit();
+    void ResetLayerCache();
 
     // Parses the entity lump on the first call of a level.
     const RadarMapObjectives& get_map_objectives();

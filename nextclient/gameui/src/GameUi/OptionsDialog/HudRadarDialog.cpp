@@ -1,6 +1,7 @@
 #include "HudRadarDialog.h"
 
 #include <algorithm>
+#include <iterator>
 
 #include <vgui/IInput.h>
 #include <vgui/IInputInternal.h>
@@ -8,16 +9,91 @@
 #include <vgui_controls/ComboBox.h>
 #include <vgui_controls/TextEntry.h>
 #include <vgui_controls/QueryBox.h>
+#include <vgui_controls/Tooltip.h>
 #include <KeyValues.h>
 #include <next_client_mini/radar_cvars.h>
 #include <goldsrc/client_api.h>
 
+#include "GameUi/Controls/cvar_context_menu.h"
 #include "GameUi/GameUi.h"
 
 using namespace vgui2;
 
 namespace
 {
+    class RadarCvarComboBox : public ComboBox
+    {
+        DECLARE_CLASS_SIMPLE(RadarCvarComboBox, ComboBox);
+
+    private:
+        const char* cvar_{};
+        int default_row_{};
+        Menu* context_menu_{};
+
+    public:
+        RadarCvarComboBox(
+            Panel* parent,
+            const char* name,
+            int rows,
+            const char* cvar,
+            int default_row
+        ) :
+            BaseClass(parent, name, rows, false),
+            cvar_(cvar),
+            default_row_(default_row)
+        {
+            // The arrow otherwise consumes right clicks before the combo box receives them.
+            GetComboButton()->SetMouseInputEnabled(false);
+        }
+
+        void OnMousePressed(MouseCode code) override
+        {
+            if (code == MOUSE_RIGHT && IsEnabled() && IsCursorOver())
+            {
+                HideMenu();
+                CvarContextMenu_Show(this, context_menu_, cvar_, true);
+
+                return;
+            }
+
+            BaseClass::OnMousePressed(code);
+        }
+
+    private:
+        MESSAGE_FUNC(OnResetToDefault, "ResetToDefault")
+        {
+            ActivateItemByRow(default_row_);
+        }
+    };
+
+    class RadarSliderValueEntry : public TextEntry
+    {
+        DECLARE_CLASS_SIMPLE(RadarSliderValueEntry, TextEntry);
+
+    private:
+        CCvarSlider* slider_{};
+
+    public:
+        RadarSliderValueEntry(Panel* parent, const char* name, CCvarSlider* slider) :
+            BaseClass(parent, name),
+            slider_(slider)
+        {
+            SetEditable(false);
+        }
+
+        void OnMousePressed(MouseCode code) override
+        {
+            if (code == MOUSE_RIGHT && IsEnabled())
+            {
+                slider_->OnMousePressed(code);
+
+                return;
+            }
+
+            BaseClass::OnMousePressed(code);
+        }
+    };
+
     struct RadarDialogCvar
     {
         const char* field; // checkbox control name; nullptr for slider/combo cvars
@@ -34,6 +110,8 @@ namespace
         {nullptr, "hud_radar_name_size"},
         {"RadarRound", "hud_radar_round"},
         {"FullMap", "hud_radar_fullmap"},
+        {"MapSmoothing", "hud_radar_map_smoothing"},
+        {"MapShift", "hud_radar_map_shift"},
         {"ShiftScoreboard", "hud_radar_shift_scoreboard"},
         {"Rotation", "hud_radar_rotate"},
         {"Names", "hud_radar_names"},
@@ -73,18 +151,20 @@ namespace
     constexpr RadarCvarDef kMapScaleCvar = RadarCvarDef_Get("hud_radar_map_scale");
     constexpr RadarCvarDef kOpacityCvar = RadarCvarDef_Get("hud_radar_opacity");
     constexpr RadarCvarDef kNameSizeCvar = RadarCvarDef_Get("hud_radar_name_size");
-    constexpr RadarCvarDef kMapModeCvar = RadarCvarDef_Get("hud_radar_map_mode");
 
     float DefaultValue(const char* cvar)
     {
         return (float)atof(RadarCvarDef_Get(cvar).default_value);
     }
 
-    // Combo rows are 0-based, the cvar 1-based; the clamp matches the client's.
     int MapModeRow(float value)
     {
-        int mode = std::clamp((int)value, (int)kMapModeCvar.min_value, (int)kMapModeCvar.max_value);
-        return mode - 1;
+        RadarMapMode mode = RadarMapMode_FromCvar(value);
+        auto item = std::find_if(std::begin(kRadarMapModeDefs), std::end(kRadarMapModeDefs), [mode](const RadarMapModeDef& def) {
+            return def.mode == mode;
+        });
+
+        return static_cast<int>(item - std::begin(kRadarMapModeDefs));
     }
 
 } // namespace
@@ -101,37 +181,50 @@ CHudRadarDialog::CHudRadarDialog(Panel* parent) :
 
     m_pApplyButton = new Button(this, "Apply", "Apply");
 
-    m_pMode = new ComboBox(this, "RadarMode", 2, false);
+    m_pMode = new RadarCvarComboBox(
+        this,
+        "RadarMode",
+        2,
+        "hud_radar_mode",
+        DefaultValue("hud_radar_mode") != 0.0f ? 1 : 0
+    );
     m_pMode->AddItem("#GameUI_HudRadar_Classic", nullptr);
     m_pMode->AddItem("#GameUI_HudRadar_Advanced", nullptr);
     m_pMode->AddActionSignalTarget(this);
 
-    m_pMapMode = new ComboBox(this, "MapMode", 6, false);
-    m_pMapMode->AddItem("#GameUI_HudRadar_MapMode_Overview", nullptr);
-    m_pMapMode->AddItem("#GameUI_HudRadar_MapMode_OverviewFlat", nullptr);
-    m_pMapMode->AddItem("#GameUI_HudRadar_MapMode_Generated", nullptr);
-    m_pMapMode->AddItem("#GameUI_HudRadar_MapMode_GeneratedFlat", nullptr);
-    m_pMapMode->AddItem("#GameUI_HudRadar_MapMode_Slice", nullptr);
-    m_pMapMode->AddItem("#GameUI_HudRadar_MapMode_SliceFlat", nullptr);
+    m_pMapMode = new RadarCvarComboBox(
+        this,
+        "MapMode",
+        static_cast<int>(std::size(kRadarMapModeDefs)),
+        "hud_radar_map_mode",
+        MapModeRow(DefaultValue("hud_radar_map_mode"))
+    );
+
+    for (const RadarMapModeDef& def : kRadarMapModeDefs)
+    {
+        m_pMapMode->AddItem(def.label, nullptr);
+    }
+
     m_pMapMode->AddActionSignalTarget(this);
 
     m_pRadarScale = new CCvarSlider(this, "RadarScale", "", kScaleCvar.min_value, kScaleCvar.max_value, kScaleCvar.name);
     m_pMapScale = new CCvarSlider(this, "MapScale", "", kMapScaleCvar.min_value, kMapScaleCvar.max_value, kMapScaleCvar.name);
     m_pOpacity = new CCvarSlider(this, "Opacity", "", kOpacityCvar.min_value, kOpacityCvar.max_value, kOpacityCvar.name);
     m_pNameSize = new CCvarSlider(this, "NameSize", "", kNameSizeCvar.min_value, kNameSizeCvar.max_value, kNameSizeCvar.name);
+    m_pRadarScale->SetDefaultValue(DefaultValue(kScaleCvar.name));
+    m_pMapScale->SetDefaultValue(DefaultValue(kMapScaleCvar.name));
+    m_pOpacity->SetDefaultValue(DefaultValue(kOpacityCvar.name));
+    m_pNameSize->SetDefaultValue(DefaultValue(kNameSizeCvar.name));
+
     m_pRadarScale->AddActionSignalTarget(this);
     m_pMapScale->AddActionSignalTarget(this);
     m_pOpacity->AddActionSignalTarget(this);
     m_pNameSize->AddActionSignalTarget(this);
 
-    m_pRadarScaleText = new TextEntry(this, "RadarScaleText");
-    m_pMapScaleText = new TextEntry(this, "MapScaleText");
-    m_pOpacityText = new TextEntry(this, "OpacityText");
-    m_pNameSizeText = new TextEntry(this, "NameSizeText");
-    m_pRadarScaleText->SetEditable(false);
-    m_pMapScaleText->SetEditable(false);
-    m_pOpacityText->SetEditable(false);
-    m_pNameSizeText->SetEditable(false);
+    m_pRadarScaleText = new RadarSliderValueEntry(this, "RadarScaleText", m_pRadarScale);
+    m_pMapScaleText = new RadarSliderValueEntry(this, "MapScaleText", m_pMapScale);
+    m_pOpacityText = new RadarSliderValueEntry(this, "OpacityText", m_pOpacity);
+    m_pNameSizeText = new RadarSliderValueEntry(this, "NameSizeText", m_pNameSize);
 
     int check = 0;
     for (const RadarDialogCvar& def : kRadarCvars)
@@ -141,11 +234,13 @@ CHudRadarDialog::CHudRadarDialog(Panel* parent) :
             continue;
         }
         m_pChecks[check] = new CCvarToggleCheckButton(this, def.field, "", def.cvar);
+        m_pChecks[check]->SetDefaultValue(DefaultValue(def.cvar) != 0.0f);
         m_pChecks[check]->AddActionSignalTarget(this);
         check++;
     }
 
     LoadControlSettings("Resource\\HudRadarDialog.res");
+    FindCheck("hud_radar_map_shift")->GetTooltip()->SetText("#GameUI_HudRadar_MapShiftTooltip");
 
     m_pMode->SetEditable(false);
     m_pMapMode->SetEditable(false);
@@ -155,8 +250,8 @@ CHudRadarDialog::CHudRadarDialog(Panel* parent) :
     V_sprintf_safe(tick_lo, "%.1f", kScaleCvar.min_value);
     V_sprintf_safe(tick_hi, "%.1f", kScaleCvar.max_value);
     m_pRadarScale->SetTickCaptions(tick_lo, tick_hi);
-    V_sprintf_safe(tick_lo, "%.1f", kMapScaleCvar.min_value);
-    V_sprintf_safe(tick_hi, "%.1f", kMapScaleCvar.max_value);
+    V_sprintf_safe(tick_lo, "%.2f", kMapScaleCvar.min_value);
+    V_sprintf_safe(tick_hi, "%.2f", kMapScaleCvar.max_value);
     m_pMapScale->SetTickCaptions(tick_lo, tick_hi);
     V_sprintf_safe(tick_lo, "%.1f", kNameSizeCvar.min_value);
     V_sprintf_safe(tick_hi, "%.1f", kNameSizeCvar.max_value);
@@ -181,10 +276,10 @@ void CHudRadarDialog::Activate()
 
 void CHudRadarDialog::OnClose()
 {
-    BaseClass::OnClose();
     input()->ReleaseAppModalSurface();
-
     GameUI().EndPanelOverGame();
+    m_bLiveApply = false;
+    BaseClass::OnClose();
 }
 
 // VGUI action signals are posted, so a flag cleared at the end of the call arrives too late.
@@ -263,7 +358,7 @@ void CHudRadarDialog::ApplyValues()
     Q_snprintf(cmd, sizeof(cmd), "hud_radar_mode %d\n", m_pMode->GetActiveItem() != 0 ? 1 : 0);
     engine->pfnClientCmd(cmd);
 
-    Q_snprintf(cmd, sizeof(cmd), "hud_radar_map_mode %d\n", m_pMapMode->GetActiveItem() + 1);
+    Q_snprintf(cmd, sizeof(cmd), "hud_radar_map_mode %d\n", static_cast<int>(kRadarMapModeDefs[m_pMapMode->GetActiveItem()].mode));
     engine->pfnClientCmd(cmd);
 }
 
@@ -328,21 +423,15 @@ CCvarToggleCheckButton* CHudRadarDialog::FindCheck(const char* cvar) const
     return nullptr;
 }
 
-// Full-map view ignores rotation (see ComputeTransform); map scale still applies there.
 void CHudRadarDialog::UpdateEnabledStates()
 {
-    CCvarToggleCheckButton* fullmap = FindCheck("hud_radar_fullmap");
-    bool full = fullmap && fullmap->IsSelected();
-
-    if (CCvarToggleCheckButton* rotation = FindCheck("hud_radar_rotate"))
-    {
-        rotation->SetEnabled(!full);
-    }
-
     CCvarToggleCheckButton* names = FindCheck("hud_radar_names");
     bool named = names && names->IsSelected();
     m_pNameSize->SetEnabled(named);
     m_pNameSizeText->SetEnabled(named);
+
+    RadarMapMode mode = kRadarMapModeDefs[m_pMapMode->GetActiveItem()].mode;
+    FindCheck("hud_radar_map_smoothing")->SetEnabled(mode == RadarMapMode::SliceFlat || mode == RadarMapMode::SliceTextured);
 }
 
 void CHudRadarDialog::TakeSnapshot()
@@ -470,6 +559,7 @@ void CHudRadarDialog::OnCheckButtonChecked(Panel*)
 
 void CHudRadarDialog::OnTextChanged(Panel*)
 {
+    UpdateEnabledStates();
     MarkModified();
     if (m_bLiveApply)
     {

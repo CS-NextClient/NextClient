@@ -4,7 +4,7 @@
 #include <goldsrc/cstrike/hud_elements.h>
 
 #include "HudRadarAdvanced.h"
-#include "radar/RadarConfig.h"
+#include "hud/radar/integration/RadarConfig.h"
 
 HudRadar::HudRadar(nitroapi::NitroApiInterface* nitro_api)
 	: HudBaseHelper(nitro_api)

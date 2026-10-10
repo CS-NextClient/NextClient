@@ -3,7 +3,7 @@
 #include <string>
 #include <vector>
 
-#include "RadarPolicy.h"
+#include "hud/radar/policy/RadarPolicy.h"
 
 namespace
 {
@@ -116,7 +116,7 @@ TEST_F(RadarPolicyTest, LagToleranceScalesWithTheServerRunSpeed)
     policy.ObserveAlly(3, true, {2000.0f, 0.0f}, {1000.0f, 0.0f, 0.0f});
 
     policy.BeginFrame(20.0f, 1000.0f, true);
-    policy.ObserveAlly(3, true, {2000.0f, 0.0f}, {1000.0f, 0.0f, 0.0f});
+    policy.ObserveAlly(3, true, {2128.0f, 0.0f}, {1000.0f, 0.0f, 0.0f});
 
     EXPECT_TRUE(policy.IsAllyRevealed(3));
 }
@@ -287,6 +287,14 @@ TEST_F(RadarPolicyTest, ServerHintOutranksTheHeuristics)
 
     policy.ObserveBomb({1, true, {500.0f, 500.0f, 0.0f}, false, 10.0f}, 10.0f);
     EXPECT_EQ(policy.get_bomb_intent(), BombIntent::Marker);
+
+    policy.SetBombHint(MessageHint::Stock);
+    policy.SetMapObjectives(0, 0);
+    ASSERT_EQ(policy.get_bomb_intent(), BombIntent::Bomb);
+
+    policy.ObserveBomb({2, true, {500.0f, 500.0f, 0.0f}, false, 11.0f}, 11.0f);
+    EXPECT_EQ(policy.get_bomb_intent(), BombIntent::Bomb);
+    EXPECT_FALSE(policy.is_marker_visible());
 }
 
 TEST_F(RadarPolicyTest, HostageMessageOnAMapWithoutHostagesIsAMarker)
@@ -392,6 +400,14 @@ TEST_F(RadarPolicyTest, HostageHintOutranksTheHeuristics)
 
     policy.ObserveHostage({1, 1, 10.0f}, 10.0f);
     EXPECT_EQ(policy.get_hostage_intent(), HostageIntent::Marker);
+
+    policy.SetHostageHint(MessageHint::Stock);
+    policy.SetMapObjectives(0, 0);
+    ASSERT_EQ(policy.get_hostage_intent(), HostageIntent::Hostage);
+
+    policy.ObserveHostage({1, 2, 11.0f}, 11.0f);
+    EXPECT_EQ(policy.get_hostage_intent(), HostageIntent::Hostage);
+    EXPECT_FALSE(policy.IsHostageMarkerVisible(1));
 }
 
 TEST_F(RadarPolicyTest, LevelChangeForgetsTheDecisions)

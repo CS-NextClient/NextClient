@@ -14,20 +14,32 @@ class PlayerLastSeen
 public:
     struct Observation
     {
-        int player;
-        ncl_math::Vector2 pos;
-        RadarTeam team;
+        int player{};
+        ncl_math::Vector3 pos{};
+        RadarTeam team{};
+        float yaw{};
+        bool has_dir{};
+        bool carrier{};
     };
 
     struct Mark
     {
-        int player;
-        ncl_math::Vector2 pos;
-        RadarTeam team;
-        float time;
-        int alpha;
+        int player{};
+        ncl_math::Vector3 pos{};
+        RadarTeam team{};
+        float time{};
+        int alpha{};
+        float yaw{};
+        bool has_dir{};
+        bool carrier{};
+        bool uncertain{};
     };
 
+private:
+    std::array<Observation, kRadarMaxPlayers + 1> previous_{};
+    std::vector<Mark> marks_;
+
+public:
     void Update(std::span<const Observation> visible, float time);
     void Forget(int player);
     void OnPlayerDeath(int player);
@@ -37,8 +49,4 @@ public:
     {
         return marks_;
     }
-
-private:
-    std::array<Observation, kRadarMaxPlayers + 1> previous_{};
-    std::vector<Mark> marks_;
 };

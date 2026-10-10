@@ -1,5 +1,7 @@
 #pragma once
 
+#include <goldsrc/fwd.h>
+
 namespace goldsrc::cstrike
 {
     inline constexpr int DMG_HALLUC = static_cast<int>(0x80000000);

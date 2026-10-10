@@ -716,8 +716,10 @@ namespace
                             s = fill[(size_t)(y - kDropShadowOffset) * cell_wide + (x - kDropShadowOffset)];
                         }
 
-                        texels[i * 2 + 0] = f;
-                        texels[i * 2 + 1] = std::max(f, s);
+                        uint8_t alpha = std::max(f, s);
+                        // GL_SRC_ALPHA applies coverage, so luminance must undo that factor for the fill.
+                        texels[i * 2 + 0] = alpha ? static_cast<uint8_t>((255 * f + alpha / 2) / alpha) : 0;
+                        texels[i * 2 + 1] = alpha;
                     }
                 }
             }

@@ -2,8 +2,8 @@
 
 namespace ncl_gl
 {
-    // Falls back to opengl32.dll for the GL 1.1 entry points some drivers do not
-    // return through wglGetProcAddress. void* keeps glad out of this header.
+    // Uses SDL on Linux and the driver resolver with an opengl32.dll fallback
+    // for core entry points on Windows.
     void* LoadProc(const char* name);
 
     // Requires a current GL context on the calling thread.

@@ -3,7 +3,7 @@
 #include <string>
 #include <vector>
 
-#include "RadarUtil.h"
+#include "hud/radar/integration/RadarUtil.h"
 
 namespace
 {

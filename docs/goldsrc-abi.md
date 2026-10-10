@@ -16,15 +16,25 @@ hook registration.
 | Source | Responsibility |
 |---|---|
 | [facts.json](../nextclient/goldsrc_abi/tools/facts.json) | Pinned interoperability facts, source revisions, extraction tools, and compiler self-check results |
+| [facts_linux.json](../nextclient/goldsrc_abi/tools/facts_linux.json) | Independently verified Linux x86 layouts and their provenance |
 | [header_map.json](../nextclient/goldsrc_abi/tools/header_map.json) | Placement, names, completeness, replacements, and constant families |
 | [library.py](../nextclient/goldsrc_abi/tools/library.py) | Model validation and generation of headers and layout assertions |
 | [model.py](../nextclient/goldsrc_abi/tools/goldsrc_tools/model.py) | Dependency closure, declaration order, and generated model |
+| [platforms.py](../nextclient/goldsrc_abi/tools/goldsrc_tools/platforms.py) | Supplement validation and separate Windows x86 and Linux x86 models |
 | [emit.py](../nextclient/goldsrc_abi/tools/goldsrc_tools/emit.py) | Text emitted from the model |
 | [golden_layout.cpp](../nextclient/goldsrc_abi/tests/golden_layout.cpp) | Compiler assertions against the recorded facts |
 
 The generator reads the pinned facts and map. It does not recover facts by reading
 the current consumers. The `sources` and `tools` entries in the facts identify the
 extraction inputs; source paths inside fact keys are part of that input identity.
+
+The Linux supplement's versioned schema and reproducible measurements are described
+in the [Linux evidence reference](goldsrc-abi-linux-facts.md). Its canonical
+`base_facts_sha256` binds it to the frozen Windows input. Every complete or prefix
+record, including nested dependencies, requires explicit Linux measurements and
+successful independent compiler checks. Missing measurements, conflicting identities,
+stale provenance, and failed self-checks prevent generation. Incomplete Linux records
+carry no inferred layout. Windows layouts retain their pinned values.
 
 Tracked headers can also contain maintained additions. In particular, the `OBS_*`
 constants in [pmove.h](../nextclient/goldsrc_abi/include/goldsrc/pmove.h) are outside
@@ -117,7 +127,11 @@ python nextclient/goldsrc_abi/tools/library.py tests --out build/abi-review/test
 ```
 
 Use `python3` where that is the Python command. The generation commands accept
-`--facts`, `--map`, and `--clang-format` overrides. Their default output paths are
+`--facts`, `--linux-facts`, `--map`, and `--clang-format` overrides. The Linux input
+defaults to `tools/facts_linux.json`. Both platform models feed the same generation
+commands; common declarations appear once, with platform branches for differing
+declarations and assertions. The forward header rejects unsupported platforms and
+requires four-byte pointers. Their default output paths are
 the tracked include and test directories, so use an explicit comparison directory.
 The `headers` command also deletes `.h` files under its output's `goldsrc/`
 directory when they are absent from the generated model.

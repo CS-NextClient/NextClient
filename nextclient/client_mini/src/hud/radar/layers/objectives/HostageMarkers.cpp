@@ -1,17 +1,20 @@
 #include "HostageMarkers.h"
 
 #include <algorithm>
+#include <cmath>
 
 #include "main.h"
 
 #include <ncl_math/scalar.h>
 
-#include "hud/radar/RadarBroadcast.h"
-#include "hud/radar/RadarDraw.h"
+#include "hud/radar/markers/RadarBroadcast.h"
+#include "hud/radar/render/RadarDraw.h"
 #include "hud/radar/RadarLimits.h"
-#include "hud/radar/RadarPolicy.h"
-#include "hud/radar/ServerMarker.h"
-#include "hud/radar/Visibility.h"
+#include "hud/radar/policy/RadarPolicy.h"
+#include "hud/radar/markers/RadarLayerMarker.h"
+#include "hud/radar/render/RadarPalette.h"
+#include "hud/radar/markers/ServerMarker.h"
+#include "hud/radar/policy/Visibility.h"
 
 namespace
 {
@@ -64,7 +67,7 @@ void HostageMarkers::ClearVisibility()
     }
 }
 
-int HostageMarkers::FindOrCreate(int key, ncl_math::Vector2 pos, float time)
+int HostageMarkers::FindOrCreate(int key, ncl_math::Vector3 pos, float time)
 {
     for (int i = 0; i < kRadarMaxHostages; i++)
     {
@@ -86,9 +89,14 @@ int HostageMarkers::FindOrCreate(int key, ncl_math::Vector2 pos, float time)
     return -1;
 }
 
-void HostageMarkers::DrawDot(const RadarFrame& frame, ncl_math::Vector2 world, int dot, int alpha)
+void HostageMarkers::DrawDot(const RadarFrame& frame, ncl_math::Vector3 world, int dot, int alpha)
 {
-    RadarDraw_DrawDisc(frame.shape.Clamp(dot, frame.t.WorldToScreen(world)), (float)dot, {0, 220, 220, alpha});
+    RadarLayerStyle style = RadarLayerMarker_ComputeStyle(frame.layer_view, world);
+    RadarLayerPlacement placement = RadarLayerMarker_Place(frame.shape, frame.t.WorldToScreen({world.x, world.y}), dot, style);
+    ncl_math::Color color{0, 220, 220, (int)(alpha * style.opacity)};
+
+    RadarDraw_DrawDisc(placement.marker, (float)dot, color);
+    RadarDraw_DrawLayerIndicator(placement.indicator, style.vertical, dot, color);
 }
 
 void HostageMarkers::DrawBySight(const RadarFrame& frame, const ObjectiveEntities& entities, int dot)
@@ -104,7 +112,7 @@ void HostageMarkers::DrawBySight(const RadarFrame& frame, const ObjectiveEntitie
                 continue;
             }
 
-            int slot = FindOrCreate(h.index, {h.origin.x, h.origin.y}, frame.time);
+            int slot = FindOrCreate(h.index, h.origin, frame.time);
 
             if (slot >= 0)
             {
@@ -122,7 +130,7 @@ void HostageMarkers::DrawBySight(const RadarFrame& frame, const ObjectiveEntitie
 
         if (spot != spots_.end())
         {
-            spot->pos = {hostage_ent.origin.x, hostage_ent.origin.y};
+            spot->pos = hostage_ent.origin;
         }
     }
 
@@ -158,7 +166,7 @@ void HostageMarkers::DrawRevealed(const RadarFrame& frame, const ObjectiveEntiti
 
     for (const ObjectiveEntities::HostageEnt& hostage : entities.get_hostages())
     {
-        carried[carried_count++] = {hostage.index, {hostage.origin.x, hostage.origin.y}};
+        carried[carried_count++] = {hostage.index, hostage.origin, hostage.discontinuity};
     }
 
     MarkerIdentity::Observation broadcast[kRadarMaxHostages];
@@ -195,17 +203,20 @@ void HostageMarkers::DrawRevealed(const RadarFrame& frame, const ObjectiveEntiti
 void HostageMarkers::DrawServerMarkers(const RadarFrame& frame, int size)
 {
     RadarBroadcast::Hostage broadcast[kRadarMaxHostages];
-    int count = broadcast_.CollectHostages(broadcast);
+    int count = broadcast_.CollectHostageMarkers(broadcast, policy_);
 
     ClearVisibility();
 
+    for (Spot& spot : spots_)
+    {
+        if (spot.valid && !policy_.IsHostageMarkerVisible(spot.key))
+        {
+            spot.valid = false;
+        }
+    }
+
     for (int i = 0; i < count; i++)
     {
-        if (!policy_.IsHostageMarkerVisible(broadcast[i].index))
-        {
-            continue;
-        }
-
         int slot = FindOrCreate(broadcast[i].index, broadcast[i].pos, frame.time);
 
         if (slot < 0)
@@ -232,8 +243,14 @@ void HostageMarkers::DrawServerMarkers(const RadarFrame& frame, int size)
             continue;
         }
 
-        ncl_math::Vector2 p = frame.shape.Clamp(size, frame.t.WorldToScreen(spot.pos));
-        ServerMarker_DrawShape(p, size);
+        RadarLayerStyle style = RadarLayerMarker_ComputeStyle(frame.layer_view, spot.pos);
+        int extent = frame.layer_view.enabled ? (int)std::ceil(size + 1.5f) : size;
+        RadarLayerPlacement placement =
+            RadarLayerMarker_Place(frame.shape, frame.t.WorldToScreen({spot.pos.x, spot.pos.y}), extent, style, size);
+        ncl_math::Color color = RadarPalette::kServerMarker.WithAlpha((int)(255 * style.opacity));
+
+        ServerMarker_DrawShape(placement.marker, size, color);
+        RadarDraw_DrawLayerIndicator(placement.indicator, style.vertical, size, color);
     }
 
     RadarDraw_EndPrims();

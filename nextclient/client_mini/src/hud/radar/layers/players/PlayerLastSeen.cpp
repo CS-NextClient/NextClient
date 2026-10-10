@@ -8,7 +8,7 @@
 
 namespace
 {
-    constexpr float kReacquireRadius = 256.0f;
+    constexpr float kLossGrace = 0.15f;
 }
 
 void PlayerLastSeen::Update(std::span<const Observation> visible, float time)
@@ -24,25 +24,20 @@ void PlayerLastSeen::Update(std::span<const Observation> visible, float time)
         const Observation& previous = previous_[player];
         if (previous.player != 0 && current[player].player == 0)
         {
-            marks_.push_back({player, previous.pos, previous.team, time, 255});
+            marks_.push_back({player, previous.pos, previous.team, time, 255, previous.yaw, previous.has_dir, previous.carrier});
         }
     }
 
-    // Clear after adding losses so a nearby enemy seen in this sweep also clears a new mark.
-    std::erase_if(marks_, [visible, time](const Mark& mark) {
+    std::erase_if(marks_, [&current, time](const Mark& mark) {
         float age = time - mark.time;
-        if (age < 0.0f || age >= DeathMarks::kLifetime)
-        {
-            return true;
-        }
-        return std::ranges::any_of(visible, [&mark](const Observation& observation) {
-            return (observation.pos - mark.pos).LengthSqr() <= kReacquireRadius * kReacquireRadius;
-        });
+        return age < 0.0f || age >= DeathMarks::kLifetime || current[mark.player].player != 0;
     });
+
     for (Mark& mark : marks_)
     {
         float visibility = ncl_math::HoldLinear(time - mark.time, DeathMarks::kHold, DeathMarks::kLifetime);
         mark.alpha = (int)(visibility * 255.0f);
+        mark.uncertain = time >= mark.time + kLossGrace;
     }
     previous_ = current;
 }
@@ -50,12 +45,12 @@ void PlayerLastSeen::Update(std::span<const Observation> visible, float time)
 void PlayerLastSeen::Forget(int player)
 {
     previous_[player] = Observation{};
+    std::erase_if(marks_, [player](const Mark& mark) { return mark.player == player; });
 }
 
 void PlayerLastSeen::OnPlayerDeath(int player)
 {
     Forget(player);
-    std::erase_if(marks_, [player](const Mark& mark) { return mark.player == player; });
 }
 
 void PlayerLastSeen::Reset()

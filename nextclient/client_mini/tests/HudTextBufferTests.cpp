@@ -3,7 +3,7 @@
 
 #include <gtest/gtest.h>
 
-#include "HudTextBuffer.h"
+#include "hud/radar/render/text/HudTextBuffer.h"
 
 namespace
 {

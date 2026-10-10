@@ -7,8 +7,8 @@
 
 #include "main.h"
 
-#include "hud/radar/MapObjectives.h"
-#include "hud/radar/RadarUtil.h"
+#include "hud/radar/map/MapObjectives.h"
+#include "hud/radar/integration/RadarUtil.h"
 
 void ObjectiveEntities::OnVidInit()
 {
@@ -63,10 +63,8 @@ void ObjectiveEntities::CollectEntities(const RadarFrame& frame, const RadarMapO
         return;
     }
 
-    int message_num = local->curstate.messagenum;
-
     auto consider = [&](int i, goldsrc::cl_entity_t* ent) {
-        if (!ent || !ent->model || ent->curstate.messagenum != message_num || (ent->curstate.effects & goldsrc::EF_NODRAW))
+        if (!ent || !ent->model || !RadarFrame_IsEntityCurrent(frame.ctx, ent) || (ent->curstate.effects & goldsrc::EF_NODRAW))
         {
             return false;
         }
@@ -92,6 +90,7 @@ void ObjectiveEntities::CollectEntities(const RadarFrame& frame, const RadarMapO
                 HostageEnt& h = hostages_[hostage_count_++];
                 h.index = i;
                 h.origin = ncl_math::Vector3::Ref(ent->origin);
+                h.discontinuity = (ent->curstate.effects & goldsrc::EF_NOINTERP) != 0;
             }
         }
         else if (!bomb_.found)
@@ -99,7 +98,7 @@ void ObjectiveEntities::CollectEntities(const RadarFrame& frame, const RadarMapO
             bomb_.found = true;
             bomb_.ent = ent;
             bomb_.planted = (kind == ModelKind::BombPlanted);
-            bomb_.pos = {ent->origin[0], ent->origin[1]};
+            bomb_.pos = ncl_math::Vector3::Ref(ent->origin);
         }
 
         return true;

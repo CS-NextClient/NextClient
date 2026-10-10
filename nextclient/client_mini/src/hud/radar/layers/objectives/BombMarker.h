@@ -17,7 +17,7 @@ class BombMarker
     struct Spot
     {
         bool valid;
-        ncl_math::Vector2 pos;
+        ncl_math::Vector3 pos;
         bool planted;
         float last_seen;
     };
@@ -32,7 +32,7 @@ class BombMarker
     float pulse_start_ = -1.0f;
 
     // Eased here: a re-purposed bomb message has no entity to interpolate against.
-    ncl_math::Vector2 marker_pos_;
+    ncl_math::Vector3 marker_pos_;
     bool marker_valid_{};
 
     // Before the entity history fills (ex_interp) interpolating makes a freshly thrown bomb jerk.
@@ -53,7 +53,7 @@ public:
 private:
     float ComputeInterpLag();
     void UpdatePulse(bool planted, float time);
-    void DrawMarker(const RadarFrame& frame, ncl_math::Vector2 world, int size, bool planted, float fade);
+    void DrawMarker(const RadarFrame& frame, ncl_math::Vector3 world, int size, bool planted, float fade);
     void DrawFromBroadcast(const RadarFrame& frame, const ObjectiveEntities& entities, int size, float interp_lag);
     void DrawFromSight(const RadarFrame& frame, const ObjectiveEntities& entities, int size, float interp_lag);
     void DrawServerMarker(const RadarFrame& frame, int size);

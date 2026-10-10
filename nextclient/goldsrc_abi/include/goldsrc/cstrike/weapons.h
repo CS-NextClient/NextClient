@@ -1,5 +1,7 @@
 #pragma once
 
+#include <goldsrc/fwd.h>
+
 namespace goldsrc::cstrike
 {
     inline constexpr int WEAPON_IS_ONTARGET = 0x00000040;

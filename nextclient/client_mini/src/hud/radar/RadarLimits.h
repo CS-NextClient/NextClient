@@ -11,7 +11,7 @@ inline constexpr int kRadarMaxHostages = 24;
 static_assert(kRadarMaxPlayers == goldsrc::cstrike::MAX_PLAYERS, "player table size mismatch");
 static_assert(kRadarMaxHostages == goldsrc::cstrike::MAX_HOSTAGES, "hostage table size mismatch");
 
-// The largest set any feature feeds through MarkerFeed, which is the player one.
+// Capacity shared by broadcast identity and motion tables.
 inline constexpr int kRadarMaxMarkers = kRadarMaxPlayers;
 
 // No header exposes this one: COM_ParseFile writes up to the engine's own token size, and a

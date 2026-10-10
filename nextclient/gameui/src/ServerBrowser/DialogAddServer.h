@@ -5,6 +5,8 @@
 #pragma once
 #endif
 
+#include <vector>
+
 #include <vgui_controls/Frame.h>
 #include <vgui_controls/ListPanel.h>
 #include "ServerList.h"

@@ -7,15 +7,22 @@
 
 #include "hud/radar/RadarLimits.h"
 
+struct PlayerTrackPoint
+{
+    ncl_math::Vector3 pos{};
+    int layer = -1;
+};
+
 class PlayerTracks
 {
 public:
+    // Must precede Buf, whose type uses this array bound.
     static constexpr int kMaxPoints = 34;
 
 private:
     struct Buf
     {
-        std::array<ncl_math::Vector2, kMaxPoints> points;
+        std::array<PlayerTrackPoint, kMaxPoints> points;
         int count;
         int head;
         float last_time;
@@ -38,8 +45,9 @@ public:
 
     void Clear(int player);
 
-    void Sample(int player, ncl_math::Vector2 pos, float time);
+    bool is_sample_due(int player, float time) const;
+    void Sample(int player, ncl_math::Vector3 pos, int layer, float time, bool break_on_jump = true);
 
     // Filled oldest-to-newest, up to out.size().
-    int CopyPoints(int player, std::span<ncl_math::Vector2> out) const;
+    int CopyPoints(int player, std::span<PlayerTrackPoint> out) const;
 };

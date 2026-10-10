@@ -1,5 +1,7 @@
 #pragma once
 
+#include <goldsrc/fwd.h>
+
 namespace goldsrc
 {
     inline constexpr int DRC_CMD_NONE = 0;

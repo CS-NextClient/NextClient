@@ -29,13 +29,14 @@ public:
         bool found;
         goldsrc::cl_entity_t* ent;
         bool planted;
-        ncl_math::Vector2 pos; // snapshot origin; the consumer interpolates
+        ncl_math::Vector3 pos; // snapshot origin; the consumer interpolates
     };
 
     struct HostageEnt
     {
         int index;
         ncl_math::Vector3 origin;
+        bool discontinuity{};
     };
 
 private:

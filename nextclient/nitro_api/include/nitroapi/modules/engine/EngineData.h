@@ -25,6 +25,9 @@
 #ifdef _WIN32
 #include <Windows.h>
 #else
+using HINSTANCE = void*;
+using HMODULE = void*;
+using HWND = void*;
 using HDC = void*;
 using HGLRC = void*;
 #endif

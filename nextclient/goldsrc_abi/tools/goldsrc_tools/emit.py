@@ -1,3 +1,4 @@
+import difflib
 import struct
 
 from goldsrc_tools import cxx_types
@@ -77,6 +78,53 @@ def golden(model):
     for namespace, declaration in _constants_of(model):
         lines.append(_golden_constant(namespace, declaration))
     return "\n".join(lines) + "\n"
+
+
+def _platform_text(windows, linux):
+    first = windows.splitlines()
+    second = linux.splitlines()
+    lines = []
+    for operation, start, end, other_start, other_end in difflib.SequenceMatcher(
+            a=first, b=second, autojunk=False).get_opcodes():
+        if operation == "equal":
+            lines.extend(first[start:end])
+        elif operation == "insert":
+            lines.extend(["#if defined(__linux__)"] + second[other_start:other_end] + ["#endif"])
+        elif operation == "delete":
+            lines.extend(["#if defined(_WIN32)"] + first[start:end] + ["#endif"])
+        else:
+            lines.extend(["#if defined(_WIN32)"] + first[start:end] + ["#elif defined(__linux__)"]
+                         + second[other_start:other_end] + ["#endif"])
+    return "\n".join(lines) + "\n"
+
+
+def headers_for_platforms(models: dict[str, dict]) -> dict[str, str]:
+    windows = models["windows-x86"]
+    linux = models["linux-x86"]
+    if windows["fwd"] != linux["fwd"]:
+        raise ValueError("platform models must share the forward header identity")
+    forward_path = windows["fwd"]["path"]
+    platform_headers = []
+    for built in (windows, linux):
+        texts = {}
+        for entry in built["headers"]:
+            entry = dict(entry)
+            entry["includes"] = sorted(set(entry["includes"]) | {forward_path})
+            texts[entry["path"]] = header(built, entry)
+        texts[forward_path] = forward(built)
+        platform_headers.append(texts)
+    paths = sorted(set(platform_headers[0]) | set(platform_headers[1]))
+    texts = {path: _platform_text(platform_headers[0].get(path, ""), platform_headers[1].get(path, ""))
+             for path in paths}
+    guard = ("#if defined(_WIN32) == defined(__linux__)\n"
+             '#error "GoldSrc ABI requires Windows x86 or Linux x86."\n'
+             "#endif\n\nstatic_assert(sizeof(void*) == 4);\n")
+    texts[forward_path] = texts[forward_path].replace("#pragma once\n", "#pragma once\n\n" + guard, 1)
+    return texts
+
+
+def golden_for_platforms(models: dict[str, dict]) -> str:
+    return _platform_text(golden(models["windows-x86"]), golden(models["linux-x86"]))
 
 
 def _standard_include_lines(need_bit):

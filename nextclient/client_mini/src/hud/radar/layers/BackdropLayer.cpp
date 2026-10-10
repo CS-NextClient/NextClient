@@ -15,9 +15,10 @@
 #include <ncl_math/color.h>
 #include <next_client_mini/radar_cvars.h>
 
-#include "hud/radar/RadarConfig.h"
-#include "hud/radar/RadarDraw.h"
-#include "hud/radar/SmokeRegistry.h"
+#include "hud/radar/integration/RadarConfig.h"
+#include "hud/radar/render/RadarDraw.h"
+#include "hud/radar/markers/RadarLayerMarker.h"
+#include "hud/radar/policy/SmokeRegistry.h"
 
 namespace
 {
@@ -49,10 +50,24 @@ BackdropLayer::BackdropLayer(SmokeRegistry& smoke) :
 {
 }
 
-bool BackdropLayer::EnsureMap()
+RadarMapStatus BackdropLayer::EnsureMap(RadarMapMode mode, const RadarMapLayers* layers, bool prepare_only)
 {
-    overview_.EnsureLoaded(RadarMapMode_FromCvar(g_RadarCfg.map_mode->value));
-    return overview_.is_valid();
+    return overview_.EnsureLoaded(mode, layers, prepare_only);
+}
+
+RadarMapStatus BackdropLayer::EnsureLayerImage(const RadarMapLayers& layers, int layer, uint64_t frame)
+{
+    return overview_.EnsureLayerImage(layers, layer, frame);
+}
+
+RadarMapStatus BackdropLayer::EnsureTopMap(RadarMapMode mode, bool prepare_only, const RadarMapLayers* layers)
+{
+    return overview_.EnsureTopImage(mode, prepare_only, layers);
+}
+
+void BackdropLayer::ResetLayerImages()
+{
+    overview_.ResetLayerImages();
 }
 
 void BackdropLayer::OnVidInit()
@@ -78,7 +93,10 @@ void BackdropLayer::Draw(const RadarFrame& frame)
         DrawOverviewTiles(frame);
     }
 
-    DrawSmoke(frame);
+    if (!frame.ctx.spectating)
+    {
+        DrawSmoke(frame);
+    }
     DrawBorder(frame);
 }
 
@@ -128,11 +146,12 @@ void BackdropLayer::DrawRuntimeMap(const RadarFrame& frame)
     RadarDraw_DrawMapTexture(
         runtime_map.texture,
         xy,
-        uv, 
-    {1.0f, 1.0f, 1.0f, opacity},
+        uv,
+        {1.0f, 1.0f, 1.0f, opacity},
         frame.shape.center,
         frame.shape.radius,
-        !frame.shape.round
+        !frame.shape.round,
+        g_RadarCfg.map_smoothing->value != 0.0f
     );
 }
 
@@ -289,7 +308,12 @@ void BackdropLayer::DrawSmoke(const RadarFrame& frame)
         ncl_math::Vector2 s = frame.t.WorldToScreen({smokes[i].center.x, smokes[i].center.y});
         ncl_math::Vector2 e = frame.t.WorldToScreen({smokes[i].center.x + smokes[i].radius, smokes[i].center.y});
         float sr = std::max(2.0f, (e - s).Length());
-        RadarDraw_DrawDisc(s, sr, {210, 210, 210, 110});
+        RadarLayerStyle style = RadarLayerMarker_ComputeStyle(frame.layer_view, smokes[i].center);
+
+        RadarDraw_DrawDisc(s, sr, {210, 210, 210, (int)(110 * style.opacity)});
+
+        RadarLayerPlacement placement = RadarLayerMarker_Place(frame.shape, s, 3, style);
+        RadarDraw_DrawLayerIndicator(placement.indicator, style.vertical, 3, {210, 210, 210, (int)(110 * style.opacity)});
     }
 
     RadarDraw_EndPrims();

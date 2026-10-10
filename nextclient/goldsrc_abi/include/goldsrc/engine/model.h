@@ -71,7 +71,8 @@ namespace goldsrc
     struct alignas(4) mplane_t
     {
         vec3_t normal;
-        unsigned char unmodelled_[20 - (0 + sizeof(normal))];
+        float dist;
+        unsigned char unmodelled_[20 - (12 + sizeof(dist))];
     };
 
     struct mspriteframe_t

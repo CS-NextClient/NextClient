@@ -35,7 +35,7 @@ Multi-Config, so every build names a configuration.
 cmake --build --preset ninja-debug --target client_mini
 ```
 
-- One target per `--build`. Passing two fails before anything is compiled.
+- Build one target per command so its result and log can be checked separately.
 - MSVC must be in the environment (`vcvarsall.bat x86`), and the Visual Studio `cmake.exe` is not on
   PATH; use its full path or a shell that has one.
 - `engine_mini` and `gameui` collect sources with `file(GLOB_RECURSE ...)` and no `CONFIGURE_DEPENDS`:
@@ -57,7 +57,7 @@ cmake --build --preset vs2022-tests-release --target client_mini-tests
 ```
 
 Test targets are `client_mini-tests`, `engine_mini-tests`, `gameui-tests`, `data_types-tests`,
-`view-tests`, `crosshair-tests` and `updater-test`. The updater tests additionally require Windows
+`view-tests`, `crosshair-tests`, `radar-gl-tests` and `updater-test`. The updater tests additionally require Windows
 and `NEXT_LAUNCHER_ENABLE_UPDATER=ON`. They exist only where
 `NEXTCLIENT_BUILD_TESTS` is on, which among the tracked presets means `vs2022-tests`; a Ninja test
 build comes from a local preset or `-D NEXTCLIENT_BUILD_TESTS=ON`. They cover what runs without the
@@ -141,6 +141,32 @@ through `reinterpret_cast` or `memcpy`, never a C-style cast. Brace every
 control-flow block. File-scope constants go in an anonymous namespace rather than inside a function.
 Includes run own header, STL, external `<...>`, project headers last, with project paths written from
 the module's source root and never `../`.
+
+**Code layout.** Write new and modified code for human readability. Separate declarations
+and setup, control flow, result processing, and returns with blank lines when they form
+distinct logical blocks. Keep nonempty function bodies and control-flow blocks on multiple
+lines. Wrap long calls, signatures, and aggregate initializers by argument or element when
+their structure is difficult to scan, even if they fit the column limit. Use the root
+`.clang-format` for indentation and brace placement; its column limit does not replace
+these readability rules. Apply this to touched code without reformatting entire files.
+
+**Class member order.** Omit empty groups and use this order:
+
+1. Public nested types.
+2. Private nested types.
+3. Private nonstatic variables.
+4. Private static variables.
+5. Public variables, including static variables.
+6. Public nonstatic methods, including constructors and destructors.
+7. Private nonstatic methods.
+8. Private static methods.
+9. Public static methods.
+
+Repeat access labels when needed to keep these groups in order. A static constant used in a
+member type, such as an array bound, must precede its first use; explain that ordering exception
+with a short comment. Preserve the relative order of nonstatic fields and virtual methods when
+reorganizing declarations, since they determine object layout, construction order, and the virtual
+interface.
 
 **API shape.** Pick by what the thing owns. A class for state with an owner and a lifetime, where the
 owner holds the instance and resets it; one header may declare several classes when a single owner

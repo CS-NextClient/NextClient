@@ -48,7 +48,8 @@ bool CCvarToggleCheckButton::ResetToDefaultValue()
 
 void CCvarToggleCheckButton::OnMousePressed(vgui2::MouseCode code)
 {
-    if (code == vgui2::MOUSE_RIGHT && CvarContextMenu_Show(this, m_pContextMenu, m_pszCvarName, m_bHasDefaultValue))
+    if (code == vgui2::MOUSE_RIGHT && IsEnabled() &&
+        CvarContextMenu_Show(this, m_pContextMenu, m_pszCvarName, m_bHasDefaultValue))
     {
         return;
     }

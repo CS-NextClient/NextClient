@@ -2,7 +2,7 @@
 
 #include <span>
 
-#include "hud/radar/MarkerIdentity.h"
+#include "hud/radar/markers/MarkerIdentity.h"
 
 namespace
 {
@@ -62,25 +62,37 @@ TEST(MarkerIdentityPairing, ObservationFarFromEveryEntityDoesNotPair)
     EXPECT_EQ(identity.get_entity(3), -1);
 }
 
-TEST(MarkerIdentityPairing, ObservationWithoutAnEntityWaitsForTheNextOne)
+TEST(MarkerIdentityPairing, ObservationPairsWhenItsEntityEntersTheSnapshot)
 {
     MarkerIdentity identity(kParams);
 
     MarkerIdentity::Entity entities[] = {{40, {100.0f, 100.0f}}};
-    std::span<const MarkerIdentity::Entity> empty;
+    MarkerIdentity::Observation observations[] = {{3, {100.0f, 100.0f}, 1}};
 
-    MarkerIdentity::Observation first[] = {{3, {100.0f, 100.0f}, 1}};
-    identity.Update(empty, first);
-
+    identity.Update({}, observations);
     EXPECT_EQ(identity.get_entity(3), -1);
 
-    identity.Update(entities, first);
-    EXPECT_EQ(identity.get_entity(3), -1); // the observation is spent, only a new one pairs
+    identity.Update(entities, observations);
+    EXPECT_EQ(identity.get_entity(3), 40);
+    EXPECT_EQ(identity.get_index(40), 3);
+}
 
-    MarkerIdentity::Observation second[] = {{3, {100.0f, 100.0f}, 2}};
-    identity.Update(entities, second);
+TEST(MarkerIdentityPairing, RepeatedObservationDoesNotAccumulateBreakStrikes)
+{
+    MarkerIdentity identity(kParams);
+
+    MarkerIdentity::Entity entities[] = {{40, {100.0f, 100.0f}}};
+    MarkerIdentity::Observation paired[] = {{3, {100.0f, 100.0f}, 1}};
+    MarkerIdentity::Observation elsewhere[] = {{3, {600.0f, 100.0f}, 2}};
+
+    identity.Update(entities, paired);
+    for (int frame = 0; frame < 10; frame++)
+    {
+        identity.Update(entities, elsewhere);
+    }
 
     EXPECT_EQ(identity.get_entity(3), 40);
+    EXPECT_EQ(identity.get_index(40), 3);
 }
 
 TEST(MarkerIdentityPairing, SustainedDisagreementDropsThePair)
@@ -150,4 +162,15 @@ TEST(MarkerIdentityReset, ResetDropsThePairs)
 
     EXPECT_EQ(identity.get_entity(3), -1);
     EXPECT_EQ(identity.get_index(40), -1);
+}
+
+TEST(MarkerIdentity, SameXyDifferentFloorsDoNotPair)
+{
+    MarkerIdentity identity({.match_tolerance = 48.0f, .break_strikes = 3});
+    MarkerIdentity::Entity entities[] = {{40, {64, 64}}};
+    MarkerIdentity::Observation observations[] = {{3, {64, 64}, 1}};
+    observations[0].pos = ncl_math::Vector3{64, 64, 256};
+    identity.Update(entities, observations);
+
+    EXPECT_EQ(identity.get_entity(3), -1);
 }

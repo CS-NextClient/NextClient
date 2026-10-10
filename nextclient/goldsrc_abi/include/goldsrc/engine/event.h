@@ -1,6 +1,7 @@
 #pragma once
 
 #include <goldsrc/event_api.h>
+#include <goldsrc/fwd.h>
 
 namespace goldsrc
 {

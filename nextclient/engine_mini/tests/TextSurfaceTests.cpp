@@ -2,6 +2,7 @@
 
 #include <gtest/gtest.h>
 
+#include "graphics/text/text_render.h"
 #include "graphics/text/text_surface.h"
 
 namespace
@@ -159,4 +160,41 @@ TEST_F(TextSurfaceTest, SupportedFontUsesAtlasMetricsAndPreservesNativeFailure)
     EXPECT_NE(tall, 97);
     g_AddResult = false;
     EXPECT_FALSE(Add(font, 0x90));
+}
+
+TEST_F(TextSurfaceTest, NativeFallbackFailurePreservesSchemeFontChain)
+{
+    unsigned long font = Invoke<unsigned long>(59);
+    ASSERT_TRUE(Invoke<bool>(60, font, "Verdana", 20, 600, 0, 0, 0x80, 0, 0xFFFF));
+    int tall = Invoke<int>(62, font);
+
+    g_AddResult = false;
+    EXPECT_FALSE(Invoke<bool>(60, font, "DejaVu Sans", 20, 600, 0, 0, 0x80, 0, 0xFFFF));
+    EXPECT_EQ(Invoke<int>(62, font), tall);
+    EXPECT_NE(tall, 97);
+
+    TextFontInfo info = TextRender_FontInfo(font);
+    EXPECT_STREQ(info.face, "Verdana");
+    EXPECT_EQ(info.tall, 20);
+    EXPECT_EQ(info.weight, 600);
+    EXPECT_EQ(info.flags, kTextFontDropShadow);
+    EXPECT_EQ(info.faces, 2);
+}
+
+TEST_F(TextSurfaceTest, NativeReloadFailureAppliesSchemeFontParameters)
+{
+    unsigned long font = Invoke<unsigned long>(59);
+    ASSERT_TRUE(Invoke<bool>(60, font, "Verdana", 20, 600, 0, 0, 0x80, 0, 0xFFFF));
+    EXPECT_GT(Invoke<int>(89, font, L'A'), 0);
+
+    g_AddResult = false;
+    EXPECT_FALSE(Invoke<bool>(60, font, "Tahoma", 24, 400, 0, 0, 0x10, 0, 0xFFFF));
+    EXPECT_NE(Invoke<int>(62, font), 97);
+
+    TextFontInfo info = TextRender_FontInfo(font);
+    EXPECT_STREQ(info.face, "Tahoma");
+    EXPECT_EQ(info.tall, 24);
+    EXPECT_EQ(info.weight, 400);
+    EXPECT_EQ(info.flags, kTextFontAntialias);
+    EXPECT_EQ(info.faces, 1);
 }

@@ -12,13 +12,14 @@
 #include <goldsrc/cvar.h>
 #include <goldsrc/entity.h>
 
-#include "hud/radar/ObjectiveSource.h"
-#include "hud/radar/RadarBroadcast.h"
-#include "hud/radar/RadarDraw.h"
-#include "hud/radar/RadarPalette.h"
-#include "hud/radar/RadarPolicy.h"
-#include "hud/radar/ServerMarker.h"
-#include "hud/radar/Visibility.h"
+#include "hud/radar/policy/ObjectiveSource.h"
+#include "hud/radar/markers/RadarBroadcast.h"
+#include "hud/radar/render/RadarDraw.h"
+#include "hud/radar/render/RadarPalette.h"
+#include "hud/radar/markers/RadarLayerMarker.h"
+#include "hud/radar/policy/RadarPolicy.h"
+#include "hud/radar/markers/ServerMarker.h"
+#include "hud/radar/policy/Visibility.h"
 
 namespace
 {
@@ -28,8 +29,15 @@ namespace
     constexpr int kHistoryMask = goldsrc::HISTORY_MAX - 1;
 
     // Mirrors the engine's CL_InterpolateModel; ent->origin alone steps at the server update rate.
-    bool InterpEntityXY(goldsrc::cl_entity_t* ent, float target, ncl_math::Vector2& out)
+    bool InterpEntityPosition(goldsrc::cl_entity_t* ent, float target, ncl_math::Vector3& out)
     {
+        if (ent->curstate.effects & goldsrc::EF_NOINTERP)
+        {
+            out = ncl_math::Vector3::Ref(ent->origin);
+
+            return true;
+        }
+
         int cur = ent->current_position;
         int idx0 = cur & kHistoryMask;
         int idx1 = (cur - 1) & kHistoryMask;
@@ -62,9 +70,9 @@ namespace
             return false;
         }
 
-        float scale = std::clamp((target - ph1.animtime) / (ph0.animtime - ph1.animtime), 0.0f, 1.0f);
-        ncl_math::Vector2 p0{ph0.origin[0], ph0.origin[1]};
-        ncl_math::Vector2 p1{ph1.origin[0], ph1.origin[1]};
+        float scale = ncl_math::Saturate((target - ph1.animtime) / (ph0.animtime - ph1.animtime));
+        ncl_math::Vector3 p0 = ncl_math::Vector3::Ref(ph0.origin);
+        ncl_math::Vector3 p1 = ncl_math::Vector3::Ref(ph1.origin);
         out = ncl_math::Lerp(p1, p0, scale);
         return true;
     }
@@ -112,12 +120,15 @@ void BombMarker::UpdatePulse(bool planted, float time)
     }
 }
 
-void BombMarker::DrawMarker(const RadarFrame& frame, ncl_math::Vector2 world, int size, bool planted, float fade)
+void BombMarker::DrawMarker(const RadarFrame& frame, ncl_math::Vector3 world, int size, bool planted, float fade)
 {
     float half_extent = size * kBombIconScale;
     int inset = (int)std::ceil(half_extent * std::sqrt(2.0f));
-    ncl_math::Vector2 s = frame.shape.Clamp(inset, frame.t.WorldToScreen(world));
-    float f = std::clamp(fade, 0.0f, 1.0f);
+    RadarLayerStyle style = RadarLayerMarker_ComputeStyle(frame.layer_view, world);
+    RadarLayerPlacement placement =
+        RadarLayerMarker_Place(frame.shape, frame.t.WorldToScreen({world.x, world.y}), inset, style, size, half_extent);
+    ncl_math::Vector2 s = placement.marker;
+    float f = ncl_math::Saturate(fade) * style.opacity;
 
     RadarDraw_BeginPrims();
 
@@ -154,6 +165,7 @@ void BombMarker::DrawMarker(const RadarFrame& frame, ncl_math::Vector2 world, in
     a = (int)(a * f);
 
     RadarDraw_DrawBomb(s, half_extent, RadarPalette::kGold.WithAlpha(a));
+    RadarDraw_DrawLayerIndicator(placement.indicator, style.vertical, size, RadarPalette::kGold.WithAlpha(a));
 
     RadarDraw_EndPrims();
 }
@@ -194,14 +206,14 @@ void BombMarker::DrawFromBroadcast(const RadarFrame& frame, const ObjectiveEntit
         appear_time_ = frame.time;
     }
 
-    ncl_math::Vector2 bomb_xy{bomb.pos.x, bomb.pos.y};
+    ncl_math::Vector3 bomb_pos = bomb.pos;
     bool planted = bomb.planted;
 
     // The snapshot outranks the report: it is current, and for a spectator it is the only news of a drop.
     if (live.found)
     {
-        bomb_xy = live.pos;
-        InterpEntityXY(live.ent, gEngfuncs.GetClientTime() - interp_lag, bomb_xy);
+        bomb_pos = live.pos;
+        InterpEntityPosition(live.ent, gEngfuncs.GetClientTime() - interp_lag, bomb_pos);
         planted = live.planted;
     }
 
@@ -212,7 +224,7 @@ void BombMarker::DrawFromBroadcast(const RadarFrame& frame, const ObjectiveEntit
     }
 
     UpdatePulse(planted, frame.time);
-    DrawMarker(frame, bomb_xy, size, planted, 1.0f);
+    DrawMarker(frame, bomb_pos, size, planted, 1.0f);
 }
 
 void BombMarker::DrawFromSight(const RadarFrame& frame, const ObjectiveEntities& entities, int size, float interp_lag)
@@ -235,7 +247,7 @@ void BombMarker::DrawFromSight(const RadarFrame& frame, const ObjectiveEntities&
         {
             spot_.valid = true;
             spot_.pos = live.pos;
-            InterpEntityXY(live.ent, gEngfuncs.GetClientTime() - interp_lag, spot_.pos);
+            InterpEntityPosition(live.ent, gEngfuncs.GetClientTime() - interp_lag, spot_.pos);
             spot_.planted = live.planted;
             spot_.last_seen = frame.time;
         }
@@ -272,7 +284,7 @@ void BombMarker::DrawServerMarker(const RadarFrame& frame, int size)
         return;
     }
 
-    ncl_math::Vector2 target{bomb.pos.x, bomb.pos.y};
+    ncl_math::Vector3 target = bomb.pos;
 
     if (marker_valid_)
     {
@@ -284,9 +296,14 @@ void BombMarker::DrawServerMarker(const RadarFrame& frame, int size)
         marker_valid_ = true;
     }
 
-    ncl_math::Vector2 s = frame.shape.Clamp(size, frame.t.WorldToScreen(marker_pos_));
+    RadarLayerStyle style = RadarLayerMarker_ComputeStyle(frame.layer_view, marker_pos_);
+    int extent = frame.layer_view.enabled ? (int)std::ceil(size + 1.5f) : size;
+    RadarLayerPlacement placement =
+        RadarLayerMarker_Place(frame.shape, frame.t.WorldToScreen({marker_pos_.x, marker_pos_.y}), extent, style, size);
+    ncl_math::Color color = RadarPalette::kServerMarker.WithAlpha((int)(255 * style.opacity));
     RadarDraw_BeginPrims();
-    ServerMarker_DrawShape(s, size);
+    ServerMarker_DrawShape(placement.marker, size, color);
+    RadarDraw_DrawLayerIndicator(placement.indicator, style.vertical, size, color);
     RadarDraw_EndPrims();
 }
 

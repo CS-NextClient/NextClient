@@ -43,7 +43,11 @@ namespace goldsrc::cstrike
     };
 
 #pragma pack(push, 8)
+#if defined(_WIN32)
     class alignas(8) CHud
+#elif defined(__linux__)
+    class alignas(4) CHud
+#endif
     {
     public:
         HUDLIST* m_pHudList;
@@ -73,7 +77,11 @@ namespace goldsrc::cstrike
         cvar_t* default_fov;
         HSPRITE_t* m_rghSprites;
         wrect_t* m_rgrcRects;
+#if defined(_WIN32)
         unsigned char unmodelled_[18304 - (380 + sizeof(m_rgrcRects))];
+#elif defined(__linux__)
+        unsigned char unmodelled_[27508 - (376 + sizeof(m_rgrcRects))];
+#endif
     };
 #pragma pack(pop)
 

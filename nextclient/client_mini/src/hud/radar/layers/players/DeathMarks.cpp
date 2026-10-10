@@ -10,7 +10,7 @@ void DeathMarks::Reset()
     }
 }
 
-void DeathMarks::Add(ncl_math::Vector2 world, ncl_math::Color color, float time)
+void DeathMarks::Add(ncl_math::Vector3 world, ncl_math::Color color, float time)
 {
     Mark& mark = marks_[head_];
     mark.pos = world;

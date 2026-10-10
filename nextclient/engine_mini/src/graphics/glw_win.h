@@ -33,7 +33,7 @@
 #ifdef _WIN32
     #include <Windows.h>
 #else
-    #include <port.h>
+    #include <nitroapi/modules/engine/EngineData.h>
 #endif
 
 #include <goldsrc/types.h>

@@ -1,8 +1,8 @@
 #include "GameHud.h"
 #include <goldsrc/client_api.h>
 
-#include "radar/RadarConfig.h"
-#include "radar/RadarDebug.h"
+#include "hud/radar/integration/RadarConfig.h"
+#include "hud/radar/integration/RadarDebug.h"
 
 extern goldsrc::cl_enginefunc_t gEngfuncs;
 

@@ -6,9 +6,10 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from goldsrc_tools import build_info, emit, header_map, model  # noqa: E402
+from goldsrc_tools import build_info, emit, header_map, model, platforms  # noqa: E402
 
 DEFAULT_FACTS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "facts.json")
+DEFAULT_LINUX_FACTS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "facts_linux.json")
 DEFAULT_MAP = os.path.join(os.path.dirname(os.path.abspath(__file__)), "header_map.json")
 DEFAULT_INCLUDE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "include")
 DEFAULT_TESTS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "tests")
@@ -55,6 +56,24 @@ def _summary(built):
                counts["constant"], counts["alias"]))
 
 
+def _build_models(facts_path, linux_path, map_path):
+    built, problems = _build_model(facts_path, map_path)
+    if problems:
+        return None, problems
+    inputs = []
+    for path, label in ((facts_path, "Windows facts"), (linux_path, "Linux facts")):
+        try:
+            with open(path, encoding="utf-8") as stream:
+                inputs.append(json.load(stream))
+        except (OSError, ValueError) as error:
+            return None, ["cannot read the %s at %s: %s" % (label, path, error)]
+    return platforms.build_models(*inputs, header_map.load(map_path))
+
+
+def _platform_summary(built):
+    return "\n".join("%s: %s" % (name, _summary(value)) for name, value in built.items())
+
+
 def _format_text(text, assumed_path, clang_format):
     """The text clang-format would write for a real file at `assumed_path`, found by its own upward
     search from that path (which need not exist yet: only its existing ancestor directories matter to
@@ -88,8 +107,7 @@ def _format_and_write(texts, out_dir, clang_format):
 
 
 def _write_headers(built, out_dir, clang_format):
-    texts = dict(emit.headers(built))
-    texts[built["fwd"]["path"]] = emit.forward(built)
+    texts = emit.headers_for_platforms(built)
     return _format_and_write(texts, out_dir, clang_format)
 
 
@@ -112,17 +130,17 @@ def _remove_stale(out_dir, written):
 
 
 def _cmd_check(args):
-    built, problems = _build_model(args.facts, args.map)
+    built, problems = _build_models(args.facts, args.linux_facts, args.map)
     for problem in problems:
         print(problem)
     if problems:
         return 1
-    print(_summary(built))
+    print(_platform_summary(built))
     return 0
 
 
 def _cmd_headers(args):
-    built, problems = _build_model(args.facts, args.map)
+    built, problems = _build_models(args.facts, args.linux_facts, args.map)
     for problem in problems:
         print(problem)
     if problems:
@@ -137,19 +155,19 @@ def _cmd_headers(args):
 
     for relative_path in _remove_stale(args.out, written):
         print("removed %s" % relative_path)
-    print(_summary(built))
+    print(_platform_summary(built))
     print("formatted with %s" % version)
     return 0
 
 
 def _cmd_tests(args):
-    built, problems = _build_model(args.facts, args.map)
+    built, problems = _build_models(args.facts, args.linux_facts, args.map)
     for problem in problems:
         print(problem)
     if problems:
         return 1
 
-    texts = {"golden_layout.cpp": emit.golden(built)}
+    texts = {"golden_layout.cpp": emit.golden_for_platforms(built)}
     try:
         version = build_info.tool_version(args.clang_format)
         _format_and_write(texts, args.out, args.clang_format)
@@ -167,11 +185,13 @@ def main(argv=None):
 
     check_parser = subparsers.add_parser("check", help="build the model and report its problems")
     check_parser.add_argument("--facts", default=DEFAULT_FACTS)
+    check_parser.add_argument("--linux-facts", default=DEFAULT_LINUX_FACTS)
     check_parser.add_argument("--map", default=DEFAULT_MAP)
     check_parser.set_defaults(func=_cmd_check)
 
     headers_parser = subparsers.add_parser("headers", help="write the library headers")
     headers_parser.add_argument("--facts", default=DEFAULT_FACTS)
+    headers_parser.add_argument("--linux-facts", default=DEFAULT_LINUX_FACTS)
     headers_parser.add_argument("--map", default=DEFAULT_MAP)
     headers_parser.add_argument("--out", default=DEFAULT_INCLUDE)
     headers_parser.add_argument("--clang-format", default=DEFAULT_CLANG_FORMAT)
@@ -179,6 +199,7 @@ def main(argv=None):
 
     tests_parser = subparsers.add_parser("tests", help="write the golden layout test")
     tests_parser.add_argument("--facts", default=DEFAULT_FACTS)
+    tests_parser.add_argument("--linux-facts", default=DEFAULT_LINUX_FACTS)
     tests_parser.add_argument("--map", default=DEFAULT_MAP)
     tests_parser.add_argument("--out", default=DEFAULT_TESTS)
     tests_parser.add_argument("--clang-format", default=DEFAULT_CLANG_FORMAT)

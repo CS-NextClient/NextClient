@@ -49,7 +49,11 @@ namespace goldsrc::cstrike
             MAX_MESSAGE_ARGS = 4
         };
 
+#if defined(_WIN32)
         unsigned char unmodelled_[8552 - 20];
+#elif defined(__linux__)
+        unsigned char unmodelled_[16744 - 20];
+#endif
     };
 
     class alignas(4) CHudNightVision : public CHudBase

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <goldsrc/fwd.h>
+
 namespace goldsrc
 {
     inline constexpr int SVC_BAD = 0;

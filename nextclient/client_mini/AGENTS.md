@@ -37,5 +37,9 @@ Build `client_mini` and run the affected cases in `client_mini-tests`, `view-tes
 tests can exercise them. Engine callback
 fakes verify arguments, return values and ordering; they do not verify the actual GL output.
 
+For radar shader changes, also build and run `radar-gl-tests`. It checks production shader pixels
+with an offscreen GL context; context requirements and commands are in
+[the verification procedure](../../docs/testing/radar-layers.md).
+
 For public header or callback changes, also build their consumers, particularly `gameui` for
 the shared radar cvar table in `include/next_client_mini/radar_cvars.h`.

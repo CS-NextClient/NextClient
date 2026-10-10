@@ -556,6 +556,9 @@ namespace goldsrc
         pfnEngDst_pfnGetAppID_t pfnGetAppID;
         pfnEngDst_pfnGetAliases_t pfnGetAliasList;
         pfnEngDst_pfnVguiWrap2_GetMouseDelta_t pfnVguiWrap2_GetMouseDelta;
+#if defined(__linux__)
+        void (*pfnFilteredClientCmd)(char**);
+#endif
     };
 
     struct cl_enginefunc_t
@@ -694,5 +697,8 @@ namespace goldsrc
         pfnEngSrc_pfnGetAppID_t pfnGetAppID;
         pfnEngSrc_pfnGetAliases_t pfnGetAliasList;
         pfnEngSrc_pfnVguiWrap2_GetMouseDelta_t pfnVguiWrap2_GetMouseDelta;
+#if defined(__linux__)
+        int (*pfnFilteredClientCmd)(char*);
+#endif
     };
 } // namespace goldsrc

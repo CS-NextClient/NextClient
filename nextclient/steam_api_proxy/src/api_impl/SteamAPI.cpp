@@ -9,6 +9,7 @@
 #include <Windows.h>
 #include <nitro_utils/platform.h>
 #else
+#include <fstream>
 #include <climits>
 #include <iostream>
 

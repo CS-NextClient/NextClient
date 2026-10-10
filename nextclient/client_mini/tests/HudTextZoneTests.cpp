@@ -1,6 +1,6 @@
 #include <gtest/gtest.h>
 
-#include "HudTextZone.h"
+#include "hud/radar/render/text/HudTextZone.h"
 
 class HudTextZoneTest : public testing::Test
 {

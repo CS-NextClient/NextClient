@@ -67,7 +67,8 @@ public:
     // GameUI so the engine resumes drawing the HUD, and enables the mouse cursor.
     // While a panel is registered this way, Esc closes only it (ActivateGameUI is
     // suppressed). The registration is a safe panel handle, so a destroyed panel
-    // clears it on its own; a level transition (disconnect, new load) clears it too.
+    // clears it on its own; a level transition closes the dialog before releasing
+    // its registration.
     // Returns false when not in a level (the caller shows a normal dialog instead).
     bool BeginPanelOverGame(vgui2::Panel* panel);
 
@@ -84,6 +85,7 @@ public:
 
 private:
     void OpenServerBrowserIfNeeded();
+    void CloseHudRadarDialog();
 
 private:
     bool m_bFirstActivatePassed;

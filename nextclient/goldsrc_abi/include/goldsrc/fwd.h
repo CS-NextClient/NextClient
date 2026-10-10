@@ -1,5 +1,11 @@
 #pragma once
 
+#if defined(_WIN32) == defined(__linux__)
+#error "GoldSrc ABI requires Windows x86 or Linux x86."
+#endif
+
+static_assert(sizeof(void*) == 4);
+
 struct tagPOINT;
 
 namespace goldsrc

@@ -192,5 +192,8 @@ namespace goldsrc
         void (*pfnQueryClientCvarValue)(const edict_t*, const char*);
         void (*pfnQueryClientCvarValue2)(const edict_t*, const char*, int);
         int (*pfnEngCheckParm)(const char*, char**);
+#if defined(__linux__)
+        edict_t* (*pfnPEntityOfEntIndexAllEntities)(int);
+#endif
     };
 } // namespace goldsrc

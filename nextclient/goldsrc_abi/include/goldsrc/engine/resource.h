@@ -1,5 +1,6 @@
 #pragma once
 
+#include <goldsrc/fwd.h>
 #include <goldsrc/types.h>
 
 namespace goldsrc

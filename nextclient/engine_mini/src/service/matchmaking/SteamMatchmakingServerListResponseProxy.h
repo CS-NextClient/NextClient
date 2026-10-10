@@ -1,4 +1,5 @@
 #pragma once
+#include <cstdint>
 #include <steam/steam_api.h>
 
 namespace service::matchmaking

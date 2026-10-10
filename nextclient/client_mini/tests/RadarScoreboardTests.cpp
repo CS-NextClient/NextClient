@@ -2,7 +2,7 @@
 
 #include <gtest/gtest.h>
 
-#include "RadarScoreboard.h"
+#include "hud/radar/integration/RadarScoreboard.h"
 
 namespace
 {

@@ -25,7 +25,7 @@ add_executable(${TARGET_NAME}
 )
 
 if (WIN32)
-    target_sources(${TARGET_NAME} PRIVATE TextSurfaceTests.cpp)
+    target_sources(${TARGET_NAME} PRIVATE TextSurfaceTests.cpp TextRenderTests.cpp)
 endif ()
 
 target_compile_definitions(${TARGET_NAME} PRIVATE

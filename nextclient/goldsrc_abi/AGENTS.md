@@ -5,9 +5,10 @@ This is the clean-room header library for stock interoperability facts. Start wi
 
 ## Source of truth
 
-- Generated declarations come from pinned `tools/facts.json` and `tools/header_map.json` through
-  `tools/library.py`. Do not reconstruct them by copying deleted SDK implementation, comments or
-  formatting. Keep the provenance of any newly established ABI fact explicit.
+- `tools/library.py` generates declarations from pinned Windows facts in `tools/facts.json`,
+  the Linux supplement in `tools/facts_linux.json`, and `tools/header_map.json`. Both platform
+  models feed headers and layout assertions. Preserve provenance; do not reconstruct declarations
+  by copying deleted SDK implementation, comments or formatting.
 - Stock declarations belong to `goldsrc` and its stock namespaces; NextClient extensions belong
   to their owning module. Do not put a custom field into a stock layout to simplify a consumer.
 - Preserve full size and alignment even for records exposing only a prefix. Opaque tails preserve

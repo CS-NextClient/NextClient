@@ -1,3 +1,4 @@
+import copy
 import unittest
 
 from goldsrc_tools import cxx_types, emit
@@ -632,6 +633,89 @@ class NamespaceQualificationTest(unittest.TestCase):
 
         self.assertIn("static_assert(sizeof(goldsrc::cstrike::client_t) == 8);", text)
         self.assertNotIn("goldsrc::client_t", text)
+
+
+class PlatformEmissionTest(unittest.TestCase):
+    def emit_platforms(self, windows, linux, *, golden=False):
+        method = getattr(emit, "golden_for_platforms" if golden else "headers_for_platforms", None)
+        self.assertTrue(callable(method), "platform-specific emission is missing")
+        return method({"windows-x86": windows, "linux-x86": linux})
+
+    def test_common_64_bit_declaration_is_emitted_once_with_distinct_expectations(self):
+        windows = record("player_t", size=16, align=8, fields=[
+            field("id", NAMED_INT, offset=0),
+            field("steam_id", cxx_types.Named(text="uint64_t"), offset=8)])
+        linux = copy.deepcopy(windows)
+        linux["layout"] = {"size": 12, "align": 4}
+        linux["fields"][1]["offset"] = 4
+        win_model = model_of(header_entry(PUBLIC, [windows]))
+        linux_model = model_of(header_entry(PUBLIC, [linux]))
+        headers = self.emit_platforms(win_model, linux_model)
+        self.assertEqual(headers[PUBLIC].count("struct player_t"), 1)
+        self.assertIn("#include <goldsrc/fwd.h>", headers[PUBLIC])
+        self.assertIn("sizeof(void*) == 4", headers["goldsrc/fwd.h"])
+        self.assertIn("#error", headers["goldsrc/fwd.h"])
+        golden = self.emit_platforms(win_model, linux_model, golden=True)
+        for assertion in ("sizeof(goldsrc::player_t) == 16", "sizeof(goldsrc::player_t) == 12",
+                          "alignof(goldsrc::player_t) == 8", "alignof(goldsrc::player_t) == 4",
+                          "offsetof(goldsrc::player_t, steam_id) == 8",
+                          "offsetof(goldsrc::player_t, steam_id) == 4"):
+            self.assertIn(assertion, golden)
+        self.assertIn("#if defined(_WIN32)", golden)
+        self.assertIn("#elif defined(__linux__)", golden)
+
+    def test_wide_character_prefix_tail_uses_each_full_size_and_final_offset(self):
+        windows = record("message_t", completeness="prefix", size=28, fields=[
+            field("id", NAMED_INT, offset=0),
+            field("text", cxx_types.Array(cxx_types.Named(text="wchar_t"), size="4"), offset=4)])
+        windows["tail"] = {"after": "text", "offset": 4}
+        linux = copy.deepcopy(windows)
+        linux["layout"]["size"] = 44
+        text = self.emit_platforms(model_of(header_entry(PUBLIC, [windows])),
+                                  model_of(header_entry(PUBLIC, [linux])))[PUBLIC]
+        self.assertEqual(text.count("wchar_t text[4]"), 1)
+        self.assertIn("unmodelled_[28 - (4 + sizeof(text))]", text)
+        self.assertIn("unmodelled_[44 - (4 + sizeof(text))]", text)
+
+    def test_inherited_nested_prefix_preserves_full_layout_and_incomplete_types(self):
+        base = record("base_t", tag="class", size=8, methods=[
+            method("Init", cxx_types.Function(result=NAMED_INT, parameters=[]))],
+            fields=[field("id", NAMED_INT, offset=4)])
+        nested = record("nested_t", size=16, align=8, fields=[
+            field("id", NAMED_INT, offset=0),
+            field("value", cxx_types.Named(text="uint64_t"), offset=8)])
+        parent = record("hud_t", tag="class", completeness="prefix", size=48, align=8,
+                        bases=[{"type": cxx_types.Named(text="base_t"), "access": "public", "virtual": False}],
+                        nested=[nested], fields=[field("item", cxx_types.Named(text="nested_t"), offset=8)])
+        parent["tail"] = {"after": "item", "offset": 8}
+        linux = copy.deepcopy(parent)
+        linux["layout"] = {"size": 36, "align": 4}
+        linux["nested"][0]["layout"] = {"size": 12, "align": 4}
+        linux["nested"][0]["fields"][1]["offset"] = 4
+        hidden = record("hidden_t", completeness="incomplete")
+        win_model = model_of(header_entry(PUBLIC, [base, parent]), records=[hidden])
+        linux_model = model_of(header_entry(PUBLIC, [base, linux]), records=[hidden])
+        text = self.emit_platforms(win_model, linux_model)[PUBLIC]
+        self.assertEqual(text.count("class base_t"), 1)
+        self.assertIn("unmodelled_[48 - (8 + sizeof(item))]", text)
+        self.assertIn("unmodelled_[36 - (8 + sizeof(item))]", text)
+        golden = self.emit_platforms(win_model, linux_model, golden=True)
+        self.assertIn("sizeof(goldsrc::hud_t::nested_t) == 16", golden)
+        self.assertIn("sizeof(goldsrc::hud_t::nested_t) == 12", golden)
+        self.assertNotIn("sizeof(goldsrc::hidden_t)", golden)
+
+    def test_only_the_linux_table_gains_its_terminal_callback(self):
+        windows = record("table_t", fields=[field("Init", cxx_types.Pointer(
+            cxx_types.Function(result=NAMED_INT, parameters=[])), offset=0)])
+        linux = copy.deepcopy(windows)
+        linux["fields"].append(field("FilteredCommand", cxx_types.Pointer(cxx_types.Function(
+            result=NAMED_INT, parameters=[cxx_types.Pointer(NAMED_CHAR)])), offset=4))
+        linux["layout"]["size"] = 8
+        text = self.emit_platforms(model_of(header_entry(PUBLIC, [windows])),
+                                  model_of(header_entry(PUBLIC, [linux])))[PUBLIC]
+        self.assertEqual(text.count("int (*Init)()"), 1)
+        self.assertIn("#if defined(__linux__)", text)
+        self.assertIn("int (*FilteredCommand)(char*)", text)
 
 
 if __name__ == "__main__":

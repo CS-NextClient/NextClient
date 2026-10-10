@@ -512,7 +512,8 @@ namespace
         bool supported = !(flags & ~(kFontFlagAntialias | kFontFlagDropShadow)) && blur == 0 && scanlines == 0 && low == 0 &&
                          (high == 0 || high == 0xFFFF);
         it->second.native_only = it->second.native_only || !supported;
-        it->second.custom = added && !it->second.native_only && g_TextSurface.AddGlyphSetToFont(font, name, tall, weight, flags);
+        // Native fonts reject additional glyph sets; atlas fallback chains and reloads must still be applied.
+        it->second.custom = !it->second.native_only && g_TextSurface.AddGlyphSetToFont(font, name, tall, weight, flags);
         return added;
     }
 

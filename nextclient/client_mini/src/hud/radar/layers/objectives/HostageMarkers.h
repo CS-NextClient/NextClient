@@ -4,8 +4,8 @@
 
 #include <ncl_math/vec3.h>
 
-#include "hud/radar/MarkerFeed.h"
-#include "hud/radar/ObjectiveSource.h"
+#include "hud/radar/markers/MarkerFeed.h"
+#include "hud/radar/policy/ObjectiveSource.h"
 #include "hud/radar/RadarFrame.h"
 #include "hud/radar/RadarLimits.h"
 #include "ObjectiveEntities.h"
@@ -23,7 +23,7 @@ class HostageMarkers
     {
         bool valid;
         int key;
-        ncl_math::Vector2 pos;
+        ncl_math::Vector3 pos;
         float last_seen;
         bool visible;
     };
@@ -56,9 +56,9 @@ private:
     void ClearVisibility();
 
     // -1 when all slots are taken.
-    int FindOrCreate(int key, ncl_math::Vector2 pos, float time);
+    int FindOrCreate(int key, ncl_math::Vector3 pos, float time);
 
-    void DrawDot(const RadarFrame& frame, ncl_math::Vector2 world, int dot, int alpha);
+    void DrawDot(const RadarFrame& frame, ncl_math::Vector3 world, int dot, int alpha);
     void DrawBySight(const RadarFrame& frame, const ObjectiveEntities& entities, int dot);
     void DrawRevealed(const RadarFrame& frame, const ObjectiveEntities& entities, int dot);
     void DrawServerMarkers(const RadarFrame& frame, int size);

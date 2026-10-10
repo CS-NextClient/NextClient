@@ -201,16 +201,24 @@ namespace ncl_math
         dst[2] -= direction[2] * scale;
     }
 
-    inline float SegPointDistSq(const float* a, const float* b, const float* p)
+    inline Vector3 ClosestPointOnSegment(const Vector3& a, const Vector3& b, const Vector3& point)
     {
-        ncl_math::Vector3 va = ncl_math::Vector3::Ref(a);
-        ncl_math::Vector3 ab = ncl_math::Vector3::Ref(b) - va;
-        ncl_math::Vector3 ap = ncl_math::Vector3::Ref(p) - va;
+        Vector3 ab = b - a;
+        Vector3 ap = point - a;
         float ab2 = ab.LengthSqr();
         float t = ab2 > 0.0f ? ap.Dot(ab) / ab2 : 0.0f;
-        t = std::clamp(t, 0.0f, 1.0f);
-        ncl_math::Vector3 closest = va + ab * t;
-        return (ncl_math::Vector3::Ref(p) - closest).LengthSqr();
+        t = Saturate(t);
+        return a + ab * t;
+    }
+
+    inline float SegPointDistSq(const Vector3& a, const Vector3& b, const Vector3& point)
+    {
+        return (point - ClosestPointOnSegment(a, b, point)).LengthSqr();
+    }
+
+    inline float SegPointDistSq(const float* a, const float* b, const float* point)
+    {
+        return SegPointDistSq(Vector3::Ref(a), Vector3::Ref(b), Vector3::Ref(point));
     }
 
     inline float DotProduct(const float* a, const float* b)
