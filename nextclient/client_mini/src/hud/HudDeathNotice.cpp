@@ -1,4 +1,7 @@
 #include "HudDeathNotice.h"
+#if NEXTCLIENT_WITH_PLUGINS
+#include <nextclient/runtime.h>
+#endif
 #include "../main.h"
 #include "../utils.h"
 #include <parsemsg.h>
@@ -255,6 +258,10 @@ HudDeathNotice::HudDeathNotice(nitroapi::NitroApiInterface* nitro_api)
 	: HudBaseHelper(nitro_api) {
 
 	DeferUnsub(cl()->CHudDeathNotice__Draw |= [this](CHudDeathNotice* const ptr, float flTime, const auto& next) {
+#if NEXTCLIENT_WITH_PLUGINS
+		if (nc_runtime_ui_hidden(NC_UI_DEATH_NOTICES))
+			return 1;
+#endif
 		return cvar_deathnotice_old_->value ? next->Invoke(ptr, flTime) : 1;
 	});
 

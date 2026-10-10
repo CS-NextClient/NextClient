@@ -5,6 +5,8 @@ find_package(GTest CONFIG REQUIRED)
 include(GoogleTest)
 
 add_executable(${TARGET_NAME}
+        PropertyPageOverflowTests.cpp
+        PropertyPageNavigationTests.cpp
         ServerBrowserTextTests.cpp
         ServerFilterCountsTests.cpp
         ServerGameModeNamesTests.cpp
@@ -34,7 +36,24 @@ target_link_libraries(${TARGET_NAME} PRIVATE
         hl1_source_sdk::hl1_source_sdk
         nitro_utils::nitro_utils
         NextClient::engine_mini
+        taocpp::json
 )
+
+if (NEXTCLIENT_WITH_PLUGINS)
+    target_sources(${TARGET_NAME} PRIVATE
+            PluginSettingsGroupsTests.cpp
+            ${CMAKE_CURRENT_SOURCE_DIR}/../src/GameUi/PluginSettingsGroupsState.cpp
+            ${CMAKE_CURRENT_SOURCE_DIR}/../src/GameUi/PluginSettingsState.cpp
+            PluginsDialogStateTests.cpp
+            PluginTextTests.cpp
+            PluginWindowStateTests.cpp
+            PluginControlAdaptersTests.cpp
+            ${CMAKE_CURRENT_SOURCE_DIR}/../src/GameUi/PluginText.cpp
+    )
+    if (MSVC)
+        set_source_files_properties(PluginTextTests.cpp PROPERTIES COMPILE_OPTIONS /utf-8)
+    endif ()
+endif ()
 
 target_include_directories(${TARGET_NAME} PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/../src

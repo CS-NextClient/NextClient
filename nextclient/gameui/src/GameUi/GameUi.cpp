@@ -7,6 +7,10 @@
 #include <sys/stat.h>
 #endif
 #include <filesystem>
+#if NEXTCLIENT_WITH_PLUGINS
+#include <nextclient/runtime.h>
+#include "PluginWindows.h"
+#endif
 
 #include <tier1/tier1.h>
 #include <tier2/tier2.h>
@@ -230,6 +234,9 @@ void CGameUI::Initialize(CreateInterfaceFn *factories, int count)
 void CGameUI::Start(cl_enginefuncs_s *engineFuncs, int interfaceVersion, void *system)
 {
     engine = engineFuncs;
+#if NEXTCLIENT_WITH_PLUGINS
+    nc_runtime_start();
+#endif
     g_pBaseSystem = (IBaseSystem*)system;
 
     ModInfo().LoadCurrentGameInfo();
@@ -252,6 +259,10 @@ void CGameUI::Start(cl_enginefuncs_s *engineFuncs, int interfaceVersion, void *s
 
 void CGameUI::Shutdown(void)
 {
+#if NEXTCLIENT_WITH_PLUGINS
+    PluginWindowsShutdown();
+    nc_runtime_stop();
+#endif
     vgui2::system()->SaveUserConfigFile();
 
     if (g_pServerBrowser)
@@ -323,6 +334,10 @@ void CGameUI::RunFrame(void)
     int wide, tall;
     vgui2::surface()->GetScreenSize(wide, tall);
     BasePanel()->SetSize(wide, tall);
+#if NEXTCLIENT_WITH_PLUGINS
+    nc_runtime_pump();
+    PluginWindowsFrame(g_pEngineVGui->GetPanel(PANEL_ROOT), BasePanel()->IsVisible());
+#endif
 
     if (BasePanel()->IsVisible())
         BasePanel()->RunFrame();

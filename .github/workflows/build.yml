@@ -39,11 +39,26 @@ jobs:
       - name: Bootstrap vcpkg
         run: .\vcpkg\bootstrap-vcpkg.bat -disableMetrics
 
+      - name: Set up Rust x86 target
+        run: rustup target add i686-pc-windows-msvc
+
       - name: Configure
         run: cmake --preset vs2022 "-DNEXTCLIENT_INSTALL_DIR=${{ github.workspace }}\install"
 
       - name: Build
         run: cmake --build --preset vs2022-release --target BUILD_ALL
+
+      - name: Check bundled Rust Life Stats
+        shell: pwsh
+        run: |
+          $rustDll = "build/vs2022/rust-life-stats/i686-pc-windows-msvc/release/life_stats.dll"
+          $bundledDll = "install/plugins/life_stats.dll"
+          if ((Get-FileHash $rustDll).Hash -ne (Get-FileHash $bundledDll).Hash) {
+            throw "The bundle must contain the Rust Life Stats DLL"
+          }
+          if (Test-Path "install/plugins/life_stats_cpp.dll") {
+            throw "The C++ reference must not be bundled"
+          }
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
@@ -63,8 +78,23 @@ jobs:
       - name: Configure tests
         run: cmake --preset vs2022 -B build/vs2022-tests -DNEXTCLIENT_BUILD_TESTS=ON
 
+      - name: Build and test Rust SDK
+        shell: pwsh
+        run: |
+          cargo test --manifest-path sdk/rust/Cargo.toml --target i686-pc-windows-msvc
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Push-Location sdk/examples/rust-events
+          cargo build --release --locked --features abi-tests
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Pop-Location
+          Push-Location sdk/examples/rust-life-stats
+          cargo test --locked
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Pop-Location
+          "NEXTCLIENT_RUST_EVENTS_DLL=$((Get-Location).Path)/sdk/examples/rust-events/target/i686-pc-windows-msvc/release/nextclient_rust_events.dll" >> $env:GITHUB_ENV
+
       - name: Build tests
-        run: cmake --build build/vs2022-tests --config Release --target engine_mini-tests gameui-tests view-tests crosshair-tests
+        run: cmake --build build/vs2022-tests --config Release --target engine_mini-tests gameui-tests plugin-tests plugin-bridge-tests view-tests crosshair-tests
 
       - name: Run tests
         run: ctest --test-dir build/vs2022-tests -C Release --output-on-failure
@@ -112,10 +142,22 @@ jobs:
         run: ./vcpkg/bootstrap-vcpkg.sh -disableMetrics
 
       - name: Configure
-        run: cmake --preset linux "-DNEXTCLIENT_INSTALL_DIR=$GITHUB_WORKSPACE/install"
+        run: cmake --preset linux -DNEXTCLIENT_WITH_PLUGINS=OFF "-DNEXTCLIENT_INSTALL_DIR=$GITHUB_WORKSPACE/install"
 
       - name: Build
         run: cmake --build --preset linux-release --target BUILD_ALL
+
+      - name: Check Linux package has no Windows plugin runtime
+        run: |
+          test ! -e install/next_plugins.dll
+          test ! -e install/plugins/life_stats.dll
+          for module in install/cstrike/cl_dlls/client_mini.dll install/cstrike/cl_dlls/gameui.so; do
+            readelf --wide --dyn-syms "$module" > /tmp/nextclient-symbols.txt
+            if grep -q 'nc_runtime_' /tmp/nextclient-symbols.txt; then
+              echo "Unexpected plugin runtime dependency in $module"
+              exit 1
+            fi
+          done
 
       # upload-artifact drops the executable bit, nextclient.sh needs it
       - name: Pack install directory
@@ -129,7 +171,7 @@ jobs:
           if-no-files-found: error
 
       - name: Configure tests
-        run: cmake --preset linux -B build/linux-tests -DNEXTCLIENT_BUILD_TESTS=ON
+        run: cmake --preset linux -B build/linux-tests -DNEXTCLIENT_BUILD_TESTS=ON -DNEXTCLIENT_WITH_PLUGINS=OFF
 
       - name: Build tests
         run: cmake --build build/linux-tests --config Release --target engine_mini-tests gameui-tests view-tests crosshair-tests

@@ -1,0 +1,20 @@
+[package]
+name = "nextclient-life-stats"
+version = "1.0.0"
+edition = "2024"
+rust-version = "1.85"
+publish = false
+
+[lib]
+name = "life_stats"
+crate-type = ["cdylib"]
+
+[dependencies]
+nextclient-plugin = { path = "../../rust" }
+serde_json = "1.0"
+
+[profile.release]
+lto = true
+panic = "unwind"
+debug = 2
+

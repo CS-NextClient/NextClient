@@ -1,0 +1,10 @@
+[package]
+name = "nextclient-plugin"
+version = "1.0.0"
+edition = "2024"
+rust-version = "1.85"
+description = "Rust SDK for NextClient native plugins"
+license = "MIT"
+
+[lib]
+path = "src/lib.rs"

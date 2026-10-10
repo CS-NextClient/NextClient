@@ -1,6 +1,8 @@
 #include "GameUi.h"
 #include "GameUINext.h"
 #include "BasePanel.h"
+#include "GameMenuOrder.h"
+#include <limits>
 
 #include "vgui/IInputInternal.h"
 #include "vgui/ILocalize.h"
@@ -32,6 +34,11 @@
 #include "ToolBar.h"
 #include "GameConsole.h"
 #include "PlayerListDialog.h"
+#if NEXTCLIENT_WITH_PLUGINS
+#include "PluginsDialog.h"
+#include "PluginLocalization.h"
+#include <nextclient/runtime.h>
+#endif
 
 #include <keydefs.h>
 
@@ -39,6 +46,7 @@
 
 #include <algorithm>
 #include <vector>
+#include <set>
 #include <format>
 
 // undef windows stuff
@@ -136,6 +144,7 @@ void CGameMenuItem::OnCursorExited(void)
 class CGameMenu : public vgui2::Menu
 {
     DECLARE_CLASS_SIMPLE(CGameMenu, vgui2::Menu);
+    GameMenuOrder order_;
 
 public:
     CGameMenu(vgui2::Panel *parent, const char *name) : BaseClass(parent, name)
@@ -179,7 +188,15 @@ public:
         item->SetText(itemText);
         item->SetUserData(userData);
 
-        return BaseClass::AddMenuItem(item);
+        const int id = BaseClass::AddMenuItem(item);
+        order_.Add(id);
+        return id;
+    }
+
+    void DeleteItem(int id)
+    {
+        order_.Remove(id);
+        BaseClass::DeleteItem(id);
     }
 
     virtual void SetMenuItemBlinkingState(const char *itemName, bool state)
@@ -277,33 +294,15 @@ public:
             }
         }
 
-        if (!isInGame)
-        {
-            for (int j = 0; j < GetChildCount() - 2; j++)
-                MoveMenuItem(j, j + 1);
-        }
-        else
-        {
-            for (int i = 0; i < GetChildCount(); i++)
-            {
-                for (int j = i; j < GetChildCount() - 2; j++)
-                {
-                    int iID1 = GetMenuID(j);
-                    int iID2 = GetMenuID(j + 1);
-
-                    vgui2::MenuItem *menuItem1 = GetMenuItem(iID1);
-                    vgui2::MenuItem *menuItem2 = GetMenuItem(iID2);
-
-                    KeyValues *kv1 = menuItem1->GetUserData();
-                    KeyValues *kv2 = menuItem2->GetUserData();
-                    if (kv1 && kv2)
-                    {
-                        if (kv1->GetInt("InGameOrder") > kv2->GetInt("InGameOrder"))
-                            MoveMenuItem(iID2, iID1);
-                    }
-                }
-            }
-        }
+        order_.Apply(
+            isInGame,
+            [&](int id) {
+                auto *item = GetMenuItem(id);
+                auto *data = item ? item->GetUserData() : nullptr;
+                return data ? data->GetInt("InGameOrder") : std::numeric_limits<int>::max();
+            },
+            [&](int id, int before) { MoveMenuItem(id, before); }
+        );
 
         InvalidateLayout();
 
@@ -749,14 +748,61 @@ CGameMenu *CBasePanel::RecursiveLoadGameMenu(vgui2::Panel *parent, KeyValues *da
 {
     CGameMenu *menu = new CGameMenu(parent, datafile->GetName());
 
+#if NEXTCLIENT_WITH_PLUGINS
+    // Add the Plugins entry if GameMenu.res does not provide one, sharing the
+    // menu items' layout, input and fades.
+    KeyValues* options = nullptr;
+    KeyValues* quit = nullptr;
+    bool hasPlugins = false;
+    for (KeyValues* dat = datafile->GetFirstSubKey(); dat; dat = dat->GetNextKey())
+    {
+        const char* command = dat->GetString("command", "");
+        if (!options && !Q_stricmp(command, "OpenOptionsDialog"))
+            options = dat;
+        if (!quit && !Q_stricmp(command, "Quit"))
+            quit = dat;
+        if (!Q_stricmp(command, "OpenPluginsDialog"))
+            hasPlugins = true;
+    }
+
+    auto addPlugins = [&](KeyValues* anchor) {
+        KeyValues::AutoDelete data("Plugins");
+        // Keep Plugins beside its anchor when the pause menu sorts its items.
+        // No visibility flags: this entry is available both in and out of game.
+        data->SetInt("InGameOrder", anchor ? anchor->GetInt("InGameOrder") : 0);
+        menu->AddMenuItem("Plugins", "#NextPlugins_Title", "OpenPluginsDialog", this, data);
+        hasPlugins = true;
+    };
+#endif
+
     for (KeyValues *dat = datafile->GetFirstSubKey(); dat != NULL; dat = dat->GetNextKey())
     {
+#if NEXTCLIENT_WITH_PLUGINS
+        if (!hasPlugins && !options && dat == quit)
+            addPlugins(quit);
+#endif
+
         const char *label = dat->GetString("label", "<unknown>");
         const char *cmd = dat->GetString("command", NULL);
         const char *name = dat->GetString("name", label);
 
+#if !NEXTCLIENT_WITH_PLUGINS
+        // Custom menus may contain a Plugins item even when the runtime is unavailable.
+        if (cmd && (!Q_stricmp(cmd, "OpenPluginsDialog") || !Q_strncmp(cmd, "PluginWindow:", 13)))
+            continue;
+#endif
         menu->AddMenuItem(name, label, cmd, this, dat);
+
+#if NEXTCLIENT_WITH_PLUGINS
+        if (!hasPlugins && dat == options)
+            addPlugins(options);
+#endif
     }
+
+#if NEXTCLIENT_WITH_PLUGINS
+    if (!hasPlugins)
+        addPlugins(nullptr);
+#endif
 
     return menu;
 }
@@ -965,6 +1011,12 @@ void CBasePanel::RunMenuCommand(const char *command)
     {
         OnOpenOptionsDialog();
     }
+#if NEXTCLIENT_WITH_PLUGINS
+    else if (!Q_stricmp(command, "OpenPluginsDialog"))
+    {
+        OnOpenPluginsDialog();
+    }
+#endif
     else if (!Q_stricmp(command, "ResumeGame"))
     {
         engine->pfnClientCmd("cancelselect");
@@ -1034,8 +1086,43 @@ void CBasePanel::RunMenuCommand(const char *command)
 
 void CBasePanel::OnCommand(const char *command)
 {
+#if NEXTCLIENT_WITH_PLUGINS
+    if (!Q_strncmp(command, "PluginWindow:", 13))
+    {
+        nc_runtime_window_action(command + 13, "$open", "null");
+        return;
+    }
+#endif
     RunMenuCommand(command);
 }
+
+#if NEXTCLIENT_WITH_PLUGINS
+void CBasePanel::OnOpenPluginsDialog()
+{
+    if (!m_hPluginsDialog.Get())
+        m_hPluginsDialog = new CPluginsDialog(this);
+    m_hPluginsDialog->Activate();
+    PositionDialog(m_hPluginsDialog.Get());
+}
+void CBasePanel::UpdatePluginMenus(const tao::json::value& windows)
+{
+    if (!m_pGameMenu) return;
+    std::set<std::string> current;
+    for (const auto& window : windows.get_array())
+        if (auto menu = window.find("menu"))
+        {
+            const auto id = window.at("handle").get_string();
+            current.insert(id);
+            if (!pluginMenuItems_.count(id))
+                pluginMenuItems_[id] = m_pGameMenu->AddMenuItem(("Plugin" + id).c_str(), PluginLocalized(*menu).c_str(),
+                    ("PluginWindow:" + id).c_str(), this);
+            m_pGameMenu->GetMenuItem(pluginMenuItems_[id])->SetText(PluginWide(PluginLocalized(*menu)).c_str());
+        }
+    for (auto it = pluginMenuItems_.begin(); it != pluginMenuItems_.end();)
+        if (!current.count(it->first)) { m_pGameMenu->DeleteItem(it->second); it = pluginMenuItems_.erase(it); }
+        else ++it;
+}
+#endif
 
 void CBasePanel::RunAnimationWithCallback(vgui2::Panel *parent, const char *animName, KeyValues *msgFunc)
 {

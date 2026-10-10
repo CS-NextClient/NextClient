@@ -1,4 +1,6 @@
 #include <string>
+#include <vector>
+#include <utility>
 #include <nitro_utils/platform.h>
 #include <nitro_utils/MemoryTools.h>
 #include <tier1/utlvector.h>
@@ -54,6 +56,73 @@ struct SayTextLine
 };
 
 static void ColorChatConsolePrint(char string[512]);
+static bool suppressLocalChatEcho = false;
+
+int PrintLocalChat(int (*handler)(const char*, int, void*), const char* text)
+{
+    if (!handler || !text)
+        return 0;
+    std::vector<char> message{0}; // Local sender; no network chat.
+    message.insert(message.end(), text, text + std::char_traits<char>::length(text));
+    message.push_back('\n');
+    message.push_back(0);
+    struct RestoreEcho
+    {
+        bool previous = std::exchange(suppressLocalChatEcho, true);
+        cl_enginefunc_t* engine = client()->gEngfuncs;
+        pfnEngSrc_pfnConsolePrint_t print{};
+        pfnEngSrc_Con_Printf_t printf{}, dprintf{};
+        RestoreEcho()
+        {
+            // SayText has both plain and colored console paths. Suppress the
+            // engine table calls as well as our colored-console patch.
+            if (engine)
+            {
+                print = std::exchange(engine->pfnConsolePrint, +[](const char*) {});
+                printf = std::exchange(engine->Con_Printf, IgnorePrintf);
+                dprintf = std::exchange(engine->Con_DPrintf, IgnorePrintf);
+            }
+        }
+        static void IgnorePrintf(const char*, ...) {}
+        ~RestoreEcho()
+        {
+            if (engine)
+            {
+                engine->pfnConsolePrint = print;
+                engine->Con_Printf = printf;
+                engine->Con_DPrintf = dprintf;
+            }
+            suppressLocalChatEcho = previous;
+        }
+    } restore;
+    return handler("SayText", static_cast<int>(message.size()), message.data());
+}
+
+void PrintPluginConsole(const char* text)
+{
+    unsigned char color = 1;
+    const char* start = text;
+    for (const char* p = text;; ++p)
+    {
+        const auto c = static_cast<unsigned char>(*p);
+        if (c != 0 && c != 1 && c != 3 && c != 4)
+            continue;
+        if (p != start)
+        {
+            const std::string part(start, p);
+            if (color == 4 && g_GameConsoleNext)
+                g_GameConsoleNext->ColorPrintf(110, 220, 100, "%s", part.c_str());
+            else if (color == 3 && g_GameConsoleNext)
+                g_GameConsoleNext->ColorPrintf(150, 190, 255, "%s", part.c_str());
+            else
+                gEngfuncs.Con_Printf("%s", part.c_str());
+        }
+        if (!c)
+            break;
+        color = c;
+        start = p + 1;
+    }
+}
 
 #define g_sayTextLine (*pg_sayTextLine)
 static SayTextLine g_sayTextLine[MAX_LINES + 1];
@@ -153,6 +222,8 @@ static void PrintWithConsoleNext(TextRange* range, const std::wstring& print_tex
 
 static void ColorChatConsolePrint(char string[512])
 {
+    if (suppressLocalChatEcho)
+        return;
     if (g_sayTextLine[0].m_textRanges.Count() != 0)
     {
         for (int rangeIndex = 0; rangeIndex < g_sayTextLine[0].m_textRanges.Count(); rangeIndex++)

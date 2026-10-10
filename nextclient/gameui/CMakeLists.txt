@@ -11,6 +11,7 @@ else ()
 endif ()
 
 find_package(concurrencpp CONFIG REQUIRED)
+find_package(taocpp-json CONFIG REQUIRED)
 
 set(CMAKE_POLICY_DEFAULT_CMP0077 NEW)
 set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
@@ -44,6 +45,10 @@ if (NOT WIN32)
     list(FILTER GAMEUI_SOURCES EXCLUDE REGEX "/Browser/")
 endif ()
 
+if (NOT NEXTCLIENT_WITH_PLUGINS)
+    list(FILTER GAMEUI_SOURCES EXCLUDE REGEX "/GameUi/Plugin[^/]*\\.(cpp|h)$")
+endif ()
+
 add_library(${PROJECT_NAME} SHARED
         ${GAMEUI_SOURCES}
 )
@@ -60,6 +65,7 @@ target_include_directories(${PROJECT_NAME} PRIVATE
 )
 
 target_link_libraries(${PROJECT_NAME} PRIVATE
+        taocpp::json
         hl1_source_sdk::hl1_source_sdk
         NextClient::engine_mini
         nitro_utils::nitro_utils
@@ -70,6 +76,11 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
         ncl_math::ncl_math
         crosshair::crosshair
 )
+
+target_compile_definitions(${PROJECT_NAME} PRIVATE NEXTCLIENT_WITH_PLUGINS=$<BOOL:${NEXTCLIENT_WITH_PLUGINS}>)
+if (NEXTCLIENT_WITH_PLUGINS)
+    target_link_libraries(${PROJECT_NAME} PRIVATE next_plugins)
+endif ()
 
 if (WIN32)
     target_link_libraries(${PROJECT_NAME} PRIVATE

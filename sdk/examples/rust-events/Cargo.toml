@@ -1,0 +1,18 @@
+[package]
+name = "nextclient-rust-events"
+version = "1.0.0"
+edition = "2024"
+publish = false
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+nextclient-plugin = { path = "../../rust" }
+
+[features]
+abi-tests = []
+
+[profile.release]
+lto = true
+panic = "unwind"

@@ -1,0 +1,105 @@
+find_package(taocpp-json CONFIG REQUIRED)
+add_library(next_plugins SHARED
+    src/runtime.cpp src/runtime_catalog.cpp src/runtime_settings.cpp src/runtime_dispatch.cpp
+    src/host_api.cpp src/plugin_file.cpp src/catalog.cpp src/runtime_extensions.cpp src/runtime_messages.cpp
+    src/runtime_services.cpp src/runtime_ui.cpp src/plugin_package.cpp src/runtime_health.cpp src/runtime_store.cpp)
+target_compile_features(next_plugins PRIVATE cxx_std_23)
+target_include_directories(next_plugins PUBLIC include ${NEXTCLIENT_ROOT}/sdk/cpp/include PRIVATE src)
+target_compile_definitions(next_plugins PRIVATE NC_RUNTIME_BUILD NOMINMAX WIN32_LEAN_AND_MEAN)
+target_compile_options(next_plugins PRIVATE /W4 /WX /EHsc /utf-8)
+target_link_libraries(next_plugins PRIVATE taocpp::json bcrypt shell32 user32)
+set_target_properties(next_plugins PROPERTIES MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+if(NEXTCLIENT_BUILD_TESTS)
+    function(add_plugin_fixture target source)
+        add_library(${target} SHARED ${source})
+        target_include_directories(${target} PRIVATE ${NEXTCLIENT_ROOT}/sdk/cpp/include)
+        target_compile_features(${target} PRIVATE cxx_std_17)
+        target_compile_options(${target} PRIVATE /EHsc /utf-8)
+        set_target_properties(${target} PROPERTIES MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+    endfunction()
+    add_plugin_fixture(plugin-companion tests/companion.cpp)
+    add_plugin_fixture(plugin-package tests/package.cpp)
+    target_link_libraries(plugin-package PRIVATE plugin-companion)
+    find_package(GTest CONFIG REQUIRED)
+    include(GoogleTest)
+    add_plugin_fixture(plugin-settings tests/settings.cpp)
+    add_plugin_fixture(plugin-settings-shared tests/settings.cpp)
+    target_compile_definitions(plugin-settings-shared PRIVATE NC_SHARED_SETTINGS)
+    add_plugin_fixture(plugin-settings-other tests/settings.cpp)
+    target_compile_definitions(plugin-settings-other PRIVATE NC_SHARED_SETTINGS NC_SETTINGS_OTHER_OWNER)
+    add_plugin_fixture(plugin-settings-custom tests/settings.cpp)
+    target_compile_definitions(plugin-settings-custom PRIVATE NC_CUSTOM_PLUGIN_TAB)
+    foreach(fixture probe dependent)
+        add_plugin_fixture(plugin-${fixture} tests/probe.cpp)
+    endforeach()
+    target_compile_definitions(plugin-dependent PRIVATE NC_PROBE_DEPENDENT)
+    foreach(fixture a b)
+        add_plugin_fixture(plugin-dispatch-${fixture} tests/runtime_dispatch_fixture.cpp)
+        target_compile_definitions(plugin-dispatch-${fixture} PRIVATE NC_DISPATCH_ID="test.dispatch.${fixture}")
+    endforeach()
+    target_compile_definitions(plugin-dispatch-a PRIVATE NC_DISPATCH_COLOR=1)
+    target_compile_definitions(plugin-dispatch-b PRIVATE NC_DISPATCH_COLOR=2)
+    foreach(fixture permissions denied read-only write-only audio-only)
+        add_plugin_fixture(plugin-${fixture} tests/permissions.cpp)
+    endforeach()
+    target_compile_definitions(plugin-denied PRIVATE NC_PERMISSION_DENIED)
+    target_compile_definitions(plugin-read-only PRIVATE NC_PERMISSION_READ_ONLY)
+    target_compile_definitions(plugin-write-only PRIVATE NC_PERMISSION_WRITE_ONLY)
+    target_compile_definitions(plugin-audio-only PRIVATE NC_PERMISSION_AUDIO_ONLY)
+    foreach(fixture game-api game-api-all game-api-read game-api-connect game-api-other game-api-print game-api-long game-api-message game-api-client)
+        add_plugin_fixture(plugin-${fixture} tests/game_api.cpp)
+    endforeach()
+    target_compile_definitions(plugin-game-api-all PRIVATE "NC_TEST_PERMISSIONS=\"[\\\"cvars.create\\\",\\\"cvars.read\\\",\\\"cvars.write\\\",\\\"chat.read\\\",\\\"chat.send\\\",\\\"connection.connect\\\",\\\"connection.disconnect\\\"]\"")
+    target_compile_definitions(plugin-game-api-read PRIVATE "NC_TEST_PERMISSIONS=\"[\\\"cvars.read\\\",\\\"chat.read\\\"]\"")
+    target_compile_definitions(plugin-game-api-all PRIVATE NC_TEST_EXTENSIONS)
+    target_compile_definitions(plugin-game-api-message PRIVATE NC_TEST_MESSAGES)
+    target_compile_definitions(plugin-game-api-client PRIVATE NC_TEST_CLIENT)
+    target_compile_definitions(plugin-game-api-connect PRIVATE "NC_TEST_PERMISSIONS=\"[\\\"connection.connect\\\"]\"")
+    target_compile_definitions(plugin-game-api-other PRIVATE NC_TEST_ID="test.other")
+    target_compile_definitions(plugin-game-api-print PRIVATE "NC_TEST_PERMISSIONS=\"[\\\"chat.print\\\"]\"")
+    string(REPEAT "a" 96 LONG_PLUGIN_ID)
+    string(REPEAT "b" 48 LONG_CVAR_ID)
+    target_compile_definitions(plugin-game-api-long PRIVATE
+        NC_TEST_ID="${LONG_PLUGIN_ID}" NC_TEST_LOCAL_CVAR="${LONG_CVAR_ID}")
+    get_target_property(GAME_API_ALL_DEFINITIONS plugin-game-api-all COMPILE_DEFINITIONS)
+    target_compile_definitions(plugin-game-api-long PRIVATE ${GAME_API_ALL_DEFINITIONS})
+    add_executable(plugin-tests
+        tests/abi_layout_tests.cpp tests/sdk_buffer_tests.cpp tests/pe_image_tests.cpp
+        ../gameui/src/GameUi/PluginSettingsState.cpp
+        tests/catalog_tests.cpp tests/game_api_tests.cpp tests/game_state_tests.cpp src/catalog.cpp
+        tests/config_file_tests.cpp tests/runtime_health_tests.cpp tests/runtime_dispatch_tests.cpp src/plugin_file.cpp
+        ../client_mini/src/plugin_game_state.cpp tests/life_stats_tests.cpp
+        ${NEXTCLIENT_ROOT}/sdk/examples/cpp-life-stats/tracker.cpp)
+    target_compile_features(plugin-tests PRIVATE cxx_std_23)
+    target_compile_options(plugin-tests PRIVATE /utf-8)
+    target_include_directories(plugin-tests PRIVATE src ../gameui/src/GameUi ../client_mini/src ${NEXTCLIENT_ROOT}/sdk/examples/cpp-life-stats)
+    target_compile_definitions(plugin-tests PRIVATE
+        PLUGIN_RUNTIME_PATH="$<TARGET_FILE:next_plugins>"
+        PLUGIN_GAME_LONG_PATH="$<TARGET_FILE:plugin-game-api-long>"
+        PLUGIN_GAME_PATH="$<TARGET_FILE:plugin-game-api>" PLUGIN_GAME_ALL_PATH="$<TARGET_FILE:plugin-game-api-all>"
+        PLUGIN_GAME_READ_PATH="$<TARGET_FILE:plugin-game-api-read>" PLUGIN_GAME_CONNECT_PATH="$<TARGET_FILE:plugin-game-api-connect>"
+        PLUGIN_GAME_OTHER_PATH="$<TARGET_FILE:plugin-game-api-other>" PLUGIN_GAME_PRINT_PATH="$<TARGET_FILE:plugin-game-api-print>"
+        PLUGIN_LIFE_STATS_PATH="${NEXTCLIENT_LIFE_STATS_DLL}"
+        PLUGIN_CPP_LIFE_STATS_PATH="$<TARGET_FILE:plugin_life_stats_cpp>")
+    add_dependencies(plugin-tests plugin-game-api-long plugin-game-api plugin-game-api-all plugin-game-api-read plugin-game-api-connect plugin-game-api-other plugin-game-api-print plugin_life_stats plugin_life_stats_cpp)
+    add_dependencies(plugin-tests plugin-settings-shared plugin-settings-custom plugin-settings-other)
+    target_compile_definitions(plugin-tests PRIVATE
+        PLUGIN_SHARED_SETTINGS_PATH="$<TARGET_FILE:plugin-settings-shared>"
+        PLUGIN_CUSTOM_SETTINGS_PATH="$<TARGET_FILE:plugin-settings-custom>"
+        PLUGIN_OTHER_SETTINGS_PATH="$<TARGET_FILE:plugin-settings-other>")
+    target_compile_definitions(plugin-tests PRIVATE PLUGIN_FIXTURE_PATH="$<TARGET_FILE:plugin-settings>")
+    target_compile_definitions(plugin-tests PRIVATE PLUGIN_DISPATCH_A_PATH="$<TARGET_FILE:plugin-dispatch-a>" PLUGIN_DISPATCH_B_PATH="$<TARGET_FILE:plugin-dispatch-b>")
+    add_dependencies(plugin-tests plugin-dispatch-a plugin-dispatch-b)
+    target_compile_definitions(plugin-tests PRIVATE PLUGIN_PROBE_PATH="$<TARGET_FILE:plugin-probe>" PLUGIN_DEPENDENT_PATH="$<TARGET_FILE:plugin-dependent>")
+    target_compile_definitions(plugin-tests PRIVATE NOMINMAX WIN32_LEAN_AND_MEAN)
+    target_compile_definitions(plugin-tests PRIVATE PLUGIN_PERMISSION_PATH="$<TARGET_FILE:plugin-permissions>" PLUGIN_DENIED_PATH="$<TARGET_FILE:plugin-denied>")
+    target_compile_definitions(plugin-tests PRIVATE PLUGIN_READ_ONLY_PATH="$<TARGET_FILE:plugin-read-only>" PLUGIN_WRITE_ONLY_PATH="$<TARGET_FILE:plugin-write-only>")
+    target_compile_definitions(plugin-tests PRIVATE PLUGIN_AUDIO_ONLY_PATH="$<TARGET_FILE:plugin-audio-only>")
+    target_link_libraries(plugin-tests PRIVATE next_plugins taocpp::json GTest::gtest_main bcrypt)
+    add_dependencies(plugin-tests plugin-settings plugin-probe plugin-dependent plugin-permissions plugin-denied plugin-read-only plugin-write-only plugin-audio-only)
+    add_dependencies(plugin-tests plugin-package plugin-companion)
+    add_dependencies(plugin-tests plugin-game-api-client)
+    target_compile_definitions(plugin-tests PRIVATE PLUGIN_SERVICE_CLIENT_PATH="$<TARGET_FILE:plugin-game-api-client>")
+    target_compile_definitions(plugin-tests PRIVATE PLUGIN_PACKAGE_PATH="$<TARGET_FILE:plugin-package>" PLUGIN_COMPANION_PATH="$<TARGET_FILE:plugin-companion>")
+    gtest_discover_tests(plugin-tests)
+endif()

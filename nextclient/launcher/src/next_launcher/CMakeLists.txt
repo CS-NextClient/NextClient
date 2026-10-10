@@ -24,6 +24,9 @@ endif ()
 add_executable(${TARGET_NAME} WIN32
         ${LAUNCHER_SOURCES}
 )
+if (NEXTCLIENT_WITH_PLUGINS)
+    target_compile_definitions(${TARGET_NAME} PRIVATE NEXTCLIENT_WITH_PLUGINS)
+endif ()
 
 target_include_directories(${TARGET_NAME} PRIVATE
         ${NEXT_LAUNCHER_SOURCE_DIR}/include
