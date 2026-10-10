@@ -124,7 +124,6 @@ COptionsDialog::COptionsDialog(vgui2::Panel* parent) :
     SetApplyButtonVisible(true);
     GetPropertySheet()->SetTabWidth(84);
     InvalidateLayout(true);
-    FitPageNavigation();
 }
 
 COptionsDialog::~COptionsDialog(void) {}
@@ -151,10 +150,7 @@ bool COptionsDialog::OnOK(bool applyOnly)
     }
     m_pluginSettings = PluginSettingsSnapshot(PluginSettings_Parse(nc_runtime_ui()));
 #endif
-    const bool applied = BaseClass::OnOK(applyOnly);
-    if (applied)
-        FitPageNavigation();
-    return applied;
+    return BaseClass::OnOK(applyOnly);
 }
 
 void COptionsDialog::ResetAllData()
@@ -200,9 +196,8 @@ void COptionsDialog::Activate(void)
 {
     bool was_visible = IsVisible();
 
-    if (!was_visible)
-        FitPageNavigation();
     BaseClass::Activate();
+    GetPropertySheet()->InvalidateLayout();
 
     if (!was_visible)
     {

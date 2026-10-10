@@ -5,7 +5,7 @@ find_package(GTest CONFIG REQUIRED)
 include(GoogleTest)
 
 add_executable(${TARGET_NAME}
-        PropertyPagePickerTests.cpp
+        PropertyPageOverflowTests.cpp
         PropertyPageNavigationTests.cpp
         ServerBrowserTextTests.cpp
         ServerFilterCountsTests.cpp
