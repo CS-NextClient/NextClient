@@ -27,6 +27,8 @@ set(CMAKE_MODULE_PATH
 
 if (NEXTCLIENT_BUILD_TESTS)
     set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/out/bin)
+    set(CMAKE_GTEST_DISCOVER_TESTS_DISCOVERY_MODE PRE_TEST CACHE STRING
+            "When Google Test executables are queried for test discovery")
     enable_testing()
 else ()
     set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/out/bin)

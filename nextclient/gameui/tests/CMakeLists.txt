@@ -12,6 +12,10 @@ add_executable(${TARGET_NAME}
         ${CMAKE_CURRENT_SOURCE_DIR}/../src/ServerBrowser/ServerFilterCounts.cpp
 )
 
+set_target_properties(${TARGET_NAME} PROPERTIES
+        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/$<CONFIG>"
+)
+
 target_compile_definitions(${TARGET_NAME} PRIVATE
         NEXTCLIENT_ASSETS_DIR="${NEXTCLIENT_ROOT}/assets"
 )

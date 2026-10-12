@@ -24,6 +24,10 @@ add_executable(${TARGET_NAME}
         mocks/LoggerMock.h
 )
 
+set_target_properties(${TARGET_NAME} PROPERTIES
+        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/$<CONFIG>"
+)
+
 if (WIN32)
     target_sources(${TARGET_NAME} PRIVATE TextSurfaceTests.cpp TextRenderTests.cpp)
 endif ()
