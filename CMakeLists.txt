@@ -15,7 +15,7 @@ foreach (NEXTCLIENT_LFS_FILE
     endif ()
 endforeach ()
 
-project(NextClient VERSION 2.5.4)
+project(NextClient VERSION 2.6.0)
 
 set(NEXTCLIENT_ROOT ${CMAKE_CURRENT_SOURCE_DIR})
 
