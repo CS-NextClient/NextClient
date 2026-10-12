@@ -110,7 +110,7 @@ jobs:
           apt-get install -y --no-install-recommends \
             git git-lfs ca-certificates curl zip unzip tar cmake ninja-build pkg-config python3 \
             build-essential gcc-multilib g++-multilib \
-            libgl-dev:i386 libx11-dev:i386 libxext-dev:i386 libxcursor-dev:i386 \
+            libgl-dev:i386 libegl1:i386 libx11-dev:i386 libxext-dev:i386 libxcursor-dev:i386 \
             libxi-dev:i386 libxrandr-dev:i386 libxss-dev:i386 libxfixes-dev:i386 libxrender-dev:i386
 
       - name: Checkout (with submodules)
