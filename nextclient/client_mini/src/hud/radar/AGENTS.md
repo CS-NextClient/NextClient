@@ -138,11 +138,16 @@ root `AGENTS.md`. What this directory adds:
 
 ## Building and checking
 
-```bash
-cmake --build build/ninja-local --target client_mini --config Debug
-cmake --build build/ninja-local-tests --target client_mini-tests --config Debug
-build/ninja-local-tests/out/bin/Debug/client_mini-tests.exe
+Use the configured build directories and toolchain described in the root `AGENTS.md`. Replace
+`<build-dir>`, `<test-build-dir>` and `<config>` with the selected directories and configuration;
+the test build must have `NEXTCLIENT_BUILD_TESTS=ON`.
+
+```text
+cmake --build <build-dir> --target client_mini --config <config>
+cmake --build <test-build-dir> --target client_mini-tests --config <config>
 ```
+
+Run `client_mini-tests` from `<test-build-dir>/out/bin/<config>/`, with the `.exe` suffix on Windows.
 
 The unit tests cover the parts that can run without the engine: `RadarViewTests` (projection and
 clamping, including the rotated basis), `RadarPolicyTests`, `RadarFadeTests`, `PlayerTracksTests`,

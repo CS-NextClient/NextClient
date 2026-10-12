@@ -27,17 +27,19 @@ dependencies come from the vendored `vcpkg/`, wired in by the `base` configure p
 
 Tracked configure presets are `ninja`, `vs2022`, `vs2022-tests`, `vs2026` and `linux`; the build presets that go
 with them are `ninja-debug`, `ninja-release` and the `vs*` and `linux-*` pairs. `CMakeUserPresets.json` is untracked
-and machine-local: that is where a developer adds `ninja-local`-style presets carrying their own
-`NEXTCLIENT_INSTALL_DIR` and, if they want them, Ninja test builds. The Ninja generator is
-Multi-Config, so every build names a configuration.
+and machine-local: that is where a developer adds custom presets carrying their own
+`NEXTCLIENT_INSTALL_DIR` and, if they want them, Ninja test builds. Select a preset supported by
+the available toolchain and configure it before building. Build directories come from the selected
+configure preset's `binaryDir`. The Ninja generator is Multi-Config, so every build names a configuration.
 
 ```bash
 cmake --build --preset ninja-debug --target client_mini
 ```
 
 - Build one target per command so its result and log can be checked separately.
-- MSVC must be in the environment (`vcvarsall.bat x86`), and the Visual Studio `cmake.exe` is not on
-  PATH; use its full path or a shell that has one.
+- Locate CMake in the current environment; if it is unavailable on PATH, use the installed executable's
+  full path. For Ninja builds with MSVC, initialize the x86 compiler environment using the installed
+  Visual Studio tools (`vcvarsall.bat x86` or an x86 developer shell).
 - `engine_mini` and `gameui` collect sources with `file(GLOB_RECURSE ...)` and no `CONFIGURE_DEPENDS`:
   a new `.cpp` there compiles into nothing until the configure step runs again, then fails at link with
   an unresolved symbol. `client_mini` lists its sources instead, so a new file has to be added to
@@ -186,8 +188,8 @@ occur should fail loudly rather than be papered over.
 - Line endings are mixed across the tree. Preserve whatever a file already uses; never normalize a whole
   file, or the diff stops showing the change.
 - `assets/cstrike/resource/nextclient_*.txt` are UTF-16 LE and the English one carries a double BOM.
-  Edit them through PowerShell `Get-Content`/`Set-Content -Encoding Unicode`; a plain text edit corrupts
-  them.
+  Use an editor or script that preserves UTF-16 LE, the existing BOM sequence and line endings.
+  Verify these properties after saving.
 - Engine facts (addresses, globals, function signatures) belong in NitroApi, which resolves them per
   build, not in a hardcoded copy next to the code that needs them.
 - Anything shipped to the player also has to exist under `assets/`: a new cvar, scheme entry or

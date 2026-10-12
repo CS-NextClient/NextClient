@@ -23,7 +23,9 @@ This is the clean-room header library for stock interoperability facts. Start wi
 
 ## Generation and checks
 
-Run these from the repository root:
+Run these from the repository root using an available Python 3 interpreter. The examples use
+`python`; substitute the interpreter command or executable path for the current environment
+(such as `python3` or `py -3`).
 
 ```text
 python nextclient/goldsrc_abi/tools/library.py check
