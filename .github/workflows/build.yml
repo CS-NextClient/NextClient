@@ -97,7 +97,36 @@ jobs:
       - name: Build tests
         run: cmake --build build/ninja-tests --config Release --parallel
 
+      - name: Set up Mesa software OpenGL
+        shell: pwsh
+        run: |
+          $mesa_version = '26.2.4'
+          $archive_name = "mesa3d-$mesa_version-release-msvc.7z"
+          $mesa_archive = Join-Path $env:RUNNER_TEMP $archive_name
+          $mesa_dir = Join-Path $env:RUNNER_TEMP "mesa3d-$mesa_version"
+          $download_url = "https://github.com/pal1000/mesa-dist-win/releases/download/$mesa_version/$archive_name"
+          $expected_hash = '351fc8c8b695878ffb3eaa044b3ead08672a48b1a045e3c3e3975811df0f6695'
+
+          Invoke-WebRequest -Uri $download_url -OutFile $mesa_archive
+          $archive_hash = (Get-FileHash -LiteralPath $mesa_archive -Algorithm SHA256).Hash
+          if ($archive_hash -ne $expected_hash) {
+            throw 'Mesa archive SHA-256 mismatch.'
+          }
+
+          7z x $mesa_archive "-o$mesa_dir" 'x86/opengl32.dll' 'x86/libgallium_wgl.dll' -y
+          if ($LASTEXITCODE -ne 0) {
+            throw "Cannot extract Mesa archive (exit code $LASTEXITCODE)."
+          }
+
+          $mesa_dlls = @(
+            (Join-Path $mesa_dir 'x86/opengl32.dll')
+            (Join-Path $mesa_dir 'x86/libgallium_wgl.dll')
+          )
+          Copy-Item -LiteralPath $mesa_dlls -Destination 'build/ninja-tests/out/bin/Release'
+
       - name: Run tests
+        env:
+          GALLIUM_DRIVER: llvmpipe
         run: ctest --test-dir build/ninja-tests -C Release --output-on-failure
 
   build-linux:
