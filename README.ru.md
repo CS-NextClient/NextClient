@@ -1,106 +1,106 @@
-Language: [EN](https://github.com/CS-NextClient/NextClient/blob/main/README.md) | RU
+Язык: [EN](https://github.com/CS-NextClient/NextClient/blob/main/README.md) | RU
 
 NextClient
 ==========
 
-NextClient это модификация для Counter-Strike 1.6, нацеленная на введение новой функциональности как для игроков, так и для разработчиков серверных модификаций на amxmodx.
-В NextClient интегрированы некоторые фичи из [csldr](https://github.com/mikkokko/csldr). 
+NextClient расширяет возможности Counter-Strike 1.6 для игроков и разработчиков серверных модификаций на AMX Mod X.
+В NextClient также включены некоторые возможности из [csldr](https://github.com/mikkokko/csldr).
 
-*Пожалуйста обратите внимание, официальная версия NextClient поставляется без эмулятора. Next21 не занимается разработкой эмулятора Steam. Вам всё ещё небходим запущенный Steam и купленная игра Cs 1.6 для игры на версии NextClient с гитхаба.*
+*Официальная версия NextClient поставляется без эмулятора Steam. Команда Next21 не разрабатывает такой эмулятор. Для запуска версии из GitHub нужны купленная Counter-Strike 1.6 и запущенный Steam.*
 
-*Некоторые антивирусы ругаются на файлы NextClient. Это ложные эвристические срабатывания, вызванные перехватом функций движка во время работы. Официальные сборки собираются из исходного кода этого репозитория через GitHub Actions и имеют подписанную аттестацию происхождения сборки. Подробности и отправка репортов о ложных срабатываниях: [docs/reporting-av-false-positives.md](docs/reporting-av-false-positives.md).*
+*Некоторые антивирусы ошибочно отмечают файлы NextClient как опасные. Это ложные эвристические срабатывания, вызванные перехватом функций движка во время работы. Официальные сборки создаются из исходного кода этого репозитория через GitHub Actions. Их происхождение подтверждается подписанными данными о сборке (build provenance attestation). Подробности и порядок отправки сообщений о ложных срабатываниях: [docs/reporting-av-false-positives.md](docs/reporting-av-false-positives.md).*
 
 ### Основные возможности:
 
  - Поддержка Windows и Linux (x86)
  - Протектор - защищает клиент от вредоносных команд с сервера
- - Смена мастер сервера (по умолчанию установлен [tsarvar.com](https://tsarvar.com))
- - Расширенные настройки видео - фикс FOV на разрешениях 16:9, возможность регулировать FOV и отдельно регулировать FOV для модели от первого лица
- - Расширенный killfeed - поддержка расширенного killfeed [regamedll](https://github.com/s1lentq/ReGameDLL_CS/pull/858), отображение иконок убийств: через стену, через дым, без прицела, в прыжке, с доминированием, etc.
+ - Смена мастер-сервера (по умолчанию установлен [tsarvar.com](https://tsarvar.com))
+ - Расширенные настройки видео - корректный угол обзора (FOV) при соотношении сторон 16:9, настройка FOV для камеры и отдельно для модели оружия от первого лица
+ - Расширенная лента убийств (killfeed) - поддержка сообщений [regamedll](https://github.com/s1lentq/ReGameDLL_CS/pull/858), отображение иконок убийств: через стену, через дым, без прицела, в прыжке, с доминированием и других
  - Расширенные настройки прицела - добавлены новые виды прицела: точка, T-образный, окружность
  - Расширенный радар - генерация карты с автоматическим выбором слоя, ники игроков, здоровье союзников при передаче данных сервером, трейлы перемещения, маркеры целей и показ полной карты
  - Интеграция с Discord: отображение текущего сервера, подключения и воспроизведения демо, подключение друзей к серверу через Discord, в том числе с запуском игры
- - 2 схемы GUI с возможностью их смены через настройки, и возможность добавлять свои схемы не удаляя старые
+ - Две схемы интерфейса с переключением в настройках и возможностью добавлять собственные схемы
  - Поддержка HTML-интерфейсов в GameUI на базе CEF (Chromium Embedded Framework) с JS API для взаимодействия с клиентом (только Windows)
- - Отображение более 255hp при использовании [серверного модуля](https://github.com/CS-NextClient/NextClientServerApi)
- - Отображение количества и размера оставшихся файлов, общего размера файлов и скорости загрузки при подключении на сервер
+ - Отображение здоровья выше 255 HP при использовании [серверного модуля](https://github.com/CS-NextClient/NextClientServerApi)
+ - Отображение количества и размера оставшихся файлов, общего размера файлов и скорости загрузки при подключении к серверу
  - Цветной чат в консоли
  - Различные улучшения из [csldr](https://github.com/mikkokko/csldr) для оружия от первого лица:
     - Настраиваемое расположение модели
-    - Альтернативный bob из CS:GO 1.0.0.40
-    - Поддержка sway/lag
-    - Возможность отключить смещение модели при взгляде вверх/вниз
+    - Покачивание оружия при движении (bob) из CS:GO 1.0.0.40
+    - Покачивание оружия при поворотах камеры (sway/lag)
+    - Возможность отключить смещение модели при взгляде вверх или вниз
     - Клиентский осмотр оружия
-    - Управление камерой на основе костей
+    - Управление движением камеры через кости модели
 
-### Возможности для amxmodx разработчиков:
- - Песочница кваров, возможность менять квары клиенту (из ограниченного списка) на время его нахождения на сервере
- - Кастомизация killfeed
+### Возможности для разработчиков AMX Mod X:
+ - Песочница кваров: сервер может временно менять клиентские квары из разрешенного списка, пока игрок находится на сервере
+ - Настройка ленты убийств
  - Sprite API, управление спрайтами на экране
- - Расширенное FOV сообщение
- - Поддержка эффектов для viewmodel
+ - Расширенное сообщение для управления FOV
+ - Эффекты для модели оружия от первого лица (viewmodel)
  - Замена звуков оружия
  - Инверсия мыши
- - Верификация клиента и получение идентификатора игрока на основе железа (HWID)
+ - Проверка клиента и получение аппаратного идентификатора игрока (HWID)
  - Получение платформы клиента (Windows или Linux) через серверный API NextClient
- - Раздельный прекэш для обычного клиента cs 1.6 и NextClient
+ - Раздельный прекэш ресурсов для стандартного клиента CS 1.6 и NextClient
  - Прекэш hud.txt и других стандартных ресурсов
 
-### Новые квары
+### Новые квары (консольные переменные)
 <details>
 <summary>Нажмите, чтобы развернуть</summary>
 
-| Cvar name | Default value | Available in sandbox*       | Description |
+| Квар | По умолчанию | Доступен в песочнице* | Описание |
 | --- |---------------|-----------------------------| --- |
-| viewmodel_disable_shift | 0             | Yes                         | Disable viewmodel shifting (when you looking up or down). |
-| viewmodel_offset_x | 0             | Yes                         |  |
-| viewmodel_offset_y | 0             | Yes                         |  |
-| viewmodel_offset_z | 0             | Yes                         |  |
-| camera_movement_scale | 1.0           | Yes                         | Camera movement scale. |
-| camera_movement_interp | 0             | Yes                         | Smooths out camera movement when switching weapons. Recommended value is 0.1. Set to 0 to disable smoothing. |
-| viewmodel_fov | 90            | Yes                         | Min: 70<br/>Max: 100 |
-| cl_crosshair_type | 0             | Yes                         | Crosshair type. 0 - crosshair, 1 - T-shaped, 2 - circle, 3 - dot. |
-| cl_bob_camera | 1             | Yes                         | View origin bob, does nothing with cl_bobstyle 2. |
-| cl_bobstyle | 0             | Yes                         | 0 for default bob, 1 for old style bob and 2 for CS:GO style bob. |
-| cl_bobamt_vert | 0\.13         | Yes                         | Vertical scale for CS:GO style bob. |
-| cl_bobamt_lat | 0\.32         | Yes                         | Lateral scale for CS:GO style bob. |
-| cl_bob_lower_amt | 8.0           | Yes                         | Specifies how much the viewmodel moves inwards for CS:GO style bob. |
-| cl_rollangle | 0             | Yes                         | Screen roll angle when strafing or looking (Quake effect). |
-| cl_rollspeed | 200.0         | Yes                         | Screen roll speed when strafing or looking (Quake effect). |
-| viewmodel_lag_style | 0             | Yes                         | Viewmodel sway style. 0 is off, 1 is HL2 style and 2 is CS:S/CS:GO style. |
-| viewmodel_lag_scale | 1.0           | Yes                         | Scale of the viewmodel sway. |
-| viewmodel_lag_speed | 8.0           | Yes                         |  Speed of the viewmodel sway. (HL2 sway only) |
-| fov_horplus | 0             | No                          | Enables Hor+ scaling for FOV. Fixes the FOV when playing with aspect ratios besides 4:3. |
-| fov_angle | 90            | No (use ncl_setfov instead) | Min: 70<br/>Max: 100 |
-| fov_lerp | 0             | No (use ncl_setfov instead) | FOV interpolation time in seconds. |
-| hud_deathnotice_max | 5             | Yes                         | The maximum number of killfeed entries that can be displayed. |
-| hud_deathnotice_old | 0             | No                          | Enable the old style of killfeed. |
-| http_max_active_requests | 5             | No                          |  |
-| http_max_requests_retries | 3             | No                          |   |
-| cl_discordrpc | 1             | No                          | Show what you're playing in Discord. |
-| cl_discordrpc_server | 1             | No                          | Show the server name in Discord. When 0, friends can't join you either. |
-| cl_discordrpc_join | 1             | No                          | Let Discord friends join your server. |
-| hud_radar_mode | 1 | No | Режим радара: 0 - классический, 1 - расширенный. |
-| hud_radar_scale | 1.15 | No | Размер радара. Мин.: 0.5<br/>Макс.: 3.0 |
-| hud_radar_map_scale | 0.8 | No | Масштаб карты. Мин.: 0.25<br/>Макс.: 3.0 |
-| hud_radar_map_shift | 0 | No | Смещать карту у её краёв, чтобы маркер игрока оставался внутри радара. |
-| hud_radar_opacity | 100 | No | Непрозрачность карты и фона от 0 до 100 процентов. |
-| hud_radar_round | 1 | No | Форма радара: 0 - квадратная, 1 - круглая. |
-| hud_radar_fullmap | 1 | No | Показывать полную карту при открытой таблице счёта. |
-| hud_radar_shift_scoreboard | 1 | No | Сдвигать таблицу счёта, чтобы освободить место для радара. |
-| hud_radar_rotate | 1 | No | Вращать карту в зависимости от направления взгляда. |
-| hud_radar_names | 0 | No | Показывать ники игроков. |
-| hud_radar_health | 0 | No | Показывать полосы здоровья союзников при передаче сервером данных HealthInfo. |
-| hud_radar_tracks | 0 | No | Показывать трейлы перемещения союзников. |
-| hud_radar_map_mode | 5 | No | Источник карты: 1 - overview, 5 - сгенерированные текстурированные слои, 6 - сгенерированные плоские слои. |
-| hud_radar_map_mask | 1 | No | Обрезать карту overview по форме радара. |
-| hud_radar_map_smoothing | 0 | No | Сглаживать края геометрии сгенерированной карты. |
-| hud_radar_bg | 0 | No | Фон радара: 0 - чёрный, 1 - размытое изображение игры. |
-| hud_radar_health_size | 1.0 | No | Размер полос здоровья. Мин.: 0.3<br/>Макс.: 4.0 |
-| hud_radar_name_size | 0.8 | No | Размер ников игроков. Мин.: 0.6<br/>Макс.: 2.0 |
-| hud_radar_allies | 1 | No | 1 - показывать союзников, раскрытых сервером, 0 - дополнительно проверять прямую видимость. |
+| viewmodel_disable_shift | 0             | Да                         | Отключить смещение модели оружия при взгляде вверх или вниз. |
+| viewmodel_offset_x | 0             | Да                         |  |
+| viewmodel_offset_y | 0             | Да                         |  |
+| viewmodel_offset_z | 0             | Да                         |  |
+| camera_movement_scale | 1.0           | Да                         | Масштаб движения камеры. |
+| camera_movement_interp | 0             | Да                         | Сглаживание движения камеры при смене оружия. Рекомендуемое значение: 0.1. Значение 0 отключает сглаживание. |
+| viewmodel_fov | 90            | Да                         | Мин.: 70<br/>Макс.: 100 |
+| cl_crosshair_type | 0             | Да                         | Вид прицела: 0 - перекрестие, 1 - T-образный, 2 - окружность, 3 - точка. |
+| cl_bob_camera | 1             | Да                         | Покачивание камеры при движении. Не действует при cl_bobstyle 2. |
+| cl_bobstyle | 0             | Да                         | Вид покачивания оружия: 0 - стандартный, 1 - старый, 2 - как в CS:GO. |
+| cl_bobamt_vert | 0\.13         | Да                         | Амплитуда вертикального покачивания в стиле CS:GO. |
+| cl_bobamt_lat | 0\.32         | Да                         | Амплитуда бокового покачивания в стиле CS:GO. |
+| cl_bob_lower_amt | 8.0           | Да                         | Смещение модели оружия внутрь при покачивании в стиле CS:GO. |
+| cl_rollangle | 0             | Да                         | Угол наклона экрана при боковом движении или повороте камеры (эффект Quake). |
+| cl_rollspeed | 200.0         | Да                         | Скорость наклона экрана при боковом движении или повороте камеры (эффект Quake). |
+| viewmodel_lag_style | 0             | Да                         | Вид покачивания оружия при поворотах камеры: 0 - отключено, 1 - как в HL2, 2 - как в CS:S/CS:GO. |
+| viewmodel_lag_scale | 1.0           | Да                         | Амплитуда покачивания оружия при поворотах камеры. |
+| viewmodel_lag_speed | 8.0           | Да                         | Скорость покачивания оружия при поворотах камеры. Действует только для стиля HL2. |
+| fov_horplus | 0             | Нет                          | Включить масштабирование FOV по принципу Hor+. Корректирует угол обзора при соотношениях сторон, отличных от 4:3. |
+| fov_angle | 90            | Нет (используйте ncl_setfov) | Мин.: 70<br/>Макс.: 100 |
+| fov_lerp | 0             | Нет (используйте ncl_setfov) | Время интерполяции FOV в секундах. |
+| hud_deathnotice_max | 5             | Да                         | Максимальное число записей в ленте убийств. |
+| hud_deathnotice_old | 0             | Нет                          | Включить старый вид ленты убийств. |
+| http_max_active_requests | 5             | Нет                          |  |
+| http_max_requests_retries | 3             | Нет                          |   |
+| cl_discordrpc | 1             | Нет                          | Показывать текущую игру в Discord. |
+| cl_discordrpc_server | 1             | Нет                          | Показывать название сервера в Discord. При значении 0 друзья также не смогут подключиться через Discord. |
+| cl_discordrpc_join | 1             | Нет                          | Разрешить друзьям из Discord подключаться к вашему серверу. |
+| hud_radar_mode | 1 | Нет | Режим радара: 0 - классический, 1 - расширенный. |
+| hud_radar_scale | 1.15 | Нет | Размер радара. Мин.: 0.5<br/>Макс.: 3.0 |
+| hud_radar_map_scale | 0.8 | Нет | Масштаб карты. Мин.: 0.25<br/>Макс.: 3.0 |
+| hud_radar_map_shift | 0 | Нет | Смещать карту у её краёв, чтобы маркер игрока оставался внутри радара. |
+| hud_radar_opacity | 100 | Нет | Непрозрачность карты и фона от 0 до 100 процентов. |
+| hud_radar_round | 1 | Нет | Форма радара: 0 - квадратная, 1 - круглая. |
+| hud_radar_fullmap | 1 | Нет | Показывать полную карту при открытой таблице счёта. |
+| hud_radar_shift_scoreboard | 1 | Нет | Сдвигать таблицу счёта, чтобы освободить место для радара. |
+| hud_radar_rotate | 1 | Нет | Вращать карту в зависимости от направления взгляда. |
+| hud_radar_names | 0 | Нет | Показывать ники игроков. |
+| hud_radar_health | 0 | Нет | Показывать полосы здоровья союзников при передаче сервером данных HealthInfo. |
+| hud_radar_tracks | 0 | Нет | Показывать трейлы перемещения союзников. |
+| hud_radar_map_mode | 5 | Нет | Источник карты: 1 - overview, 5 - сгенерированные текстурированные слои, 6 - сгенерированные плоские слои. |
+| hud_radar_map_mask | 1 | Нет | Обрезать карту overview по форме радара. |
+| hud_radar_map_smoothing | 0 | Нет | Сглаживать края геометрии сгенерированной карты. |
+| hud_radar_bg | 0 | Нет | Фон радара: 0 - чёрный, 1 - размытое изображение игры. |
+| hud_radar_health_size | 1.0 | Нет | Размер полос здоровья. Мин.: 0.3<br/>Макс.: 4.0 |
+| hud_radar_name_size | 0.8 | Нет | Размер ников игроков. Мин.: 0.6<br/>Макс.: 2.0 |
+| hud_radar_allies | 1 | Нет | 1 - показывать союзников, раскрытых сервером, 0 - дополнительно проверять прямую видимость. |
 
-*Может ли сервер изменять значение квара, используя функцию песочницы кваров.
+*Указано, может ли сервер менять значение квара через песочницу кваров.
 </details>
 
 ### Консольные команды
@@ -125,11 +125,11 @@ bindlist
 
 ### Windows
 
-1. NextClient работает только с версией движка 8684, убедитесь, что вы находитесь на бета-ветви "steam_legacy - Pre-25th Anniversary Build" в Steam (⚠️ вам нужны файлы официальной игры из Steam! Вы не можете установить NextClient на пиратские клиенты!)
-2. Скопируйте всю папку Counter-Strike 1.6 (Half-Life) в отдельную папку вне папки Steam
-3. Скопируйте все файлы NextClient в папку куда вы копировали все файлы CS 1.6
+1. NextClient работает только с версией движка 8684. В Steam выберите бета-ветвь "steam_legacy - Pre-25th Anniversary Build". Для установки нужны файлы официальной игры из Steam.
+2. Скопируйте всю папку Counter-Strike 1.6 (Half-Life) в отдельную папку вне Steam.
+3. Скопируйте все файлы NextClient в папку с этой копией игры.
 4. Запустите Steam.
-5. Запускайте игру через cstrike.exe
+5. Запускайте игру через `cstrike.exe`.
 
 ### Linux
 
@@ -138,7 +138,7 @@ bindlist
 - Linux на x86_64 с поддержкой запуска 32-битных x86-программ и 32-битной glibc 2.43 или новее.
 - 32-битные библиотеки среды выполнения C++: в Ubuntu это пакеты `libstdc++6:i386` (`libstdc++.so.6` с `GLIBCXX_3.4.32` или новее) и `libgcc-s1:i386` (`libgcc_s.so.1`).
 - Установленный и запущенный Steam, его Steam Runtime и нативные Linux-файлы игры с ветви `steam_legacy`.
-- 32-битные SDL2 и OpenGL-библиотеки драйвера. Для расширенного радара нужны OpenGL 2.1 и поддержка framebuffer objects (`GL_ARB_framebuffer_object` или OpenGL 3.0 и новее).
+- 32-битные SDL2 и OpenGL-библиотеки драйвера. Для расширенного радара нужны OpenGL 2.1 и поддержка фреймбуферов (FBO) (`GL_ARB_framebuffer_object` или OpenGL 3.0 и новее).
 
 Установка 32-битных библиотек C++ в Ubuntu:
 
@@ -151,8 +151,8 @@ sudo apt install libstdc++6:i386 libgcc-s1:i386
 Порядок установки:
 
 1. В Steam выберите бета-ветвь "steam_legacy - Pre-25th Anniversary Build" и установите нативную Linux-версию игры.
-2. Скопируйте всю папку Counter-Strike 1.6 (Half-Life) в отдельную папку вне папки Steam.
-3. Распакуйте архив в папку куда вы копировали все файлы CS 1.6 с заменой файлов. В корне этой папки должны находиться `hw.so`, `cstrike.exe` и `nextclient.sh`.
+2. Скопируйте всю папку Counter-Strike 1.6 (Half-Life) в отдельную папку вне Steam..
+3. Распакуйте архив в папку с копией игры и замените существующие файлы. В корне этой папки должны находиться `hw.so`, `cstrike.exe` и `nextclient.sh`.
 4. Запустите Steam.
 5. В терминале перейдите в папку скопированной игры, задайте права на запуск и запустите скрипт:
 
@@ -162,24 +162,24 @@ chmod +x nextclient.sh cstrike.exe
 ./nextclient.sh
 ```
 
-`nextclient.sh` запускает нативный Linux-клиент через Steam Runtime. Скрипт находит runtime обычной установки Steam и установки через Snap. Аргументы передаются игре, например `./nextclient.sh -windowed`.
+`nextclient.sh` запускает нативный Linux-клиент через Steam Runtime. Скрипт находит среду выполнения Steam как при обычной установке, так и при установке через Snap. Аргументы передаются игре, например `./nextclient.sh -windowed`.
 
-### ⚠️ Внимание! Никогда не помещайте файлы NextClient прямо в папку установки игры в Steam! Это приведет к VAC бану! ⚠️
+### Внимание: установка NextClient в папку игры в Steam приводит к блокировке VAC. Используйте отдельную копию игры.
 
-## Смена мастер сервера
+## Смена мастер-сервера
 
 Файл конфигурации находится по пути `platform\config\MasterServer.vdf`
 ```vdf
 "MasterServer"
 {
    "Selected"     "1"       // Номер элемента из раздела Servers. Нумерация начинается с 0.
-   "CacheServers" "false"   // В случае недоступности мастер сервера, список серверов будет взят из кэша.
+   "CacheServers" "false"   // В случае недоступности мастер-сервера, список серверов будет взят из кэша.
                             // В кэш попадают сервера из последнего запроса, который был полностью завершён.
    "Servers"
    {
       "Steam"
       {
-         "address" "hl1master.steampowered.com:27011" // Адрес мастер сервера.
+         "address" "hl1master.steampowered.com:27011" // Адрес мастер-сервера.
          "site"    ""       // Не используется.
          "region"  "0x03"   // Код региона, https://developer.valvesoftware.com/wiki/Master_Server_Query_Protocol#Region_codes.
       }
@@ -228,12 +228,12 @@ cmake --preset ninja
 cmake --build --preset ninja-release --target BUILD_ALL
 ```
 
-`BUILD_ALL` также копирует собранные файлы и ассеты в `NEXTCLIENT_INSTALL_DIR`, если переменная задана.
+`BUILD_ALL` также копирует собранные файлы и ресурсы в `NEXTCLIENT_INSTALL_DIR`, если переменная задана.
 Можно передать её при конфигурации:
 ```
 cmake --preset vs2022 -DNEXTCLIENT_INSTALL_DIR="C:/Games/CS 1.6 - NextClient"
 ```
-Или создать `CMakeUserPresets.json` в корне проекта (файл добавлен в gitignore), чтобы не передавать путь каждый раз:
+Или создать `CMakeUserPresets.json` в корне проекта (файл исключен из Git через `.gitignore`), чтобы не передавать путь каждый раз:
 ```json
 {
   "version": 3,
@@ -290,34 +290,34 @@ cmake --build --preset linux-release --target BUILD_ALL
 ## Работа в IDE
 
 ### CLion
- - На Windows toolchain должен быть Visual Studio с платформой x86; на Linux используется GCC и пресет `linux`
+ - На Windows выберите набор инструментов (toolchain) Visual Studio с платформой x86; на Linux используйте GCC и пресет `linux`
  - В настройках CMake (Settings -> Build -> CMake) включить нужные пресеты, например `vs2022 - vs2022-debug` и `vs2022 - vs2022-release`
  - Собирать цель `BUILD_ALL`
 
 ### Visual Studio
  - Открыть папку проекта
- - Выбрать build-пресет, например `vs2022-debug` или `vs2022-release`
+ - Выбрать пресет сборки, например `vs2022-debug` или `vs2022-release`
  - В главном меню выбрать Build -> Build All
 
 ### VS Code
  - Установить расширение `ms-vscode.cmake-tools`
- - Выбрать configure-пресет `vs2022`, `vs2026`, `ninja` или `linux` и соответствующую build-конфигурацию
+ - Выбрать пресет конфигурации `vs2022`, `vs2026`, `ninja` или `linux` и соответствующую конфигурацию сборки
  - Собирать цель `BUILD_ALL`
  - Для пресета `ninja` VS Code необходимо запускать из "x86 Native Tools Command Prompt for VS"
 
 ## Благодарности
 
 - [KotyaraKryt](https://github.com/KotyaraKryt) - за перенос на Linux, интеграцию с Discord, консольные команды, повторное использование HTTP-соединений в FastDL и исправления
-- [Nordic Warrior](https://github.com/Nord1cWarr1or) - за огромное количество фидбека и багрепортов
+- [Nordic Warrior](https://github.com/Nord1cWarr1or) - за отзывы и сообщения об ошибках
 - [fl0werD](https://github.com/fl0werD) - за разработку Sprite API
-- [Mikko Kokko](https://github.com/mikkokko) - за проект [csldr](https://github.com/mikkokko/csldr), фичи из которого мы проинтегрировали в NextClient
+- [Mikko Kokko](https://github.com/mikkokko) - за проект [csldr](https://github.com/mikkokko/csldr), возможности которого включены в NextClient
 - [Felipe](https://github.com/LAGonauta) - за проект [MetaAudio](https://github.com/LAGonauta/MetaAudio)
 - [MoeMod](https://github.com/MoeMod) - за проект [Thanatos-Launcher](https://github.com/MoeMod/Thanatos-Launcher), он очень помог при реализации GameUI и VGUI2
 - [tmp64](https://github.com/tmp64) - за проект [hl1_source_sdk](https://github.com/tmp64/hl1_source_sdk)
 - [TsarVar](https://tsarvar.com) - за идею JS API для gameui
-- [s1lent](https://github.com/s1lentq) - за советы, готовые фиксы и разработку спецификации [avatarid-spec](https://github.com/goldclient-plus/avatarid-spec)
-- [lozatto](https://github.com/lozatto) - за реализацию фичи Unique Machine Identifier (HWID)
+- [s1lent](https://github.com/s1lentq) - за советы, исправления и разработку спецификации [avatarid-spec](https://github.com/goldclient-plus/avatarid-spec)
+- [lozatto](https://github.com/lozatto) - за реализацию аппаратного идентификатора Unique Machine Identifier (HWID)
 - [SanyaSho](https://github.com/SanyaSho) - за проект [BarsTech_goldsrc_compatible_public](https://github.com/SanyaSho/BarsTech_goldsrc_compatible_public), который помог с рендерингом шрифтов VGUI2
 - Valve - за Counter-Strike 1.6 и лояльное отношение к моддерскому сообществу
 
-Спасибо всем кто поддерживает проект баг репортами, предложениями и словами поддержки.
+Спасибо всем, кто сообщает об ошибках, предлагает улучшения и поддерживает проект.

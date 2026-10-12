@@ -110,6 +110,22 @@ in matching `.ru.md` files. Use `.superpowers/` for design drafts, implementatio
 session reports; that directory is ignored by Git. Keep procedures, references and test cases
 separate, and link each translation to its counterpart.
 
+Write Russian documentation as natural Russian technical prose. Adapt the meaning and sentence
+structure rather than translating English word for word. Use short sentences with a concrete
+subject and action; state the condition and result explicitly. Prefer verbs to chains of abstract
+nouns and passive constructions. A formal tone must remain easy to read.
+
+Use established developer terms consistently, including common loanwords such as «колбэк»,
+«дамп», «пресет» and «рендеринг» where appropriate. Explain an unfamiliar term at first use.
+Translate idioms by context: `in flight` means an operation is still running or has not completed;
+`hot path` means frequently executed code; `teardown` means the relevant cleanup or shutdown.
+Keep commands, identifiers, numeric limits and technical distinctions exact. Use
+[Microsoft Learn](https://learn.microsoft.com/ru-ru/)
+and the articles by [dalerank](https://habr.com/ru/users/dalerank/articles/),
+[anz](https://habr.com/ru/users/anz/articles/) and
+[PatientZero](https://habr.com/ru/users/PatientZero/articles/) as readability references.
+Review each Russian text on its own, then compare it with the English source for completeness.
+
 **Naming.** Methods and functions are `CamelCase`, public free functions `Module_Method`, globals
 `g_CamelCase`, `constexpr` constants `kCamelCase` (no underscore, acronyms as words: `Abc`, not
 `ABC`), locals `snake_case`, typedefs carry the `_t` suffix. A simple accessor is `snake_case`:
