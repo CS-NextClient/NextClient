@@ -1,8 +1,14 @@
 #pragma once
 
 #include <string>
-#include <Windows.h>
 #include <iregistry.h>
+
+#ifdef _WIN32
+    #include <Windows.h>
+#else
+    #include <memory>
+    #include <nitro_utils/config/FileConfigProvider.h>
+#endif
 
 class CRegistry : public IRegistry
 {
@@ -22,8 +28,13 @@ public:
 
 private:
     bool m_bValid;
-    HKEY m_hKey;
     std::string m_context;
 
-    char m_szBuffer[512];
+#ifdef _WIN32
+    HKEY m_hKey;
+    char m_szBuffer[512]{};
+#else
+    std::unique_ptr<nitro_utils::FileConfigProvider> m_config;
+    std::string m_szBuffer;
+#endif
 };

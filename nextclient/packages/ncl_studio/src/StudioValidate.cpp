@@ -3,9 +3,7 @@
 #include <cstdint>
 #include <string>
 
-// studio.h uses vec3_t without declaring it.
-#include <tier0/basetypes.h>
-#include <studio.h>
+#include <goldsrc/format/studio.h>
 
 #include "HeaderShape.h"
 
@@ -35,16 +33,16 @@ namespace ncl_studio
 
     size_t CachedStudioSize(const void* data, size_t size)
     {
-        if (data == nullptr || size < sizeof(studiohdr_t))
+        if (data == nullptr || size < sizeof(goldsrc::studiohdr_t))
         {
             return 0;
         }
 
-        const studiohdr_t* header = static_cast<const studiohdr_t*>(data);
+        const goldsrc::studiohdr_t* header = static_cast<const goldsrc::studiohdr_t*>(data);
 
         int64_t cached = header->textureindex != 0 ? header->texturedataindex : header->length;
 
-        if (cached < static_cast<int64_t>(sizeof(studiohdr_t)) || cached > static_cast<int64_t>(size))
+        if (cached < static_cast<int64_t>(sizeof(goldsrc::studiohdr_t)) || cached > static_cast<int64_t>(size))
         {
             return 0;
         }
@@ -54,12 +52,12 @@ namespace ncl_studio
 
     ncl_utils::Result<> ValidateStudioFile(const void* data, size_t size)
     {
-        if (data == nullptr || size < sizeof(studiohdr_t))
+        if (data == nullptr || size < sizeof(goldsrc::studiohdr_t))
         {
             return ncl_utils::ResultError("file is shorter than a studio header");
         }
 
-        const studiohdr_t* header = static_cast<const studiohdr_t*>(data);
+        const goldsrc::studiohdr_t* header = static_cast<const goldsrc::studiohdr_t*>(data);
 
         std::string shape_error = HeaderShapeError(header);
         if (!shape_error.empty())
@@ -79,12 +77,12 @@ namespace ncl_studio
             );
         }
 
-        if (!Fits(header->boneindex, header->numbones, sizeof(mstudiobone_t), cached))
+        if (!Fits(header->boneindex, header->numbones, sizeof(goldsrc::mstudiobone_t), cached))
         {
             return ncl_utils::ResultError(Outside("bone array", header->boneindex, header->numbones, cached));
         }
 
-        if (!Fits(header->bodypartindex, header->numbodyparts, sizeof(mstudiobodyparts_t), cached))
+        if (!Fits(header->bodypartindex, header->numbodyparts, sizeof(goldsrc::mstudiobodyparts_t), cached))
         {
             return ncl_utils::ResultError(
                 Outside("body part array", header->bodypartindex, header->numbodyparts, cached)
@@ -102,7 +100,7 @@ namespace ncl_studio
             );
         }
 
-        if (!Fits(header->textureindex, header->numtextures, sizeof(mstudiotexture_t), cached))
+        if (!Fits(header->textureindex, header->numtextures, sizeof(goldsrc::mstudiotexture_t), cached))
         {
             return ncl_utils::ResultError(
                 Outside("texture array", header->textureindex, header->numtextures, cached)
@@ -115,13 +113,13 @@ namespace ncl_studio
             return {};
         }
 
-        const mstudiotexture_t* textures = reinterpret_cast<const mstudiotexture_t*>(
+        const goldsrc::mstudiotexture_t* textures = reinterpret_cast<const goldsrc::mstudiotexture_t*>(
             static_cast<const uint8_t*>(data) + header->textureindex
         );
 
         for (int i = 0; i < header->numtextures; i++)
         {
-            const mstudiotexture_t& texture = textures[i];
+            const goldsrc::mstudiotexture_t& texture = textures[i];
 
             if (texture.width <= 0 || texture.height <= 0)
             {

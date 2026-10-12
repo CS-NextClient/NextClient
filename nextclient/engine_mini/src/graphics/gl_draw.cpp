@@ -3,6 +3,12 @@
 #include <SDL_video.h>
 #include <glad/glad.h>
 #include <optick.h>
+#include <goldsrc/cvar.h>
+#include <goldsrc/engine/client_state.h>
+#include <goldsrc/engine/model.h>
+#include <goldsrc/engine/video.h>
+#include <goldsrc/format/wad.h>
+#include <goldsrc/types.h>
 
 #include "common/host.h"
 #include "common/cmd.h"
@@ -39,14 +45,14 @@ struct quake_mode_t
     int maximize;
 };
 
-void gl_texturemode_hook_callback(cvar_t* cvar);
+void gl_texturemode_hook_callback(goldsrc::cvar_t* cvar);
 
-cvar_t gl_ansio = {"gl_ansio", const_cast<char*>("16"), FCVAR_ARCHIVE};
-cvar_t gl_palette_tex = {"gl_palette_tex", const_cast<char*>("1"), FCVAR_ARCHIVE};
-cvar_t gl_texturemode = {"gl_texturemode", const_cast<char*>("GL_LINEAR_MIPMAP_LINEAR"), FCVAR_ARCHIVE};
-cvar_t gl_picmip = {"gl_picmip", const_cast<char*>("0"), FCVAR_ARCHIVE};
-cvar_t gl_max_size = {"gl_max_size", const_cast<char*>("1024"), FCVAR_ARCHIVE};
-cvar_t gl_round_down = {"gl_round_down", const_cast<char*>("3"), FCVAR_ARCHIVE};
+goldsrc::cvar_t gl_ansio = {"gl_ansio", const_cast<char*>("16"), goldsrc::FCVAR_ARCHIVE};
+goldsrc::cvar_t gl_palette_tex = {"gl_palette_tex", const_cast<char*>("1"), goldsrc::FCVAR_ARCHIVE};
+goldsrc::cvar_t gl_texturemode = {"gl_texturemode", const_cast<char*>("GL_LINEAR_MIPMAP_LINEAR"), goldsrc::FCVAR_ARCHIVE};
+goldsrc::cvar_t gl_picmip = {"gl_picmip", const_cast<char*>("0"), goldsrc::FCVAR_ARCHIVE};
+goldsrc::cvar_t gl_max_size = {"gl_max_size", const_cast<char*>("1024"), goldsrc::FCVAR_ARCHIVE};
+goldsrc::cvar_t gl_round_down = {"gl_round_down", const_cast<char*>("3"), goldsrc::FCVAR_ARCHIVE};
 
 int gl_filter_min = GL_LINEAR_MIPMAP_LINEAR;
 int gl_filter_max = GL_LINEAR;
@@ -63,14 +69,14 @@ static GLint scissor_x;
 static GLint scissor_y;
 static GLsizei scissor_width;
 static GLsizei scissor_height;
-static qboolean giScissorTest;
+static goldsrc::qboolean giScissorTest;
 
 static GLuint translate_texture;
 static uint8_t menuplyr_pixels[4096];
 
 static PaletteHandle g_CurrentPalette;
 
-static nitroapi::viddef_t vid;
+static goldsrc::viddef_t vid;
 static float v_blend[4];
 static float oldgammavalue;
 static float oldlightgamma;
@@ -78,11 +84,11 @@ static float oldtexgamma;
 static float oldbrightness;
 static uint8_t ramps[3][sizeof(texgammatable)];
 
-static cvar_t* con_color;
+static goldsrc::cvar_t* con_color;
 
-static cachewad_t* menu_wad;
-static cachewad_t custom_wad;
-static qpic_t* draw_disc;
+static goldsrc::cachewad_t* menu_wad;
+static goldsrc::cachewad_t custom_wad;
+static goldsrc::qpic_t* draw_disc;
 static char decal_names[8192];
 
 static quake_mode_t modes[6]{
@@ -175,7 +181,7 @@ void BuildGammaTable(float g)
     }
 }
 
-void Draw_MiptexTexture(cachewad_t* wad, unsigned char* data)
+void Draw_MiptexTexture(goldsrc::cachewad_t* wad, unsigned char* data)
 {
     eng()->Draw_MiptexTexture(wad, data);
 }
@@ -278,14 +284,14 @@ void V_UpdatePalette()
 }
 
 static void AdjustSubRect(
-    mspriteframe_t* pFrame,
+    goldsrc::mspriteframe_t* pFrame,
     float* pfLeft,
     float* pfRight,
     float* pfTop,
     float* pfBottom,
     int* pw,
     int* ph,
-    const wrect_t* prcSubRect
+    const goldsrc::wrect_t* prcSubRect
 )
 {
     OPTICK_EVENT();
@@ -414,7 +420,7 @@ int GL_LoadTexture2(
     int width,
     int height,
     uint8_t* data,
-    qboolean mipmap,
+    goldsrc::qboolean mipmap,
     int iType,
     uint8_t* pPal,
     int filter
@@ -503,7 +509,7 @@ static void DrawQuad(float x_left, float y_top, float x_right, float y_bottom, f
     qglEnd();
 }
 
-static void SetAlphaColor(colorVec* color, float alpha)
+static void SetAlphaColor(goldsrc::colorVec* color, float alpha)
 {
     OPTICK_EVENT();
 
@@ -543,7 +549,7 @@ static void FillTranslatedPixels(unsigned int* trans, int width, int height)
     }
 }
 
-void Draw_TransPicTranslate(int x, int y, qpic_t* pic)
+void Draw_TransPicTranslate(int x, int y, goldsrc::qpic_t* pic)
 {
     OPTICK_EVENT();
 
@@ -572,7 +578,7 @@ void Draw_TransPicTranslate(int x, int y, qpic_t* pic)
     float x_right = x + pic->width;
     float y_bottom = y + pic->height;
 
-    GLfloat* tex_coords = (GLfloat*)((char*)pic + sizeof(qpic_t));
+    GLfloat* tex_coords = (GLfloat*)((char*)pic + sizeof(goldsrc::qpic_t));
     GLfloat uv_left = tex_coords[0];
     GLfloat uv_top = tex_coords[1];
     GLfloat uv_right = tex_coords[2];
@@ -581,7 +587,7 @@ void Draw_TransPicTranslate(int x, int y, qpic_t* pic)
     DrawQuad(x, y, x_right, y_bottom, uv_left, uv_top, uv_right, uv_bottom);
 }
 
-void Draw_AlphaPic(int x, int y, qpic_t* pic, colorVec* pc, int alpha)
+void Draw_AlphaPic(int x, int y, goldsrc::qpic_t* pic, goldsrc::colorVec* pc, int alpha)
 {
     OPTICK_EVENT();
 
@@ -605,7 +611,7 @@ void Draw_AlphaPic(int x, int y, qpic_t* pic, colorVec* pc, int alpha)
     float x_right = x + pic->width;
     float y_bottom = y + pic->height;
 
-    GLfloat* tex_coords = (GLfloat*)((char*)pic + sizeof(qpic_t));
+    GLfloat* tex_coords = (GLfloat*)((char*)pic + sizeof(goldsrc::qpic_t));
     GLfloat uv_left = tex_coords[0];
     GLfloat uv_top = tex_coords[1];
     GLfloat uv_right = tex_coords[2];
@@ -616,7 +622,7 @@ void Draw_AlphaPic(int x, int y, qpic_t* pic, colorVec* pc, int alpha)
     qglDisable(GL_BLEND);
 }
 
-void Draw_AlphaAddPic(int x, int y, qpic_t* pic, colorVec* color, int alpha)
+void Draw_AlphaAddPic(int x, int y, goldsrc::qpic_t* pic, goldsrc::colorVec* color, int alpha)
 {
     OPTICK_EVENT();
 
@@ -648,7 +654,7 @@ void Draw_AlphaAddPic(int x, int y, qpic_t* pic, colorVec* color, int alpha)
     float x_right = x + pic->width;
     float y_bottom = y + pic->height;
 
-    GLfloat* tex_coords = (GLfloat*)((char*)pic + sizeof(qpic_t));
+    GLfloat* tex_coords = (GLfloat*)((char*)pic + sizeof(goldsrc::qpic_t));
     GLfloat uv_left = tex_coords[0];
     GLfloat uv_top = tex_coords[1];
     GLfloat uv_right = tex_coords[2];
@@ -659,7 +665,15 @@ void Draw_AlphaAddPic(int x, int y, qpic_t* pic, colorVec* color, int alpha)
     qglTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, gl_filter_max);
 }
 
-void Draw_AlphaSubPic(int x_dest, int y_dest, int x_src, int y_src, int width, int height, qpic_t* pic, colorVec* color, int alpha)
+void Draw_AlphaSubPic(int x_dest,
+                      int y_dest,
+                      int x_src,
+                      int y_src,
+                      int width,
+                      int height,
+                      goldsrc::qpic_t* pic,
+                      goldsrc::colorVec* color,
+                      int alpha)
 {
     OPTICK_EVENT();
 
@@ -699,7 +713,7 @@ void Draw_AlphaSubPic(int x_dest, int y_dest, int x_src, int y_src, int width, i
     DrawQuad(x_left, y_top, x_right, y_bottom, uv_left, uv_top, uv_right, uv_bottom);
 }
 
-void Draw_Pic2(int x, int y, int w, int h, qpic_t* pic)
+void Draw_Pic2(int x, int y, int w, int h, goldsrc::qpic_t* pic)
 {
     OPTICK_EVENT();
 
@@ -722,7 +736,7 @@ void Draw_Pic2(int x, int y, int w, int h, qpic_t* pic)
     float x_right = (float)w + pic->width;
     float y_bottom = (float)h + pic->height;
 
-    GLfloat* tex_coords = (GLfloat*)((char*)pic + sizeof(qpic_t));
+    GLfloat* tex_coords = (GLfloat*)((char*)pic + sizeof(goldsrc::qpic_t));
     GLfloat uv_left = tex_coords[0];
     GLfloat uv_top = tex_coords[1];
     GLfloat uv_right = tex_coords[2];
@@ -731,7 +745,7 @@ void Draw_Pic2(int x, int y, int w, int h, qpic_t* pic)
     DrawQuad(x, y, x_right, y_bottom, uv_left, uv_top, uv_right, uv_bottom);
 }
 
-void Draw_Pic(int x, int y, qpic_t* pic)
+void Draw_Pic(int x, int y, goldsrc::qpic_t* pic)
 {
     OPTICK_EVENT();
 
@@ -755,7 +769,7 @@ void Draw_Pic(int x, int y, qpic_t* pic)
     float x_right = (float)x + pic->width;
     float y_bottom = (float)y + pic->height;
 
-    GLfloat* tex_coords = (GLfloat*)((char*)pic + sizeof(qpic_t));
+    GLfloat* tex_coords = (GLfloat*)((char*)pic + sizeof(goldsrc::qpic_t));
     GLfloat uv_left = tex_coords[0];
     GLfloat uv_top = tex_coords[1];
     GLfloat uv_right = tex_coords[2];
@@ -771,14 +785,14 @@ void Draw_DecalSetName(int decal, const char* name)
     eng()->Draw_DecalSetName(decal, name);
 }
 
-void Draw_SpriteFrame(mspriteframe_t* pFrame, unsigned short* pPalette, int x, int y, const wrect_t* prcSubRect)
+void Draw_SpriteFrame(goldsrc::mspriteframe_t* pFrame, unsigned short* pPalette, int x, int y, const goldsrc::wrect_t* prcSubRect)
 {
     OPTICK_EVENT();
 
     Draw_Frame(pFrame, x, y, prcSubRect);
 }
 
-void Draw_SpriteFrameAdditive(mspriteframe_t* pFrame, unsigned short* pPalette, int x, int y, const wrect_t* prcSubRect)
+void Draw_SpriteFrameAdditive(goldsrc::mspriteframe_t* pFrame, unsigned short* pPalette, int x, int y, const goldsrc::wrect_t* prcSubRect)
 {
     OPTICK_EVENT();
 
@@ -788,7 +802,7 @@ void Draw_SpriteFrameAdditive(mspriteframe_t* pFrame, unsigned short* pPalette, 
     qglDisable(GL_BLEND);
 }
 
-void Draw_SpriteFrameHoles(mspriteframe_t* pFrame, unsigned short* pPalette, int x, int y, const wrect_t* prcSubRect)
+void Draw_SpriteFrameHoles(goldsrc::mspriteframe_t* pFrame, unsigned short* pPalette, int x, int y, const goldsrc::wrect_t* prcSubRect)
 {
     OPTICK_EVENT();
 
@@ -804,11 +818,11 @@ void Draw_SpriteFrameHoles(mspriteframe_t* pFrame, unsigned short* pPalette, int
 }
 
 void Draw_SpriteFrameGeneric(
-    mspriteframe_t* pFrame,
+    goldsrc::mspriteframe_t* pFrame,
     unsigned short* pPalette,
     int x,
     int y,
-    const wrect_t* prcSubRect,
+    const goldsrc::wrect_t* prcSubRect,
     int src,
     int dest,
     int width,
@@ -832,7 +846,7 @@ void Draw_SpriteFrameGeneric(
     pFrame->height = old_height;
 }
 
-void Draw_Frame(mspriteframe_t* pFrame, int ix, int iy, const wrect_t* prcSubRect)
+void Draw_Frame(goldsrc::mspriteframe_t* pFrame, int ix, int iy, const goldsrc::wrect_t* prcSubRect)
 {
     OPTICK_EVENT();
 
@@ -918,7 +932,7 @@ void DisableScissorTest()
     giScissorTest = false;
 }
 
-qpic_t* LoadTransPic(const char* pszName, qpic_t* ppic)
+goldsrc::qpic_t* LoadTransPic(const char* pszName, goldsrc::qpic_t* ppic)
 {
     OPTICK_EVENT();
 
@@ -954,22 +968,22 @@ qpic_t* LoadTransPic(const char* pszName, qpic_t* ppic)
     pic_new->tl = 0;
     pic_new->th = 1;
 
-    return (qpic_t*)pic_new;
+    return (goldsrc::qpic_t*)pic_new;
 }
 
-void Draw_CacheWadInitFromFile(FileHandle_t hFile, int len, const char* name, int cacheMax, cachewad_t* wad)
+void Draw_CacheWadInitFromFile(FileHandle_t hFile, int len, const char* name, int cacheMax, goldsrc::cachewad_t* wad)
 {
     OPTICK_EVENT();
 
-    wadinfo_t header;
+    goldsrc::wadinfo_t header;
 
-    FS_Read(&header, sizeof(wadinfo_t), hFile);
+    FS_Read(&header, sizeof(goldsrc::wadinfo_t), hFile);
     if (*(int*)header.identification != MAKEID('W', 'A', 'D', '3'))
     {
         Sys_Error("Wad file %s doesn't have WAD3 id\n", name);
     }
 
-    wad->lumps = (lumpinfo_s*)Mem_Malloc(len - header.infotableofs);
+    wad->lumps = (goldsrc::lumpinfo_t*)Mem_Malloc(len - header.infotableofs);
     FS_Seek(hFile, header.infotableofs, FILESYSTEM_SEEK_HEAD);
     FS_Read(wad->lumps, len - header.infotableofs, hFile);
 
@@ -983,15 +997,15 @@ void Draw_CacheWadInitFromFile(FileHandle_t hFile, int len, const char* name, in
     wad->cacheCount = 0;
     wad->name = Mem_Strdup(name);
 
-    wad->cache = (cacheentry_t*)Mem_Malloc(sizeof(cacheentry_t) * cacheMax);
-    Q_memset(wad->cache, 0, sizeof(cacheentry_t) * cacheMax);
+    wad->cache = (goldsrc::cacheentry_t*)Mem_Malloc(sizeof(goldsrc::cacheentry_t) * cacheMax);
+    Q_memset(wad->cache, 0, sizeof(goldsrc::cacheentry_t) * cacheMax);
 
     wad->tempWad = 0;
     wad->pfnCacheBuild = 0;
     wad->cacheExtra = 0;
 }
 
-void Draw_CacheWadInit(const char* name, int cacheMax, cachewad_t* wad)
+void Draw_CacheWadInit(const char* name, int cacheMax, goldsrc::cachewad_t* wad)
 {
     OPTICK_EVENT();
 
@@ -1006,7 +1020,7 @@ void Draw_CacheWadInit(const char* name, int cacheMax, cachewad_t* wad)
     FS_Close(file);
 }
 
-void Draw_FreeWad(cachewad_t* pWad)
+void Draw_FreeWad(goldsrc::cachewad_t* pWad)
 {
     OPTICK_EVENT();
 
@@ -1066,7 +1080,7 @@ void Draw_FreeWad(cachewad_t* pWad)
     }
 }
 
-void Draw_CacheWadHandler(cachewad_t* wad, PFNCACHE fn, int extraDataSize)
+void Draw_CacheWadHandler(goldsrc::cachewad_t* wad, goldsrc::PFNCACHE fn, int extraDataSize)
 {
     wad->pfnCacheBuild = fn;
     wad->cacheExtra = extraDataSize;
@@ -1087,15 +1101,15 @@ void GL_Texels_f()
     Con_Printf("Obsolete\n");
 }
 
-qpic_t* LoadTransBMP(const char* name)
+goldsrc::qpic_t* LoadTransBMP(const char* name)
 {
     OPTICK_EVENT();
 
-    qpic_t* lump_name = (qpic_t*)W_GetLumpName(0, name);
+    goldsrc::qpic_t* lump_name = (goldsrc::qpic_t*)W_GetLumpName(0, name);
     return LoadTransPic(name, lump_name);
 }
 
-int GL_LoadPicTexture(qpic_t* pic, const char* pszName)
+int GL_LoadPicTexture(goldsrc::qpic_t* pic, const char* pszName)
 {
     OPTICK_EVENT();
 
@@ -1112,14 +1126,14 @@ int GL_LoadPicTexture(qpic_t* pic, const char* pszName)
     );
 }
 
-qpic_t* Draw_PicFromWad(const char* name)
+goldsrc::qpic_t* Draw_PicFromWad(const char* name)
 {
     OPTICK_EVENT();
 
-    qpic_t* p;
+    goldsrc::qpic_t* p;
     glpic_t* gl;
 
-    p = (qpic_t*)W_GetLumpName(0, name);
+    p = (goldsrc::qpic_t*)W_GetLumpName(0, name);
     gl = (glpic_t*)p->data;
 
     gl->texnum = GL_LoadPicTexture(p, name);
@@ -1131,7 +1145,7 @@ qpic_t* Draw_PicFromWad(const char* name)
     return p;
 }
 
-void gl_texturemode_hook_callback(cvar_t* cvar)
+void gl_texturemode_hook_callback(goldsrc::cvar_t* cvar)
 {
     OPTICK_EVENT();
 
@@ -1175,9 +1189,12 @@ void Draw_Init()
     g_DrawInitialized = true;
 
     VGUI2_Draw_Init();
+    VGUI2_InstallTextSurface();
 
     Cmd_AddCommand("gl_texels", GL_Texels_f);
+#ifdef _WIN32
     TextRender_RegisterDiagnostics();
+#endif
     render::Config_Init();
     render::Studio_RegisterCommands();
     render::Capture_RegisterCommands();
@@ -1197,7 +1214,7 @@ void Draw_Init()
         qglTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY_EXT, gl_ansio.value);
     }
 
-    menu_wad = (cachewad_t*)Mem_ZeroMalloc(sizeof(cachewad_t));
+    menu_wad = (goldsrc::cachewad_t*)Mem_ZeroMalloc(sizeof(goldsrc::cachewad_t));
     Draw_CacheWadInit("cached.wad", 16, menu_wad);
     menu_wad->tempWad = 1;
 

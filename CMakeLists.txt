@@ -1,5 +1,21 @@
 cmake_minimum_required(VERSION 3.21)
-project(NextClient VERSION 2.5.3)
+
+# a clone made without Git LFS holds pointer files in place of the LFS objects, and BUILD_ALL would install them;
+# checked ahead of project(), whose toolchain file runs the whole vcpkg install. One file per pattern of .gitattributes
+string(HEX "version https://git-lfs" NEXTCLIENT_LFS_POINTER_HEAD)
+
+foreach (NEXTCLIENT_LFS_FILE
+        "assets/platform/servers/geoip_country.mmdb"
+        "assets/platform/servers/icon_country_column.tga"
+        "dep/optic/bin/OptickCore.dll")
+    file(READ "${CMAKE_CURRENT_SOURCE_DIR}/${NEXTCLIENT_LFS_FILE}" NEXTCLIENT_LFS_FILE_HEAD LIMIT 23 HEX)
+
+    if (NEXTCLIENT_LFS_FILE_HEAD STREQUAL NEXTCLIENT_LFS_POINTER_HEAD)
+        message(FATAL_ERROR "${NEXTCLIENT_LFS_FILE} is a Git LFS pointer file: install Git LFS and run 'git lfs pull'")
+    endif ()
+endforeach ()
+
+project(NextClient VERSION 2.6.0)
 
 set(NEXTCLIENT_ROOT ${CMAKE_CURRENT_SOURCE_DIR})
 
@@ -11,6 +27,8 @@ set(CMAKE_MODULE_PATH
 
 if (NEXTCLIENT_BUILD_TESTS)
     set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/out/bin)
+    set(CMAKE_GTEST_DISCOVER_TESTS_DISCOVERY_MODE PRE_TEST CACHE STRING
+            "When Google Test executables are queried for test discovery")
     enable_testing()
 else ()
     set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/out/bin)
@@ -66,30 +84,52 @@ if (MSVC)
     )
 endif ()
 
-# external dependencies
+# external dependencies (needed by engine_mini as well as the launcher)
 add_subdirectory(dep/cpr)
 add_subdirectory(dep/easyloggingpp)
 add_subdirectory(dep/bzip2)
 add_subdirectory(dep/glad)
 add_subdirectory(dep/stb)
 
+# Settings of the SDK fork, nitro_utils, funchook, goldsrc_abi and nitro_api. The standard is set
+# here rather than at the top of the file, and unset again below the last of them, so that the
+# directories added outside this span keep the standard they choose: cpr picks C++17 for itself
+# whenever the parent leaves it unset, and data_encoding picks nothing at all. A cache entry from
+# the command line outlives the unset and reaches all of them.
+set(CMAKE_POLICY_DEFAULT_CMP0077 NEW)
+set(CMAKE_CXX_STANDARD 23)
+
+if (UNIX)
+    add_compile_options(-m32 -march=pentium4 -Wno-narrowing)
+    add_link_options(-m32 -static-libstdc++ -static-libgcc)
+    set(CMAKE_LIBRARY_ARCHITECTURE i386-linux-gnu)
+endif ()
+
+# funchook options. Its cmake_minimum_required is 3.11, which leaves CMP0077 unset, so the policy
+# default above is what keeps its option() calls from overwriting these.
+set(FUNCHOOK_BUILD_SHARED OFF)
+set(FUNCHOOK_BUILD_TESTS OFF)
+set(FUNCHOOK_INSTALL OFF)
+set(FUNCHOOK_CPU "x86")
+
+add_subdirectory(dep/ncl-hl1-source-sdk)
+add_subdirectory(dep/nitro_utils)
+add_subdirectory(dep/funchook) # while funchook is not in vcpkg, add it as add_subdirectory (PS do NOT make it a sub-module).
+
 # NextClient sub-projects
-add_subdirectory(dep/NclNitroApi)
+add_subdirectory(nextclient/goldsrc_abi)
+add_subdirectory(nextclient/nitro_api)
+
+unset(CMAKE_CXX_STANDARD)
+
 add_subdirectory(nextclient/packages)
-add_subdirectory(nextclient/launcher)
 add_subdirectory(nextclient/engine_mini)
-add_subdirectory(nextclient/filesystem_proxy)
-add_subdirectory(nextclient/client_mini)
 add_subdirectory(nextclient/gameui)
+add_subdirectory(nextclient/client_mini)
 add_subdirectory(nextclient/matgen)
 add_subdirectory(nextclient/steam_api_proxy)
-
-# vgui2 lives in the SDK submodule and cannot name a NextClient target, but its font path is served
-# by the engine text service and draws the glyph atlas through glad. Hand it the engine-mini headers
-# and glad from this side until the vgui2 shim itself moves out of the submodule (see
-# docs/engine-text-service-plan.md).
-target_include_directories(vgui2 PRIVATE "${NEXTCLIENT_ROOT}/nextclient/engine_mini/include")
-target_link_libraries(vgui2 PRIVATE glad::glad)
+add_subdirectory(nextclient/filesystem_proxy)
+add_subdirectory(nextclient/launcher)
 
 # Windows 7 compatibility
 if (MSVC)
@@ -117,6 +157,7 @@ endif ()
 # custom build target
 if (NOT NEXTCLIENT_BUILD_TESTS)
     add_custom_target(BUILD_ALL ALL)
+
     add_dependencies(BUILD_ALL
             next_launcher
             engine_mini
@@ -128,7 +169,7 @@ if (NOT NEXTCLIENT_BUILD_TESTS)
             vgui2
     )
 
-    if (NEXTCLIENT_INSTALL_DIR)
+    if (WIN32 AND NEXTCLIENT_INSTALL_DIR)
         add_custom_command(TARGET BUILD_ALL POST_BUILD
                 COMMENT "Installing libraries and assets to ${NEXTCLIENT_INSTALL_DIR}..."
                 COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:next_launcher> ${NEXTCLIENT_INSTALL_DIR}/cstrike.exe
@@ -144,6 +185,24 @@ if (NOT NEXTCLIENT_BUILD_TESTS)
                         -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/CheckLfsPointers.cmake
                 COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_CURRENT_SOURCE_DIR}/assets ${NEXTCLIENT_INSTALL_DIR}
                 COMMAND ${CMAKE_COMMAND} -E copy ${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/tools/sentry-native/crashpad_handler.exe ${NEXTCLIENT_INSTALL_DIR}/crashpad_handler.exe
+        )
+    elseif (UNIX AND NEXTCLIENT_INSTALL_DIR)
+        # hw.so loads cstrike/cl_dlls/gameui.so by that exact name; ours replaces Valve's vgui2.so
+        add_custom_command(TARGET BUILD_ALL POST_BUILD
+                COMMENT "Installing libraries and assets to ${NEXTCLIENT_INSTALL_DIR}..."
+                COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:next_launcher> ${NEXTCLIENT_INSTALL_DIR}/cstrike.exe
+                COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:engine_mini> ${NEXTCLIENT_INSTALL_DIR}/next_engine_mini.dll
+                COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:filesystem_proxy> ${NEXTCLIENT_INSTALL_DIR}/FileSystem_Proxy.dll
+                COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:client_mini> ${NEXTCLIENT_INSTALL_DIR}/cstrike/cl_dlls/client_mini.dll
+                COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:gameui> ${NEXTCLIENT_INSTALL_DIR}/cstrike/cl_dlls/gameui.so
+                COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:steam_api_proxy> ${NEXTCLIENT_INSTALL_DIR}/steam_api.dll
+                COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:nitro_api> ${NEXTCLIENT_INSTALL_DIR}/nitro_api2.dll
+                COMMAND ${CMAKE_COMMAND} -DVGUI2_PATH=${NEXTCLIENT_INSTALL_DIR}/vgui2.so -P ${NEXTCLIENT_ROOT}/cmake/BackupValveVgui2.cmake
+                COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:vgui2> ${NEXTCLIENT_INSTALL_DIR}/vgui2.so
+                COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/nextclient/launcher/linux/nextclient.sh ${NEXTCLIENT_INSTALL_DIR}/nextclient.sh
+                COMMAND ${CMAKE_COMMAND} -DDIRECTORY=${CMAKE_CURRENT_SOURCE_DIR}/assets/cstrike/materials
+                        -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/CheckLfsPointers.cmake
+                COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_CURRENT_SOURCE_DIR}/assets ${NEXTCLIENT_INSTALL_DIR}
         )
     endif ()
 endif ()

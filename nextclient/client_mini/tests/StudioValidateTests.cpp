@@ -6,8 +6,7 @@
 
 #include <ncl_studio/StudioValidate.h>
 
-#include <tier0/basetypes.h>
-#include <studio.h>
+#include <goldsrc/format/studio.h>
 
 using namespace ncl_studio;
 
@@ -22,23 +21,23 @@ namespace
     public:
         FileBuilder()
         {
-            buffer_.resize(sizeof(studiohdr_t) + 4096);
+            buffer_.resize(sizeof(goldsrc::studiohdr_t) + 4096);
             std::memset(buffer_.data(), 0, buffer_.size());
 
             header().version = kStudioVersion;
             header().numbones = 1;
-            header().boneindex = sizeof(studiohdr_t);
+            header().boneindex = sizeof(goldsrc::studiohdr_t);
 
             header().numbodyparts = 1;
-            header().bodypartindex = sizeof(studiohdr_t) + 512;
+            header().bodypartindex = sizeof(goldsrc::studiohdr_t) + 512;
 
             header().numskinref = 2;
             header().numskinfamilies = 2;
-            header().skinindex = sizeof(studiohdr_t) + 1024;
+            header().skinindex = sizeof(goldsrc::studiohdr_t) + 1024;
 
             header().numtextures = 1;
-            header().textureindex = sizeof(studiohdr_t) + 1536;
-            header().texturedataindex = sizeof(studiohdr_t) + 2048;
+            header().textureindex = sizeof(goldsrc::studiohdr_t) + 1536;
+            header().texturedataindex = sizeof(goldsrc::studiohdr_t) + 2048;
             header().length = static_cast<int>(buffer_.size());
 
             texture().width = 4;
@@ -46,11 +45,11 @@ namespace
             texture().index = header().texturedataindex;
         }
 
-        studiohdr_t& header() { return *reinterpret_cast<studiohdr_t*>(buffer_.data()); }
+        goldsrc::studiohdr_t& header() { return *reinterpret_cast<goldsrc::studiohdr_t*>(buffer_.data()); }
 
-        mstudiotexture_t& texture()
+        goldsrc::mstudiotexture_t& texture()
         {
-            return *reinterpret_cast<mstudiotexture_t*>(buffer_.data() + header().textureindex);
+            return *reinterpret_cast<goldsrc::mstudiotexture_t*>(buffer_.data() + header().textureindex);
         }
 
         const void* data() const { return buffer_.data(); }
@@ -73,7 +72,7 @@ TEST(StudioValidate, RejectsABufferShorterThanTheHeader)
 {
     FileBuilder file;
 
-    ncl_utils::Result<> result = ValidateStudioFile(file.data(), sizeof(studiohdr_t) - 1);
+    ncl_utils::Result<> result = ValidateStudioFile(file.data(), sizeof(goldsrc::studiohdr_t) - 1);
     ASSERT_TRUE(result.has_error());
     EXPECT_NE(result.error_str().find("shorter than a studio header"), std::string::npos) << result.error_str();
 }
@@ -167,7 +166,7 @@ TEST(StudioValidate, RejectsATextureWithNoSize)
 TEST(StudioValidate, RejectsABoneCountOutsideTheFormat)
 {
     FileBuilder file;
-    file.header().numbones = MAXSTUDIOBONES + 1;
+    file.header().numbones = goldsrc::MAXSTUDIOBONES + 1;
 
     ncl_utils::Result<> result = ValidateStudioFile(file.data(), file.size());
     ASSERT_TRUE(result.has_error());

@@ -12,12 +12,7 @@
 #include <vgui_controls/ListPanel.h>
 
 #include <basetypes.h>
-#include <common.h>
-#include <cvardef.h>
-#include <pm_defs.h>
-#include <kbutton.h>
-#include <r_efx.h>
-#include <r_studioint.h>
+#include <goldsrc/hltv.h>
 
 #include "DemoEditDialog.h"
 
@@ -149,7 +144,7 @@ void CDemoEventsDialog::OnAdd()
     m_Engine->GetViewOrigin( origin );
     m_Engine->GetViewAngles( angles );
 
-    newcmd.m_Type = DRC_CMD_CAMERA;
+    newcmd.m_Type = goldsrc::DRC_CMD_CAMERA;
     newcmd.Clear();
     newcmd.m_Time = m_DemoPlayer->GetWorldTime();
     newcmd.SetCameraData( origin, angles, 90.0f, 0);	// camera event as default

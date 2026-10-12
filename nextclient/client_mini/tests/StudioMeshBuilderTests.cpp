@@ -3,9 +3,7 @@
 #include <cstring>
 #include <vector>
 
-// studio.h uses vec3_t without declaring it.
-#include <tier0/basetypes.h>
-#include <studio.h>
+#include <goldsrc/format/studio.h>
 
 #include <ncl_studio/StudioMeshBuilder.h>
 
@@ -13,14 +11,14 @@ using namespace ncl_studio;
 
 namespace
 {
-    // vec3_t is a raw float[3] and cannot be a container element, so the test carries
+    // goldsrc::vec3_t is a raw float[3] and cannot be a container element, so the test carries
     // its own layout-compatible POD.
     struct Vec3Data
     {
         float x, y, z;
     };
 
-    static_assert(sizeof(Vec3Data) == sizeof(vec3_t));
+    static_assert(sizeof(Vec3Data) == sizeof(goldsrc::vec3_t));
 
     // Builds the smallest .mdl the converter accepts: one body part, one submodel and
     // one mesh whose command list is supplied by the caller. Offsets are filled in as
@@ -30,18 +28,18 @@ namespace
     public:
         ModelBuilder()
         {
-            buffer_.resize(sizeof(studiohdr_t));
+            buffer_.resize(sizeof(goldsrc::studiohdr_t));
             std::memset(buffer_.data(), 0, buffer_.size());
             header().version = kStudioVersion;
 
             // The fixtures write bone indices spread over the format's range, so the model
             // declares the whole range; a test that wants a tighter ceiling sets it itself.
-            header().numbones = MAXSTUDIOBONES;
+            header().numbones = goldsrc::MAXSTUDIOBONES;
         }
 
-        studiohdr_t& header()
+        goldsrc::studiohdr_t& header()
         {
-            return *reinterpret_cast<studiohdr_t*>(buffer_.data());
+            return *reinterpret_cast<goldsrc::studiohdr_t*>(buffer_.data());
         }
 
         void SetGeometry(const std::vector<Vec3Data>& positions, const std::vector<Vec3Data>& normals)
@@ -63,9 +61,9 @@ namespace
 
         std::vector<uint8_t> Build()
         {
-            int bodypart_offset = Append(nullptr, sizeof(mstudiobodyparts_t));
-            int submodel_offset = Append(nullptr, sizeof(mstudiomodel_t));
-            int mesh_offset = Append(nullptr, sizeof(mstudiomesh_t));
+            int bodypart_offset = Append(nullptr, sizeof(goldsrc::mstudiobodyparts_t));
+            int submodel_offset = Append(nullptr, sizeof(goldsrc::mstudiomodel_t));
+            int mesh_offset = Append(nullptr, sizeof(goldsrc::mstudiomesh_t));
 
             int positions_offset = Append(positions_.data(), positions_.size() * sizeof(Vec3Data));
             int normals_offset = Append(normals_.data(), normals_.size() * sizeof(Vec3Data));
@@ -76,11 +74,11 @@ namespace
             header().numbodyparts = 1;
             header().bodypartindex = bodypart_offset;
 
-            mstudiobodyparts_t& bodypart = At<mstudiobodyparts_t>(bodypart_offset);
+            goldsrc::mstudiobodyparts_t& bodypart = At<goldsrc::mstudiobodyparts_t>(bodypart_offset);
             bodypart.nummodels = 1;
             bodypart.modelindex = submodel_offset;
 
-            mstudiomodel_t& submodel = At<mstudiomodel_t>(submodel_offset);
+            goldsrc::mstudiomodel_t& submodel = At<goldsrc::mstudiomodel_t>(submodel_offset);
             submodel.nummesh = 1;
             submodel.meshindex = mesh_offset;
             submodel.numverts = static_cast<int>(positions_.size());
@@ -90,7 +88,7 @@ namespace
             submodel.vertinfoindex = position_bones_offset;
             submodel.norminfoindex = normal_bones_offset;
 
-            mstudiomesh_t& mesh = At<mstudiomesh_t>(mesh_offset);
+            goldsrc::mstudiomesh_t& mesh = At<goldsrc::mstudiomesh_t>(mesh_offset);
             mesh.triindex = commands_offset;
             mesh.skinref = 3;
 
@@ -336,11 +334,11 @@ TEST(StudioMeshBuilder, RecordsTheSubmodelFileOffset)
     ASSERT_FALSE(result.has_error()) << result.error_str();
     ASSERT_EQ(result->submodels.size(), 1u);
 
-    // The offset has to address the mstudiomodel_t the engine hands back at draw time,
+    // The offset has to address the goldsrc::mstudiomodel_t the engine hands back at draw time,
     // so it is checked against the body part's own modelindex rather than a constant.
-    const studiohdr_t* header = reinterpret_cast<const studiohdr_t*>(model.data());
-    const mstudiobodyparts_t* bodypart =
-        reinterpret_cast<const mstudiobodyparts_t*>(model.data() + header->bodypartindex);
+    const goldsrc::studiohdr_t* header = reinterpret_cast<const goldsrc::studiohdr_t*>(model.data());
+    const goldsrc::mstudiobodyparts_t* bodypart =
+        reinterpret_cast<const goldsrc::mstudiobodyparts_t*>(model.data() + header->bodypartindex);
 
     EXPECT_EQ(result->submodels[0].file_offset, static_cast<uint32_t>(bodypart->modelindex));
 }
@@ -421,11 +419,11 @@ TEST(StudioMeshBuilder, RejectsAModelThatExpandsBeyondItsOwnSize)
     // array being too long: it is several levels each pointing at the same region, which
     // multiplies. Here one submodel claims many meshes that all alias the same command
     // list - each costs twenty bytes of file and a full expansion of the list.
-    studiohdr_t* header = reinterpret_cast<studiohdr_t*>(model.data());
-    mstudiobodyparts_t* bodypart = reinterpret_cast<mstudiobodyparts_t*>(model.data() + header->bodypartindex);
-    mstudiomodel_t* submodel = reinterpret_cast<mstudiomodel_t*>(model.data() + bodypart->modelindex);
+    goldsrc::studiohdr_t* header = reinterpret_cast<goldsrc::studiohdr_t*>(model.data());
+    goldsrc::mstudiobodyparts_t* bodypart = reinterpret_cast<goldsrc::mstudiobodyparts_t*>(model.data() + header->bodypartindex);
+    goldsrc::mstudiomodel_t* submodel = reinterpret_cast<goldsrc::mstudiomodel_t*>(model.data() + bodypart->modelindex);
 
-    mstudiomesh_t mesh = *reinterpret_cast<const mstudiomesh_t*>(model.data() + submodel->meshindex);
+    goldsrc::mstudiomesh_t mesh = *reinterpret_cast<const goldsrc::mstudiomesh_t*>(model.data() + submodel->meshindex);
 
     constexpr int kAliasedMeshes = 400;
     int mesh_array = static_cast<int>(model.size());
@@ -433,13 +431,13 @@ TEST(StudioMeshBuilder, RejectsAModelThatExpandsBeyondItsOwnSize)
     for (int i = 0; i < kAliasedMeshes; i++)
     {
         const uint8_t* bytes = reinterpret_cast<const uint8_t*>(&mesh);
-        model.insert(model.end(), bytes, bytes + sizeof(mstudiomesh_t));
+        model.insert(model.end(), bytes, bytes + sizeof(goldsrc::mstudiomesh_t));
     }
 
     // The vector moved, so the header pointers are taken again.
-    header = reinterpret_cast<studiohdr_t*>(model.data());
-    bodypart = reinterpret_cast<mstudiobodyparts_t*>(model.data() + header->bodypartindex);
-    submodel = reinterpret_cast<mstudiomodel_t*>(model.data() + bodypart->modelindex);
+    header = reinterpret_cast<goldsrc::studiohdr_t*>(model.data());
+    bodypart = reinterpret_cast<goldsrc::mstudiobodyparts_t*>(model.data() + header->bodypartindex);
+    submodel = reinterpret_cast<goldsrc::mstudiomodel_t*>(model.data() + bodypart->modelindex);
 
     submodel->nummesh = kAliasedMeshes;
     submodel->meshindex = mesh_array;
@@ -452,7 +450,7 @@ TEST(StudioMeshBuilder, RejectsAModelThatExpandsBeyondItsOwnSize)
 TEST(StudioMeshBuilder, RejectsBoneCountOutsideTheFormat)
 {
     ModelBuilder builder = MakeBuilder(3);
-    builder.header().numbones = MAXSTUDIOBONES + 1;
+    builder.header().numbones = goldsrc::MAXSTUDIOBONES + 1;
 
     std::vector<uint8_t> model = builder.Build();
 

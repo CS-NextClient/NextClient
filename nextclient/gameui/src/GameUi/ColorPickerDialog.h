@@ -1,36 +1,23 @@
 #pragma once
 
+#include <array>
 #include <string>
 
 #include <vgui_controls/Frame.h>
+
+#include <ncl_math/color.h>
 
 class CPixelPanel;
 
 namespace vgui2
 {
-    class Label;
     class TextEntry;
 } // namespace vgui2
 
-// Where a gradient strip reports the fraction it was clicked at. Declared here rather than
-// beside the strip itself so the dialog can be its own listener and no object has to exist
-// between the two.
-class IColorStripListener
-{
-public:
-    virtual ~IColorStripListener() = default;
-
-    virtual void OnStripPicked(int id, float x, float y) = 0;
-};
-
-// Picks a colour for a vec4 the program asked to be edited as one, laid out the way the
-// game's own colour dialog is: the colour being chosen over the colour it replaces, the
-// value as three numbers, the shade square with the hue below it.
-//
-// The value stays four floats: the material format carries nothing else, and a tint is a
-// multiplier, so 0..1 is what the square covers. A number above one is still reachable by
-// typing it into the row's own fields; this is for choosing a colour by eye.
-class CColorPickerDialog : public vgui2::Frame, public IColorStripListener
+// Picks a color by eye, laid out the way the game's own color dialog is: the color being
+// chosen over the color it replaces, the value as three numbers, the shade square with the
+// hue below it. The value is four floats over 0..1, which is what the square covers.
+class CColorPickerDialog : public vgui2::Frame
 {
     DECLARE_CLASS_SIMPLE(CColorPickerDialog, vgui2::Frame);
 
@@ -40,12 +27,15 @@ public:
     public:
         virtual ~IListener() = default;
 
-        // Sent while the colour is being chosen as well as when it is accepted, so the
+        // Sent while the color is being chosen as well as when it is accepted, so the
         // model in front of the author changes under the cursor rather than after an OK.
         virtual void OnColorPicked(const char* param, const float rgba[4]) = 0;
     };
 
 private:
+    class Strip;
+    class Preset;
+
     IListener* m_pListener;
     std::string m_Param;
 
@@ -54,20 +44,33 @@ private:
     float m_Value;
     float m_Alpha;
 
-    float m_Original[4];
-    float m_Defaults[4];
+    ncl_math::ColorF m_Original;
+    ncl_math::ColorF m_Defaults;
 
-    CPixelPanel* m_pShade;
-    CPixelPanel* m_pHue;
-    CPixelPanel* m_pAlpha;
+    Strip* m_pShade;
+    Strip* m_pHue;
+    Strip* m_pAlpha;
+
+    // A color that carries no transparency hides the bar instead of showing one that
+    // does nothing to what the caller reads back.
+    bool m_WithAlpha;
     CPixelPanel* m_pNew;
     CPixelPanel* m_pOld;
 
+    // Ready colors, offered as plain squares: naming them buys nothing when the color
+    // itself is the label.
+    static constexpr int kPresetCount = 10;
+    std::array<Preset*, kPresetCount> m_Presets{};
+
     vgui2::TextEntry* m_pField;
 
-    // Set while the field is being filled from the colour, so the change message that
+    // Set while the field is being filled from the color, so the change message that
     // causes does not travel back and re-read it.
     bool m_Loading;
+
+    // Set while the color is being read out of the field: writing the field back would
+    // put the caret at its start after every keystroke.
+    bool m_EditingField;
 
     // What was modal before this window took over. Restored on every close, including the
     // title bar's button and Escape, neither of which passes through the buttons below.
@@ -79,7 +82,8 @@ public:
         IListener* listener,
         const char* param,
         const float rgba[4],
-        const float defaults[4]
+        const float defaults[4],
+        bool with_alpha = true
     );
 
     void Activate() override;
@@ -89,11 +93,14 @@ public:
 
     MESSAGE_FUNC_PTR(OnTextChanged, "TextChanged", panel);
 
-    void OnStripPicked(int id, float x, float y) override;
-
 private:
+    // Where a strip reports the fraction it was clicked at; presets report their own id.
+    void OnStripPicked(int id, float x, float y);
+
+    ncl_math::ColorF CurrentColor() const;
     void SetColor(const float rgba[4]);
     void RedrawShade();
+    void MarkMatchingPreset();
     void RedrawBars();
     void UpdateField();
     void Publish();

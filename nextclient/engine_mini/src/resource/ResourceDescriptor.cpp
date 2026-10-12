@@ -6,6 +6,10 @@
 #include <common/filesystem.h>
 #include <console/console.h>
 #include <nitro_utils/string_utils.h>
+#include <goldsrc/client_api.h>
+#include <goldsrc/engine/resource.h>
+#include <goldsrc/server_api.h>
+#include <goldsrc/types.h>
 
 ResourceDescriptor::ResourceDescriptor(const std::string& filename, int download_size):
     filename_(filename),
@@ -15,7 +19,11 @@ ResourceDescriptor::ResourceDescriptor(const std::string& filename, int download
 {
 }
 
-ResourceDescriptor::ResourceDescriptor(const std::string& filename, const std::string& download_path, CRC32_t server_crc32, int download_size, bool client_only):
+ResourceDescriptor::ResourceDescriptor(const std::string& filename,
+                                       const std::string& download_path,
+                                       goldsrc::CRC32_t server_crc32,
+                                       int download_size,
+                                       bool client_only) :
     filename_(filename),
     save_path_(std::format("{}/{}", GetDownloadsPrivateFolder(), filename)),
     download_path_(download_path),
@@ -72,7 +80,7 @@ bool ResourceDescriptor::NeedToDownload() const
     return !FS_FileExists(filename_.c_str());
 }
 
-CRC32_t ResourceDescriptor::CalcSaveFileCRC32() const
+goldsrc::CRC32_t ResourceDescriptor::CalcSaveFileCRC32() const
 {
     std::ifstream file(save_path_, std::ifstream::in | std::ifstream::ate | std::ifstream::binary);
     if (!file.is_open())
@@ -90,7 +98,7 @@ CRC32_t ResourceDescriptor::CalcSaveFileCRC32() const
     }
     file.close();
 
-    CRC32_t crc32;
+    goldsrc::CRC32_t crc32;
     g_engfuncs.pfnCRC32_Init(&crc32);
     g_engfuncs.pfnCRC32_ProcessBuffer(&crc32, file_buffer.data(), file_size);
     crc32 = g_engfuncs.pfnCRC32_Final(crc32);
@@ -133,9 +141,9 @@ ResourceDescriptor ResourceDescriptorFactory::MakeByFilename(const std::string& 
     return ResourceDescriptor(filename, download_size);
 }
 
-ResourceDescriptor ResourceDescriptorFactory::MakeByResourceT(const resource_t* resource)
+ResourceDescriptor ResourceDescriptorFactory::MakeByResourceT(const goldsrc::resource_t* resource)
 {
-    if (resource->type == t_sound)
+    if (resource->type == goldsrc::t_sound)
     {
         return MakeByFilename(va("%s%s", DEFAULT_SOUNDPATH, resource->szFileName));
     }

@@ -1,28 +1,37 @@
 #include "GameUi.h"
 
-#include <sys/types.h>
-#include <direct.h>
 #include <filesystem>
+#include <format>
 
+#include <sys/types.h>
+#ifdef _WIN32
+#include <direct.h>
+#include <Windows.h>
+#include <shellapi.h>
+#undef SendMessage
+#else
+#include <sys/stat.h>
+#endif
 #include <tier1/tier1.h>
 #include <tier2/tier2.h>
-
-#include "vgui_controls/Controls.h"
-#include "vgui_controls/MessageBox.h"
-
 #include <IEngineVGui.h>
 #include <IBaseUI.h>
 #include <IBaseSystem.h>
 #include <FileSystem.h>
-#include "../IServerBrowserEx.h"
-
 #include <vgui/ILocalize.h>
+#include <vgui/IPanel.h>
 #include <vgui/ISchemeNext.h>
 #include <vgui/ISurfaceNext.h>
 #include <vgui/IVGui.h>
 #include <vgui/ISystem.h>
-#include <format>
+#include <vgui_controls/AnimationController.h>
+#include <utils/TaskRun.h>
+#include <utils/TaskRunImpl.h>
+#include <goldsrc/client_api.h>
 
+#include "vgui_controls/Controls.h"
+#include "vgui_controls/MessageBox.h"
+#include "IServerBrowserEx.h"
 #include "BasePanel.h"
 #include "ModInfo.h"
 #include "GameConsole.h"
@@ -34,16 +43,13 @@
 #include "OptionsSubMiscellaneous.h"
 #include "IClientVGUI.h"
 
+#ifdef _WIN32
 #include "Browser/AcceptedDomains.h"
 #include "Browser/ExtensionCommon.h"
 #include "Browser/ExtensionMatchmaking.h"
 #include "Browser/ExtensionMatchmakingListings.h"
 #include "Browser/ExtensionGameUiApi.h"
-
-#include <utils/TaskRun.h>
-#include <utils/TaskRunImpl.h>
-
-#include <shellapi.h>
+#endif
 
 namespace fs = std::filesystem;
 
@@ -51,6 +57,7 @@ static IServerBrowserEx *g_pServerBrowser = nullptr;
 static IBaseSystem* g_pBaseSystem = nullptr;
 static IGameClientExports* g_pGameClientExports = nullptr;
 static EngineMiniInterface* g_pEngineMini = nullptr;
+static ScenePreviewInterface* g_pScenePreview;
 static vgui2::DHANDLE<CDemoPlayerDialog> g_hDemoPlayerDialog;
 static vgui2::DHANDLE<CHudRadarDialog> g_hHudRadarDialog;
 static vgui2::DHANDLE<CMaterialEditDialog> g_hMaterialEditDialog;
@@ -80,6 +87,7 @@ void CGameUI::OpenHudRadarDialog()
         g_hHudRadarDialog->RequestFocus();
     }
 }
+
 void CGameUI::OpenMaterialEditDialog()
 {
     // Over the running game only: the panel judges a material on the model in front of the
@@ -103,16 +111,33 @@ void CGameUI::OpenMaterialEditDialog()
     g_hMaterialEditDialog->RequestFocus();
 }
 
+void CGameUI::CloseHudRadarDialog()
+{
+    CHudRadarDialog* dialog = g_hHudRadarDialog.Get();
+    if (!dialog)
+    {
+        return;
+    }
+
+    g_hHudRadarDialog = nullptr;
+    // Loading and disconnect must release the root-parented dialog without waiting for its fade.
+    dialog->DisableFadeEffect();
+    dialog->OnCommand("Close");
+}
+
 static CGameUI g_GameUI;
+#ifdef _WIN32
 static HWND g_MainWindow = nullptr;
 static WNDPROC g_MainWindowProc = nullptr;
+#endif
 
-cl_enginefunc_t* engine = nullptr;
+goldsrc::cl_enginefunc_t* engine = nullptr;
 
 CGameUI &GameUI() { return g_GameUI; }
 IBaseSystem* SystemWrapper() { return g_pBaseSystem; }
 IGameClientExports* GameClientExports() { return g_pGameClientExports; }
 EngineMiniInterface* EngineMini() { return g_pEngineMini; }
+ScenePreviewInterface* ScenePreview() { return g_pScenePreview; }
 
 namespace vgui2
 {
@@ -137,6 +162,10 @@ namespace vgui2
     }
 }
 
+#ifdef _WIN32
+// Only ever invoked by the Windows message pump, so this whole function is
+// meaningless until GoldSrc's Linux windowing exists (SDL2 has its own,
+// differently-shaped drag-and-drop event, not a WndProc callback).
 LRESULT CALLBACK WindowGlobalProcedure(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
     switch (uMsg)
@@ -168,6 +197,7 @@ LRESULT CALLBACK WindowGlobalProcedure(HWND hwnd, UINT uMsg, WPARAM wParam, LPAR
     }
     return CallWindowProc(g_MainWindowProc, hwnd, uMsg, wParam, lParam);
 }
+#endif
 
 EXPOSE_SINGLE_INTERFACE_GLOBALVAR(CGameUI, IGameUI, GAMEUI_INTERFACE_VERSION_GS, g_GameUI);
 
@@ -185,7 +215,9 @@ CGameUI::~CGameUI()
 
 void CGameUI::Initialize(CreateInterfaceFn *factories, int count)
 {
+#ifdef _WIN32
     g_MainWindow = GetActiveWindow();
+#endif
 
     ConnectTier1Libraries(factories, count);
     ConnectTier2Libraries(factories, count);
@@ -193,7 +225,9 @@ void CGameUI::Initialize(CreateInterfaceFn *factories, int count)
     if (!vgui2::VGui_InitInterfacesList("GameUI", factories, count))
         return;
 
+#ifdef _WIN32
     g_MainWindowProc = (WNDPROC)SetWindowLongPtr(g_MainWindow, GWLP_WNDPROC, (LONG_PTR)WindowGlobalProcedure);
+#endif
 
     for (int i = 0; i < count; ++i)
     {
@@ -202,7 +236,8 @@ void CGameUI::Initialize(CreateInterfaceFn *factories, int count)
     }
 
     g_pServerBrowser = (IServerBrowserEx*)CreateInterface(SERVERBROWSEREX_INTERFACE_VERSION, NULL);
-    g_pEngineMini = (EngineMiniInterface*)Sys_GetFactory("next_engine_mini.dll")(ENGINE_MINI_INTERFACE_VERSION, NULL);
+    g_pEngineMini = reinterpret_cast<EngineMiniInterface*>(Sys_GetFactory("next_engine_mini.dll")(ENGINE_MINI_INTERFACE_VERSION, NULL));
+    g_pScenePreview = reinterpret_cast<ScenePreviewInterface*>(Sys_GetFactory("next_engine_mini.dll")(SCENE_PREVIEW_INTERFACE_VERSION, NULL));
 
     g_pVGuiLocalize->AddFile(g_pFullFileSystem, "resource/gameui_%language%.txt");
     g_pVGuiLocalize->AddFile(g_pFullFileSystem, "resource/valve_%language%.txt");
@@ -224,7 +259,11 @@ void CGameUI::Initialize(CreateInterfaceFn *factories, int count)
 
         g_pFullFileSystem->AddSearchPath(szConfigDir, "PLATFORMCONFIG");
 
+#ifdef _WIN32
         _mkdir(szConfigDir);
+#else
+        mkdir(szConfigDir, 0755);
+#endif
 
         vgui2::ivgui()->DPrintf("Platform config directory: %s\n", szConfigDir);
 
@@ -254,7 +293,7 @@ void CGameUI::Initialize(CreateInterfaceFn *factories, int count)
     vgui2::surface()->SetAllowHTMLJavaScript(true);
 }
 
-void CGameUI::Start(cl_enginefuncs_s *engineFuncs, int interfaceVersion, void *system)
+void CGameUI::Start(goldsrc::cl_enginefunc_t* engineFuncs, int interfaceVersion, void* system)
 {
     engine = engineFuncs;
     g_pBaseSystem = (IBaseSystem*)system;
@@ -267,17 +306,18 @@ void CGameUI::Start(cl_enginefuncs_s *engineFuncs, int interfaceVersion, void *s
         g_pServerBrowser->Reactivate();
     }
 
-    // Registered here rather than later: the engine refuses a command once the host is
-    // initialised, and GameUI::Start runs before that.
+    // Engine command registration must finish before host initialization.
     engine->pfnAddCommand("r_mat_panel", []() { GameUI().OpenMaterialEditDialog(); });
     engine->pfnAddCommand("r_mat_images", []() { ImageFilePanel_Report(); });
 
+#ifdef _WIN32
     RegisterCommonJsApi(engineFuncs);
     RegisterMatchmakingJsApi();
     RegisterMatchmakingListingsJsApi();
     LoadAcceptedDomainsForJsApiFromDisk("platform/accepted_domains.txt");
 
     browserExtensionGameUiApi = new ContainerExtensionGameUiApi();
+#endif
 }
 
 void CGameUI::Shutdown(void)
@@ -301,7 +341,9 @@ void CGameUI::Shutdown(void)
     DisconnectTier1Libraries();
     DisconnectTier2Libraries();
 
+#ifdef _WIN32
     delete browserExtensionGameUiApi;
+#endif
 }
 
 int CGameUI::ActivateGameUI(void)
@@ -323,8 +365,10 @@ int CGameUI::ActivateGameUI(void)
         g_hLoadingDialog = NULL;
     }
 
+#ifdef _WIN32
     if(!IsGameUIActive())
         browserExtensionGameUiApi->OnActivateGameUI();
+#endif
 
     BasePanel()->OnGameUIActivated();
     BasePanel()->SetVisible(true);
@@ -361,10 +405,15 @@ void CGameUI::RunFrame(void)
     vgui2::surface()->GetScreenSize(wide, tall);
     BasePanel()->SetSize(wide, tall);
 
+    // Dialogs over the game still animate while the main menu is hidden.
+    vgui2::GetAnimationController()->UpdateAnimations(engine->GetAbsoluteTime());
+
     if (BasePanel()->IsVisible())
         BasePanel()->RunFrame();
 
+#ifdef _WIN32
     browserExtensionGameUiApi->RunFrame();
+#endif
     task_run_impl_->OnUpdate();
 }
 
@@ -387,11 +436,7 @@ void CGameUI::ConnectToServer(const char *game, int IP, int port)
 
 void CGameUI::DisconnectFromServer(void)
 {
-    // The level is gone, so the over-game state must not survive into the next session
-    // (a stale handle would make ActivateGameUI swallow Esc there); closed rather than
-    // forgotten, because the panel's OnClose is what takes back the free camera, the
-    // viewport it reserved and the mouse. Done before the menu activation below, which
-    // consults the handle.
+    CloseHudRadarDialog();
     ClosePanelOverGame();
 
     if (g_pServerBrowser)
@@ -422,7 +467,9 @@ void CGameUI::HideGameUI()
         g_hLoadingDialog = NULL;
     }
 
+#ifdef _WIN32
     browserExtensionGameUiApi->OnHideGameUI();
+#endif
 }
 
 bool CGameUI::BeginPanelOverGame(vgui2::Panel* panel)
@@ -481,8 +528,9 @@ bool CGameUI::IsGameUIActive(void)
 
 void CGameUI::LoadingStarted(const char *resourceType, const char *resourceName)
 {
-    m_bLoadlingLevel = true;
+    CloseHudRadarDialog();
     ClosePanelOverGame();
+    m_bLoadlingLevel = true;
 
     GameConsole().Hide();
     BasePanel()->OnLevelLoadingStarted(resourceName);
@@ -646,5 +694,6 @@ void CGameUI::NeedApplyMultiplayerGameSettings()
 void CGameUI::OnDisconnectFromServer(int eSteamLoginFailure, const char *username)
 {
     m_bNeedApplyMultiplayerGameSettings = false;
+    CloseHudRadarDialog();
     ClosePanelOverGame();
 }

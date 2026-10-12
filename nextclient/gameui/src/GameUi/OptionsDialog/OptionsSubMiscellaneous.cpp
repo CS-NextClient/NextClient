@@ -7,6 +7,7 @@
 #include <GameUi.h>
 #include <steam/steam_api.h>
 #include <nitro_utils/string_utils.h>
+#include <goldsrc/client_api.h>
 #include "IServerBrowserEx.h"
 #include "vgui_controls/ImagePanel.h"
 

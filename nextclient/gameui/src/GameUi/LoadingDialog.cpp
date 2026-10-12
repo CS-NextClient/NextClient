@@ -12,6 +12,7 @@
 #include <vgui_controls/Label.h>
 #include <vgui_controls/Button.h>
 #include <vgui_controls/RichText.h>
+#include <goldsrc/client_api.h>
 #include "tier0/icommandline.h"
 
 #include "BasePanel.h"

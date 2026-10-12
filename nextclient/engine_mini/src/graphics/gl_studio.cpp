@@ -1,13 +1,15 @@
 #include "engine.h"
 
 #include <optick.h>
+#include <goldsrc/engine/model.h>
+#include <goldsrc/types.h>
 
 #include "common/model.h"
 #include "common/zone.h"
 
-cache_user_t model_texture_cache[MAX_KNOWN_MODELS][32];
+goldsrc::cache_user_t model_texture_cache[goldsrc::MAX_KNOWN_MODELS][32];
 
-int* R_StudioReloadSkin(model_t* pModel, int index, skin_t* pskin)
+int* R_StudioReloadSkin(goldsrc::model_t* pModel, int index, goldsrc::skin_t* pskin)
 {
     OPTICK_EVENT();
 
@@ -20,11 +22,11 @@ int* R_StudioReloadSkin(model_t* pModel, int index, skin_t* pskin)
     void* pModela; // [esp+Ch] [ebp+8h]
 
     v3 = pModel - mod_known;
-    if (v3 < 0 || v3 >= MAX_KNOWN_MODELS)
+    if (v3 < 0 || v3 >= goldsrc::MAX_KNOWN_MODELS)
         return nullptr;
 
     v5 = (int*) ((char*) &model_texture_cache + 4 * (index + 32 * v3));
-    if (Cache_Check((cache_user_t*) v5) != nullptr)
+    if (Cache_Check((goldsrc::cache_user_t*)v5) != nullptr)
     {
         v9 = (int*) *v5;
     }
@@ -34,7 +36,7 @@ int* R_StudioReloadSkin(model_t* pModel, int index, skin_t* pskin)
         v7 = (int*) (v6 + 80 * index + *(int*) (v6 + 184));
         pModela = (void*) v6;
         v8 = v7[17] * v7[18] + 776;
-        Cache_Alloc(reinterpret_cast<cache_user_t*>(v5), v8, (char*) (pskin + 16));
+        Cache_Alloc(reinterpret_cast<goldsrc::cache_user_t*>(v5), v8, (char*)(pskin + 16));
         v9 = (int*) *v5;
         *v9 = v7[17];
         v9[1] = v7[18];

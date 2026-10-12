@@ -1,6 +1,7 @@
 #include "ServerList.h"
 
 #include <GameUi.h>
+#include <next_engine_mini/MatchmakingServersInterface.h>
 
 CServerList::CServerList(IServerRefreshResponse *response_target) :
     response_target_(response_target)
@@ -71,6 +72,11 @@ unsigned int CServerList::ServerCount()
     return EngineMini()->GetSteamMatchmakingServers()->GetServerCount(server_list_request_);
 }
 
+uint32_t CServerList::get_revision() const
+{
+    return revision_;
+}
+
 void CServerList::StartRefreshServer(int iServer)
 {
     if (server_list_request_ == nullptr)
@@ -110,6 +116,7 @@ void CServerList::Clear()
 
     server_list_request_ = nullptr;
     servers_.clear();
+    revision_++;
 }
 
 bool CServerList::IsRefreshing()
@@ -162,11 +169,19 @@ void CServerList::UpdateServerItem(bool successful_response, int iServer)
 {
     auto server_details = EngineMini()->GetSteamMatchmakingServers()->GetServerDetails(server_list_request_, iServer);
 
+    ServerDetailsNext next_details{};
+    EngineMini()->GetSteamMatchmakingServers()->GetServerDetailsNext(server_list_request_, iServer, &next_details);
+
     if (servers_.contains(iServer))
     {
         servers_.at(iServer).gs = *server_details;
+        servers_.at(iServer).next_details = next_details;
         servers_.at(iServer).hadSuccessfulResponse = successful_response;
     }
     else
-        servers_.emplace(iServer, serveritem_t(successful_response, iServer, *server_details));
+    {
+        servers_.emplace(iServer, serveritem_t(successful_response, iServer, *server_details, next_details));
+    }
+
+    revision_++;
 }

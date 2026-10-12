@@ -1,6 +1,7 @@
 #pragma once
 
 #include <memory>
+#include <goldsrc/cvar.h>
 
 #include "HudAmmo.h"
 #include "HudHealth.h"
@@ -32,7 +33,9 @@ public:
     void Init();
     void VidInit();
     void Draw(float time);
-    void DrawRadar(float time);   // advanced radar, drawn under the stock HUD
+    void DrawRadar(float time);
+    void PrepareRadar();
+    void UpdateRadarScoreboard(bool hud_visible);
     void Think(float time);
     void Reset();
     void InitHUDData();		// called every time a server is connected to
@@ -44,5 +47,5 @@ private:
     void FetchCvars();
 
 public:
-    cvar_t* cl_righthand;
+    goldsrc::cvar_t* cl_righthand;
 };

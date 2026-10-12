@@ -66,7 +66,7 @@ struct SQ_FILTER_PROPERTIES
     bool secure = true;
     std::string gamedir{};
     std::string map{};
-    bool linux{};
+    bool linux_only{};
     bool empty{};
     bool full{};
     bool proxy{};

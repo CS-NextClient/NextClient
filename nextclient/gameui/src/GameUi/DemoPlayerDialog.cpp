@@ -30,14 +30,7 @@
 #include "DemoEventsDialog.h"
 
 #include <basetypes.h>
-#include <common.h>
-#include <cvardef.h>
-#include <pm_defs.h>
-#include <kbutton.h>
-#include <r_efx.h>
-#include <r_studioint.h>
 
-#include <custom.h>
 #include <IWorld.h>
 #include <IEngineWrapper.h>
 #include <IDirector.h>
@@ -184,12 +177,12 @@ void CDemoPlayerDialog::Update()
     }
     else if ( m_DemoPlayer->IsLoading() )
     {
-        swprintf( title, L"Loading %hs ...", m_DemoPlayer->GetFileName() );
+        swprintf( title, sizeof(title) / sizeof(title[0]), L"Loading %hs ...", m_DemoPlayer->GetFileName() );
         SetTitle( title, false);
     }
     else
     {
-        swprintf(title, L"%hs", m_DemoPlayer->GetFileName());
+        swprintf(title, sizeof(title) / sizeof(title[0]), L"%hs", m_DemoPlayer->GetFileName());
         SetTitle(title, false);
     }
 

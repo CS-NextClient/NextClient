@@ -29,6 +29,14 @@
     },
 
     {
+      "name": "vs2022-tests",
+      "inherits": "vs2022",
+      "cacheVariables": {
+        "NEXTCLIENT_BUILD_TESTS": "ON"
+      }
+    },
+
+    {
       "name": "vs2026",
       "inherits": "base",
       "generator": "Visual Studio 18 2026",
@@ -46,6 +54,17 @@
         "value": "x86",
         "strategy": "external"
       }
+    },
+
+    {
+      "name": "linux",
+      "inherits": "base",
+      "generator": "Ninja Multi-Config",
+      "cacheVariables": {
+        "VCPKG_TARGET_TRIPLET": "x86-linux",
+        "CMAKE_C_FLAGS": "-m32 -march=pentium4 -mfpmath=sse",
+        "CMAKE_CXX_FLAGS": "-m32 -march=pentium4 -mfpmath=sse"
+      }
     }
   ],
 
@@ -60,6 +79,12 @@
       "name": "vs2022-debug",
       "configurePreset": "vs2022",
       "configuration": "Debug"
+    },
+
+    {
+      "name": "vs2022-tests-release",
+      "configurePreset": "vs2022-tests",
+      "configuration": "Release"
     },
 
     {
@@ -83,6 +108,18 @@
     {
       "name": "ninja-debug",
       "configurePreset": "ninja",
+      "configuration": "Debug"
+    },
+
+    {
+      "name": "linux-release",
+      "configurePreset": "linux",
+      "configuration": "Release"
+    },
+
+    {
+      "name": "linux-debug",
+      "configurePreset": "linux",
       "configuration": "Debug"
     }
   ]

@@ -9,6 +9,7 @@
 #include <vgui/ISchemeNext.h>
 #include <stdio.h>
 #include <vgui_controls/TextEntry.h>
+#include <goldsrc/client_api.h>
 
 COptionsSubMouse::COptionsSubMouse(vgui2::Panel *parent) : PropertyPage(parent, NULL)
 {

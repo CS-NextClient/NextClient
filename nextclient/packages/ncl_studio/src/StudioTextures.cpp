@@ -2,9 +2,7 @@
 
 #include <string>
 
-// studio.h uses vec3_t without declaring it.
-#include <tier0/basetypes.h>
-#include <studio.h>
+#include <goldsrc/format/studio.h>
 
 #include "HeaderShape.h"
 
@@ -45,13 +43,13 @@ namespace ncl_studio
 
     ncl_utils::ResultT<StudioTextures> ReadStudioTextures(const void* data, size_t size)
     {
-        if (data == nullptr || size < sizeof(studiohdr_t))
+        if (data == nullptr || size < sizeof(goldsrc::studiohdr_t))
         {
             return ncl_utils::ResultError("file is smaller than a studio header");
         }
 
         const uint8_t* bytes = static_cast<const uint8_t*>(data);
-        const studiohdr_t* header = reinterpret_cast<const studiohdr_t*>(bytes);
+        const goldsrc::studiohdr_t* header = reinterpret_cast<const goldsrc::studiohdr_t*>(bytes);
 
         std::string shape = HeaderShapeError(header);
         if (!shape.empty())
@@ -59,14 +57,14 @@ namespace ncl_studio
             return ncl_utils::ResultError(shape);
         }
 
-        if (!Fits(size, header->textureindex, header->numtextures, sizeof(mstudiotexture_t)))
+        if (!Fits(size, header->textureindex, header->numtextures, sizeof(goldsrc::mstudiotexture_t)))
         {
             return ncl_utils::ResultError("texture table lies outside the file");
         }
 
         StudioTextures result;
 
-        const mstudiotexture_t* textures = reinterpret_cast<const mstudiotexture_t*>(bytes + header->textureindex);
+        const goldsrc::mstudiotexture_t* textures = reinterpret_cast<const goldsrc::mstudiotexture_t*>(bytes + header->textureindex);
 
         for (int i = 0; i < header->numtextures; i++)
         {

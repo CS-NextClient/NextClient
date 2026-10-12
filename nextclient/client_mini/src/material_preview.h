@@ -1,6 +1,7 @@
 #pragma once
 
-struct ref_params_s;
+#include <goldsrc/fwd.h>
+
 class MaterialEditInterface;
 
 // The client's half of the material editor: the copy of a model put into the world, and the
@@ -29,9 +30,9 @@ int MaterialPreview_ViewportInset();
 // Puts the frame where the panel's camera is. Called at the end of the view calculation, so
 // what it overwrites is the finished answer and everything derived from it - the visible
 // set, the sound and the radar - follows the camera rather than the body left behind.
-void MaterialPreview_ApplyCamera(ref_params_s* pparams);
+void MaterialPreview_ApplyCamera(goldsrc::ref_params_t* pparams);
 
 // Shows, hides or holds the weapon in the author's hands. Called from the same place and for
 // the same reason: the engine hands the weapon to the client once a frame and takes the
 // answer back, so what is written here lasts exactly one frame and nothing has to undo it.
-void MaterialPreview_ApplyViewmodel(ref_params_s* pparams);
+void MaterialPreview_ApplyViewmodel(goldsrc::ref_params_t* pparams);

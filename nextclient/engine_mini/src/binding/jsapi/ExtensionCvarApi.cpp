@@ -1,6 +1,8 @@
 #include "ExtensionCvarApi.h"
 #include <taskcoro/TaskCoro.h>
 #include <engine.h>
+#include <goldsrc/client_api.h>
+#include <goldsrc/cvar.h>
 
 using namespace taskcoro;
 
@@ -24,7 +26,7 @@ void RegisterExtensionCvarApi() {
 
 					auto cvar_name = arguments[0]->GetStringValue();
 					auto task = TaskCoro::RunInMainThread([cvar_name] {
-						cvar_t* cvar = gEngfuncs.pfnGetCvarPointer(cvar_name.c_str());
+						goldsrc::cvar_t* cvar = gEngfuncs.pfnGetCvarPointer(cvar_name.c_str());
 						return cvar ? std::string(cvar->string) : std::optional<std::string>{};
 					});
 

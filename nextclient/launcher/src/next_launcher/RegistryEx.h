@@ -1,7 +1,13 @@
 #pragma once
 
 #include <string>
-#include <Windows.h>
+
+#ifdef _WIN32
+    #include <Windows.h>
+#else
+    #include <memory>
+    #include <nitro_utils/config/FileConfigProvider.h>
+#endif
 
 class CRegistryEx
 {
@@ -23,8 +29,12 @@ public:
 
 private:
     bool m_bValid;
-    HKEY m_hKey;
     std::string m_context;
 
+#ifdef _WIN32
+    HKEY m_hKey;
     char m_szBuffer[512];
+#else
+    std::unique_ptr<nitro_utils::FileConfigProvider> m_config;
+#endif
 };

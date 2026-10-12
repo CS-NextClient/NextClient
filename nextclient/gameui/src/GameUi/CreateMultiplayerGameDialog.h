@@ -26,6 +26,7 @@ public:
     CCreateMultiplayerGameDialog(vgui2::Panel *parent);
     ~CCreateMultiplayerGameDialog();
 
+    void Activate() override;
     void OnKeyCodeTyped(vgui2::KeyCode code) override;
 
     void ApplyMultiplayerGameSettings();

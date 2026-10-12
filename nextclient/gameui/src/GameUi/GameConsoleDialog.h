@@ -17,7 +17,7 @@
 #include <Color.h>
 #include "utlvector.h"
 #include "vgui_controls/Frame.h"
-#include "cvardef.h"
+#include <goldsrc/cvar.h>
 
 // Things the user typed in and hit submit/return with
 class CHistoryItem
@@ -114,7 +114,7 @@ private:
     {
         // pointer to commands (only one will be non-null)
         unsigned int cmd;
-        struct cvar_s *cvar;
+        goldsrc::cvar_t* cvar;
     };
 
     class CompletionItem
@@ -205,7 +205,7 @@ private:
     CUtlVector<CompletionItem>     m_CompletionList;
     CUtlVector<CHistoryItem>       m_CommandHistory;
 
-    class ContainerExtensionConsoleApi* browserExtensionConsoleApi;
+    class ContainerExtensionConsoleApi* browserExtensionConsoleApi = nullptr;
 
     static int SortCompletionItems(void* context, const void *a, const void *b) 
     {

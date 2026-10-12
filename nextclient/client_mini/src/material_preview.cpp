@@ -7,13 +7,13 @@
 #include <string>
 #include <vector>
 
+#include <goldsrc/engine/model.h>
+#include <goldsrc/entity.h>
+#include <goldsrc/format/studio.h>
+#include <goldsrc/view.h>
 #include <next_engine_mini/MaterialEditInterface.h>
 
-// main.h first: studio.h uses vec3_t without declaring it, and the model structures come
-// in through there.
 #include "main.h"
-#include <entity_types.h>
-#include <studio.h>
 
 namespace
 {
@@ -46,7 +46,7 @@ namespace
         return g_Editor != nullptr && g_Editor->IsPanelOpen();
     }
 
-    cl_entity_t g_StandIn;
+    goldsrc::cl_entity_t g_StandIn;
     std::string g_LoadedPath;
 
     // The engine keeps every model it has ever loaded in one fixed table, reuses a slot only
@@ -60,7 +60,7 @@ namespace
 
     // The studio interface's loader is the engine's own without CRC tracking, which is what
     // keeps a model looked at in the editor out of the server's consistency checks.
-    model_t* LoadOutsidePrecache(const char* path)
+    goldsrc::model_t* LoadOutsidePrecache(const char* path)
     {
         if (IEngineStudio.Mod_ForName == nullptr)
         {
@@ -84,7 +84,7 @@ namespace
 
         // Second argument zero: a model that is not there is answered with nothing rather
         // than with a fatal error.
-        model_t* model = IEngineStudio.Mod_ForName(path, 0);
+        goldsrc::model_t* model = IEngineStudio.Mod_ForName(path, 0);
 
         if (model != nullptr && !loaded_before)
         {
@@ -102,17 +102,17 @@ namespace
 
     // What the weapon in the author's hands was last published from. The model changes with
     // the weapon, and its animations are not the previous weapon's.
-    model_t* g_ViewmodelModel;
+    goldsrc::model_t* g_ViewmodelModel;
 
     // The model the panel asked to be holding, and what that path resolved to. Remembered
     // because the path is read every frame while the lookup behind it is not free.
     std::string g_ViewmodelWantedPath;
-    model_t* g_ViewmodelWanted;
+    goldsrc::model_t* g_ViewmodelWanted;
 
     // A path to a loaded model, by whichever of the two loaders can answer for it. The answer
     // is remembered, including a failure, so a model that is not there is looked for once
     // rather than on every frame the panel is open.
-    model_t* ResolveModel(const char* path, std::string& resolved_path, model_t*& resolved)
+    goldsrc::model_t* ResolveModel(const char* path, std::string& resolved_path, goldsrc::model_t*& resolved)
     {
         if (resolved_path == path)
         {
@@ -120,7 +120,7 @@ namespace
         }
 
         int index = 0;
-        model_t* model = gEngfuncs.CL_LoadModel(path, &index);
+        goldsrc::model_t* model = gEngfuncs.CL_LoadModel(path, &index);
 
         if (model == nullptr)
         {
@@ -140,21 +140,21 @@ namespace
 
     // Which animations a model has, by name. Only the client can answer it: the panel is
     // given a path or nothing at all, and the engine is what turns either into a header.
-    void PublishSequences(MaterialTarget target, model_t* model)
+    void PublishSequences(MaterialTarget target, goldsrc::model_t* model)
     {
         int count = 0;
         std::string names;
 
         if (model != nullptr && IEngineStudio.Mod_Extradata != nullptr)
         {
-            const studiohdr_t* header = static_cast<const studiohdr_t*>(IEngineStudio.Mod_Extradata(model));
+            const goldsrc::studiohdr_t* header = static_cast<const goldsrc::studiohdr_t*>(IEngineStudio.Mod_Extradata(model));
 
             if (header != nullptr)
             {
                 count = header->numseq;
 
-                const mstudioseqdesc_t* sequences = reinterpret_cast<const mstudioseqdesc_t*>(
-                    reinterpret_cast<const byte*>(header) + header->seqindex
+                const goldsrc::mstudioseqdesc_t* sequences = reinterpret_cast<const goldsrc::mstudioseqdesc_t*>(
+                    reinterpret_cast<const unsigned char*>(header) + header->seqindex
                 );
 
                 for (int i = 0; i < count; i++)
@@ -198,22 +198,22 @@ namespace
     // How long one run of a sequence takes, in seconds, as the model itself declares it.
     // Without this the panel plays every animation at one made-up rate, which for a weapon
     // is several times slower than the animation was drawn to be and reads as standing still.
-    float SequenceSeconds(model_t* model, int sequence)
+    float SequenceSeconds(goldsrc::model_t* model, int sequence)
     {
         if (model == nullptr || IEngineStudio.Mod_Extradata == nullptr)
         {
             return kAssumedSequenceSeconds;
         }
 
-        const studiohdr_t* header = static_cast<const studiohdr_t*>(IEngineStudio.Mod_Extradata(model));
+        const goldsrc::studiohdr_t* header = static_cast<const goldsrc::studiohdr_t*>(IEngineStudio.Mod_Extradata(model));
 
         if (header == nullptr || sequence < 0 || sequence >= header->numseq)
         {
             return kAssumedSequenceSeconds;
         }
 
-        const mstudioseqdesc_t* description = reinterpret_cast<const mstudioseqdesc_t*>(
-            reinterpret_cast<const byte*>(header) + header->seqindex
+        const goldsrc::mstudioseqdesc_t* description = reinterpret_cast<const goldsrc::mstudioseqdesc_t*>(
+            reinterpret_cast<const unsigned char*>(header) + header->seqindex
         ) + sequence;
 
         if (description->fps <= 0.0f || description->numframes <= 1)
@@ -224,7 +224,7 @@ namespace
         return static_cast<float>(description->numframes - 1) / description->fps;
     }
 
-    void Advance(MaterialAnimation& animation, float elapsed, model_t* model)
+    void Advance(MaterialAnimation& animation, float elapsed, goldsrc::model_t* model)
     {
         if (!animation.playing)
         {
@@ -238,7 +238,7 @@ namespace
 
     // The frame is held rather than driven by the engine's own clock: stopping on one frame
     // of a reload is the point, and an animtime that keeps moving would walk off it.
-    void HoldFrame(cl_entity_t& entity, const MaterialAnimation& animation, float now)
+    void HoldFrame(goldsrc::cl_entity_t& entity, const MaterialAnimation& animation, float now)
     {
         entity.curstate.sequence = animation.sequence;
         entity.curstate.animtime = now;
@@ -251,7 +251,7 @@ namespace
     // Where the author is looking from, which is the camera when it is flying and the player
     // otherwise. False when there is nothing to look from, which is every frame before the
     // local player exists.
-    bool Eye(vec3_t out, float& yaw)
+    bool Eye(goldsrc::vec3_t out, float& yaw)
     {
         MaterialCamera camera;
         g_Editor->GetCamera(&camera);
@@ -267,7 +267,7 @@ namespace
             return true;
         }
 
-        cl_entity_t* player = gEngfuncs.GetLocalPlayer();
+        goldsrc::cl_entity_t* player = gEngfuncs.GetLocalPlayer();
         if (player == nullptr)
         {
             return false;
@@ -275,7 +275,7 @@ namespace
 
         // The view angles rather than the entity's: a player model's pitch is not the pitch
         // its owner is looking along.
-        vec3_t view;
+        goldsrc::vec3_t view;
         gEngfuncs.GetViewAngles(view);
 
         out[0] = player->origin[0];
@@ -288,7 +288,7 @@ namespace
 
     void Place(MaterialStandIn& state)
     {
-        vec3_t eye;
+        goldsrc::vec3_t eye;
         float yaw = 0.0f;
 
         if (!Eye(eye, yaw))
@@ -298,14 +298,14 @@ namespace
 
         // Yaw only, so where the stand-in ends up does not depend on how far down the author
         // happened to be looking.
-        vec3_t flat;
+        goldsrc::vec3_t flat;
         flat[0] = 0.0f;
         flat[1] = yaw;
         flat[2] = 0.0f;
 
-        vec3_t forward;
-        vec3_t right;
-        vec3_t up;
+        goldsrc::vec3_t forward;
+        goldsrc::vec3_t right;
+        goldsrc::vec3_t up;
         gEngfuncs.pfnAngleVectors(flat, forward, right, up);
 
         for (int i = 0; i < 3; i++)
@@ -333,7 +333,7 @@ int MaterialPreview_ViewportInset()
     return Editing() ? g_Editor->GetAppliedInset() : 0;
 }
 
-void MaterialPreview_ApplyCamera(ref_params_s* pparams)
+void MaterialPreview_ApplyCamera(goldsrc::ref_params_t* pparams)
 {
     if (!Editing())
     {
@@ -375,7 +375,7 @@ void MaterialPreview_ApplyCamera(ref_params_s* pparams)
     // The view model was placed from the view before this ran. Left where it was it would
     // hang in the air over the body, drawn in front of everything as view models are; moved,
     // it stays in the camera's hands, which is the only place it can be judged from.
-    cl_entity_t* view_model = gEngfuncs.GetViewModel();
+    goldsrc::cl_entity_t* view_model = gEngfuncs.GetViewModel();
 
     if (view_model != nullptr)
     {
@@ -394,7 +394,7 @@ void MaterialPreview_ApplyCamera(ref_params_s* pparams)
     }
 }
 
-void MaterialPreview_ApplyViewmodel(ref_params_s* pparams)
+void MaterialPreview_ApplyViewmodel(goldsrc::ref_params_t* pparams)
 {
     if (!Editing())
     {
@@ -406,7 +406,7 @@ void MaterialPreview_ApplyViewmodel(ref_params_s* pparams)
         return;
     }
 
-    cl_entity_t* view_model = gEngfuncs.GetViewModel();
+    goldsrc::cl_entity_t* view_model = gEngfuncs.GetViewModel();
 
     if (view_model == nullptr)
     {
@@ -420,7 +420,7 @@ void MaterialPreview_ApplyViewmodel(ref_params_s* pparams)
 
     if (wanted != nullptr && *wanted != '\0')
     {
-        if (model_t* chosen = ResolveModel(wanted, g_ViewmodelWantedPath, g_ViewmodelWanted))
+        if (goldsrc::model_t* chosen = ResolveModel(wanted, g_ViewmodelWantedPath, g_ViewmodelWanted))
         {
             view_model->model = chosen;
         }
@@ -513,7 +513,7 @@ void MaterialPreview_CreateEntities()
         // server precached and answers with that index. A model the map has no use for is
         // not in there at all, and has to be loaded here.
         int index = 0;
-        model_t* model = gEngfuncs.CL_LoadModel(path, &index);
+        goldsrc::model_t* model = gEngfuncs.CL_LoadModel(path, &index);
 
         if (model == nullptr)
         {
@@ -586,5 +586,5 @@ void MaterialPreview_CreateEntities()
         g_StandIn.latched.prevangles[i] = state.angles[i];
     }
 
-    gEngfuncs.CL_CreateVisibleEntity(ET_NORMAL, &g_StandIn);
+    gEngfuncs.CL_CreateVisibleEntity(goldsrc::ET_NORMAL, &g_StandIn);
 }

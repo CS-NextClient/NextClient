@@ -16,7 +16,7 @@
 #include <vgui_controls/PropertyPage.h>
 #include <nitro_utils/config/FileConfigProvider.h>
 #include "VideoAdvancedDialog.h"
-#include "igameuifuncs.h"
+#include "IGameUIFuncs.h"
 
 namespace vgui2
 {
@@ -43,8 +43,6 @@ public:
     virtual void OnCommand(const char *command);
 
 private:
-    typedef vgui2::PropertyPage BaseClass;
-
     struct CVidSettings
     {
         int			w, h;

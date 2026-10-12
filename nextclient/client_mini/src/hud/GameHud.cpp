@@ -1,11 +1,10 @@
 #include "GameHud.h"
-#include "radar/RadarConfig.h"
-#include "radar/RadarDebug.h"
-#include "radar/RadarDump.h"
-#include "radar/RadarShot.h"
-#include "radar/RadarTestPlan.h"
+#include <goldsrc/client_api.h>
 
-extern cl_enginefunc_t gEngfuncs;
+#include "hud/radar/integration/RadarConfig.h"
+#include "hud/radar/integration/RadarDebug.h"
+
+extern goldsrc::cl_enginefunc_t gEngfuncs;
 
 GameHud::GameHud(nitroapi::NitroApiInterface* nitro_api)
 {
@@ -56,10 +55,20 @@ void GameHud::Draw(float time)
     for (auto& item : all_hud_) {
         if (item == radar_advanced_)
         {
-            continue;   // drawn earlier, under the stock HUD, via DrawRadar
+            continue; // drawn separately via DrawRadar
         }
         item->Draw(time);
     }
+}
+
+void GameHud::PrepareRadar()
+{
+    radar_advanced_->PrepareHudTextZone();
+}
+
+void GameHud::UpdateRadarScoreboard(bool hud_visible)
+{
+    radar_advanced_->UpdateScoreboard(hud_visible);
 }
 
 void GameHud::DrawRadar(float time)
@@ -91,7 +100,4 @@ void GameHud::FetchCvars()
 
     RadarConfig_Init();
     RadarDebug_Init();
-    RadarDump::Init();
-    RadarShot::Init();
-    RadarTestPlan::Init();
 }

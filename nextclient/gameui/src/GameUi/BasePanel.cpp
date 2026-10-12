@@ -33,7 +33,7 @@
 #include "GameConsole.h"
 #include "PlayerListDialog.h"
 
-#include <keydefs.h>
+#include <goldsrc/client_api.h>
 
 #include <nitro_utils/string_utils.h>
 
@@ -720,6 +720,7 @@ void CBasePanel::CreateToolbar(void)
 }
 
 void CBasePanel::CreateMainMenuBrowser() {
+#ifdef _WIN32
     m_pMainMenuBrowser = new CMainMenuBrowser(this);
     m_pMainMenuBrowser->SetFullscreen(true);
 
@@ -727,6 +728,7 @@ void CBasePanel::CreateMainMenuBrowser() {
         m_pGameMenu->SetParent(m_pMainMenuBrowser);
 
     // m_pMainMenuBrowser->OpenURL("file://C:/Users/Vladislav/Desktop/test.html");
+#endif
 }
 
 void CBasePanel::UpdateGameMenus(void)
@@ -767,7 +769,6 @@ void CBasePanel::RunFrame(void)
     if (vgui2::surface()->GetModalPanel())
         vgui2::surface()->PaintTraverse(GetVPanel());
 
-    vgui2::GetAnimationController()->UpdateAnimations(engine->GetAbsoluteTime());
     UpdateBackgroundState();
 }
 

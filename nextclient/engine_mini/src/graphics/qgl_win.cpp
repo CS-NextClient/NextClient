@@ -31,12 +31,15 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include <SDL.h>
 #include <hlsdk.h>
+#include <goldsrc/client_api.h>
+#include <goldsrc/types.h>
 
 #include "gl_local.h"
 #include "glw_win.h"
 
 glwstate_t glw_state;
 
+#ifdef _WIN32
 int(WINAPI *qwglChoosePixelFormat)(HDC, CONST PIXELFORMATDESCRIPTOR *);
 int(WINAPI *qwglDescribePixelFormat)(HDC, int, UINT, LPPIXELFORMATDESCRIPTOR);
 int(WINAPI *qwglGetPixelFormat)(HDC);
@@ -59,6 +62,7 @@ int(WINAPI *qwglSetLayerPaletteEntries)(HDC, int, int, int,CONST COLORREF *);
 int(WINAPI *qwglGetLayerPaletteEntries)(HDC, int, int, int,COLORREF *);
 BOOL(WINAPI *qwglRealizeLayerPalette)(HDC, int, BOOL);
 BOOL(WINAPI *qwglSwapLayerBuffers)(HDC, UINT);
+#endif
 
 void(APIENTRY *qglAccum)(GLenum op, GLfloat value);
 void(APIENTRY *qglAlphaFunc)(GLenum func, GLclampf ref);
@@ -400,9 +404,11 @@ void(APIENTRY *qglViewport)(GLint x, GLint y, GLsizei width, GLsizei height);
 void(APIENTRY *qglLockArraysEXT)(int, int);
 void(APIENTRY *qglUnlockArraysEXT)(void);
 
+#ifdef _WIN32
 BOOL(WINAPI *qwglSwapIntervalEXT)(int interval);
 BOOL(WINAPI *qwglGetDeviceGammaRampEXT)(unsigned char *, unsigned char *, unsigned char *);
 BOOL(WINAPI *qwglSetDeviceGammaRampEXT)(const unsigned char *, const unsigned char *, const unsigned char *);
+#endif
 void(APIENTRY *qglPointParameterfEXT)(GLenum param, GLfloat value);
 void(APIENTRY *qglPointParameterfvEXT)(GLenum param, const GLfloat *value);
 void(APIENTRY *qglColorTableEXT)(int, int, int, int, int, const void *);
@@ -3110,6 +3116,7 @@ void QGL_Shutdown(void)
     qglVertexPointer = NULL;
     qglViewport = NULL;
 
+#ifdef _WIN32
     qwglCopyContext = NULL;
     qwglCreateContext = NULL;
     qwglCreateLayerContext = NULL;
@@ -3137,6 +3144,7 @@ void QGL_Shutdown(void)
 
     qwglGetDeviceGammaRampEXT = NULL;
     qwglSetDeviceGammaRampEXT = NULL;
+#endif
 }
 
 #pragma warning(disable : 4113 4133 4047)
@@ -3152,7 +3160,7 @@ void QGL_Shutdown(void)
 ** might be.
 **
 */
-qboolean QGL_Init()
+goldsrc::qboolean QGL_Init()
 {
     glw_state.hinstOpenGL = (HINSTANCE)1;
 
@@ -3493,6 +3501,7 @@ qboolean QGL_Init()
     qglVertexPointer = GPA(qglVertexPointer, "glVertexPointer");
     qglViewport = GPA(qglViewport, "glViewport");
 
+#ifdef _WIN32
     qwglCopyContext = GPA(qwglCopyContext, "wglCopyContext");
     qwglCreateContext = GPA(qwglCreateContext, "wglCreateContext");
     qwglCreateLayerContext = GPA(qwglCreateLayerContext, "wglCreateLayerContext");
@@ -3517,6 +3526,7 @@ qboolean QGL_Init()
     qwglSwapBuffers = GPA(qwglSwapBuffers, "wglSwapBuffers");
 
     qwglSwapIntervalEXT = 0;
+#endif
     qglPointParameterfEXT = 0;
     qglPointParameterfvEXT = 0;
     qglColorTableEXT = 0;
@@ -3526,7 +3536,7 @@ qboolean QGL_Init()
     return true;
 }
 
-void GLimp_EnableLogging(qboolean enable)
+void GLimp_EnableLogging(goldsrc::qboolean enable)
 {
     if(enable)
     {
@@ -3541,7 +3551,7 @@ void GLimp_EnableLogging(qboolean enable)
 
             asctime(newtime);
 
-            sprintf_s(buffer, sizeof(buffer), "%s/gl.log", gEngfuncs.pfnGetGameDirectory());
+            snprintf(buffer, sizeof(buffer), "%s/gl.log", gEngfuncs.pfnGetGameDirectory());
             glw_state.log_fp = fopen(buffer, "wt");
 
             fprintf(glw_state.log_fp, "%s\n", asctime(newtime));

@@ -1,6 +1,19 @@
-* text=auto
+# provenance.py writes the allowlist with newline="\n" while core.autocrlf checks it out with CRLF,
+# so without this rule every gate run marks the file modified at unchanged content. Fixing it here
+# rather than in the tool keeps the endings from depending on the machine's git settings.
+/.github/provenance-allowlist.json text eol=lf
 
-# Image formats
+# The generation input and its output are compared byte for byte, so their endings cannot vary by
+# checkout. The rule covers the whole library subtree rather than today's extensions and depths: a
+# generated file of another kind, or one a level deeper, would otherwise fall out of it silently.
+# text=auto leaves a file Git detects as binary alone.
+/nextclient/goldsrc_abi/** text=auto eol=lf
+
+*.tga filter=lfs diff=lfs merge=lfs -text
+*.dll filter=lfs diff=lfs merge=lfs -text
+*.exe filter=lfs diff=lfs merge=lfs -text
+assets/platform/servers/*.mmdb filter=lfs diff=lfs merge=lfs -text
+
 *.[pP][sS][dD] filter=lfs diff=lfs merge=lfs -text
 *.[jJ][pP][gG] filter=lfs diff=lfs merge=lfs -text
 *.[pP][nN][gG] filter=lfs diff=lfs merge=lfs -text

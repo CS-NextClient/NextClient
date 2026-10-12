@@ -1,5 +1,5 @@
 #include "../engine.h"
-#include <quakedef.h>
+#include <goldsrc/types.h>
 
 void* Mem_Malloc(size_t size)
 {
@@ -26,17 +26,17 @@ void* Z_Malloc(int size)
     return eng()->Z_Malloc(size);
 }
 
-void* Cache_Alloc(cache_user_t* c, int size, char* name)
+void* Cache_Alloc(goldsrc::cache_user_t* c, int size, char* name)
 {
     return eng()->Cache_Alloc(c, size, name);
 }
 
-void* Cache_Check(cache_user_t* c)
+void* Cache_Check(goldsrc::cache_user_t* c)
 {
     return eng()->Cache_Check(c);
 }
 
-void Cache_Free(cache_user_t* c)
+void Cache_Free(goldsrc::cache_user_t* c)
 {
     eng()->Cache_Free(c);
 }

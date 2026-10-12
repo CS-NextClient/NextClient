@@ -6,7 +6,8 @@
 #include <vgui_controls/ImagePanel.h>
 #include <vgui_controls/CheckButton.h>
 #include <vgui_controls/Slider.h>
-#include "ivoicetweak.h"
+#include <goldsrc/client_api.h>
+#include <goldsrc/voice_tweak.h>
 #include "CvarToggleCheckButton.h"
 #include "tier1/KeyValues.h"
 
@@ -66,13 +67,13 @@ void COptionsSubVoice::OnResetData(void)
     if (!m_pVoiceTweak)
         return;
 
-    m_pVoiceTweak->SetControlFloat(OtherSpeakerScale, engine->pfnGetCvarFloat("voice_scale"));
+    m_pVoiceTweak->SetControlFloat(goldsrc::OtherSpeakerScale, engine->pfnGetCvarFloat("voice_scale"));
 
-    float micVolume = m_pVoiceTweak->GetControlFloat(MicrophoneVolume);
+    float micVolume = m_pVoiceTweak->GetControlFloat(goldsrc::MicrophoneVolume);
     m_pMicrophoneVolume->SetValue((int)(100.0f * micVolume));
     m_nMicVolumeValue = m_pMicrophoneVolume->GetValue();
 
-    float fMicBoost = m_pVoiceTweak->GetControlFloat(MicBoost);
+    float fMicBoost = m_pVoiceTweak->GetControlFloat(goldsrc::MicBoost);
     m_pMicBoost->SetSelected(fMicBoost != 0.0f);
     m_bMicBoostSelected = m_pMicBoost->IsSelected();
 
@@ -108,10 +109,10 @@ void COptionsSubVoice::OnApplyChanges(void)
 
     m_nMicVolumeValue = m_pMicrophoneVolume->GetValue();
     float fMicVolume = (float) m_nMicVolumeValue / 100.0f;
-    m_pVoiceTweak->SetControlFloat(MicrophoneVolume, fMicVolume);
+    m_pVoiceTweak->SetControlFloat(goldsrc::MicrophoneVolume, fMicVolume);
 
     m_bMicBoostSelected = m_pMicBoost->IsSelected();
-    m_pVoiceTweak->SetControlFloat(MicBoost, m_bMicBoostSelected ? 1.0f : 0.0f);
+    m_pVoiceTweak->SetControlFloat(goldsrc::MicBoost, m_bMicBoostSelected ? 1.0f : 0.0f);
 
     m_pReceiveVolume->ApplyChanges();
     m_fReceiveVolume = m_pReceiveVolume->GetSliderValue();
@@ -156,11 +157,11 @@ void COptionsSubVoice::UseCurrentVoiceParameters(void)
 {
     int nVal = m_pMicrophoneVolume->GetValue();
     float val = (float)nVal / 100.0f;
-    m_pVoiceTweak->SetControlFloat(MicrophoneVolume, val);
+    m_pVoiceTweak->SetControlFloat(goldsrc::MicrophoneVolume, val);
 
     bool bSelected = m_pMicBoost->IsSelected();
     val = bSelected ? 1.0f : 0.0f;
-    m_pVoiceTweak->SetControlFloat(MicBoost, val);
+    m_pVoiceTweak->SetControlFloat(goldsrc::MicBoost, val);
 
     m_nReceiveSliderValue = m_pReceiveVolume->GetValue();
     m_pReceiveVolume->ApplyChanges();
@@ -169,8 +170,8 @@ void COptionsSubVoice::UseCurrentVoiceParameters(void)
 void COptionsSubVoice::ResetVoiceParameters(void)
 {
     float fMicVolume = (float)m_nMicVolumeValue / 100.0f;
-    m_pVoiceTweak->SetControlFloat(MicrophoneVolume, fMicVolume);
-    m_pVoiceTweak->SetControlFloat(MicBoost, m_bMicBoostSelected ? 1.0f : 0.0f);
+    m_pVoiceTweak->SetControlFloat(goldsrc::MicrophoneVolume, fMicVolume);
+    m_pVoiceTweak->SetControlFloat(goldsrc::MicBoost, m_bMicBoostSelected ? 1.0f : 0.0f);
 
     engine->Cvar_SetValue("voice_scale", m_fReceiveVolume);
 

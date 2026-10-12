@@ -2,20 +2,28 @@
 
 #include <string>
 
-// studio.h uses vec3_t without declaring it.
-#include <tier0/basetypes.h>
-#include <studio.h>
+#include <goldsrc/format/studio.h>
 
 #include "ncl_studio/StudioMesh.h"
 
 namespace ncl_studio
 {
+    struct StudioTriVertex_t
+    {
+        short vertindex;
+        short normindex;
+        short s;
+        short t;
+    };
+
+    static_assert(sizeof(StudioTriVertex_t) == 8);
+
     // The header-shape rules both the validator and the mesh builder accept a file by,
     // in one home so the two cannot drift. Empty means accepted. Zero bones is what a
     // texture-only companion declares; geometry without bones is the case that cannot
     // be built, and the bone count has to be within what the format allows before it
     // can bound any per-vertex bone byte.
-    inline std::string HeaderShapeError(const studiohdr_t* header)
+    inline std::string HeaderShapeError(const goldsrc::studiohdr_t* header)
     {
         if (header->version != kStudioVersion)
         {
@@ -23,10 +31,10 @@ namespace ncl_studio
                    ", expected " + std::to_string(kStudioVersion);
         }
 
-        if (header->numbones < 0 || header->numbones > MAXSTUDIOBONES)
+        if (header->numbones < 0 || header->numbones > goldsrc::MAXSTUDIOBONES)
         {
             return "model declares " + std::to_string(header->numbones) + " bones, the format allows 0.." +
-                   std::to_string(MAXSTUDIOBONES);
+                   std::to_string(goldsrc::MAXSTUDIOBONES);
         }
 
         if (header->numbones == 0 && header->numbodyparts != 0)

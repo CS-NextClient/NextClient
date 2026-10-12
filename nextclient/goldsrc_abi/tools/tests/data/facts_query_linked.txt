@@ -1,0 +1,18 @@
+0 matches.
+
+Match #1:
+
+Binding for "root":
+LinkageSpecDecl 0x1f152a5eab0 <C:\fixture\dep\NclNitroApi\dep\ncl-hl1-source-sdk\engine\linked.h:4:1, line:13:1> line:4:8 C
+|-FunctionDecl 0x1f152a5ec00 <C:\fixture\dep\NclNitroApi\dep\ncl-hl1-source-sdk\public\outside_c.h:3:1, col:23> col:5 used Outside_Count 'int ()'
+| `-NoThrowAttr 0x1f152a5ed10 <col:5> Implicit
+|-FunctionDecl 0x1f152a5ee40 <C:\fixture\dep\NclNitroApi\dep\ncl-hl1-source-sdk\common\late_c.h:3:1, col:20> col:5 used Late_Value 'int ()'
+| `-NoThrowAttr 0x1f152a5ef00 <col:5> Implicit
+|-VarDecl 0x1f152a5ef80 <line:4:1, col:12> col:12 used g_lateCount 'int' extern
+`-FunctionDecl 0x1f152a5f1d0 <C:\fixture\dep\NclNitroApi\dep\ncl-hl1-source-sdk\engine\linked.h:10:1, col:37> col:5 used Linked_Sum 'int (int, int)'
+  |-ParmVarDecl 0x1f152a5f020 <col:16, col:20> col:20 first 'int'
+  |-ParmVarDecl 0x1f152a5f0b0 <col:27, col:31> col:31 second 'int'
+  `-NoThrowAttr 0x1f152a5f2a0 <col:5> Implicit
+
+1 match.
+0 matches.

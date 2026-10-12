@@ -1,5 +1,11 @@
 #include "../engine.h"
-#include <common.h>
+#include <cstdint>
+
+#include <goldsrc/client_api.h>
+#include <goldsrc/engine/cmd.h>
+#include <goldsrc/engine/resource.h>
+#include <goldsrc/limits.h>
+#include <goldsrc/types.h>
 #include <optick.h>
 #include "../console/console.h"
 #include "../common/filesystem.h"
@@ -8,7 +14,7 @@
 
 int com_argc;
 char** com_argv;
-char com_cmdline[COM_MAX_CMD_LINE];
+char com_cmdline[goldsrc::COM_MAX_CMD_LINE];
 
 unsigned char COM_Nibble(char c)
 {
@@ -44,17 +50,17 @@ void COM_HexConvert(const char* pszInput, int nInputLength, unsigned char* pOutp
     }
 }
 
-void COM_ClearCustomizationList(customization_t* pHead, qboolean bCleanDecals)
+void COM_ClearCustomizationList(goldsrc::customization_t* pHead, goldsrc::qboolean bCleanDecals)
 {
     eng()->COM_ClearCustomizationList.InvokeChained(pHead, bCleanDecals);
 }
 
-int COM_SizeofResourceList(resource_t* pList, resourceinfo_t* ri)
+int COM_SizeofResourceList(goldsrc::resource_t* pList, goldsrc::resourceinfo_t* ri)
 {
     OPTICK_EVENT();
 
     int nSize = 0;
-    resource_t* p;
+    goldsrc::resource_t* p;
 
     Q_memset(ri, 0, sizeof(*ri));
 
@@ -62,8 +68,8 @@ int COM_SizeofResourceList(resource_t* pList, resourceinfo_t* ri)
     {
         nSize += p->nDownloadSize;
 
-        if (p->type == t_model && p->nIndex == 1)
-            ri->info[t_world].size += p->nDownloadSize;
+        if (p->type == goldsrc::t_model && p->nIndex == 1)
+            ri->info[goldsrc::t_world].size += p->nDownloadSize;
         else ri->info[p->type].size += p->nDownloadSize;
     }
 
@@ -87,7 +93,7 @@ char* COM_BinPrintf(unsigned char* buf, int length)
     return szReturn;
 }
 
-void COM_ExplainDisconnection(qboolean bPrint, const char *fmt, ...)
+void COM_ExplainDisconnection(goldsrc::qboolean bPrint, const char* fmt, ...)
 {
     OPTICK_EVENT();
 
@@ -145,29 +151,29 @@ void COM_InitArgv(int argc, char *argv[])
 {
     OPTICK_EVENT();
 
-    qboolean safe = 0;
+    goldsrc::qboolean safe = 0;
 
-    static const char *safeargvs[NUM_SAFE_ARGVS] =
+    static const char* safeargvs[goldsrc::NUM_SAFE_ARGVS] =
     {
         "-stdvid", "-nolan", "-nosound", "-nocdaudio", "-nojoy", "-nomouse", "-dibonly"
     };
-    static const char *largv[MAX_NUM_ARGVS + NUM_SAFE_ARGVS + 1];
+    static const char* largv[goldsrc::MAX_NUM_ARGVS + goldsrc::NUM_SAFE_ARGVS + 1];
 
     int i, j;
     char *c;
 
     // Reconstruct full command line
     com_cmdline[0] = 0;
-    for (i = 0, j = 0; i < MAX_NUM_ARGVS && i < argc && j < COM_MAX_CMD_LINE - 1; i++)
+    for (i = 0, j = 0; i < goldsrc::MAX_NUM_ARGVS && i < argc && j < goldsrc::COM_MAX_CMD_LINE - 1; i++)
     {
         c = argv[i];
         if (*c)
         {
-            while (*c && j < COM_MAX_CMD_LINE - 1)
+            while (*c && j < goldsrc::COM_MAX_CMD_LINE - 1)
             {
                 com_cmdline[j++] = *c++;
             }
-            if (j >= COM_MAX_CMD_LINE - 1)
+            if (j >= goldsrc::COM_MAX_CMD_LINE - 1)
             {
                 break;
             }
@@ -177,7 +183,7 @@ void COM_InitArgv(int argc, char *argv[])
     com_cmdline[j] = 0;
 
     // Copy args pointers to our array
-    for (com_argc = 0; (com_argc < MAX_NUM_ARGVS) && (com_argc < argc); com_argc++)
+    for (com_argc = 0; (com_argc < goldsrc::MAX_NUM_ARGVS) && (com_argc < argc); com_argc++)
     {
         largv[com_argc] = argv[com_argc];
 
@@ -192,7 +198,7 @@ void COM_InitArgv(int argc, char *argv[])
     {
         // force all the safe-mode switches. Note that we reserved extra space in
         // case we need to add these, so we don't need an overflow check
-        for (int i = 0; i < NUM_SAFE_ARGVS; i++)
+        for (int i = 0; i < goldsrc::NUM_SAFE_ARGVS; i++)
         {
             largv[com_argc] = safeargvs[i];
             com_argc++;
@@ -269,7 +275,7 @@ unsigned char *COM_LoadStackFile(const char *path, void *buffer, int bufsize, in
 {
     OPTICK_EVENT();
 
-    *p_loadbuf = (byte*)buffer;
+    *p_loadbuf = (uint8_t*)buffer;
     *p_loadsize = bufsize;
 
     return COM_LoadFile(path, 4, length);

@@ -10,8 +10,8 @@
 #include <glad/glad.h>
 #include <ncl_material/ProgramManifest.h>
 #include <ncl_math/vec3.h>
-#include <r_studioint.h>
-#include <studio.h>
+#include <goldsrc/studio_api.h>
+#include <goldsrc/format/studio.h>
 #include "graphics/render/GpuBuffer.h"
 #include "graphics/render/RenderDevice.h"
 
@@ -118,20 +118,20 @@ namespace
 
     constexpr GLuint kBonesBindingPoint = 0;
     constexpr size_t kBoneMatrixFloats = 3 * 4;
-    constexpr size_t kBonesBufferSize = MAXSTUDIOBONES * kBoneMatrixFloats * sizeof(float);
+    constexpr size_t kBonesBufferSize = goldsrc::MAXSTUDIOBONES * kBoneMatrixFloats * sizeof(float);
 
     render::GpuBuffer g_Bones;
 
     // Room for one scaled copy of the transforms. Static because it is filled and uploaded
     // inside one call, and a stack copy of it is eight kilobytes.
-    float g_ScaledBones[MAXSTUDIOBONES * kBoneMatrixFloats];
+    float g_ScaledBones[goldsrc::MAXSTUDIOBONES * kBoneMatrixFloats];
 
     // The engine's studio renderer has no notion of an entity's scale - it uses that field
     // for sprites and nothing else - so honouring it for everything the game draws would be
     // this path disagreeing with the engine over a field a server may be using for something
     // else entirely, and an A/B against the engine would never come out clean. It exists for
     // the editor's stand-in, so it applies while the editor holds a panel and not otherwise.
-    float EntityScale(const cl_entity_t* entity)
+    float EntityScale(const goldsrc::cl_entity_t* entity)
     {
         if (entity == nullptr || !render::MaterialEdit_PanelOpen())
         {
@@ -152,7 +152,7 @@ namespace
     {
         std::memcpy(g_ScaledBones, bones, sizeof(g_ScaledBones));
 
-        int limit = std::min(count, static_cast<int>(MAXSTUDIOBONES));
+        int limit = std::min(count, static_cast<int>(goldsrc::MAXSTUDIOBONES));
 
         for (int bone = 0; bone < limit; bone++)
         {
@@ -180,9 +180,9 @@ namespace
     struct ModelDrawCache
     {
         uint32_t serial;
-        const studiohdr_t* header;
-        const cl_entity_t* entity;
-        const studiohdr_t* texture_header;
+        const goldsrc::studiohdr_t* header;
+        const goldsrc::cl_entity_t* entity;
+        const goldsrc::studiohdr_t* texture_header;
         bool bones_uploaded;
     };
 
@@ -225,7 +225,7 @@ namespace
 
     // A mismatch here means either a shifted offset or a pointer from a different
     // allocation altogether, and only the raw numbers tell those two apart.
-    bool RejectSubModel(const studiohdr_t* header, void* submodel, const ncl_studio::StudioMesh& mesh)
+    bool RejectSubModel(const goldsrc::studiohdr_t* header, void* submodel, const ncl_studio::StudioMesh& mesh)
     {
         ptrdiff_t direct =
             static_cast<const uint8_t*>(submodel) - reinterpret_cast<const uint8_t*>(header);
@@ -325,7 +325,7 @@ namespace
     // never dereferenced, so a wrong guess cannot fault.
     const ncl_studio::SubModelRange* ResolveSubModel(
         void* raw,
-        const studiohdr_t* header,
+        const goldsrc::studiohdr_t* header,
         const ncl_studio::StudioMesh& mesh
     )
     {
@@ -360,10 +360,10 @@ namespace
 
     // Textures may live in the model itself or in a companion <name>T.mdl, and the skin
     // table lives in whichever of the two holds them, not in the model header.
-    const studiohdr_t* ResolveTextureHeader(
-        const engine_studio_api_t* api,
-        model_t* model,
-        const studiohdr_t* header
+    const goldsrc::studiohdr_t* ResolveTextureHeader(
+        const goldsrc::engine_studio_api_t* api,
+        goldsrc::model_t* model,
+        const goldsrc::studiohdr_t* header
     )
     {
         if (header->textureindex != 0)
@@ -387,16 +387,16 @@ namespace
         V_strcpy_safe(name, model->name);
         V_strcpy(name + length - 4, "T.mdl");
 
-        model_t* texture_model = api->Mod_ForName(name, 0);
+        goldsrc::model_t* texture_model = api->Mod_ForName(name, 0);
         if (texture_model == nullptr)
         {
             return nullptr;
         }
 
-        return static_cast<const studiohdr_t*>(api->Mod_Extradata(texture_model));
+        return static_cast<const goldsrc::studiohdr_t*>(api->Mod_Extradata(texture_model));
     }
 
-    int ActiveSkinFamily(const cl_entity_t* entity, const studiohdr_t* texture_header, const char* model_name)
+    int ActiveSkinFamily(const goldsrc::cl_entity_t* entity, const goldsrc::studiohdr_t* texture_header, const char* model_name)
     {
         // The panel's own choice outranks the entity, and only for the model it is editing.
         // Which family is in force decides which texture a mesh resolves to, and therefore
@@ -408,7 +408,7 @@ namespace
         return (skin > 0 && skin < texture_header->numskinfamilies) ? skin : 0;
     }
 
-    const mstudiotexture_t* ResolveTexture(const studiohdr_t* texture_header, int skin_family, int32_t skinref)
+    const goldsrc::mstudiotexture_t* ResolveTexture(const goldsrc::studiohdr_t* texture_header, int skin_family, int32_t skinref)
     {
         if (skinref < 0 || skinref >= texture_header->numskinref)
         {
@@ -426,20 +426,20 @@ namespace
             return nullptr;
         }
 
-        const mstudiotexture_t* textures = reinterpret_cast<const mstudiotexture_t*>(
+        const goldsrc::mstudiotexture_t* textures = reinterpret_cast<const goldsrc::mstudiotexture_t*>(
             reinterpret_cast<const uint8_t*>(texture_header) + texture_header->textureindex
         );
 
         return &textures[texture_index];
     }
 
-    cvar_t* g_RightHand;
+    goldsrc::cvar_t* g_RightHand;
     bool g_RightHandResolved;
 
     // GoldSrc mirrors the view model for left handed players, which reverses the winding
     // of every triangle. The engine answers that by not culling at all rather than by
     // flipping the cull face.
-    bool IsFlippedViewModel(const engine_studio_api_t* api)
+    bool IsFlippedViewModel(const goldsrc::engine_studio_api_t* api)
     {
         if (!g_RightHandResolved)
         {
@@ -452,7 +452,7 @@ namespace
             return false;
         }
 
-        cl_entity_t* entity = api->GetCurrentEntity();
+        goldsrc::cl_entity_t* entity = api->GetCurrentEntity();
 
         return entity != nullptr && entity->index == cl->viewent.index;
     }
@@ -475,26 +475,26 @@ namespace
         // r_blend rather than running the lighting formula, so the model reads as its own
         // texture at a uniform brightness. This outranks the texture's own flags because
         // the engine decides it before it looks at them.
-        if (rendermode == kRenderTransAdd)
+        if (rendermode == goldsrc::kRenderTransAdd)
         {
             return kShadeAdditive;
         }
 
-        if ((flags & STUDIO_NF_FULLBRIGHT) != 0)
+        if ((flags & goldsrc::STUDIO_NF_FULLBRIGHT) != 0)
         {
             return kShadeFullbright;
         }
 
-        return (flags & STUDIO_NF_FLATSHADE) != 0 ? kShadeFlat : kShadeLit;
+        return (flags & goldsrc::STUDIO_NF_FLATSHADE) != 0 ? kShadeFlat : kShadeLit;
     }
 
-    const char* UnsupportedReason(const cl_entity_t* entity, int forced_face_flags)
+    const char* UnsupportedReason(const goldsrc::cl_entity_t* entity, int forced_face_flags)
     {
         // Chrome is the only flag anything forces, and the shape of that pass is read off
         // it: no skin bound, a flat colour, a sphere map driven from an orbiting point. A
         // different forced flag would keep the engine's ordinary lighting under the
         // additive render mode the forcing selects, which is not reproduced here.
-        if ((forced_face_flags & ~STUDIO_NF_CHROME) != 0)
+        if ((forced_face_flags & ~goldsrc::STUDIO_NF_CHROME) != 0)
         {
             return "forced face flags other than chrome are set";
         }
@@ -519,23 +519,23 @@ namespace
     // one, so the driver refuses the call and the environment stays as it was. Unlike every
     // other mode it sets neither the colour nor the depth mask, and the draw loop writes a
     // colour per vertex anyway. What is left is the translucent path.
-    int EffectiveRenderMode(const cl_entity_t* entity, int forced_face_flags)
+    int EffectiveRenderMode(const goldsrc::cl_entity_t* entity, int forced_face_flags)
     {
         if (forced_face_flags != 0)
         {
-            return kRenderTransAdd;
+            return goldsrc::kRenderTransAdd;
         }
 
-        return entity != nullptr ? entity->curstate.rendermode : kRenderNormal;
+        return entity != nullptr ? entity->curstate.rendermode : goldsrc::kRenderNormal;
     }
 
     // Vertices move along their own normals before the bone transform, by renderamt
     // scaled the way the engine scales it. The engine reaches the normal through a vertex
     // to normal index table it rebuilds per submodel; the converted mesh already carries a
     // normal per rendered vertex, which is the same normal and needs no table.
-    float GlowShellScale(const cl_entity_t* entity)
+    float GlowShellScale(const goldsrc::cl_entity_t* entity)
     {
-        if (entity == nullptr || entity->curstate.renderfx != kRenderFxGlowShell)
+        if (entity == nullptr || entity->curstate.renderfx != goldsrc::kRenderFxGlowShell)
         {
             return 0.0f;
         }
@@ -561,7 +561,7 @@ namespace
     // taken as they stand. The engine's own replacement of the weakest of three reads as a
     // decompiler artefact in the reconstruction; with three or fewer lights, which is what
     // a scene has, the two agree either way.
-    void SelectEntityLights(const cl_entity_t* entity, EntityLights& out)
+    void SelectEntityLights(const goldsrc::cl_entity_t* entity, EntityLights& out)
     {
         out.count = 0;
 
@@ -574,7 +574,7 @@ namespace
 
         for (int i = 0; i < kMaxElights; i++)
         {
-            const dlight_t& light = (*p_cl_elights)[i];
+            const goldsrc::dlight_t& light = (*p_cl_elights)[i];
 
             if (!Elight_Alive(light))
             {
@@ -650,7 +650,7 @@ namespace
         return ncl_math::Vector2 {gamma, 1.0f / gamma};
     }
 
-    ncl_math::Vector3 ShellColor(const cl_entity_t* entity)
+    ncl_math::Vector3 ShellColor(const goldsrc::cl_entity_t* entity)
     {
         return ncl_math::Vector3 {
             static_cast<float>(entity->curstate.rendercolor.r) / 255.0f,
@@ -662,7 +662,7 @@ namespace
     constexpr float kShellChromeRadius = 4000.0f;
     constexpr float kShellChromeZRate = 0.33f;
 
-    cvar_t* g_GlowShellFreq;
+    goldsrc::cvar_t* g_GlowShellFreq;
     bool g_GlowShellFreqResolved;
 
     // For the shell the engine replaces the chrome origin with a point orbiting the world,
@@ -723,7 +723,7 @@ namespace
         float bone_scale;
         ncl_math::Vector3 shell_color;
         EntityLights lights;
-        const studiohdr_t* texture_header;
+        const goldsrc::studiohdr_t* texture_header;
         int rendermode;
         int expected_parts;
         int seen_parts;
@@ -928,7 +928,7 @@ namespace
 
     void FlushPending()
     {
-        const engine_studio_api_t* api = render::Studio_OriginalApi();
+        const goldsrc::engine_studio_api_t* api = render::Studio_OriginalApi();
 
         if (!g_Pending.active || g_Pending.count == 0 || g_Pending.program == nullptr)
         {
@@ -1110,7 +1110,7 @@ namespace
             // model's own draw rather than at the end of the scene.
             if (api != nullptr && api->StudioSetupSkin != nullptr)
             {
-                api->StudioSetupSkin(const_cast<studiohdr_t*>(g_Pending.texture_header), head.skin);
+                api->StudioSetupSkin(const_cast<goldsrc::studiohdr_t*>(g_Pending.texture_header), head.skin);
             }
 
             glUniform2f(program->loc[kUniformTexelScale], head.texel_scale[0], head.texel_scale[1]);
@@ -1198,10 +1198,10 @@ namespace render
 {
     // The submission proper. Wrapped below rather than called directly, so the record
     // r_studio_dump takes is written at one exit instead of at each of the rejections.
-    static bool TryDrawSubmission(model_t* model, const studiohdr_t* header, void* submodel);
+    static bool TryDrawSubmission(goldsrc::model_t* model, const goldsrc::studiohdr_t* header, void* submodel);
 }
 
-bool render::TryDrawSubmission(model_t* model, const studiohdr_t* header, void* submodel)
+bool render::TryDrawSubmission(goldsrc::model_t* model, const goldsrc::studiohdr_t* header, void* submodel)
 {
     // One load decides whether the record is worth filling, which it is for one frame of
     // the process's life; the submission runs hundreds of times per frame.
@@ -1235,7 +1235,7 @@ bool render::TryDrawSubmission(model_t* model, const studiohdr_t* header, void* 
     // StudioSetupSkin checked as early as the bone transforms: the flush cannot bind
     // without it, and finding that out with meshes already queued would draw them with
     // whatever texture was left bound instead of falling back to the engine.
-    const engine_studio_api_t* api = Studio_OriginalApi();
+    const goldsrc::engine_studio_api_t* api = Studio_OriginalApi();
     if (api == nullptr || api->StudioGetBoneTransform == nullptr || api->StudioSetupSkin == nullptr)
     {
         return Reject("missing studio api entry points");
@@ -1252,7 +1252,7 @@ bool render::TryDrawSubmission(model_t* model, const studiohdr_t* header, void* 
     }
 
     uint32_t serial = Studio_ModelDrawSerial();
-    const cl_entity_t* entity = api->GetCurrentEntity != nullptr ? api->GetCurrentEntity() : nullptr;
+    const goldsrc::cl_entity_t* entity = api->GetCurrentEntity != nullptr ? api->GetCurrentEntity() : nullptr;
 
     if (recording)
     {
@@ -1291,7 +1291,7 @@ bool render::TryDrawSubmission(model_t* model, const studiohdr_t* header, void* 
         }
     }
 
-    const studiohdr_t* texture_header = g_ModelDraw.texture_header;
+    const goldsrc::studiohdr_t* texture_header = g_ModelDraw.texture_header;
     if (texture_header == nullptr || texture_header->textureindex == 0)
     {
         return Reject("companion T.mdl with the textures is not loaded");
@@ -1309,7 +1309,7 @@ bool render::TryDrawSubmission(model_t* model, const studiohdr_t* header, void* 
     // The second pass of a glow shell, where the client forces chrome onto every mesh. The
     // whole pass differs from an ordinary draw, so it is decided once here rather than
     // read out of the flags again at each point that turns on it.
-    bool glow_shell = (forced_face_flags & STUDIO_NF_CHROME) != 0;
+    bool glow_shell = (forced_face_flags & goldsrc::STUDIO_NF_CHROME) != 0;
 
     // A material restyles the model's own skin, and the shell pass does not draw the skin:
     // it draws the shell sprite over the silhouette, which is not the material's subject.
@@ -1458,7 +1458,7 @@ bool render::TryDrawSubmission(model_t* model, const studiohdr_t* header, void* 
             continue;
         }
 
-        const mstudiotexture_t* texture = ResolveTexture(texture_header, skin_family, mesh.skinref);
+        const goldsrc::mstudiotexture_t* texture = ResolveTexture(texture_header, skin_family, mesh.skinref);
         if (texture == nullptr || texture->width <= 0 || texture->height <= 0)
         {
             // Back to the engine rather than skipped. The engine indexes the skin table
@@ -1467,7 +1467,7 @@ bool render::TryDrawSubmission(model_t* model, const studiohdr_t* header, void* 
             return RejectSubmission("mesh skin reference does not resolve to a texture", queued_before, true);
         }
 
-        const mstudiotexture_t* textures_base = reinterpret_cast<const mstudiotexture_t*>(
+        const goldsrc::mstudiotexture_t* textures_base = reinterpret_cast<const goldsrc::mstudiotexture_t*>(
             reinterpret_cast<const uint8_t*>(texture_header) + texture_header->textureindex
         );
 
@@ -1543,8 +1543,8 @@ bool render::TryDrawSubmission(model_t* model, const studiohdr_t* header, void* 
         item.skin = static_cast<int>(texture - textures_base);
         item.texel_scale[0] = 1.0f / texture->width;
         item.texel_scale[1] = 1.0f / texture->height;
-        item.masked = (mesh_flags & STUDIO_NF_MASKED) != 0;
-        item.chrome = (mesh_flags & STUDIO_NF_CHROME) != 0;
+        item.masked = (mesh_flags & goldsrc::STUDIO_NF_MASKED) != 0;
+        item.chrome = (mesh_flags & goldsrc::STUDIO_NF_CHROME) != 0;
         item.shade_mode = ShadeModeFor(mesh_flags, glow_shell, rendermode);
 
         // Only at kRenderNormal, which is the opposite of what the reconstruction says.
@@ -1554,7 +1554,7 @@ bool render::TryDrawSubmission(model_t* model, const studiohdr_t* header, void* 
         // already made it so, and the mode 4 one wants ordinary alpha blending, which is
         // exactly where forcing ONE/ONE showed up as a difference. The reconstruction has
         // the comparison inverted.
-        item.additive = (mesh_flags & STUDIO_NF_ADDITIVE) != 0 && rendermode == kRenderNormal;
+        item.additive = (mesh_flags & goldsrc::STUDIO_NF_ADDITIVE) != 0 && rendermode == goldsrc::kRenderNormal;
         item.index_count = static_cast<GLsizei>(mesh.index_count);
         item.index_offset = static_cast<uintptr_t>(mesh.first_index) * sizeof(uint32_t);
 
@@ -1580,7 +1580,7 @@ bool render::TryDrawSubmission(model_t* model, const studiohdr_t* header, void* 
     return true;
 }
 
-bool render::Studio_TryDraw(model_t* model, const studiohdr_t* header, void* submodel)
+bool render::Studio_TryDraw(goldsrc::model_t* model, const goldsrc::studiohdr_t* header, void* submodel)
 {
     bool drawn = TryDrawSubmission(model, header, submodel);
 

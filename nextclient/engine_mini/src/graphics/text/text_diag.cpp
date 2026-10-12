@@ -1,29 +1,23 @@
-#include "../../engine.h"
-
-#include "text_render.h"
-#include "glyph_atlas.h"
-
-#include <glad/glad.h>
-
-#include "../qgl.hpp"
-#include "../../common/cmd.h"
-#include "../../common/filesystem.h"
-#include "../../console/console.h"
-
 #include <cstdint>
 #include <cstdio>
 #include <vector>
 
-// Diagnostics for the glyph service. The atlas is the one place where a wrong glyph, a wrong cell
-// or an overflowing page all look the same from the outside, so being able to look at it directly
-// is what separates a measurement from a guess.
+#include "engine.h"
+
+#include <glad/glad.h>
+
+#include "text_render.h"
+#include "text_surface.h"
+#include "glyph_atlas.h"
+#include "graphics/qgl.hpp"
+#include "common/cmd.h"
+#include "common/filesystem.h"
+#include "console/console.h"
 
 namespace
 {
     constexpr int kAtlasSize = text_render::GlyphAtlas::kPageSize;
 
-    // The pages are two channel (luminance, alpha). Both are written out: alpha as the visible
-    // coverage, luminance beside it, so a drop-shadow cell can be told from a plain one at a glance.
     void WritePageTga(const char* path, const std::vector<uint8_t>& texels)
     {
         FILE* file = nullptr;
@@ -57,7 +51,6 @@ namespace
                 uint8_t luminance = texels[src + 0];
                 uint8_t alpha = texels[src + 1];
 
-                // left half: coverage (alpha), right half: luminance
                 row[(size_t)x * 3 + 0] = alpha;
                 row[(size_t)x * 3 + 1] = alpha;
                 row[(size_t)x * 3 + 2] = alpha;
@@ -133,8 +126,29 @@ namespace
     }
 }
 
+namespace
+{
+    // Counters are deltas since the previous read.
+    void TextSurfaceInfo_f()
+    {
+        TextSurfaceStats stats = TextSurface_Stats();
+
+        Con_Printf("text surface: %d print calls, %d char calls, last font %lu\n",
+            stats.print_calls, stats.char_calls, stats.last_font);
+        Con_Printf("  glyphs: %d asked, %d without a cell, %d clipped, %d quads\n",
+            stats.glyphs_asked, stats.glyphs_missing, stats.glyphs_clipped, stats.quads);
+        Con_Printf("  flushes: %d, of them %d with no gl table\n",
+            stats.flushes, stats.flushes_without_gl);
+        Con_Printf("  clip: %s [%d %d %d %d]\n",
+            stats.clip_active ? "on" : "off", stats.clip[0], stats.clip[1], stats.clip[2], stats.clip[3]);
+
+        TextSurface_ResetStats();
+    }
+}
+
 void TextRender_RegisterDiagnostics()
 {
     Cmd_AddCommand("text_atlas_dump", TextAtlasDump_f);
     Cmd_AddCommand("text_service_info", TextServiceInfo_f);
+    Cmd_AddCommand("text_surface_info", TextSurfaceInfo_f);
 }

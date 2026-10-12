@@ -4,9 +4,7 @@
 #include <string>
 #include <vector>
 
-// studio.h uses vec3_t without declaring it.
-#include <tier0/basetypes.h>
-#include <studio.h>
+#include <goldsrc/format/studio.h>
 
 #include "HeaderShape.h"
 
@@ -44,7 +42,7 @@ namespace ncl_studio
             return reinterpret_cast<const T*>(buffer.data + offset);
         }
 
-        ncl_math::Vector3 ReadVec3(const vec3_t& source)
+        ncl_math::Vector3 ReadVec3(const goldsrc::vec3_t& source)
         {
             return ncl_math::Vector3 {source[0], source[1], source[2]};
         }
@@ -62,8 +60,8 @@ namespace ncl_studio
         // which matches what the fixed function path feeds the driver today.
         bool BuildMesh(
             const Buffer& buffer,
-            const mstudiomodel_t& submodel,
-            const mstudiomesh_t& mesh,
+            const goldsrc::mstudiomodel_t& submodel,
+            const goldsrc::mstudiomesh_t& mesh,
             int bone_count,
             std::vector<int>& shell_normals,
             StudioMesh& out,
@@ -76,8 +74,8 @@ namespace ncl_studio
                 return false;
             }
 
-            const vec3_t* positions = At<vec3_t>(buffer, submodel.vertindex);
-            const vec3_t* normals = At<vec3_t>(buffer, submodel.normindex);
+            const goldsrc::vec3_t* positions = At<goldsrc::vec3_t>(buffer, submodel.vertindex);
+            const goldsrc::vec3_t* normals = At<goldsrc::vec3_t>(buffer, submodel.normindex);
             const uint8_t* position_bones = At<uint8_t>(buffer, submodel.vertinfoindex);
             const uint8_t* normal_bones = At<uint8_t>(buffer, submodel.norminfoindex);
 
@@ -108,21 +106,21 @@ namespace ncl_studio
                     return false;
                 }
 
-                size_t run_bytes = static_cast<size_t>(run_length) * sizeof(mstudiotrivert_t);
+                size_t run_bytes = static_cast<size_t>(run_length) * sizeof(StudioTriVertex_t);
                 if (run_bytes > buffer.size - cursor)
                 {
                     error = "triangle run runs past the end of the file";
                     return false;
                 }
 
-                const mstudiotrivert_t* run_verts = reinterpret_cast<const mstudiotrivert_t*>(buffer.data + cursor);
+                const StudioTriVertex_t* run_verts = reinterpret_cast<const StudioTriVertex_t*>(buffer.data + cursor);
                 cursor += run_bytes;
 
                 uint32_t run_start = static_cast<uint32_t>(out.vertices.size());
 
                 for (int i = 0; i < run_length; i++)
                 {
-                    const mstudiotrivert_t& source = run_verts[i];
+                    const StudioTriVertex_t& source = run_verts[i];
 
                     if (source.vertindex >= submodel.numverts || source.normindex >= submodel.numnorms)
                     {
@@ -161,13 +159,13 @@ namespace ncl_studio
                     out.vertices.push_back(vertex);
                 }
 
-                // Every vertex emitted comes from one mstudiotrivert_t in a command list,
+                // Every vertex emitted comes from one StudioTriVertex_t in a command list,
                 // and in a well formed model each mesh owns its own command list, so the
                 // file cannot describe more vertices than it has room for. Nothing stops
                 // the body part, submodel and mesh arrays from all pointing at the same
                 // region, though, and that turns a small file into an unbounded amount of
                 // work; this is the bound the layout implies rather than a chosen ceiling.
-                if (out.vertices.size() > buffer.size / sizeof(mstudiotrivert_t))
+                if (out.vertices.size() > buffer.size / sizeof(StudioTriVertex_t))
                 {
                     error = "model expands to more vertices than its own size can describe";
                     return false;
@@ -217,40 +215,40 @@ namespace ncl_studio
             size_t indices;
         };
 
-        size_t CountTriangles(const Buffer& buffer, const studiohdr_t* header)
+        size_t CountTriangles(const Buffer& buffer, const goldsrc::studiohdr_t* header)
         {
             size_t triangles = 0;
 
-            if (!Fits(buffer, header->bodypartindex, header->numbodyparts, sizeof(mstudiobodyparts_t)))
+            if (!Fits(buffer, header->bodypartindex, header->numbodyparts, sizeof(goldsrc::mstudiobodyparts_t)))
             {
                 return triangles;
             }
 
-            const mstudiobodyparts_t* bodyparts = At<mstudiobodyparts_t>(buffer, header->bodypartindex);
+            const goldsrc::mstudiobodyparts_t* bodyparts = At<goldsrc::mstudiobodyparts_t>(buffer, header->bodypartindex);
 
             for (int i = 0; i < header->numbodyparts; i++)
             {
-                const mstudiobodyparts_t& bodypart = bodyparts[i];
+                const goldsrc::mstudiobodyparts_t& bodypart = bodyparts[i];
 
                 // Anything that does not fit ends the count where it stands: this is an
                 // estimate, and the build below is what reports a malformed file.
-                if (!Fits(buffer, bodypart.modelindex, bodypart.nummodels, sizeof(mstudiomodel_t)))
+                if (!Fits(buffer, bodypart.modelindex, bodypart.nummodels, sizeof(goldsrc::mstudiomodel_t)))
                 {
                     return triangles;
                 }
 
-                const mstudiomodel_t* submodels = At<mstudiomodel_t>(buffer, bodypart.modelindex);
+                const goldsrc::mstudiomodel_t* submodels = At<goldsrc::mstudiomodel_t>(buffer, bodypart.modelindex);
 
                 for (int j = 0; j < bodypart.nummodels; j++)
                 {
-                    const mstudiomodel_t& submodel = submodels[j];
+                    const goldsrc::mstudiomodel_t& submodel = submodels[j];
 
-                    if (!Fits(buffer, submodel.meshindex, submodel.nummesh, sizeof(mstudiomesh_t)))
+                    if (!Fits(buffer, submodel.meshindex, submodel.nummesh, sizeof(goldsrc::mstudiomesh_t)))
                     {
                         return triangles;
                     }
 
-                    const mstudiomesh_t* meshes = At<mstudiomesh_t>(buffer, submodel.meshindex);
+                    const goldsrc::mstudiomesh_t* meshes = At<goldsrc::mstudiomesh_t>(buffer, submodel.meshindex);
 
                     for (int k = 0; k < submodel.nummesh; k++)
                     {
@@ -270,12 +268,12 @@ namespace ncl_studio
         // command list entry. Vertices are a lower bound rather than the count, because a
         // run of L entries carries L vertices and L - 2 triangles, and counting the two per
         // run would mean walking every command list twice.
-        SizeEstimate EstimateSize(const Buffer& buffer, const studiohdr_t* header)
+        SizeEstimate EstimateSize(const Buffer& buffer, const goldsrc::studiohdr_t* header)
         {
             // The ceiling the build enforces on itself: the body part, submodel and mesh
             // arrays may point at one another, so counts read out of them are not to be
             // trusted past what the file has room to describe.
-            size_t ceiling = buffer.size / sizeof(mstudiotrivert_t);
+            size_t ceiling = buffer.size / sizeof(StudioTriVertex_t);
             size_t triangles = std::min(CountTriangles(buffer, header), ceiling);
 
             return SizeEstimate {triangles, triangles * 3};
@@ -284,13 +282,13 @@ namespace ncl_studio
 
     ncl_utils::ResultT<StudioMesh> BuildStudioMesh(const void* data, size_t size)
     {
-        if (data == nullptr || size < sizeof(studiohdr_t))
+        if (data == nullptr || size < sizeof(goldsrc::studiohdr_t))
         {
             return ncl_utils::ResultError("buffer is smaller than a studio header");
         }
 
         Buffer buffer {static_cast<const uint8_t*>(data), size};
-        const studiohdr_t* header = At<studiohdr_t>(buffer, 0);
+        const goldsrc::studiohdr_t* header = At<goldsrc::studiohdr_t>(buffer, 0);
 
         std::string shape_error = HeaderShapeError(header);
         if (!shape_error.empty())
@@ -298,7 +296,7 @@ namespace ncl_studio
             return ncl_utils::ResultError(std::move(shape_error));
         }
 
-        if (!Fits(buffer, header->bodypartindex, header->numbodyparts, sizeof(mstudiobodyparts_t)))
+        if (!Fits(buffer, header->bodypartindex, header->numbodyparts, sizeof(goldsrc::mstudiobodyparts_t)))
         {
             return ncl_utils::ResultError("body part array lies outside the file");
         }
@@ -308,13 +306,13 @@ namespace ncl_studio
         out.vertices.reserve(estimate.vertices);
         out.indices.reserve(estimate.indices);
 
-        const mstudiobodyparts_t* bodyparts = At<mstudiobodyparts_t>(buffer, header->bodypartindex);
+        const goldsrc::mstudiobodyparts_t* bodyparts = At<goldsrc::mstudiobodyparts_t>(buffer, header->bodypartindex);
 
         for (int i = 0; i < header->numbodyparts; i++)
         {
-            const mstudiobodyparts_t& bodypart = bodyparts[i];
+            const goldsrc::mstudiobodyparts_t& bodypart = bodyparts[i];
 
-            if (!Fits(buffer, bodypart.modelindex, bodypart.nummodels, sizeof(mstudiomodel_t)))
+            if (!Fits(buffer, bodypart.modelindex, bodypart.nummodels, sizeof(goldsrc::mstudiomodel_t)))
             {
                 return ncl_utils::ResultError("submodel array of body part " + std::to_string(i) + " lies outside the file");
             }
@@ -323,18 +321,18 @@ namespace ncl_studio
             bodypart_range.first_submodel = static_cast<uint32_t>(out.submodels.size());
             bodypart_range.submodel_count = static_cast<uint32_t>(bodypart.nummodels);
 
-            const mstudiomodel_t* submodels = At<mstudiomodel_t>(buffer, bodypart.modelindex);
+            const goldsrc::mstudiomodel_t* submodels = At<goldsrc::mstudiomodel_t>(buffer, bodypart.modelindex);
 
             for (int j = 0; j < bodypart.nummodels; j++)
             {
-                const mstudiomodel_t& submodel = submodels[j];
+                const goldsrc::mstudiomodel_t& submodel = submodels[j];
 
                 bool layout_ok =
-                    Fits(buffer, submodel.vertindex, submodel.numverts, sizeof(vec3_t)) &&
-                    Fits(buffer, submodel.normindex, submodel.numnorms, sizeof(vec3_t)) &&
+                    Fits(buffer, submodel.vertindex, submodel.numverts, sizeof(goldsrc::vec3_t)) &&
+                    Fits(buffer, submodel.normindex, submodel.numnorms, sizeof(goldsrc::vec3_t)) &&
                     Fits(buffer, submodel.vertinfoindex, submodel.numverts, sizeof(uint8_t)) &&
                     Fits(buffer, submodel.norminfoindex, submodel.numnorms, sizeof(uint8_t)) &&
-                    Fits(buffer, submodel.meshindex, submodel.nummesh, sizeof(mstudiomesh_t));
+                    Fits(buffer, submodel.meshindex, submodel.nummesh, sizeof(goldsrc::mstudiomesh_t));
 
                 if (!layout_ok)
                 {
@@ -349,14 +347,14 @@ namespace ncl_studio
                 submodel_range.file_offset =
                     static_cast<uint32_t>(reinterpret_cast<const uint8_t*>(&submodel) - buffer.data);
 
-                const mstudiomesh_t* meshes = At<mstudiomesh_t>(buffer, submodel.meshindex);
+                const goldsrc::mstudiomesh_t* meshes = At<goldsrc::mstudiomesh_t>(buffer, submodel.meshindex);
 
                 // Per submodel, because the vertex and normal arrays it indexes are its own.
                 std::vector<int> shell_normals(static_cast<size_t>(submodel.numverts), -1);
 
                 for (int k = 0; k < submodel.nummesh; k++)
                 {
-                    const mstudiomesh_t& mesh = meshes[k];
+                    const goldsrc::mstudiomesh_t& mesh = meshes[k];
 
                     MeshRange mesh_range;
                     mesh_range.first_index = static_cast<uint32_t>(out.indices.size());

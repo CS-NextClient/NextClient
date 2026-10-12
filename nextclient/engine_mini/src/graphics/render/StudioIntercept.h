@@ -1,6 +1,8 @@
 #pragma once
 
-typedef struct engine_studio_api_s engine_studio_api_t;
+#include <cstdint>
+
+#include <goldsrc/fwd.h>
 
 namespace render
 {
@@ -38,11 +40,11 @@ namespace render
     // parts of one model keys off this instead of repeating per submodel.
     uint32_t Studio_ModelDrawSerial();
 
-    void Studio_PatchApi(engine_studio_api_t* api);
+    void Studio_PatchApi(goldsrc::engine_studio_api_t* api);
 
     // The table as it was before patching. The draw path calls back into it for the
     // state the engine still owns, such as the bone transforms.
-    const engine_studio_api_t* Studio_OriginalApi();
+    const goldsrc::engine_studio_api_t* Studio_OriginalApi();
 
     // Puts the engine's table back and, more importantly, makes the entry points we
     // handed out pass straight through. The client holds a copy of the table, so the

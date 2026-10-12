@@ -55,4 +55,3 @@ public:
 // decode, an image that decoded but is never painted, and one that is painted and still
 // cannot be seen.
 void ImageFilePanel_Report();
-

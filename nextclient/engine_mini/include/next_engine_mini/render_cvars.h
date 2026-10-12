@@ -1,6 +1,6 @@
 #pragma once
 
-#include <cvardef.h>
+#include <goldsrc/cvar.h>
 
 // Single source of truth for the shader pipeline cvar definitions: the engine_mini
 // registration and any consumer (settings UI, diagnostics) read this table, so names,
@@ -29,9 +29,9 @@ inline constexpr RenderCvarDef kRenderCvarDefs[] = {
     // falling back per model whenever the shader path does not handle it. Archived: it is
     // what makes materials exist at all, and losing it on every restart means opening the
     // material panel to an empty list and having to remember why.
-    {"r_studio_shader", "0", 0.0f, 1.0f, FCVAR_ARCHIVE},
+    {"r_studio_shader", "0", 0.0f, 1.0f, goldsrc::FCVAR_ARCHIVE},
     // Diagnostics overlay: rolling frame time and studio submission time.
-    {"r_studio_graph", "0", 0.0f, 1.0f, FCVAR_ARCHIVE},
+    {"r_studio_graph", "0", 0.0f, 1.0f, goldsrc::FCVAR_ARCHIVE},
     // Resolves materials for studio models. Turning it off leaves the shader path drawing
     // what the engine's own path draws, whatever material content happens to be installed,
     // which is what makes an A/B against the engine mean anything.

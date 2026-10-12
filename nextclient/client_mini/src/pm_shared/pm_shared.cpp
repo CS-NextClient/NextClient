@@ -1,3 +1,5 @@
+#include <goldsrc/pmove.h>
+
 #include "../main.h"
 
 int PM_GetVisEntInfo(int ent)

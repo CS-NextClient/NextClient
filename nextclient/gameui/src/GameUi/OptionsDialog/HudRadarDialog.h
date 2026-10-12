@@ -16,9 +16,34 @@ class CHudRadarDialog : public vgui2::Frame
     DECLARE_CLASS_SIMPLE(CHudRadarDialog, vgui2::Frame);
 
 public:
-    static constexpr int kCheckCount = 8;
-    static constexpr int kSnapshotCount = 5 + kCheckCount; // 5 sliders/combos + toggles
+    // Array bounds must precede the fields that use them.
+    static constexpr int kCheckCount = 10;
+    static constexpr int kSnapshotCount = 6 + kCheckCount; // 6 sliders/combos + toggles
 
+private:
+    vgui2::ComboBox* m_pMode;
+    vgui2::ComboBox* m_pMapMode;
+
+    CCvarSlider* m_pRadarScale;
+    CCvarSlider* m_pMapScale;
+    CCvarSlider* m_pOpacity;
+    CCvarSlider* m_pNameSize;
+    vgui2::TextEntry* m_pRadarScaleText;
+    vgui2::TextEntry* m_pMapScaleText;
+    vgui2::TextEntry* m_pOpacityText;
+    vgui2::TextEntry* m_pNameSizeText;
+
+    CCvarToggleCheckButton* m_pChecks[kCheckCount];
+
+    vgui2::Button* m_pApplyButton;
+
+    // Radar cvar values captured when the dialog opens. When editing in a level
+    // (m_bLiveApply) changes apply to the radar immediately, and Cancel restores this
+    // snapshot to undo them.
+    float m_snapshot[kSnapshotCount];
+    bool m_bLiveApply;
+
+public:
     explicit CHudRadarDialog(vgui2::Panel* parent);
 
     void Activate() override;
@@ -37,29 +62,10 @@ private:
     void UpdateTexts();
     void MarkModified();
     void UpdateEnabledStates();
+    void SetControlsSilent(bool silent);
     CCvarToggleCheckButton* FindCheck(const char* cvar) const;
     void TakeSnapshot();
     void RestoreSnapshot();
     bool HasChanges() const;
     void ShowCloseConfirm();
-
-    vgui2::ComboBox* m_pMode;
-    vgui2::ComboBox* m_pMapMode;
-
-    CCvarSlider* m_pRadarScale;
-    CCvarSlider* m_pMapScale;
-    CCvarSlider* m_pOpacity;
-    vgui2::TextEntry* m_pRadarScaleText;
-    vgui2::TextEntry* m_pMapScaleText;
-    vgui2::TextEntry* m_pOpacityText;
-
-    CCvarToggleCheckButton* m_pChecks[kCheckCount];
-
-    vgui2::Button* m_pApplyButton;
-
-    // Radar cvar values captured when the dialog opens. When editing in a level
-    // (m_bLiveApply) changes apply to the radar immediately, and Cancel restores this
-    // snapshot to undo them.
-    float m_snapshot[kSnapshotCount];
-    bool m_bLiveApply;
 };

@@ -22,6 +22,7 @@
 
 #include "FileSystem.h"
 #include <KeyValues.h>
+#include <goldsrc/client_api.h>
 
 // memdbgon must be the last include file in a .cpp file!!!
 #include <tier0/memdbgon.h>
@@ -152,6 +153,13 @@ CCreateMultiplayerGameDialog::~CCreateMultiplayerGameDialog()
         m_pBotSavedData->deleteThis();
         m_pBotSavedData = NULL;
     }
+}
+
+void CCreateMultiplayerGameDialog::Activate()
+{
+    m_pServerPage->RefreshMapList();
+
+    BaseClass::Activate();
 }
 
 void CCreateMultiplayerGameDialog::OnKeyCodeTyped(vgui2::KeyCode code)

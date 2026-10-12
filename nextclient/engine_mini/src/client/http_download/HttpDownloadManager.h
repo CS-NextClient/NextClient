@@ -14,6 +14,7 @@
 #include <IGameUI.h>
 
 #include <resource/ResourceDescriptor.h>
+#include <goldsrc/cvar.h>
 
 #include "TransferStatistics.h"
 #include "RequestContext.hpp"
@@ -25,8 +26,8 @@ class HttpDownloadManager : public HttpDownloadManagerInterface
 
     const int MAX_POSSIBLE_ACTIVE_REQUESTS = 30;
 
-    cvar_t* cvar_max_active_requests;
-    cvar_t* cvar_max_requests_retries;
+    goldsrc::cvar_t* cvar_max_active_requests;
+    goldsrc::cvar_t* cvar_max_requests_retries;
 
     const uint32_t slow_speed_threshold_ = 1024 * 30; // bytes per sec
     const std::chrono::seconds connection_timeout_ = std::chrono::seconds(7);
@@ -45,6 +46,7 @@ class HttpDownloadManager : public HttpDownloadManagerInterface
 
     std::queue<QueuedRequest> files_to_download_;
     std::vector<RequestContext> requests_;
+    std::vector<std::shared_ptr<cpr::Session>> free_sessions_;
 
     bool is_download_active_ = false;
     bool is_slow_speed_ = false;
@@ -76,6 +78,7 @@ private:
     void InvokeEndDownloadingEvent();
     void PruneCompletedRequests();
     void StartNewDownloads();
+    std::shared_ptr<cpr::Session> AcquireSession();
     void UpdateUi();
     void UpdateDownloadSpeed();
     void SlowSpeedDetection();

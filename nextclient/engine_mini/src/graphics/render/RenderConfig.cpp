@@ -27,20 +27,20 @@ namespace
     // Flags come from the shared table with the name and the default, so a cvar that has to
     // survive a restart cannot be given the flag in one place and registered without it in
     // another.
-    cvar_t g_DebugOutput = {kDebugOutputDef.name, const_cast<char*>(kDebugOutputDef.default_value), kDebugOutputDef.flags};
-    cvar_t g_ShaderReload = {kShaderReloadDef.name, const_cast<char*>(kShaderReloadDef.default_value), kShaderReloadDef.flags};
-    cvar_t g_TestQuad = {kTestQuadDef.name, const_cast<char*>(kTestQuadDef.default_value), kTestQuadDef.flags};
+    goldsrc::cvar_t g_DebugOutput = {kDebugOutputDef.name, const_cast<char*>(kDebugOutputDef.default_value), kDebugOutputDef.flags};
+    goldsrc::cvar_t g_ShaderReload = {kShaderReloadDef.name, const_cast<char*>(kShaderReloadDef.default_value), kShaderReloadDef.flags};
+    goldsrc::cvar_t g_TestQuad = {kTestQuadDef.name, const_cast<char*>(kTestQuadDef.default_value), kTestQuadDef.flags};
     constexpr RenderCvarDef kStudioGraphDef = RenderCvarDef_Get("r_studio_graph");
     static_assert(kStudioGraphDef.name != nullptr);
 
     constexpr RenderCvarDef kStudioMaterialsDef = RenderCvarDef_Get("r_studio_materials");
     static_assert(kStudioMaterialsDef.name != nullptr);
 
-    cvar_t g_StudioShader = {kStudioShaderDef.name, const_cast<char*>(kStudioShaderDef.default_value), kStudioShaderDef.flags};
-    cvar_t g_StudioMaterials = {kStudioMaterialsDef.name, const_cast<char*>(kStudioMaterialsDef.default_value), kStudioMaterialsDef.flags};
-    cvar_t g_StudioGraph = {kStudioGraphDef.name, const_cast<char*>(kStudioGraphDef.default_value), kStudioGraphDef.flags};
+    goldsrc::cvar_t g_StudioShader = {kStudioShaderDef.name, const_cast<char*>(kStudioShaderDef.default_value), kStudioShaderDef.flags};
+    goldsrc::cvar_t g_StudioMaterials = {kStudioMaterialsDef.name, const_cast<char*>(kStudioMaterialsDef.default_value), kStudioMaterialsDef.flags};
+    goldsrc::cvar_t g_StudioGraph = {kStudioGraphDef.name, const_cast<char*>(kStudioGraphDef.default_value), kStudioGraphDef.flags};
 
-    void OnDebugOutputChanged(cvar_t* cvar)
+    void OnDebugOutputChanged(goldsrc::cvar_t* cvar)
     {
         render::Debug_Apply();
     }

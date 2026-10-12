@@ -1,5 +1,14 @@
-#include <Windows.h>
-#include <dbghelp.h>
+#include <atomic>
+#include <cstdlib>
+
+#ifdef _WIN32
+    #include <Windows.h>
+    #include <dbghelp.h>
+#else
+    #include <cstdio>
+    #include <ctime>
+    #include <execinfo.h>
+#endif
 #ifdef SENTRY_ENABLE
 #include <sentry.h>
 #endif
@@ -10,6 +19,7 @@ bool g_SaveFullDumps;
 
 namespace
 {
+#ifdef _WIN32
     // clang-format off
     constexpr MINIDUMP_TYPE kCompactDumpType = MINIDUMP_TYPE(
         MiniDumpWithDataSegs |
@@ -109,21 +119,64 @@ namespace
             WriteMiniDump(exception_pointers, kFullDumpType, path);
         }
     }
+#else
+    // No SEH/minidumps outside Windows - write a plain backtrace instead, same
+    // pattern steam_api_proxy's SigHandler already uses. There's no "full memory"
+    // equivalent for a backtrace, so g_SaveFullDumps only changes the file name.
+    void BuildDumpPath(char* out, size_t out_size, const char* prefix)
+    {
+        time_t now = time(nullptr);
+        tm local_time{};
+        localtime_r(&now, &local_time);
+
+        snprintf(out, out_size, "%s-%02d-%02d-%04d-%02d_%02d_%02d.txt", prefix,
+            local_time.tm_mday, local_time.tm_mon + 1, local_time.tm_year + 1900,
+            local_time.tm_hour, local_time.tm_min, local_time.tm_sec);
+    }
+
+    void WriteBacktrace(const char* file_path)
+    {
+        FILE* file = fopen(file_path, "w");
+        if (file == nullptr)
+        {
+            fprintf(stderr, "[exception_handler] backtrace write FAILED: %s\n", file_path);
+            return;
+        }
+
+        void* frames[100];
+        int frame_count = backtrace(frames, 100);
+        backtrace_symbols_fd(frames, frame_count, fileno(file));
+
+        fclose(file);
+
+        fprintf(stderr, "[exception_handler] backtrace written: %s\n", file_path);
+    }
+
+    void SaveCrashDump(void*)
+    {
+        char path[512];
+        BuildDumpPath(path, sizeof(path), g_SaveFullDumps ? "full_dump" : "minidump");
+        WriteBacktrace(path);
+    }
+#endif
 } // namespace
 
 void ExceptionHandler(void* exception_pointers)
 {
+#ifdef _WIN32
     EXCEPTION_POINTERS* ep = (EXCEPTION_POINTERS*)exception_pointers;
     if (ep == nullptr)
     {
         return;
     }
+#endif
 
     // Capture once per process. An outer engine/Steam filter can swallow a fatal fault and
     // resume on a deterministically failing operation, re-entering this handler every iteration;
     // the faulting address is unreliable for dedup (may be null or vary), so guard with a flag.
-    static LONG handled = 0;
-    if (InterlockedExchange(&handled, 1) != 0)
+    static std::atomic<bool> handled = false;
+    bool expected = false;
+    if (!handled.compare_exchange_strong(expected, true))
     {
         return;
     }
@@ -131,15 +184,25 @@ void ExceptionHandler(void* exception_pointers)
     // Order is deliberate: capture locally and report to Sentry before terminating.
     // sentry_handle_exception captures synchronously (may not even return on the crashpad
     // backend), so the terminate below cannot truncate the report.
+#ifdef _WIN32
     SaveCrashDump(ep);
+#else
+    SaveCrashDump(exception_pointers);
+#endif
 
 #ifdef SENTRY_ENABLE
     sentry_ucontext_t ucontext;
+#ifdef _WIN32
     ucontext.exception_ptrs = *ep;
+#endif
     sentry_handle_exception(&ucontext);
 #endif
 
+#ifdef _WIN32
     // Terminate so the swallow-and-continue loop can't re-enter the same fault and keep
     // dumping. This deliberately preempts Steam's crash handler, which NextClient doesn't use.
     TerminateProcess(GetCurrentProcess(), ep->ExceptionRecord ? ep->ExceptionRecord->ExceptionCode : EXCEPTION_NONCONTINUABLE_EXCEPTION);
+#else
+    exit(1);
+#endif
 }

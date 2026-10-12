@@ -4,8 +4,8 @@
 
 #include <glad/glad.h>
 #include <ncl_studio/StudioMeshBuilder.h>
-#include <r_studioint.h>
-#include <studio.h>
+#include <goldsrc/studio_api.h>
+#include <goldsrc/format/studio.h>
 
 #include "common/cmd.h"
 #include "common/cvar.h"
@@ -20,8 +20,8 @@
 
 namespace
 {
-    engine_studio_api_t g_Original;
-    engine_studio_api_t* g_Patched;
+    goldsrc::engine_studio_api_t g_Original;
+    goldsrc::engine_studio_api_t* g_Patched;
 
     // The client copies the table into its own renderer, so the entry points we wrote into
     // it outlive any attempt to take them back: restoring the engine's copy does not reach
@@ -29,8 +29,8 @@ namespace
     // pass straight through once this module has stopped being ready to serve them.
     bool g_PassThrough;
 
-    studiohdr_t* g_Header;
-    model_t* g_Model;
+    goldsrc::studiohdr_t* g_Header;
+    goldsrc::model_t* g_Model;
     void* g_SubModel;
     uint32_t g_DrawPointsCalls;
     uint32_t g_ShaderDrawCalls;
@@ -41,10 +41,10 @@ namespace
     // attached weapon it sets only the header: Mod_Extradata on the weapon model,
     // StudioSetHeader on what came back, no SetRenderModel. The lookup is therefore the
     // only place the header can still be traced to the model it belongs to.
-    model_t* g_ExtradataModel;
+    goldsrc::model_t* g_ExtradataModel;
     void* g_ExtradataResult;
 
-    void* ModExtradata(model_t* model)
+    void* ModExtradata(goldsrc::model_t* model)
     {
         void* extradata = g_Original.Mod_Extradata(model);
 
@@ -65,7 +65,7 @@ namespace
             return;
         }
 
-        g_Header = static_cast<studiohdr_t*>(header);
+        g_Header = static_cast<goldsrc::studiohdr_t*>(header);
         g_ModelDrawSerial++;
 
         // Adopted rather than trusted: a header the client did not just look up leaves the
@@ -78,7 +78,7 @@ namespace
         g_Original.StudioSetHeader(header);
     }
 
-    void SetRenderModel(model_t* model)
+    void SetRenderModel(goldsrc::model_t* model)
     {
         if (g_PassThrough)
         {
@@ -92,19 +92,9 @@ namespace
 
     render::StudioLighting g_Lighting;
 
-    // Mirrors alight_s from the SDK's com_model.h, which cannot be included here: it
-    // redefines the model structures engine_mini declares itself.
-    struct alight_mirror_t
+    void StudioSetupLighting(goldsrc::alight_t* plight)
     {
-        int ambientlight;
-        int shadelight;
-        vec3_t color;
-        float* plightvec;
-    };
-
-    void StudioSetupLighting(alight_mirror_t* plight)
-    {
-        reinterpret_cast<void (*)(alight_mirror_t*)>(g_Original.StudioSetupLighting)(plight);
+        g_Original.StudioSetupLighting(plight);
 
         if (g_PassThrough)
         {
@@ -133,7 +123,7 @@ namespace
         // body value before this returns, so the material panel's preview cannot be applied
         // where the skin family is. Swapped for the duration of the call and put straight
         // back: the entity's state is the client's, and this borrows it rather than sets it.
-        cl_entity_t* entity = !g_PassThrough && g_Original.GetCurrentEntity != nullptr
+        goldsrc::cl_entity_t* entity = !g_PassThrough && g_Original.GetCurrentEntity != nullptr
             ? g_Original.GetCurrentEntity()
             : nullptr;
 
@@ -227,7 +217,7 @@ namespace
     // Mod_LoadStudioModel keeps only the part of the file that precedes the texture
     // pixels when the textures are embedded, so the cached buffer is shorter than the
     // length the header declares. Geometry lives before that point either way.
-    size_t CachedModelSize(const studiohdr_t* header)
+    size_t CachedModelSize(const goldsrc::studiohdr_t* header)
     {
         return header->textureindex != 0
             ? static_cast<size_t>(header->texturedataindex)
@@ -272,7 +262,7 @@ namespace
     }
 }
 
-void render::Studio_PatchApi(engine_studio_api_t* api)
+void render::Studio_PatchApi(goldsrc::engine_studio_api_t* api)
 {
     // The table is handed out again on a level change; comparing against our own entry
     // point both detects that case and keeps a second patch from capturing itself as
@@ -289,7 +279,7 @@ void render::Studio_PatchApi(engine_studio_api_t* api)
     api->StudioSetHeader = StudioSetHeader;
     api->SetRenderModel = SetRenderModel;
     api->StudioSetupModel = StudioSetupModel;
-    api->StudioSetupLighting = reinterpret_cast<void (*)(alight_s*)>(StudioSetupLighting);
+    api->StudioSetupLighting = StudioSetupLighting;
     api->StudioDrawPoints = StudioDrawPoints;
     api->GL_StudioDrawShadow = GL_StudioDrawShadow;
 }
@@ -318,7 +308,7 @@ render::StudioFrameStats render::Studio_TakeFrameStats()
     return stats;
 }
 
-const engine_studio_api_t* render::Studio_OriginalApi()
+const goldsrc::engine_studio_api_t* render::Studio_OriginalApi()
 {
     return g_Original.StudioDrawPoints != nullptr ? &g_Original : nullptr;
 }
@@ -373,7 +363,7 @@ namespace
     // Rebuild on a change rather than leave each program to its next draw: the start-up
     // build runs before config.cfg, so a value set there arrives only through this hook,
     // and the same profile can be re-executed mid-session with the value unchanged.
-    void OnShaderReloadChanged(cvar_t* cvar)
+    void OnShaderReloadChanged(goldsrc::cvar_t* cvar)
     {
         if (cvar->value == g_LastShaderReload)
         {

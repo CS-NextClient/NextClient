@@ -472,4 +472,3 @@ void CEditorPanel::DockToScreen()
         Editor()->SetViewportInset(wide, screen_wide);
     }
 }
-

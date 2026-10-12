@@ -1,17 +1,16 @@
 #include "glyph_atlas.h"
 
+#include <algorithm>
+
 #include <glad/glad.h>
 
-#include "../qgl.hpp"
-
-#include <algorithm>
+#include "graphics/qgl.hpp"
 
 namespace
 {
     constexpr int kPageSize = text_render::GlyphAtlas::kPageSize;
     constexpr int kGutter = 1;
     constexpr int kMaxPages = 8;
-
 
     GLenum GlFormat(TextGlyphFormat format)
     {

@@ -30,7 +30,7 @@ namespace
         bool has_ink;
     };
 
-    // One GDI face at one size. Owns the DC so the font stays selected for metric queries.
+    // Owns the DC so the font stays selected for metric queries.
     class FontFace
     {
     public:
@@ -60,9 +60,7 @@ namespace
             lf.lfCharSet = DEFAULT_CHARSET;
             lf.lfOutPrecision = OUT_TT_PRECIS;
             lf.lfClipPrecision = CLIP_DEFAULT_PRECIS;
-            // ANTIALIASED_QUALITY, not CLEARTYPE: ClearType produces subpixel tinted coverage, which
-            // cannot be tinted per caller. Non-antialiased fonts stay crisp bitmaps, as the engine
-            // renders them when a scheme leaves FONTFLAG_ANTIALIAS off.
+            // Not CLEARTYPE: its subpixel coverage is already tinted and cannot take a caller colour.
             lf.lfQuality = antialias ? ANTIALIASED_QUALITY : NONANTIALIASED_QUALITY;
             lf.lfPitchAndFamily = DEFAULT_PITCH | FF_DONTCARE;
             std::wcsncpy(lf.lfFaceName, wide_face, LF_FACESIZE - 1);
@@ -87,6 +85,7 @@ namespace
             ascent_ = tm.tmAscent;
             line_height_ = tm.tmHeight;
             antialias_ = antialias;
+            requested_ = face;
 
             return true;
         }
@@ -109,11 +108,9 @@ namespace
             return index != 0xFFFF;
         }
 
-        // Matches the engine's two rasterizers. Antialiased fonts use GGO_GRAY8_BITMAP (hinted 65
-        // level coverage, rows padded to four bytes) with linear coverage, as the surface's
-        // a = grayscale/64 does. Non-antialiased fonts use GGO_BITMAP, GDI's own monochrome rasterizer
-        // with dropout control, which is what the surface's ExtTextOut path produces; a 0.5 threshold
-        // of the grey bitmap would give a different, un-hinted binary shape.
+        // Matches the engine's two rasterizers: GGO_GRAY8_BITMAP with 65 coverage levels (the
+        // surface's a = grayscale/64), and GGO_BITMAP, GDI's monochrome rasterizer with dropout
+        // control. Thresholding the grey bitmap instead gives a different, un-hinted shape.
         bool Rasterize(uint32_t codepoint, RasterGlyph* out) const
         {
             UINT format = antialias_ ? GGO_GRAY8_BITMAP : GGO_BITMAP;
@@ -192,6 +189,7 @@ namespace
 
         int ascent() const { return ascent_; }
         int line_height() const { return line_height_; }
+        const std::string& requested() const { return requested_; }
 
     private:
         void Release()
@@ -215,6 +213,7 @@ namespace
         int ascent_ = 0;
         int line_height_ = 0;
         bool antialias_ = false;
+        std::string requested_; // family as asked for, not the substituted one
     };
 
     struct Font
@@ -226,12 +225,12 @@ namespace
         int flags;
         TextGlyphFormat format;
         bool system_fallbacks_added = false;
+        bool used = false; // set once a glyph resolved, which means the chain is complete
     };
 
-    // Broad Windows faces tried when the caller's own chain covers none of a codepoint. Unlike the
-    // engine's ExtTextOut path, GetGlyphOutlineW does no system font linking, so a decorative glyph
-    // in a nickname (box-drawing, symbols, syllabics) would otherwise render as .notdef. Order is
-    // widest-common first. Gadugi covers Canadian Aboriginal Syllabics (U+1400..167F).
+    // GetGlyphOutlineW does no system font linking (the engine's ExtTextOut path does), so without
+    // these a nickname's decorative glyph renders as .notdef. Order is widest-common first; Gadugi
+    // covers Canadian Aboriginal Syllabics (U+1400..167F).
     constexpr const char* kSystemFallbackFaces[] = {
         "Segoe UI",
         "Segoe UI Symbol",
@@ -313,8 +312,16 @@ namespace
 
             Font& target = fonts_[font];
 
-            // The first set fixes the size; later ones are fallback faces and must match it, or the
-            // chain would mix sizes the way the amalgam this replaces did after a reload.
+            // A scheme reload re-adds the whole chain on the same handle; appending to the complete
+            // old chain leaves a stale face ahead of the new size.
+            if (target.used)
+            {
+                target.faces.clear();
+                target.system_fallbacks_added = false;
+                target.used = false;
+                DropCells();
+            }
+
             if (target.faces.empty())
             {
                 target.face_name = face;
@@ -390,19 +397,6 @@ namespace
             return ResolveFace(fonts_[font], codepoint)->ascent();
         }
 
-        const char* GetForeignFallbackFace() override
-        {
-            // Tahoma covers Cyrillic and Greek; the CJK ranges need a face that ships with the
-            // matching Windows language pack.
-            switch (PRIMARYLANGID(LANGIDFROMLCID(GetThreadLocale())))
-            {
-                case LANG_JAPANESE: return "MS UI Gothic";
-                case LANG_KOREAN: return "Gulim";
-                case LANG_CHINESE: return "SimSun";
-                default: return "Tahoma";
-            }
-        }
-
         bool AddFallbackFace(TextFont_t font, const char* face) override
         {
             if (!Valid(font) || !face)
@@ -411,17 +405,6 @@ namespace
             }
 
             return AddFace(font, face);
-        }
-
-        void ResetFaces(TextFont_t font) override
-        {
-            if (!Valid(font))
-            {
-                return;
-            }
-
-            fonts_[font].faces.clear();
-            DropCells();
         }
 
         const TextGlyph* GetGlyph(TextFont_t font, uint32_t codepoint) override
@@ -444,7 +427,7 @@ namespace
 
             if (!cacheable)
             {
-                return nullptr; // out of atlas room, retry after a repack
+                return nullptr;
             }
 
             return &cells_.emplace(key, glyph).first->second;
@@ -598,6 +581,17 @@ namespace
         bool AddFace(TextFont_t font, const char* face)
         {
             Font& target = fonts_[font];
+
+            // Callers re-run their setup on the same memoized handle after a level change; appending
+            // the same face again leaks a DC and an HFONT per repeat and lengthens every chain walk.
+            for (const std::unique_ptr<FontFace>& existing : target.faces)
+            {
+                if (existing->requested() == face)
+                {
+                    return true;
+                }
+            }
+
             std::unique_ptr<FontFace> created = std::make_unique<FontFace>();
             bool substituted = false;
 
@@ -608,17 +602,15 @@ namespace
                 return false;
             }
 
-            // A substituted family is accepted rather than rejected: it rasterizes through the same
-            // path, and refusing it would lose text entirely on systems without the named face.
+            // A substituted family is kept, not rejected: refusing it loses text entirely on a system
+            // without the named face.
             target.faces.push_back(std::move(created));
 
             return true;
         }
 
-        // Walks the chain and takes the first face covering the codepoint, falling back to the first
-        // face so the missing glyph box still renders, exactly as the amalgam this replaces did.
-        // Appends a system fallback face only if the request resolved to that exact family: a
-        // substituted family adds no new coverage, so it is discarded rather than bloating the chain.
+        // Kept only when the request resolved to that exact family: a substituted family adds no new
+        // coverage and would only lengthen the chain.
         void AddSystemFallback(Font& font, const char* face)
         {
             std::unique_ptr<FontFace> created = std::make_unique<FontFace>();
@@ -633,6 +625,8 @@ namespace
 
         const FontFace* ResolveFace(Font& font, uint32_t codepoint)
         {
+            font.used = true;
+
             for (const std::unique_ptr<FontFace>& face : font.faces)
             {
                 if (face->HasChar(codepoint))
@@ -641,8 +635,6 @@ namespace
                 }
             }
 
-            // The caller's chain covers none of it. Extend once with the broad system faces and retry
-            // before giving up on the missing-glyph box.
             if (!font.system_fallbacks_added)
             {
                 font.system_fallbacks_added = true;
@@ -664,7 +656,7 @@ namespace
             return font.faces[0].get();
         }
 
-        // Returns false only for a transient failure, so the caller knows not to cache the miss.
+        // False only for a transient failure, so the caller knows not to cache the miss.
         bool Bake(TextFont_t handle, uint32_t codepoint, TextGlyph* out)
         {
             Font& font = fonts_[handle];
@@ -678,8 +670,8 @@ namespace
                 return true;
             }
 
-            // Rasterize measures from the resolving face's own baseline. A fallback face with a
-            // different ascent has to be shifted onto the primary's, or its glyphs sit off the line.
+            // Rasterize measures from the resolving face's baseline; a fallback with another ascent
+            // must be shifted onto the primary's or its glyphs sit off the line.
             raster.bearing_y += font.faces[0]->ascent() - face->ascent();
 
             out->advance = raster.advance;
@@ -692,8 +684,7 @@ namespace
 
             bool shadow = (font.flags & kTextFontDropShadow) != 0;
 
-            // The drop shadow extends the cell right and down by its offset; the fill sits at the
-            // top-left of the cell.
+            // The shadow extends the cell right and down; the fill sits at its top-left.
             int cell_wide = raster.wide + (shadow ? kDropShadowOffset : 0);
             int cell_tall = raster.tall + (shadow ? kDropShadowOffset : 0);
 
@@ -712,9 +703,6 @@ namespace
 
             if (shadow)
             {
-                // Black copy of the glyph offset down-right, composited under the fill. Under
-                // GL_MODULATE the luminance channel carries the fill (so the caller's colour shows
-                // through the glyph) while the shadow-only texels stay at luminance 0, i.e. black.
                 for (int y = 0; y < cell_tall; y++)
                 {
                     for (int x = 0; x < cell_wide; x++)
@@ -728,8 +716,10 @@ namespace
                             s = fill[(size_t)(y - kDropShadowOffset) * cell_wide + (x - kDropShadowOffset)];
                         }
 
-                        texels[i * 2 + 0] = f;
-                        texels[i * 2 + 1] = std::max(f, s);
+                        uint8_t alpha = std::max(f, s);
+                        // GL_SRC_ALPHA applies coverage, so luminance must undo that factor for the fill.
+                        texels[i * 2 + 0] = alpha ? static_cast<uint8_t>((255 * f + alpha / 2) / alpha) : 0;
+                        texels[i * 2 + 1] = alpha;
                     }
                 }
             }
@@ -737,7 +727,7 @@ namespace
             {
                 for (size_t i = 0; i < fill.size(); i++)
                 {
-                    texels[i * 2 + 0] = 255; // luminance: the caller's colour passes through
+                    texels[i * 2 + 0] = 255;
                     texels[i * 2 + 1] = fill[i];
                 }
             }
@@ -762,7 +752,7 @@ namespace
             return true;
         }
 
-        // Index 0 is reserved as the invalid handle.
+        // Index 0 is reserved as kInvalidTextFont.
         std::vector<Font> fonts_ = std::vector<Font>(1);
         std::unordered_map<int, text_render::GlyphAtlas> atlases_;
         std::unordered_map<uint64_t, TextGlyph> cells_;

@@ -1,0 +1,684 @@
+
+Match #1:
+
+Binding for "root":
+EnumDecl 0x2aa54bfea90 <C:\fixture\dep\NclNitroApi\dep\ncl-hl1-source-sdk\common\values.h:7:1, line:16:1> line:7:6 shade_e
+|-EnumConstantDecl 0x2aa54bfebb8 <line:9:2, col:16> col:2 shade_none 'shade_e'
+| `-ConstantExpr 0x2aa54bfeb90 <col:15, col:16> 'int'
+|   |-value: Int -1
+|   `-UnaryOperator 0x2aa54bfeb78 <col:15, col:16> 'int' prefix '-'
+|     `-IntegerLiteral 0x2aa54bfeb50 <col:16> 'int' 1
+|-EnumConstantDecl 0x2aa54bfec18 <line:10:2> col:2 referenced shade_dim 'shade_e'
+|-EnumConstantDecl 0x2aa54bfecc0 <line:11:2, line:3:22> line:11:2 referenced shade_lit 'shade_e'
+| `-ConstantExpr 0x2aa54bfec98 <line:3:22> 'int'
+|   |-value: Int 48
+|   `-IntegerLiteral 0x2aa54bfec70 <col:22> 'int' 48
+|-EnumConstantDecl 0x2aa54bfed20 <line:12:2> col:2 shade_glow 'shade_e'
+|-EnumConstantDecl 0x2aa54bfee50 <line:13:2, line:4:30> line:13:2 shade_hot 'shade_e'
+| `-ConstantExpr 0x2aa54bfee28 <line:4:21, col:30> 'int'
+|   |-value: Int 16
+|   `-ParenExpr 0x2aa54bfee08 <col:21, col:30> 'int'
+|     `-BinaryOperator 0x2aa54bfede8 <col:22, col:29> 'int' '<<'
+|       |-IntegerLiteral 0x2aa54bfed78 <col:22> 'int' 1
+|       `-ParenExpr 0x2aa54bfedc8 <col:27, col:29> 'int'
+|         `-IntegerLiteral 0x2aa54bfeda0 <line:13:23> 'int' 4
+|-EnumConstantDecl 0x2aa54bfeef0 <line:14:2, col:16> col:2 shade_alias 'shade_e'
+| `-ConstantExpr 0x2aa54bfeec8 <col:16> 'int'
+|   |-value: Int 0
+|   `-DeclRefExpr 0x2aa54bfeea8 <col:16> 'int' EnumConstant 0x2aa54bfec18 'shade_dim' 'shade_e'
+`-EnumConstantDecl 0x2aa54bfef98 <line:15:2, col:15> col:2 shade_last 'shade_e'
+  `-ConstantExpr 0x2aa54bfef70 <col:15> 'int'
+    |-value: Int 255
+    `-IntegerLiteral 0x2aa54bfef48 <col:15> 'int' 255
+
+
+Match #2:
+
+Binding for "root":
+EnumDecl 0x2aa54bff0f0 <C:\fixture\dep\NclNitroApi\dep\ncl-hl1-source-sdk\common\values.h:20:9, line:24:1> line:20:9
+|-EnumConstantDecl 0x2aa54bff200 <line:22:2, col:11> col:2 mode_a 'mode_t2'
+| `-ConstantExpr 0x2aa54bff1d8 <col:11> 'int'
+|   |-value: Int 2
+|   `-IntegerLiteral 0x2aa54bff1b0 <col:11> 'int' 2
+`-EnumConstantDecl 0x2aa54bff260 <line:23:2> col:2 referenced mode_b 'mode_t2'
+
+
+Match #3:
+
+Binding for "root":
+TypedefDecl 0x2aa54bff350 <C:\fixture\dep\NclNitroApi\dep\ncl-hl1-source-sdk\common\values.h:20:1, line:24:3> col:3 mode_t2 'enum mode_t2'
+`-EnumType 0x2aa54bff300 'enum mode_t2' owns_tag enum
+  `-Enum 0x2aa54bff0f0 <line:20:9, line:24:1>
+
+
+Match #4:
+
+Binding for "root":
+EnumDecl 0x2aa54bff3c8 <C:\fixture\dep\NclNitroApi\dep\ncl-hl1-source-sdk\common\values.h:26:1, line:30:1> line:26:1
+|-EnumConstantDecl 0x2aa54bff4d8 <line:28:2, col:14> col:2 referenced LOOSE_ONE '(unnamed enum at C:\fixture\dep\NclNitroApi\dep\ncl-hl1-source-sdk\common\values.h:26:1)'
+| `-ConstantExpr 0x2aa54bff4b0 <col:14> 'int'
+|   |-value: Int 7
+|   `-IntegerLiteral 0x2aa54bff488 <col:14> 'int' 7
+`-EnumConstantDecl 0x2aa54bff5c0 <line:29:2, col:26> col:2 referenced LOOSE_TWO '(unnamed enum at C:\fixture\dep\NclNitroApi\dep\ncl-hl1-source-sdk\common\values.h:26:1)'
+  `-ConstantExpr 0x2aa54bff598 <col:14, col:26> 'int'
+    |-value: Int 21
+    `-BinaryOperator 0x2aa54bff578 <col:14, col:26> 'int' '*'
+      |-DeclRefExpr 0x2aa54bff530 <col:14> 'int' EnumConstant 0x2aa54bff4d8 'LOOSE_ONE' '(unnamed enum at C:\fixture\dep\NclNitroApi\dep\ncl-hl1-source-sdk\common\values.h:26:1)'
+      `-IntegerLiteral 0x2aa54bff550 <col:26> 'int' 3
+
+
+Match #5:
+
+Binding for "root":
+CXXRecordDecl 0x2aa54bff658 <C:\fixture\dep\NclNitroApi\dep\ncl-hl1-source-sdk\common\values.h:32:1, line:38:1> line:32:8 referenced struct narrow_s definition
+|-DefinitionData pass_in_registers aggregate standard_layout trivially_copyable pod trivial literal has_constexpr_non_copy_move_ctor
+| |-DefaultConstructor exists trivial constexpr needs_implicit defaulted_is_constexpr
+| |-CopyConstructor simple trivial has_const_param needs_implicit implicit_has_const_param
+| |-MoveConstructor exists simple trivial needs_implicit
+| |-CopyAssignment simple trivial has_const_param needs_implicit implicit_has_const_param
+| |-MoveAssignment exists simple trivial needs_implicit
+| `-Destructor simple irrelevant trivial constexpr needs_implicit
+|-CXXRecordDecl 0x2aa54bff798 <col:1, col:8> col:8 implicit struct narrow_s
+|-FieldDecl 0x2aa54bff8a8 <line:35:2, col:21> col:15 low 'unsigned int'
+| |-ConstantExpr 0x2aa54bff880 <col:21> 'int'
+| | |-value: Int 4
+| | `-IntegerLiteral 0x2aa54bff840 <col:21> 'int' 4
+| `-FullComment 0x2aa54c7cc90 <line:34:5, col:18>
+|   `-ParagraphComment 0x2aa54c7cc60 <col:5, col:18>
+|     `-TextComment 0x2aa54c7cc30 <col:5, col:18> Text=" hidden remark"
+|-FieldDecl 0x2aa54bff968 <line:36:2, line:5:21> line:36:15 referenced mid 'unsigned int'
+| `-ConstantExpr 0x2aa54bff940 <line:5:21> 'int'
+|   |-value: Int 3
+|   `-IntegerLiteral 0x2aa54bff900 <col:21> 'int' 3
+`-FieldDecl 0x2aa54bff9e0 <line:37:2, col:6> col:6 whole 'int'
+
+
+Match #6:
+
+Binding for "root":
+CXXRecordDecl 0x2aa54c01290 <C:\fixture\dep\NclNitroApi\dep\ncl-hl1-source-sdk\common\values.h:40:1, line:44:1> line:40:8 referenced struct flagged_s definition
+|-DefinitionData pass_in_registers aggregate standard_layout trivially_copyable pod trivial literal has_constexpr_non_copy_move_ctor
+| |-DefaultConstructor exists trivial constexpr needs_implicit defaulted_is_constexpr
+| |-CopyConstructor simple trivial has_const_param needs_implicit implicit_has_const_param
+| |-MoveConstructor exists simple trivial needs_implicit
+| |-CopyAssignment simple trivial has_const_param needs_implicit implicit_has_const_param
+| |-MoveAssignment exists simple trivial needs_implicit
+| `-Destructor simple irrelevant trivial constexpr
+|-CXXRecordDecl 0x2aa54c013a8 <col:1, col:8> col:8 implicit struct flagged_s
+|-FieldDecl 0x2aa54c01470 <line:42:2, col:6> col:6 invalid 'int'
+|-FieldDecl 0x2aa54c014e8 <line:43:2, col:6> col:6 referenced referenced 'int'
+`-CXXDestructorDecl 0x2aa54c762a8 <line:40:8> col:8 implicit referenced constexpr ~flagged_s 'void () __attribute__((thiscall)) noexcept' inline default trivial
+
+
+Match #7:
+
+Binding for "root":
+EnumDecl 0x2aa54c015a8 <C:\fixture\dep\NclNitroApi\dep\ncl-hl1-source-sdk\common\values.h:46:1, line:50:1> line:46:12 class tone_e 'unsigned char'
+|-EnumConstantDecl 0x2aa54c016d0 <line:48:2, col:8> col:2 low 'tone_e'
+| `-ConstantExpr 0x2aa54c016a8 <col:8> 'unsigned char'
+|   |-value: Int 1
+|   `-ImplicitCastExpr 0x2aa54c01690 <col:8> 'unsigned char' <IntegralCast>
+|     `-IntegerLiteral 0x2aa54c01668 <col:8> 'int' 1
+`-EnumConstantDecl 0x2aa54c01790 <line:49:2, col:9> col:2 referenced high 'tone_e'
+  `-ConstantExpr 0x2aa54c01768 <col:9> 'unsigned char'
+    |-value: Int 200
+    `-ImplicitCastExpr 0x2aa54c01750 <col:9> 'unsigned char' <IntegralCast>
+      `-IntegerLiteral 0x2aa54c01728 <col:9> 'int' 200
+
+
+Match #8:
+
+Binding for "root":
+VarDecl 0x2aa54c01840 <C:\fixture\dep\NclNitroApi\dep\ncl-hl1-source-sdk\common\values.h:52:1, col:26> col:11 referenced kWidgetCount 'const int' cinit
+`-IntegerLiteral 0x2aa54c018f8 <col:26> 'int' 12
+
+
+Match #9:
+
+Binding for "root":
+VarDecl 0x2aa54c019a0 <C:\fixture\dep\NclNitroApi\dep\ncl-hl1-source-sdk\common\values.h:53:1, line:4:30> line:53:18 referenced kShifted 'const int' static cinit
+`-ParenExpr 0x2aa54c01a98 <line:4:21, col:30> 'int'
+  `-BinaryOperator 0x2aa54c01a78 <col:22, col:29> 'int' '<<'
+    |-IntegerLiteral 0x2aa54c01a08 <col:22> 'int' 1
+    `-ParenExpr 0x2aa54c01a58 <col:27, col:29> 'int'
+      `-IntegerLiteral 0x2aa54c01a30 <line:53:38> 'int' 6
+
+
+Match #10:
+
+Binding for "root":
+VarDecl 0x2aa54c01b38 <C:\fixture\dep\NclNitroApi\dep\ncl-hl1-source-sdk\common\values.h:54:1, col:43> col:15 kExprLimit 'const int' constexpr cinit
+|-value: Int 24
+`-BinaryOperator 0x2aa54c01c20 <col:28, col:43> 'int' '*'
+  |-ImplicitCastExpr 0x2aa54c01c08 <col:28> 'int' <LValueToRValue>
+  | `-DeclRefExpr 0x2aa54c01be8 <col:28> 'const int' lvalue Var 0x2aa54c01840 'kWidgetCount' 'const int' non_odr_use_constant
+  `-IntegerLiteral 0x2aa54c01bc0 <col:43> 'int' 2
+
+
+Match #11:
+
+Binding for "root":
+VarDecl 0x2aa54c01cc0 <C:\fixture\dep\NclNitroApi\dep\ncl-hl1-source-sdk\common\values.h:55:1, col:22> col:13 used kRatio 'const float' cinit
+`-FloatingLiteral 0x2aa54c01d28 <col:22> 'float' 5.000000e-01
+
+
+Match #12:
+
+Binding for "root":
+VarDecl 0x2aa54c01dc8 <C:\fixture\dep\NclNitroApi\dep\ncl-hl1-source-sdk\common\values.h:56:1, col:20> col:12 referenced kMark 'const char' cinit
+`-CharacterLiteral 0x2aa54c01e30 <col:20> 'char' 119
+
+
+Match #13:
+
+Binding for "root":
+VarDecl 0x2aa54c01ec8 <C:\fixture\dep\NclNitroApi\dep\ncl-hl1-source-sdk\common\values.h:57:1, col:26> col:17 referenced kScale 'const float' constexpr cinit
+|-value: Float 1.250000e+00
+`-FloatingLiteral 0x2aa54c01f30 <col:26> 'float' 1.250000e+00
+
+
+Match #14:
+
+Binding for "root":
+VarDecl 0x2aa54c02070 <C:\fixture\dep\NclNitroApi\dep\ncl-hl1-source-sdk\common\values.h:58:1, col:32> col:15 referenced kTable 'const int[2]' constexpr cinit
+|-value: Array size=2
+| `-elements: Int 1, Int 2
+`-InitListExpr 0x2aa54c021c0 <col:27, col:32> 'const int[2]'
+  |-IntegerLiteral 0x2aa54c020d8 <col:28> 'int' 1
+  `-IntegerLiteral 0x2aa54c02100 <col:31> 'int' 2
+
+
+Match #15:
+
+Binding for "root":
+FunctionDecl 0x2aa54c03780 <C:\fixture\dep\NclNitroApi\dep\ncl-hl1-source-sdk\common\late_c.h:3:1, col:20> col:5 used Late_Value 'int ()'
+
+
+Match #16:
+
+Binding for "root":
+VarDecl 0x2aa54c03860 <C:\fixture\dep\NclNitroApi\dep\ncl-hl1-source-sdk\common\late_c.h:4:1, col:12> col:12 g_lateCount 'int' extern
+
+
+Match #17:
+
+Binding for "root":
+CXXRecordDecl 0x2aa54c05020 <C:\fixture\dep\NclNitroApi\dep\ncl-hl1-source-sdk\common\shapes.h:5:9, line:8:1> line:5:9 struct definition
+|-DefinitionData pass_in_registers aggregate standard_layout trivially_copyable pod trivial literal has_constexpr_non_copy_move_ctor
+| |-DefaultConstructor exists trivial constexpr defaulted_is_constexpr
+| |-CopyConstructor simple trivial has_const_param implicit_has_const_param
+| |-MoveConstructor exists simple trivial
+| |-CopyAssignment simple trivial has_const_param needs_implicit implicit_has_const_param
+| |-MoveAssignment exists simple trivial needs_implicit
+| `-Destructor simple irrelevant trivial constexpr
+|-FieldDecl 0x2aa54c05150 <line:7:2, col:16> col:16 referenced r 'unsigned char'
+|-FieldDecl 0x2aa54c051c8 <col:2, col:19> col:19 referenced g 'unsigned char'
+|-FieldDecl 0x2aa54c05240 <col:2, col:22> col:22 referenced b 'unsigned char'
+|-CXXConstructorDecl 0x2aa54c4c6a8 <line:5:9> col:9 implicit constexpr tint24 'void () __attribute__((thiscall))' inline default trivial noexcept-unevaluated 0x2aa54c4c6a8
+|-CXXConstructorDecl 0x2aa54c4c838 <col:9> col:9 implicit used constexpr tint24 'void (const tint24 &) __attribute__((thiscall)) noexcept' inline default trivial
+| |-ParmVarDecl 0x2aa54c4c978 <col:9> col:9 used 'const tint24 &'
+| |-CXXCtorInitializer Field 0x2aa54c05150 'r' 'unsigned char'
+| | `-ImplicitCastExpr 0x2aa54c4ceb0 <col:9> 'unsigned char' <LValueToRValue>
+| |   `-MemberExpr 0x2aa54c4ce80 <col:9> 'const unsigned char' lvalue .r 0x2aa54c05150
+| |     `-DeclRefExpr 0x2aa54c4ce48 <col:9> 'const tint24' lvalue ParmVar 0x2aa54c4c978 depth 0 index 0 'const tint24 &'
+| |-CXXCtorInitializer Field 0x2aa54c051c8 'g' 'unsigned char'
+| | `-ImplicitCastExpr 0x2aa54c4cf38 <col:9> 'unsigned char' <LValueToRValue>
+| |   `-MemberExpr 0x2aa54c4cf08 <col:9> 'const unsigned char' lvalue .g 0x2aa54c051c8
+| |     `-DeclRefExpr 0x2aa54c4cee8 <col:9> 'const tint24' lvalue ParmVar 0x2aa54c4c978 depth 0 index 0 'const tint24 &'
+| |-CXXCtorInitializer Field 0x2aa54c05240 'b' 'unsigned char'
+| | `-ImplicitCastExpr 0x2aa54c4cfc0 <col:9> 'unsigned char' <LValueToRValue>
+| |   `-MemberExpr 0x2aa54c4cf90 <col:9> 'const unsigned char' lvalue .b 0x2aa54c05240
+| |     `-DeclRefExpr 0x2aa54c4cf70 <col:9> 'const tint24' lvalue ParmVar 0x2aa54c4c978 depth 0 index 0 'const tint24 &'
+| `-CompoundStmt 0x2aa54c4d010 <col:9>
+|-CXXConstructorDecl 0x2aa54c4ca68 <col:9> col:9 implicit constexpr tint24 'void (tint24 &&) __attribute__((thiscall))' inline default trivial noexcept-unevaluated 0x2aa54c4ca68
+| `-ParmVarDecl 0x2aa54c4cba8 <col:9> col:9 'tint24 &&'
+`-CXXDestructorDecl 0x2aa54c41e60 <col:9> col:9 implicit constexpr ~tint24 'void () __attribute__((thiscall)) noexcept' inline default trivial
+
+
+Match #18:
+
+Binding for "root":
+TypedefDecl 0x2aa54c05370 <C:\fixture\dep\NclNitroApi\dep\ncl-hl1-source-sdk\common\shapes.h:5:1, line:8:3> col:3 referenced tint24 'struct tint24'
+`-RecordType 0x2aa54c05320 'struct tint24' owns_tag struct
+  `-CXXRecord 0x2aa54c05020 <line:5:9, line:8:1>
+
+
+Match #19:
+
+Binding for "root":
+CXXRecordDecl 0x2aa54c053e8 <C:\fixture\dep\NclNitroApi\dep\ncl-hl1-source-sdk\common\shapes.h:10:9, line:13:1> line:10:9 struct definition
+|-DefinitionData pass_in_registers aggregate standard_layout trivially_copyable pod trivial literal has_constexpr_non_copy_move_ctor
+| |-DefaultConstructor exists trivial constexpr needs_implicit defaulted_is_constexpr
+| |-CopyConstructor simple trivial has_const_param needs_implicit implicit_has_const_param
+| |-MoveConstructor exists simple trivial needs_implicit
+| |-CopyAssignment simple trivial has_const_param needs_implicit implicit_has_const_param
+| |-MoveAssignment exists simple trivial needs_implicit
+| `-Destructor simple irrelevant trivial constexpr needs_implicit
+`-FieldDecl 0x2aa54c05518 <line:12:2, col:6> col:6 count 'int'
+
+
+Match #20:
+
+Binding for "root":
+TypedefDecl 0x2aa54c05688 <C:\fixture\dep\NclNitroApi\dep\ncl-hl1-source-sdk\common\shapes.h:10:1, line:13:4> col:4 tally_ptr 'struct (unnamed at C:\fixture\dep\NclNitroApi\dep\ncl-hl1-source-sdk\common\shapes.h:10:9) *'
+`-PointerType 0x2aa54c05630 'struct (unnamed at C:\fixture\dep\NclNitroApi\dep\ncl-hl1-source-sdk\common\shapes.h:10:9) *'
+  `-RecordType 0x2aa54c055d0 'struct (unnamed at C:\fixture\dep\NclNitroApi\dep\ncl-hl1-source-sdk\common\shapes.h:10:9)' owns_tag struct
+    `-CXXRecord 0x2aa54c053e8 <line:10:9, line:13:1>
+
+
+Match #21:
+
+Binding for "root":
+CXXRecordDecl 0x2aa54c057d8 <C:\fixture\dep\NclNitroApi\dep\ncl-hl1-source-sdk\common\shapes.h:18:9, line:36:1> line:18:16 struct packed_s definition
+|-DefinitionData pass_in_registers aggregate standard_layout trivially_copyable pod trivial literal has_constexpr_non_copy_move_ctor has_variant_members
+| |-DefaultConstructor exists trivial constexpr defaulted_is_constexpr
+| |-CopyConstructor simple trivial has_const_param implicit_has_const_param
+| |-MoveConstructor exists simple trivial
+| |-CopyAssignment simple trivial has_const_param needs_implicit implicit_has_const_param
+| |-MoveAssignment exists simple trivial needs_implicit
+| `-Destructor simple irrelevant trivial constexpr
+|-MaxFieldAlignmentAttr 0x2aa54c05a88 <<invalid sloc>> Implicit 8
+|-CXXRecordDecl 0x2aa54c05b60 <col:9, col:16> col:16 implicit struct packed_s
+|-FieldDecl 0x2aa54c05c20 <line:20:2, col:7> col:7 referenced tag 'char'
+|-FieldDecl 0x2aa54c05c98 <line:21:2, col:6> col:6 referenced whole 'int'
+|-FieldDecl 0x2aa54c05d40 <line:22:2, col:9> col:9 referenced tint 'tint24':'struct tint24'
+|-FieldDecl 0x2aa54c05df0 <line:23:2, col:11> col:11 referenced spot 'triple_t':'float[3]'
+|-FieldDecl 0x2aa54c05ea0 <line:24:2, col:17> col:17 referenced addr 'outside_addr_t':'struct outside_addr_s'
+|-CXXRecordDecl 0x2aa54c05f00 <line:25:2, line:29:2> line:25:2 union definition
+| |-DefinitionData is_anonymous pass_in_registers aggregate standard_layout trivially_copyable pod trivial literal has_constexpr_non_copy_move_ctor has_variant_members
+| | |-DefaultConstructor exists trivial constexpr defaulted_is_constexpr
+| | |-CopyConstructor simple trivial has_const_param implicit_has_const_param
+| | |-MoveConstructor exists simple trivial
+| | |-CopyAssignment simple trivial has_const_param needs_implicit implicit_has_const_param
+| | |-MoveAssignment exists simple trivial needs_implicit
+| | `-Destructor simple irrelevant trivial constexpr
+| |-MaxFieldAlignmentAttr 0x2aa54c05fa8 <<invalid sloc>> Implicit 8
+| |-FieldDecl 0x2aa54c06098 <line:27:3, col:7> col:7 referenced as_int 'int'
+| |-FieldDecl 0x2aa54c06110 <line:28:3, col:9> col:9 as_float 'float'
+| |-CXXConstructorDecl 0x2aa54c72898 <line:25:2> col:2 implicit used constexpr (anonymous union at C:\fixture\dep\NclNitroApi\dep\ncl-hl1-source-sdk\common\shapes.h:25:2) 'void (const (anonymous union at C:\fixture\dep\NclNitroApi\dep\ncl-hl1-source-sdk\common\shapes.h:25:2) &) __attribute__((thiscall)) noexcept' inline default trivial
+| | |-ParmVarDecl 0x2aa54c729d8 <col:2> col:2 'const (anonymous union at C:\fixture\dep\NclNitroApi\dep\ncl-hl1-source-sdk\common\shapes.h:25:2) &'
+| | `-CompoundStmt 0x2aa54c738c0 <col:2>
+| |-CXXConstructorDecl 0x2aa54c72ab8 <col:2> col:2 implicit constexpr (anonymous union at C:\fixture\dep\NclNitroApi\dep\ncl-hl1-source-sdk\common\shapes.h:25:2) 'void ((anonymous union at C:\fixture\dep\NclNitroApi\dep\ncl-hl1-source-sdk\common\shapes.h:25:2) &&) __attribute__((thiscall))' inline default trivial noexcept-unevaluated 0x2aa54c72ab8
+| | `-ParmVarDecl 0x2aa54c72bf8 <col:2> col:2 '(anonymous union at C:\fixture\dep\NclNitroApi\dep\ncl-hl1-source-sdk\common\shapes.h:25:2) &&'
+| |-CXXConstructorDecl 0x2aa54c73758 <col:2> col:2 implicit constexpr (anonymous union at C:\fixture\dep\NclNitroApi\dep\ncl-hl1-source-sdk\common\shapes.h:25:2) 'void () __attribute__((thiscall))' inline default trivial noexcept-unevaluated 0x2aa54c73758
+| `-CXXDestructorDecl 0x2aa54c73ea0 <col:2> col:2 implicit constexpr ~(anonymous union at C:\fixture\dep\NclNitroApi\dep\ncl-hl1-source-sdk\common\shapes.h:25:2) 'void () __attribute__((thiscall)) noexcept' inline default trivial
+|-FieldDecl 0x2aa54c06220 <col:2> col:2 implicit referenced 'packed_s::(anonymous union at C:\fixture\dep\NclNitroApi\dep\ncl-hl1-source-sdk\common\shapes.h:25:2)'
+|-IndirectFieldDecl 0x2aa54c06290 <line:27:7> col:7 implicit as_int 'int'
+| |-Field 0x2aa54c06220 field_index 5 'packed_s::(anonymous union at C:\fixture\dep\NclNitroApi\dep\ncl-hl1-source-sdk\common\shapes.h:25:2)'
+| `-Field 0x2aa54c06098 'as_int' 'int'
+|-IndirectFieldDecl 0x2aa54c062f0 <line:28:9> col:9 implicit as_float 'float'
+| |-Field 0x2aa54c06220 field_index 5 'packed_s::(anonymous union at C:\fixture\dep\NclNitroApi\dep\ncl-hl1-source-sdk\common\shapes.h:25:2)'
+| `-Field 0x2aa54c06110 'as_float' 'float'
+|-CXXRecordDecl 0x2aa54c06340 <line:30:2, line:33:2> line:30:2 struct definition
+| |-DefinitionData pass_in_registers aggregate standard_layout trivially_copyable pod trivial literal has_constexpr_non_copy_move_ctor
+| | |-DefaultConstructor exists trivial constexpr defaulted_is_constexpr
+| | |-CopyConstructor simple trivial has_const_param implicit_has_const_param
+| | |-MoveConstructor exists simple trivial
+| | |-CopyAssignment simple trivial has_const_param needs_implicit implicit_has_const_param
+| | |-MoveAssignment exists simple trivial needs_implicit
+| | `-Destructor simple irrelevant trivial constexpr
+| |-MaxFieldAlignmentAttr 0x2aa54c063e8 <<invalid sloc>> Implicit 8
+| |-FieldDecl 0x2aa54c064d8 <line:32:3, col:9> col:9 referenced x 'short'
+| |-FieldDecl 0x2aa54c06550 <col:3, col:12> col:12 referenced y 'short'
+| |-CXXConstructorDecl 0x2aa54c42168 <line:30:2> col:2 implicit constexpr (unnamed struct at C:\fixture\dep\NclNitroApi\dep\ncl-hl1-source-sdk\common\shapes.h:30:2) 'void () __attribute__((thiscall))' inline default trivial noexcept-unevaluated 0x2aa54c42168
+| |-CXXDestructorDecl 0x2aa54c71290 <col:2> col:2 implicit constexpr ~(unnamed struct at C:\fixture\dep\NclNitroApi\dep\ncl-hl1-source-sdk\common\shapes.h:30:2) 'void () __attribute__((thiscall)) noexcept' inline default trivial
+| |-CXXConstructorDecl 0x2aa54c71af8 <col:2> col:2 implicit used constexpr (unnamed struct at C:\fixture\dep\NclNitroApi\dep\ncl-hl1-source-sdk\common\shapes.h:30:2) 'void (const (unnamed struct at C:\fixture\dep\NclNitroApi\dep\ncl-hl1-source-sdk\common\shapes.h:30:2) &) __attribute__((thiscall)) noexcept' inline default trivial
+| | |-ParmVarDecl 0x2aa54c71c38 <col:2> col:2 used 'const (unnamed struct at C:\fixture\dep\NclNitroApi\dep\ncl-hl1-source-sdk\common\shapes.h:30:2) &'
+| | |-CXXCtorInitializer Field 0x2aa54c064d8 'x' 'short'
+| | | `-ImplicitCastExpr 0x2aa54c73a68 <col:2> 'short' <LValueToRValue>
+| | |   `-MemberExpr 0x2aa54c73a38 <col:2> 'const short' lvalue .x 0x2aa54c064d8
+| | |     `-DeclRefExpr 0x2aa54c73a00 <col:2> 'const (unnamed struct at C:\fixture\dep\NclNitroApi\dep\ncl-hl1-source-sdk\common\shapes.h:30:2)' lvalue ParmVar 0x2aa54c71c38 depth 0 index 0 'const (unnamed struct at C:\fixture\dep\NclNitroApi\dep\ncl-hl1-source-sdk\common\shapes.h:30:2) &'
+| | |-CXXCtorInitializer Field 0x2aa54c06550 'y' 'short'
+| | | `-ImplicitCastExpr 0x2aa54c73af0 <col:2> 'short' <LValueToRValue>
+| | |   `-MemberExpr 0x2aa54c73ac0 <col:2> 'const short' lvalue .y 0x2aa54c06550
+| | |     `-DeclRefExpr 0x2aa54c73aa0 <col:2> 'const (unnamed struct at C:\fixture\dep\NclNitroApi\dep\ncl-hl1-source-sdk\common\shapes.h:30:2)' lvalue ParmVar 0x2aa54c71c38 depth 0 index 0 'const (unnamed struct at C:\fixture\dep\NclNitroApi\dep\ncl-hl1-source-sdk\common\shapes.h:30:2) &'
+| | `-CompoundStmt 0x2aa54c73b50 <col:2>
+| `-CXXConstructorDecl 0x2aa54c71d28 <col:2> col:2 implicit constexpr (unnamed struct at C:\fixture\dep\NclNitroApi\dep\ncl-hl1-source-sdk\common\shapes.h:30:2) 'void ((unnamed struct at C:\fixture\dep\NclNitroApi\dep\ncl-hl1-source-sdk\common\shapes.h:30:2) &&) __attribute__((thiscall))' inline default trivial noexcept-unevaluated 0x2aa54c71d28
+|   `-ParmVarDecl 0x2aa54c71e68 <col:2> col:2 '(unnamed struct at C:\fixture\dep\NclNitroApi\dep\ncl-hl1-source-sdk\common\shapes.h:30:2) &&'
+|-FieldDecl 0x2aa54c06670 <col:2, line:33:4> col:4 referenced pos 'struct (unnamed at C:\fixture\dep\NclNitroApi\dep\ncl-hl1-source-sdk\common\shapes.h:30:2)'
+|-FieldDecl 0x2aa54c067d8 <line:34:2, col:18> col:18 referenced later 'struct later_s *'
+|-CXXRecordDecl 0x2aa54c06838 parent 0x2aa54b66c90 <line:35:2, col:9> col:9 struct fresh_s
+|-FieldDecl 0x2aa54c069e8 <col:2, col:18> col:18 referenced fresh 'struct fresh_s *'
+|-CXXConstructorDecl 0x2aa54c41d68 <line:18:16> col:16 implicit constexpr packed_s 'void () __attribute__((thiscall))' inline default trivial noexcept-unevaluated 0x2aa54c41d68
+|-CXXConstructorDecl 0x2aa54c71418 <col:16> col:16 implicit used constexpr packed_s 'void (const packed_s &) __attribute__((thiscall)) noexcept' inline default trivial
+| |-ParmVarDecl 0x2aa54c71558 <col:16> col:16 used 'const packed_s &'
+| |-CXXCtorInitializer Field 0x2aa54c05c20 'tag' 'char'
+| | `-ImplicitCastExpr 0x2aa54c72e80 <col:16> 'char' <LValueToRValue>
+| |   `-MemberExpr 0x2aa54c72e50 <col:16> 'const char' lvalue .tag 0x2aa54c05c20
+| |     `-DeclRefExpr 0x2aa54c72e18 <col:16> 'const packed_s' lvalue ParmVar 0x2aa54c71558 depth 0 index 0 'const packed_s &'
+| |-CXXCtorInitializer Field 0x2aa54c05c98 'whole' 'int'
+| | `-ImplicitCastExpr 0x2aa54c72f08 <col:16> 'int' <LValueToRValue>
+| |   `-MemberExpr 0x2aa54c72ed8 <col:16> 'const int' lvalue .whole 0x2aa54c05c98
+| |     `-DeclRefExpr 0x2aa54c72eb8 <col:16> 'const packed_s' lvalue ParmVar 0x2aa54c71558 depth 0 index 0 'const packed_s &'
+| |-CXXCtorInitializer Field 0x2aa54c05d40 'tint' 'tint24':'struct tint24'
+| | `-CXXConstructExpr 0x2aa54c72f90 <col:16> 'tint24':'struct tint24' 'void (const tint24 &) __attribute__((thiscall)) noexcept'
+| |   `-MemberExpr 0x2aa54c72f60 <col:16> 'const tint24':'const struct tint24' lvalue .tint 0x2aa54c05d40
+| |     `-DeclRefExpr 0x2aa54c72f40 <col:16> 'const packed_s' lvalue ParmVar 0x2aa54c71558 depth 0 index 0 'const packed_s &'
+| |-CXXCtorInitializer Field 0x2aa54c05df0 'spot' 'triple_t':'float[3]'
+| | `-ArrayInitLoopExpr 0x2aa54c73120 <col:16> 'triple_t':'float[3]'
+| |   |-OpaqueValueExpr 0x2aa54c73070 <col:16> 'const triple_t':'const float[3]' lvalue
+| |   | `-MemberExpr 0x2aa54c73000 <col:16> 'const triple_t':'const float[3]' lvalue .spot 0x2aa54c05df0
+| |   |   `-DeclRefExpr 0x2aa54c72fe0 <col:16> 'const packed_s' lvalue ParmVar 0x2aa54c71558 depth 0 index 0 'const packed_s &'
+| |   `-ImplicitCastExpr 0x2aa54c73108 <col:16> 'float' <LValueToRValue>
+| |     `-ArraySubscriptExpr 0x2aa54c730e8 <col:16> 'const float' lvalue
+| |       |-ImplicitCastExpr 0x2aa54c730d0 <col:16> 'const float *' <ArrayToPointerDecay>
+| |       | `-OpaqueValueExpr 0x2aa54c73070 <col:16> 'const triple_t':'const float[3]' lvalue
+| |       |   `-MemberExpr 0x2aa54c73000 <col:16> 'const triple_t':'const float[3]' lvalue .spot 0x2aa54c05df0
+| |       |     `-DeclRefExpr 0x2aa54c72fe0 <col:16> 'const packed_s' lvalue ParmVar 0x2aa54c71558 depth 0 index 0 'const packed_s &'
+| |       `-ArrayInitIndexExpr 0x2aa54c73088 <<invalid sloc>> '__size_t':'unsigned int'
+| |-CXXCtorInitializer Field 0x2aa54c05ea0 'addr' 'outside_addr_t':'struct outside_addr_s'
+| | `-CXXConstructExpr 0x2aa54c736b0 <col:16> 'outside_addr_t':'struct outside_addr_s' 'void (const outside_addr_s &) __attribute__((thiscall)) noexcept'
+| |   `-MemberExpr 0x2aa54c73180 <col:16> 'const outside_addr_t':'const struct outside_addr_s' lvalue .addr 0x2aa54c05ea0
+| |     `-DeclRefExpr 0x2aa54c73160 <col:16> 'const packed_s' lvalue ParmVar 0x2aa54c71558 depth 0 index 0 'const packed_s &'
+| |-CXXCtorInitializer Field 0x2aa54c06220 field_index 5 'packed_s::(anonymous union at C:\fixture\dep\NclNitroApi\dep\ncl-hl1-source-sdk\common\shapes.h:25:2)'
+| | `-CXXConstructExpr 0x2aa54c738d0 <col:16> 'packed_s::(anonymous union at C:\fixture\dep\NclNitroApi\dep\ncl-hl1-source-sdk\common\shapes.h:25:2)' 'void (const (anonymous union at C:\fixture\dep\NclNitroApi\dep\ncl-hl1-source-sdk\common\shapes.h:25:2) &) __attribute__((thiscall)) noexcept'
+| |   `-MemberExpr 0x2aa54c73720 <col:16> 'const packed_s::(anonymous union at C:\fixture\dep\NclNitroApi\dep\ncl-hl1-source-sdk\common\shapes.h:25:2)' lvalue .packed_s::(anonymous union at C:\fixture\dep\NclNitroApi\dep\ncl-hl1-source-sdk\common\shapes.h:25:2) 0x2aa54c06220
+| |     `-DeclRefExpr 0x2aa54c73700 <col:16> 'const packed_s' lvalue ParmVar 0x2aa54c71558 depth 0 index 0 'const packed_s &'
+| |-CXXCtorInitializer Field 0x2aa54c06670 'pos' 'struct (unnamed at C:\fixture\dep\NclNitroApi\dep\ncl-hl1-source-sdk\common\shapes.h:30:2)'
+| | `-CXXConstructExpr 0x2aa54c73b60 <col:16> 'struct (unnamed at C:\fixture\dep\NclNitroApi\dep\ncl-hl1-source-sdk\common\shapes.h:30:2)' 'void (const (unnamed struct at C:\fixture\dep\NclNitroApi\dep\ncl-hl1-source-sdk\common\shapes.h:30:2) &) __attribute__((thiscall)) noexcept'
+| |   `-MemberExpr 0x2aa54c73940 <col:16> 'const struct (unnamed at C:\fixture\dep\NclNitroApi\dep\ncl-hl1-source-sdk\common\shapes.h:30:2)' lvalue .pos 0x2aa54c06670
+| |     `-DeclRefExpr 0x2aa54c73920 <col:16> 'const packed_s' lvalue ParmVar 0x2aa54c71558 depth 0 index 0 'const packed_s &'
+| |-CXXCtorInitializer Field 0x2aa54c067d8 'later' 'struct later_s *'
+| | `-ImplicitCastExpr 0x2aa54c73c00 <col:16> 'struct later_s *' <LValueToRValue>
+| |   `-MemberExpr 0x2aa54c73bd0 <col:16> 'struct later_s *const' lvalue .later 0x2aa54c067d8
+| |     `-DeclRefExpr 0x2aa54c73bb0 <col:16> 'const packed_s' lvalue ParmVar 0x2aa54c71558 depth 0 index 0 'const packed_s &'
+| |-CXXCtorInitializer Field 0x2aa54c069e8 'fresh' 'struct fresh_s *'
+| | `-ImplicitCastExpr 0x2aa54c73c88 <col:16> 'struct fresh_s *' <LValueToRValue>
+| |   `-MemberExpr 0x2aa54c73c58 <col:16> 'struct fresh_s *const' lvalue .fresh 0x2aa54c069e8
+| |     `-DeclRefExpr 0x2aa54c73c38 <col:16> 'const packed_s' lvalue ParmVar 0x2aa54c71558 depth 0 index 0 'const packed_s &'
+| `-CompoundStmt 0x2aa54c73d08 <col:16>
+|-CXXConstructorDecl 0x2aa54c71f68 <col:16> col:16 implicit constexpr packed_s 'void (packed_s &&) __attribute__((thiscall))' inline default trivial noexcept-unevaluated 0x2aa54c71f68
+| `-ParmVarDecl 0x2aa54c720a8 <col:16> col:16 'packed_s &&'
+`-CXXDestructorDecl 0x2aa54c73d50 <col:16> col:16 implicit referenced constexpr ~packed_s 'void () __attribute__((thiscall)) noexcept' inline default trivial
+
+
+Match #22:
+
+Binding for "root":
+TypedefDecl 0x2aa54c06d40 <C:\fixture\dep\NclNitroApi\dep\ncl-hl1-source-sdk\common\shapes.h:18:1, line:36:3> col:3 referenced packed_t 'struct packed_s'
+`-RecordType 0x2aa54c06cf0 'struct packed_s' owns_tag struct
+  `-CXXRecord 0x2aa54c057d8 'packed_s'
+
+
+Match #23:
+
+Binding for "root":
+CXXRecordDecl 0x2aa54c06e98 <C:\fixture\dep\NclNitroApi\dep\ncl-hl1-source-sdk\common\shapes.h:40:1, line:43:1> line:40:8 struct holder_s definition
+|-DefinitionData aggregate standard_layout trivially_copyable trivial
+| |-DefaultConstructor exists trivial needs_implicit
+| |-CopyConstructor simple trivial has_const_param needs_implicit implicit_has_const_param
+| |-MoveConstructor exists simple trivial needs_implicit
+| |-CopyAssignment simple trivial has_const_param needs_implicit implicit_has_const_param
+| |-MoveAssignment exists simple trivial needs_implicit
+| `-Destructor simple irrelevant trivial constexpr needs_implicit
+|-CXXRecordDecl 0x2aa54c07028 <col:1, col:8> col:8 implicit struct holder_s
+`-FieldDecl 0x2aa54c070e8 <line:42:2, col:4> col:4 value 'T'
+
+
+Match #24:
+
+Binding for "root":
+VarDecl 0x2aa54c071e0 <C:\fixture\dep\NclNitroApi\dep\ncl-hl1-source-sdk\common\shapes.h:45:1, col:17> col:17 g_packed 'packed_t':'struct packed_s' extern
+
+
+Match #25:
+
+Binding for "root":
+VarDecl 0x2aa54c07540 <C:\fixture\dep\NclNitroApi\dep\ncl-hl1-source-sdk\common\shapes.h:46:1, col:22> col:22 used g_holder 'holder_s<int>' extern
+
+
+Match #26:
+
+Binding for "root":
+FunctionDecl 0x2aa54c079a0 <C:\fixture\dep\NclNitroApi\dep\ncl-hl1-source-sdk\common\shapes.h:48:1, col:64> col:5 used Shape_Area 'int (packed_t, float *, handle32 *)'
+|-ParmVarDecl 0x2aa54c075e0 <col:16, col:25> col:25 shape 'packed_t':'struct packed_s'
+|-ParmVarDecl 0x2aa54c076d8 <col:32, col:41> col:41 where 'float *'
+`-ParmVarDecl 0x2aa54c07808 <col:48, col:58> col:58 handle 'handle32 *'
+
+
+Match #27:
+
+Binding for "root":
+FunctionDecl 0x2aa54c07b90 <C:\fixture\dep\NclNitroApi\dep\ncl-hl1-source-sdk\common\shapes.h:50:1, line:54:1> line:50:12 used Shape_Twice 'int (int)' inline
+|-ParmVarDecl 0x2aa54c07a98 <col:24, col:28> col:28 used value 'int'
+`-CompoundStmt 0x2aa54c08008 <line:51:1, line:54:1>
+  |-DeclStmt 0x2aa54c07f90 <line:52:2, col:25>
+  | `-VarDecl 0x2aa54c07e90 <col:2, col:24> col:6 used doubled 'int' cinit
+  |   `-BinaryOperator 0x2aa54c07f58 <col:16, col:24> 'int' '*'
+  |     |-ImplicitCastExpr 0x2aa54c07f40 <col:16> 'int' <LValueToRValue>
+  |     | `-DeclRefExpr 0x2aa54c07ef8 <col:16> 'int' lvalue ParmVar 0x2aa54c07a98 'value' 'int'
+  |     `-IntegerLiteral 0x2aa54c07f18 <col:24> 'int' 2
+  `-ReturnStmt 0x2aa54c07ff8 <line:53:2, col:9>
+    `-ImplicitCastExpr 0x2aa54c07fe0 <col:9> 'int' <LValueToRValue>
+      `-ImplicitCastExpr 0x2aa54c07fc8 <col:9> 'int' xvalue <NoOp>
+        `-DeclRefExpr 0x2aa54c07fa8 <col:9> 'int' lvalue Var 0x2aa54c07e90 'doubled' 'int'
+
+
+Match #28:
+
+Binding for "root":
+CXXRecordDecl 0x2aa54c08178 <C:\fixture\dep\NclNitroApi\dep\ncl-hl1-source-sdk\engine\iface.h:10:1, line:15:1> line:10:7 referenced class IProbeModule definition
+|-DefinitionData polymorphic abstract literal has_constexpr_non_copy_move_ctor can_const_default_init
+| |-DefaultConstructor exists non_trivial constexpr needs_implicit defaulted_is_constexpr
+| |-CopyConstructor simple non_trivial has_const_param needs_implicit implicit_has_const_param
+| |-MoveConstructor exists simple non_trivial needs_implicit
+| |-CopyAssignment simple non_trivial has_const_param implicit_has_const_param
+| |-MoveAssignment exists simple non_trivial
+| `-Destructor simple irrelevant trivial constexpr
+|-CXXRecordDecl 0x2aa54c08290 <col:1, col:7> col:7 implicit referenced class IProbeModule
+|-AccessSpecDecl 0x2aa54c08340 <line:12:1, col:7> col:1 public
+|-CXXMethodDecl 0x2aa54c086a8 <line:13:2, col:54> col:15 Attach 'bool (IProbeHost *, int) __attribute__((thiscall))' virtual pure
+| |-ParmVarDecl 0x2aa54c08458 <col:22, col:34> col:34 host 'IProbeHost *'
+| `-ParmVarDecl 0x2aa54c084e8 <col:40, col:44> col:44 serial 'int'
+|-CXXMethodDecl 0x2aa54c08878 <line:14:2, col:36> col:24 Outside 'OutsideIface *() __attribute__((thiscall))' virtual pure
+|-CXXMethodDecl 0x2aa54c08a50 <line:10:7> col:7 implicit constexpr operator= 'IProbeModule &(const IProbeModule &) __attribute__((thiscall))' inline default noexcept-unevaluated 0x2aa54c08a50
+| `-ParmVarDecl 0x2aa54c08b88 <col:7> col:7 'const IProbeModule &'
+|-CXXMethodDecl 0x2aa54c08c68 <col:7> col:7 implicit constexpr operator= 'IProbeModule &(IProbeModule &&) __attribute__((thiscall))' inline default noexcept-unevaluated 0x2aa54c08c68
+| `-ParmVarDecl 0x2aa54c08d98 <col:7> col:7 'IProbeModule &&'
+`-CXXDestructorDecl 0x2aa54c0a290 <col:7> col:7 implicit constexpr ~IProbeModule 'void () __attribute__((thiscall))' inline default trivial noexcept-unevaluated 0x2aa54c0a290
+
+
+Match #29:
+
+Binding for "root":
+CXXRecordDecl 0x2aa54c0a3c8 prev 0x2aa54c08030 <C:\fixture\dep\NclNitroApi\dep\ncl-hl1-source-sdk\engine\iface.h:17:1, line:47:1> line:17:7 referenced class IProbeHost definition
+|-DefinitionData polymorphic abstract
+| |-DefaultConstructor exists non_trivial needs_implicit
+| |-CopyConstructor simple non_trivial has_const_param needs_implicit implicit_has_const_param
+| |-MoveConstructor exists simple non_trivial needs_implicit
+| |-CopyAssignment simple non_trivial has_const_param implicit_has_const_param
+| |-MoveAssignment exists simple non_trivial
+| `-Destructor simple irrelevant trivial
+|-virtual public 'IProbeModule'
+|-private 'OutsideIface'
+|-CXXRecordDecl 0x2aa54c0a5a0 <col:1, col:7> col:7 implicit class IProbeHost
+|-FriendDecl 0x2aa54c0a6b0 <line:19:2, col:15> col:9 'class IProbeModule'
+|-AccessSpecDecl 0x2aa54c0a700 <line:21:1, col:7> col:1 public
+|-EnumDecl 0x2aa54c0a738 <line:22:2, col:38> col:2
+| |-EnumConstantDecl 0x2aa54c0a848 <col:9, col:21> col:9 referenced MAX_SLOTS 'IProbeHost::(unnamed enum at C:\fixture\dep\NclNitroApi\dep\ncl-hl1-source-sdk\engine\iface.h:22:2)'
+| | `-ConstantExpr 0x2aa54c0a820 <col:21> 'int'
+| |   |-value: Int 4
+| |   `-IntegerLiteral 0x2aa54c0a7f8 <col:21> 'int' 4
+| `-EnumConstantDecl 0x2aa54c0a8f0 <col:24, col:36> col:24 referenced SLOT_NAME 'IProbeHost::(unnamed enum at C:\fixture\dep\NclNitroApi\dep\ncl-hl1-source-sdk\engine\iface.h:22:2)'
+|   `-ConstantExpr 0x2aa54c0a8c8 <col:36> 'int'
+|     |-value: Int 8
+|     `-IntegerLiteral 0x2aa54c0a8a0 <col:36> 'int' 8
+|-EnumDecl 0x2aa54c0a988 <line:23:2, col:45> col:7 referenced Phase
+| |-EnumConstantDecl 0x2aa54c0aa98 <col:15, col:28> col:15 PHASE_IDLE 'IProbeHost::Phase'
+| | `-ConstantExpr 0x2aa54c0aa70 <col:28> 'int'
+| |   |-value: Int 1
+| |   `-IntegerLiteral 0x2aa54c0aa48 <col:28> 'int' 1
+| `-EnumConstantDecl 0x2aa54c0ab40 <col:31, col:43> col:31 referenced PHASE_RUN 'IProbeHost::Phase'
+|   `-ConstantExpr 0x2aa54c0ab18 <col:43> 'int'
+|     |-value: Int 4
+|     `-IntegerLiteral 0x2aa54c0aaf0 <col:43> 'int' 4
+|-TypedefDecl 0x2aa54c0abf0 <line:24:2, col:14> col:14 referenced slot_index_t 'int'
+| `-BuiltinType 0x2aa54b66da0 'int'
+|-VarDecl 0x2aa54c0ac68 <line:25:2, col:34> col:19 referenced kDefaultSlot 'const int' static cinit
+| `-IntegerLiteral 0x2aa54c0acd0 <col:34> 'int' 3
+|-VarDecl 0x2aa54c0ad78 <line:26:2, col:13> col:13 s_instances 'int' static
+|-CXXRecordDecl 0x2aa54c0ae00 <line:28:2, line:32:2> line:28:9 referenced struct slot_s definition
+| |-DefinitionData pass_in_registers aggregate standard_layout trivially_copyable pod trivial literal has_constexpr_non_copy_move_ctor
+| | |-DefaultConstructor exists trivial constexpr needs_implicit defaulted_is_constexpr
+| | |-CopyConstructor simple trivial has_const_param needs_implicit implicit_has_const_param
+| | |-MoveConstructor exists simple trivial needs_implicit
+| | |-CopyAssignment simple trivial has_const_param implicit_has_const_param
+| | |-MoveAssignment exists simple trivial
+| | `-Destructor simple irrelevant trivial constexpr
+| |-CXXRecordDecl 0x2aa54c0af18 <col:2, col:9> col:9 implicit struct slot_s
+| |-FieldDecl 0x2aa54c0b010 <line:30:3, col:16> col:16 index 'slot_index_t':'int'
+| |-FieldDecl 0x2aa54c0b118 <line:31:3, col:22> col:8 name 'char[8]'
+| |-CXXMethodDecl 0x2aa54c0db08 <line:28:9> col:9 implicit constexpr operator= 'slot_s &(const slot_s &) __attribute__((thiscall))' inline default trivial noexcept-unevaluated 0x2aa54c0db08
+| | `-ParmVarDecl 0x2aa54c0dc38 <col:9> col:9 'const slot_s &'
+| |-CXXMethodDecl 0x2aa54c0dd18 <col:9> col:9 implicit constexpr operator= 'slot_s &(slot_s &&) __attribute__((thiscall))' inline default trivial noexcept-unevaluated 0x2aa54c0dd18
+| | `-ParmVarDecl 0x2aa54c0de48 <col:9> col:9 'slot_s &&'
+| `-CXXDestructorDecl 0x2aa54c0e1f0 <col:9> col:9 implicit constexpr ~slot_s 'void () __attribute__((thiscall))' inline default trivial noexcept-unevaluated 0x2aa54c0e1f0
+|-CXXMethodDecl 0x2aa54c0c788 <line:34:2, col:55> col:24 referenced FindModule 'IProbeModule *(const char *) __attribute__((thiscall))' virtual pure
+| `-ParmVarDecl 0x2aa54c0b210 <col:35, col:47> col:47 name 'const char *'
+|-CXXMethodDecl 0x2aa54c0ca10 <line:35:2, col:39> col:17 Tint 'tint24 (later_s *) __attribute__((thiscall))' virtual pure
+| `-ParmVarDecl 0x2aa54c0c8d8 <col:22, col:31> col:31 what 'later_s *'
+|-CXXMethodDecl 0x2aa54c0ccb0 <line:5:26, col:67> <scratch space>:4:1 used Handle_Start 'int (const char *, int) __attribute__((thiscall))'
+| |-ParmVarDecl 0x2aa54c0caf8 <C:\fixture\dep\NclNitroApi\dep\ncl-hl1-source-sdk\engine\iface.h:5:41, col:53> col:53 name 'const char *'
+| `-ParmVarDecl 0x2aa54c0cb88 <col:59, col:63> col:63 size 'int'
+|-CXXMethodDecl 0x2aa54c0cf10 <col:26, col:67> <scratch space>:5:1 Handle_Stop 'int (const char *, int) __attribute__((thiscall))'
+| |-ParmVarDecl 0x2aa54c0cda0 <C:\fixture\dep\NclNitroApi\dep\ncl-hl1-source-sdk\engine\iface.h:5:41, col:53> col:53 name 'const char *'
+| `-ParmVarDecl 0x2aa54c0ce30 <col:59, col:63> col:63 size 'int'
+|-CXXConversionDecl 0x2aa54c0d098 <line:38:2, col:47> col:2 operator bool 'bool () __attribute__((thiscall)) const' implicit-inline
+| `-CompoundStmt 0x2aa54c0e388 <col:24, col:47>
+|   `-ReturnStmt 0x2aa54c0e378 <col:26, col:44>
+|     `-BinaryOperator 0x2aa54c0e358 <col:33, col:44> 'bool' '!='
+|       |-ImplicitCastExpr 0x2aa54c0e340 <col:33> 'int' <LValueToRValue>
+|       | `-MemberExpr 0x2aa54c0e2e8 <col:33> 'const int' lvalue ->m_count 0x2aa54c0d188
+|       |   `-CXXThisExpr 0x2aa54c0e2d8 <col:33> 'const IProbeHost *' implicit this
+|       `-IntegerLiteral 0x2aa54c0e318 <col:44> 'int' 0
+|-FieldDecl 0x2aa54c0d188 <line:40:2, col:6> col:6 referenced m_count 'int'
+|-AccessSpecDecl 0x2aa54c0d1e8 <line:42:1, col:10> col:1 protected
+|-FieldDecl 0x2aa54c0d270 <line:43:2, col:8> col:8 m_phase 'Phase'
+|-AccessSpecDecl 0x2aa54c0d2d0 <line:45:1, col:8> col:1 private
+|-FieldDecl 0x2aa54c0d4f0 <line:46:2, col:26> col:9 m_slots 'slot_s[4]'
+|-CXXMethodDecl 0x2aa54c0d890 <line:17:7> col:7 implicit constexpr operator= 'IProbeHost &(const IProbeHost &) __attribute__((thiscall))' inline default noexcept-unevaluated 0x2aa54c0d890
+| `-ParmVarDecl 0x2aa54c0d9c8 <col:7> col:7 'const IProbeHost &'
+|-CXXMethodDecl 0x2aa54c0df38 <col:7> col:7 implicit constexpr operator= 'IProbeHost &(IProbeHost &&) __attribute__((thiscall))' inline default noexcept-unevaluated 0x2aa54c0df38
+| `-ParmVarDecl 0x2aa54c0e068 <col:7> col:7 'IProbeHost &&'
+`-CXXDestructorDecl 0x2aa54c0e0f8 <col:7> col:7 implicit ~IProbeHost 'void () __attribute__((thiscall))' inline default trivial noexcept-unevaluated 0x2aa54c0e0f8
+
+
+Match #30:
+
+Binding for "root":
+CXXRecordDecl 0x2aa54c0e3f0 prev 0x2aa54c05700 <C:\fixture\dep\NclNitroApi\dep\ncl-hl1-source-sdk\engine\iface.h:49:1, line:52:1> line:49:8 referenced struct later_s definition
+|-DefinitionData pass_in_registers aggregate standard_layout trivially_copyable pod trivial literal has_constexpr_non_copy_move_ctor
+| |-DefaultConstructor exists trivial constexpr needs_implicit defaulted_is_constexpr
+| |-CopyConstructor simple trivial has_const_param needs_implicit implicit_has_const_param
+| |-MoveConstructor exists simple trivial needs_implicit
+| |-CopyAssignment simple trivial has_const_param needs_implicit implicit_has_const_param
+| |-MoveAssignment exists simple trivial needs_implicit
+| `-Destructor simple irrelevant trivial constexpr needs_implicit
+|-CXXRecordDecl 0x2aa54c0e4f0 <col:1, col:8> col:8 implicit struct later_s
+`-FieldDecl 0x2aa54c0e5b8 <line:51:2, col:6> col:6 referenced ready 'int'
+
+30 matches.
+
+Match #1:
+
+Binding for "root":
+LinkageSpecDecl 0x2aa54c03908 <C:\fixture\dep\NclNitroApi\dep\ncl-hl1-source-sdk\engine\linked.h:4:1, line:13:1> line:4:8 C
+|-FunctionDecl 0x2aa54c03a28 <C:\fixture\dep\NclNitroApi\dep\ncl-hl1-source-sdk\public\outside_c.h:3:1, col:23> col:5 Outside_Count 'int ()'
+| `-NoThrowAttr 0x2aa54c03ae8 <col:5> Implicit
+`-FunctionDecl 0x2aa54c03d20 <C:\fixture\dep\NclNitroApi\dep\ncl-hl1-source-sdk\engine\linked.h:10:1, col:37> col:5 Linked_Sum 'int (int, int)'
+  |-ParmVarDecl 0x2aa54c03b68 <col:16, col:20> col:20 first 'int'
+  |-ParmVarDecl 0x2aa54c03bf8 <col:27, col:31> col:31 second 'int'
+  `-NoThrowAttr 0x2aa54c03df0 <col:5> Implicit
+
+
+Match #2:
+
+Binding for "root":
+NamespaceDecl 0x2aa54c0e630 <C:\fixture\dep\NclNitroApi\include\nitroapi/modules/engine/structs.h:3:1, line:27:1> line:3:11 nitroapi
+|-EnumDecl 0x2aa54c0e6c0 <line:5:2, line:9:2> line:5:7 referenced BeaconKind
+| |-EnumConstantDecl 0x2aa54c0e788 <line:7:3> col:3 BEACON_OFF 'nitroapi::BeaconKind'
+| `-EnumConstantDecl 0x2aa54c0e830 <line:8:3, col:15> col:3 referenced BEACON_ON 'nitroapi::BeaconKind'
+|   `-ConstantExpr 0x2aa54c0e808 <col:15> 'int'
+|     |-value: Int 9
+|     `-IntegerLiteral 0x2aa54c0e7e0 <col:15> 'int' 9
+|-CXXRecordDecl 0x2aa54c090c8 <line:11:2, line:15:2> line:11:9 referenced struct Beacon definition
+| |-DefinitionData pass_in_registers aggregate standard_layout trivially_copyable pod trivial literal has_constexpr_non_copy_move_ctor
+| | |-DefaultConstructor exists trivial constexpr needs_implicit defaulted_is_constexpr
+| | |-CopyConstructor simple trivial has_const_param needs_implicit implicit_has_const_param
+| | |-MoveConstructor exists simple trivial needs_implicit
+| | |-CopyAssignment simple trivial has_const_param needs_implicit implicit_has_const_param
+| | |-MoveAssignment exists simple trivial needs_implicit
+| | `-Destructor simple irrelevant trivial constexpr needs_implicit
+| |-CXXRecordDecl 0x2aa54c091e0 <col:2, col:9> col:9 implicit struct Beacon
+| |-FieldDecl 0x2aa54c092a8 <line:13:3, col:7> col:7 referenced id 'int'
+| `-FieldDecl 0x2aa54c09350 <line:14:3, col:14> col:14 referenced kind 'BeaconKind'
+|-TypedefDecl 0x2aa54c09450 <line:17:2, col:17> col:17 BeaconAlias 'Beacon'
+| `-RecordType 0x2aa54c09400 'Beacon'
+|   `-CXXRecord 0x2aa54c090c8 'Beacon'
+|-VarDecl 0x2aa54c094c8 <line:18:2, col:25> col:12 referenced kBeaconMax 'const int' cinit
+| `-IntegerLiteral 0x2aa54c09530 <col:25> 'int' 5
+`-NamespaceDecl 0x2aa54c095c0 <line:20:2, line:26:2> line:20:12 detail
+  `-CXXRecordDecl 0x2aa54c09650 <line:22:3, line:25:3> line:22:10 referenced struct DeepThing definition
+    |-DefinitionData pass_in_registers aggregate standard_layout trivially_copyable pod trivial literal has_constexpr_non_copy_move_ctor
+    | |-DefaultConstructor exists trivial constexpr needs_implicit defaulted_is_constexpr
+    | |-CopyConstructor simple trivial has_const_param needs_implicit implicit_has_const_param
+    | |-MoveConstructor exists simple trivial needs_implicit
+    | |-CopyAssignment simple trivial has_const_param needs_implicit implicit_has_const_param
+    | |-MoveAssignment exists simple trivial needs_implicit
+    | `-Destructor simple irrelevant trivial constexpr
+    |-CXXRecordDecl 0x2aa54c09768 <col:3, col:10> col:10 implicit struct DeepThing
+    |-FieldDecl 0x2aa54c09830 <line:24:4, col:10> col:10 referenced depth 'short'
+    `-CXXDestructorDecl 0x2aa54c74188 <line:22:10> col:10 implicit referenced constexpr ~DeepThing 'void () __attribute__((thiscall)) noexcept' inline default trivial
+
+
+Match #3:
+
+Binding for "root":
+LinkageSpecDecl 0x2aa54c09918 <C:\fixture\dep\NclNitroApi\include\nitroapi/modules/engine/structs.h:29:1, line:37:1> line:29:8 C
+|-CXXRecordDecl 0x2aa54c09970 <line:31:2, line:34:2> line:31:9 referenced struct c_linked_s definition
+| |-DefinitionData pass_in_registers aggregate standard_layout trivially_copyable pod trivial literal has_constexpr_non_copy_move_ctor
+| | |-DefaultConstructor exists trivial constexpr needs_implicit defaulted_is_constexpr
+| | |-CopyConstructor simple trivial has_const_param needs_implicit implicit_has_const_param
+| | |-MoveConstructor exists simple trivial needs_implicit
+| | |-CopyAssignment simple trivial has_const_param needs_implicit implicit_has_const_param
+| | |-MoveAssignment exists simple trivial needs_implicit
+| | `-Destructor simple irrelevant trivial constexpr
+| |-CXXRecordDecl 0x2aa54c09a88 <col:2, col:9> col:9 implicit struct c_linked_s
+| |-FieldDecl 0x2aa54c09b50 <line:33:3, col:7> col:7 referenced value 'int'
+| `-CXXDestructorDecl 0x2aa54c74400 <line:31:9> col:9 implicit referenced constexpr ~c_linked_s 'void () __attribute__((thiscall)) noexcept' inline default trivial
+`-FunctionDecl 0x2aa54c09e00 <line:36:2, col:45> col:6 CLinked_Value 'int (struct c_linked_s *)'
+  |-ParmVarDecl 0x2aa54c09cc8 <col:20, col:39> col:39 linked 'struct c_linked_s *'
+  `-NoThrowAttr 0x2aa54c09ec8 <col:6> Implicit
+
+3 matches.
+
+Match #1:
+
+Binding for "root":
+EnumDecl 0x2aa54bff028 <C:\fixture\dep\NclNitroApi\dep\ncl-hl1-source-sdk\common\values.h:18:1, col:6> col:6 late_e
+
+
+Match #2:
+
+Binding for "root":
+CXXRecordDecl 0x2aa54c05700 <C:\fixture\dep\NclNitroApi\dep\ncl-hl1-source-sdk\common\shapes.h:15:1, col:8> col:8 referenced struct later_s
+
+
+Match #3:
+
+Binding for "root":
+CXXRecordDecl 0x2aa54c06838 parent 0x2aa54b66c90 <C:\fixture\dep\NclNitroApi\dep\ncl-hl1-source-sdk\common\shapes.h:35:2, col:9> col:9 struct fresh_s
+
+
+Match #4:
+
+Binding for "root":
+CXXRecordDecl 0x2aa54c08030 <C:\fixture\dep\NclNitroApi\dep\ncl-hl1-source-sdk\engine\iface.h:7:1, col:7> col:7 referenced class IProbeHost
+
+
+Match #5:
+
+Binding for "root":
+CXXRecordDecl 0x2aa54c080e0 prev 0x2aa54c03fe8 <C:\fixture\dep\NclNitroApi\dep\ncl-hl1-source-sdk\engine\iface.h:8:1, col:7> col:7 referenced class OutsideIface
+
+5 matches.

@@ -9,7 +9,9 @@
 #include <string>
 #include <vector>
 
-#include <Windows.h>
+#ifdef _WIN32
+    #include <Windows.h>
+#endif
 
 #include <ncl_math/color.h>
 
@@ -57,7 +59,7 @@ namespace
     int g_Count;
     int g_Dropped;
 
-    float CvarValue(const cvar_t* cvar)
+    float CvarValue(const goldsrc::cvar_t* cvar)
     {
         return cvar != nullptr ? cvar->value : 0.0f;
     }
@@ -228,19 +230,23 @@ namespace
             return;
         }
 
+#ifdef _WIN32
         const uint8_t* module = reinterpret_cast<const uint8_t*>(GetModuleHandleA("hw.dll"));
         ptrdiff_t offset = module != nullptr
             ? reinterpret_cast<const uint8_t*>(p_cl_elights) - module
             : 0;
 
         V_snprintf(line, size, "# cl_elights: %p, hw.dll+0x%x", static_cast<const void*>(p_cl_elights), static_cast<unsigned>(offset));
+#else
+        V_snprintf(line, size, "# cl_elights: %p", static_cast<const void*>(p_cl_elights));
+#endif
         file << line << "\n";
 
         int alive = 0;
 
         for (int i = 0; i < kMaxElights; i++)
         {
-            const dlight_t& light = (*p_cl_elights)[i];
+            const goldsrc::dlight_t& light = (*p_cl_elights)[i];
 
             if (!Elight_Alive(light))
             {
@@ -417,7 +423,7 @@ namespace
 
         for (int i = 0; i < kMaxElights; i++)
         {
-            const dlight_t& light = (*p_cl_elights)[i];
+            const goldsrc::dlight_t& light = (*p_cl_elights)[i];
 
             if (!Elight_Alive(light))
             {

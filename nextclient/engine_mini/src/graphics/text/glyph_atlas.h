@@ -14,28 +14,23 @@ namespace text_render
         int y;
     };
 
-    // Shelf packer over a list of GL texture pages of one texel layout. Owns the textures; the
-    // caller supplies cell pixels and gets back texture coordinates.
     class GlyphAtlas
     {
     public:
-        // Page dimensions and texel layout, exposed so diagnostics that read pages
-        // back (text_diag) size their buffers from this single source of truth
-        // instead of duplicating the constants.
+        // Public so text_diag sizes its page-readback buffers from one source of truth.
         static constexpr int kPageSize = 512;
         static constexpr int kBytesPerTexel = 2; // GL_LUMINANCE_ALPHA
 
         void Configure(TextGlyphFormat format);
 
-        // Allocates a cell and uploads it. Returns false when no page had room and no further page
-        // could be created, which the caller must treat as transient.
+        // false means no page had room right now; the caller must treat it as transient.
         bool Add(int wide, int tall, const uint8_t* texels, AtlasCell* out_cell);
 
         void CellUv(const AtlasCell& cell, int wide, int tall, float* u0, float* v0, float* u1, float* v1) const;
         unsigned int PageTexture(int page) const;
         int PageCount() const { return (int)pages_.size(); }
 
-        // Releases every page. Must run while the GL context is still current.
+        // Must run while the GL context is still current.
         void ReleaseGl();
 
     private:

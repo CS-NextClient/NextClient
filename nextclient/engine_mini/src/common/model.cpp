@@ -2,9 +2,14 @@
 
 #include <optick.h>
 
-#include <model.h>
+#include <goldsrc/client_api.h>
+#include <goldsrc/engine/model.h>
+#include <goldsrc/format/bsp.h>
+#include <goldsrc/format/sprite.h>
+#include <goldsrc/format/studio.h>
+#include <goldsrc/server_api.h>
+#include <goldsrc/types.h>
 #include <ncl_studio/StudioValidate.h>
-#include <studio.h>
 
 #include "console/console.h"
 #include "graphics/gl_local.h"
@@ -15,29 +20,29 @@
 #include "l_studio.h"
 
 char loadname[32];
-model_t mod_known[MAX_KNOWN_MODELS];
+goldsrc::model_t mod_known[goldsrc::MAX_KNOWN_MODELS];
 int mod_numknown;
-mod_known_info_t mod_known_info[MAX_KNOWN_MODELS];
+goldsrc::mod_known_info_t mod_known_info[goldsrc::MAX_KNOWN_MODELS];
 
-qboolean gSpriteMipMap;
+goldsrc::qboolean gSpriteMipMap;
 int gSpriteTextureFormat;
 uint8_t* pspritepal;
 
-void Mod_LoadAliasModel(model_t* mod, void* buffer)
+void Mod_LoadAliasModel(goldsrc::model_t* mod, void* buffer)
 {
     OPTICK_EVENT();
 
     eng()->Mod_LoadAliasModel.InvokeChained(mod, buffer);
 }
 
-void Mod_LoadBrushModel(model_t* mod, void* buffer)
+void Mod_LoadBrushModel(goldsrc::model_t* mod, void* buffer)
 {
     OPTICK_EVENT();
 
     eng()->Mod_LoadBrushModel.InvokeChained(mod, buffer);
 }
 
-void* Mod_Extradata(model_t *mod)
+void* Mod_Extradata(goldsrc::model_t* mod)
 {
     OPTICK_EVENT();
 
@@ -48,7 +53,7 @@ void* Mod_Extradata(model_t *mod)
     if (r)
         return r;
 
-    if (mod->type == mod_brush)
+    if (mod->type == goldsrc::mod_brush)
         Sys_Error("%s: called with mod_brush!\n", __func__);
 
     Mod_LoadModel(mod, true, false);
@@ -59,11 +64,11 @@ void* Mod_Extradata(model_t *mod)
     return mod->cache.data;
 }
 
-void Mod_FillInCRCInfo(qboolean trackCRC, int model_number)
+void Mod_FillInCRCInfo(goldsrc::qboolean trackCRC, int model_number)
 {
     OPTICK_EVENT();
 
-    mod_known_info_t* p;
+    goldsrc::mod_known_info_t* p;
 
     p = &mod_known_info[model_number];
     p->shouldCRC = trackCRC;
@@ -71,13 +76,13 @@ void Mod_FillInCRCInfo(qboolean trackCRC, int model_number)
     p->initialCRC = 0;
 }
 
-model_t* Mod_FindName(qboolean trackCRC, const char* name)
+goldsrc::model_t* Mod_FindName(goldsrc::qboolean trackCRC, const char* name)
 {
     OPTICK_EVENT();
 
-    model_t* avail;
+    goldsrc::model_t* avail;
     int i;
-    model_t* mod;
+    goldsrc::model_t* mod;
 
     avail = NULL;
     if (!name[0])
@@ -90,14 +95,14 @@ model_t* Mod_FindName(qboolean trackCRC, const char* name)
 
         if (mod->needload == NL_UNREFERENCED)
         {
-            if (!avail || mod->type != mod_alias && mod->type != mod_studio)
+            if (!avail || mod->type != goldsrc::mod_alias && mod->type != goldsrc::mod_studio)
                 avail = mod;
         }
     }
 
     if (i == mod_numknown)
     {
-        if (mod_numknown < MAX_KNOWN_MODELS)
+        if (mod_numknown < goldsrc::MAX_KNOWN_MODELS)
         {
             Mod_FillInCRCInfo(trackCRC, mod_numknown);
             ++mod_numknown;
@@ -110,27 +115,27 @@ model_t* Mod_FindName(qboolean trackCRC, const char* name)
             Mod_FillInCRCInfo(trackCRC, avail - mod_known);
         }
 
-        if (mod->type == mod_studio || mod->type == mod_alias)
+        if (mod->type == goldsrc::mod_studio || mod->type == goldsrc::mod_alias)
         {
             if (Cache_Check(&mod->cache))
                 Cache_Free(&mod->cache);
         }
 
-        Q_memset(mod, 0, sizeof(model_t));
+        Q_memset(mod, 0, sizeof(goldsrc::model_t));
         
-        Q_strncpy(mod->name, name, MAX_MODEL_NAME);
+        Q_strncpy(mod->name, name, goldsrc::MAX_MODEL_NAME);
         mod->needload = NL_NEEDS_LOADED;
     }
 
     return mod;
 }
 
-qboolean Mod_ValidateCRC(const char* name, CRC32_t crc)
+goldsrc::qboolean Mod_ValidateCRC(const char* name, goldsrc::CRC32_t crc)
 {
     OPTICK_EVENT();
 
-    model_t* mod;
-    mod_known_info_t* p;
+    goldsrc::model_t* mod;
+    goldsrc::mod_known_info_t* p;
 
     mod = Mod_FindName(TRUE, name);
     p = &mod_known_info[mod - mod_known];
@@ -143,12 +148,12 @@ qboolean Mod_ValidateCRC(const char* name, CRC32_t crc)
     return TRUE;
 }
 
-void Mod_NeedCRC(const char* name, qboolean needCRC)
+void Mod_NeedCRC(const char* name, goldsrc::qboolean needCRC)
 {
     OPTICK_EVENT();
 
-    model_t* mod;
-    mod_known_info_t* p;
+    goldsrc::model_t* mod;
+    goldsrc::mod_known_info_t* p;
 
     mod = Mod_FindName(FALSE, name);
     p = &mod_known_info[mod - mod_known];
@@ -156,18 +161,18 @@ void Mod_NeedCRC(const char* name, qboolean needCRC)
     p->shouldCRC = needCRC;
 }
 
-void* Mod_LoadSpriteFrame(void* pin, mspriteframe_t** ppframe, int framenum)
+void* Mod_LoadSpriteFrame(void* pin, goldsrc::mspriteframe_t** ppframe, int framenum)
 {
 	OPTICK_EVENT();
 
-	dspriteframe_t* pinframe = (dspriteframe_t*) pin;
+	goldsrc::dspriteframe_t* pinframe = (goldsrc::dspriteframe_t*)pin;
 	int origin[2] = {LittleLong(pinframe->origin[0]), LittleLong(pinframe->origin[1])};
 	int width = LittleLong(pinframe->width);
 	int height = LittleLong(pinframe->height);
 	int size = width * height;
 
-	mspriteframe_t* pspriteframe = (mspriteframe_t*) Hunk_AllocName(sizeof(mspriteframe_t), loadname);
-	Q_memset(pspriteframe, 0, sizeof(mspriteframe_t));
+	goldsrc::mspriteframe_t* pspriteframe = (goldsrc::mspriteframe_t*)Hunk_AllocName(sizeof(goldsrc::mspriteframe_t), loadname);
+	Q_memset(pspriteframe, 0, sizeof(goldsrc::mspriteframe_t));
 	*ppframe = pspriteframe;
 	pspriteframe->width = width;
 	pspriteframe->height = height;
@@ -192,25 +197,28 @@ void* Mod_LoadSpriteFrame(void* pin, mspriteframe_t** ppframe, int framenum)
 	Q_memcpy(palette, pspritepal, sizeof(palette));
 
 	if (gSpriteMipMap)
-		pspriteframe->gl_texturenum = GL_LoadTexture(texture_id, GLT_SPRITE, width, height, (uint8_t*)pin + sizeof(dspriteframe_t), gSpriteMipMap, iType, palette);
+		pspriteframe->gl_texturenum = GL_LoadTexture(
+            texture_id, GLT_SPRITE, width, height, (uint8_t*)pin + sizeof(goldsrc::dspriteframe_t), gSpriteMipMap, iType, palette);
 	else
-		pspriteframe->gl_texturenum = GL_LoadTexture(texture_id, GLT_HUDSPRITE, width, height, (uint8_t*)pin + sizeof(dspriteframe_t), 0, iType, palette);
+		pspriteframe->gl_texturenum =
+            GL_LoadTexture(texture_id, GLT_HUDSPRITE, width, height, (uint8_t*)pin + sizeof(goldsrc::dspriteframe_t), 0, iType, palette);
 
-	return (uint8_t*) pinframe + sizeof(dspriteframe_t) + size;
+	return (uint8_t*)pinframe + sizeof(goldsrc::dspriteframe_t) + size;
 }
 
-void* Mod_LoadSpriteGroup(void* pin, mspriteframe_t** ppframe, int framenum)
+void* Mod_LoadSpriteGroup(void* pin, goldsrc::mspriteframe_t** ppframe, int framenum)
 {
     OPTICK_EVENT();
 
-	dspritegroup_t* pingroup = (dspritegroup_t*) pin;
+	goldsrc::dspritegroup_t* pingroup = (goldsrc::dspritegroup_t*)pin;
 	int numframes = LittleLong(pingroup->numframes);
 
-	mspritegroup_t* pspritegroup = (mspritegroup_t*) Hunk_AllocName(sizeof(mspritegroup_t) + (numframes - 1) * sizeof(pspritegroup->frames[0]), loadname);
+	goldsrc::mspritegroup_t* pspritegroup = (goldsrc::mspritegroup_t*)Hunk_AllocName(
+        sizeof(goldsrc::mspritegroup_t) + (numframes - 1) * sizeof(pspritegroup->frames[0]), loadname);
 	pspritegroup->numframes = numframes;
-	*ppframe = (mspriteframe_t*) pspritegroup;
+	*ppframe = (goldsrc::mspriteframe_t*)pspritegroup;
 
-	dspriteinterval_t* pin_intervals = (dspriteinterval_t*) (pingroup + 1);
+	goldsrc::dspriteinterval_t* pin_intervals = (goldsrc::dspriteinterval_t*)(pingroup + 1);
 
 	float* poutintervals = (float*) Hunk_AllocName(numframes * sizeof(float), loadname);
 	pspritegroup->intervals = poutintervals;
@@ -234,24 +242,24 @@ void* Mod_LoadSpriteGroup(void* pin, mspriteframe_t** ppframe, int framenum)
 	return ptemp;
 }
 
-void Mod_LoadSpriteModel(model_t *mod, void *buffer)
+void Mod_LoadSpriteModel(goldsrc::model_t* mod, void* buffer)
 {
 	OPTICK_EVENT();
 
-	dsprite_t* pin = (dsprite_t*) buffer;
+	goldsrc::dsprite_t* pin = (goldsrc::dsprite_t*)buffer;
 
 	int version = LittleLong(pin->version);
-	if (version != SPRITE_VERSION)
-		Sys_Error("%s: %s has wrong version number (%i should be %i)", __func__, mod->name, version, SPRITE_VERSION);
+	if (version != goldsrc::SPRITE_VERSION)
+		Sys_Error("%s: %s has wrong version number (%i should be %i)", __func__, mod->name, version, goldsrc::SPRITE_VERSION);
 
 	int numframes = LittleLong(pin->numframes);
 	int palcolorsnum = *(uint16_t*) &pin[1];
 	int palsize = 3 * palcolorsnum + 2;
-	int size = sizeof(msprite_t) + (numframes - 1) * sizeof(msprite_t::frames) + palsize;
+	int size = sizeof(goldsrc::msprite_t) + (numframes - 1) * sizeof(goldsrc::msprite_t::frames) + palsize;
 
 	gSpriteTextureFormat = LittleLong(pin->texFormat);
 
-	msprite_t* psprite = (msprite_t*) Hunk_AllocName(size, loadname);
+	goldsrc::msprite_t* psprite = (goldsrc::msprite_t*)Hunk_AllocName(size, loadname);
 	psprite->type = LittleLong(pin->type);
 	psprite->texFormat = (short) gSpriteTextureFormat;
 	psprite->maxwidth = LittleLong(pin->width);
@@ -259,9 +267,9 @@ void Mod_LoadSpriteModel(model_t *mod, void *buffer)
 	psprite->beamlength = LittleFloat(&pin->beamlength, &pin->beamlength);
 	psprite->numframes = numframes;
 
-	mod->type = mod_sprite;
+	mod->type = goldsrc::mod_sprite;
 	mod->numframes = numframes;
-	mod->synctype = (synctype_t) LittleLong(pin->synctype);
+	mod->synctype = (goldsrc::synctype_t)LittleLong(pin->synctype);
 	mod->flags = 0;
 	mod->mins[0] = mod->mins[1] = float(-psprite->maxwidth / 2);
 	mod->maxs[0] = mod->maxs[1] = float(psprite->maxwidth / 2);
@@ -279,25 +287,25 @@ void Mod_LoadSpriteModel(model_t *mod, void *buffer)
 	if (numframes < 1)
 		Sys_Error("%s: Invalid # of frames: %d\n", __func__, numframes);
 
-	dspriteframetype_t* pframetype = (dspriteframetype_t*) ((char*) (pin + 1) + 2 + 3 * palcolorsnum);
+	goldsrc::dspriteframetype_t* pframetype = (goldsrc::dspriteframetype_t*)((char*)(pin + 1) + 2 + 3 * palcolorsnum);
 
 	for (int i = 0; i < numframes; i++)
 	{
-		spriteframetype_t frametype = (spriteframetype_t) LittleLong(pframetype->type);
+		goldsrc::spriteframetype_t frametype = (goldsrc::spriteframetype_t)LittleLong(pframetype->type);
 		psprite->frames[i].type = frametype;
 
-		if (frametype == SPR_SINGLE)
-			pframetype = (dspriteframetype_t*) Mod_LoadSpriteFrame(pframetype + 1, &psprite->frames[i].frameptr, i);
+		if (frametype == goldsrc::SPR_SINGLE)
+			pframetype = (goldsrc::dspriteframetype_t*)Mod_LoadSpriteFrame(pframetype + 1, &psprite->frames[i].frameptr, i);
 		else
-			pframetype = (dspriteframetype_t*) Mod_LoadSpriteGroup(pframetype + 1, &psprite->frames[i].frameptr, i);
+			pframetype = (goldsrc::dspriteframetype_t*)Mod_LoadSpriteGroup(pframetype + 1, &psprite->frames[i].frameptr, i);
 	}
 }
 
-void Mod_LoadStudioModel(model_t* mod, void* buffer, int file_length)
+void Mod_LoadStudioModel(goldsrc::model_t* mod, void* buffer, int file_length)
 {
     OPTICK_EVENT();
 
-    studiohdr_t* phdr = (studiohdr_t*) buffer;
+    goldsrc::studiohdr_t* phdr = reinterpret_cast<goldsrc::studiohdr_t*>(buffer);
 
     // The file length is the only bound in the process that is not itself taken from the
     // file, and every reader downstream works from the truncated cache block without any
@@ -315,20 +323,20 @@ void Mod_LoadStudioModel(model_t* mod, void* buffer, int file_length)
     // length, and a file shorter than a header is one of the things the validation refuses,
     // so writing a whole header back into it is a heap overflow on the very input that
     // failed. Nothing downstream reads the buffer once this points elsewhere.
-    studiohdr_t stub;
+    goldsrc::studiohdr_t stub;
 
-    if (LittleLong(phdr->version) != STUDIO_VERSION || valid.has_error())
+    if (valid.has_error() || LittleLong(phdr->version) != STUDIO_VERSION)
     {
         Q_memset(&stub, 0, sizeof(stub));
         Q_strcpy(stub.name, "bogus");
-        stub.length = static_cast<int>(sizeof(studiohdr_t));
-        stub.texturedataindex = static_cast<int>(sizeof(studiohdr_t));
+        stub.length = static_cast<int>(sizeof(goldsrc::studiohdr_t));
+        stub.texturedataindex = static_cast<int>(sizeof(goldsrc::studiohdr_t));
 
         phdr = &stub;
         buffer = &stub;
     }
 
-    mod->type = mod_studio;
+    mod->type = goldsrc::mod_studio;
     mod->flags = phdr->flags;
 
     int length = phdr->textureindex ? phdr->texturedataindex : phdr->length;
@@ -341,7 +349,7 @@ void Mod_LoadStudioModel(model_t* mod, void* buffer, int file_length)
 
         if (phdr->textureindex)
         {
-            mstudiotexture_t* ptexture = (mstudiotexture_t*) (pout + phdr->textureindex);
+            goldsrc::mstudiotexture_t* ptexture = (goldsrc::mstudiotexture_t*)(pout + phdr->textureindex);
 
             for (int i = 0; i < phdr->numtextures; i++, ptexture++)
             {
@@ -355,24 +363,24 @@ void Mod_LoadStudioModel(model_t* mod, void* buffer, int file_length)
                    ptexture->width,
                    ptexture->height,
                    (uint8_t*)buffer + ptexture->index,
-                   (ptexture->flags & STUDIO_NF_NOMIPS) != 0,
-                   (ptexture->flags & STUDIO_NF_MASKED) != 0,
+                   (ptexture->flags & goldsrc::STUDIO_NF_NOMIPS) != 0,
+                   (ptexture->flags & goldsrc::STUDIO_NF_MASKED) != 0,
                    ppal);
             }
         }
     }
 }
 
-model_t* Mod_LoadModel(model_t* mod, qboolean crash, qboolean trackCRC)
+goldsrc::model_t* Mod_LoadModel(goldsrc::model_t* mod, goldsrc::qboolean crash, goldsrc::qboolean trackCRC)
 {
     OPTICK_EVENT();
 
     unsigned char* buf;
     char tmpName[MAX_PATH];
     int length;
-    CRC32_t currentCRC;
+    goldsrc::CRC32_t currentCRC;
 
-    if (mod->type == mod_alias || mod->type == mod_studio)
+    if (mod->type == goldsrc::mod_alias || mod->type == goldsrc::mod_studio)
     {
         if (Cache_Check(&mod->cache))
         {
@@ -407,7 +415,7 @@ model_t* Mod_LoadModel(model_t* mod, qboolean crash, qboolean trackCRC)
 
     if (trackCRC)
     {
-        mod_known_info_t* p = &mod_known_info[mod - mod_known];
+        goldsrc::mod_known_info_t* p = &mod_known_info[mod - mod_known];
         if (p->shouldCRC)
         {
             g_engfuncs.pfnCRC32_Init(&currentCRC);
@@ -436,18 +444,18 @@ model_t* Mod_LoadModel(model_t* mod, qboolean crash, qboolean trackCRC)
 
     switch (LittleLong(*(uint32*) buf))
     {
-        case IDPOLYHEADER:
+        case goldsrc::IDPOLYHEADER:
             // old-format of the model from the quake1
             Mod_LoadAliasModel(mod, buf);
             break;
-        case IDSPRITEHEADER:
+        case goldsrc::IDSPRITEHEADER:
             Mod_LoadSpriteModel(mod, buf);
             break;
         case IDSTUDIOHEADER:
             Mod_LoadStudioModel(mod, buf, length);
             break;
-        case Q1BSP_VERSION:
-        case HLBSP_VERSION:
+        case goldsrc::Q1BSP_VERSION:
+        case goldsrc::HLBSP_VERSION:
             DT_LoadDetailMapFile(loadname);
             Mod_LoadBrushModel(mod, buf);
         break;
@@ -468,11 +476,11 @@ model_t* Mod_LoadModel(model_t* mod, qboolean crash, qboolean trackCRC)
     return mod;
 }
 
-model_t* Mod_ForName(const char* name, qboolean crash, qboolean trackCRC)
+goldsrc::model_t* Mod_ForName(const char* name, goldsrc::qboolean crash, goldsrc::qboolean trackCRC)
 {
     OPTICK_EVENT();
 
-    model_t* mod;
+    goldsrc::model_t* mod;
 
     mod = Mod_FindName(trackCRC, name);
     if (!mod)
@@ -486,7 +494,7 @@ void Mod_Print()
     OPTICK_EVENT();
 
     int i;
-    model_t* mod;
+    goldsrc::model_t* mod;
 
     Con_Printf("Cached models:\n");
 
@@ -501,19 +509,19 @@ void Mod_Print()
     }
 }
 
-void Mod_UnloadSpriteTextures(model_t* pModel)
+void Mod_UnloadSpriteTextures(goldsrc::model_t* pModel)
 {
     OPTICK_EVENT();
 
     if (!pModel)
         return;
 
-    if (pModel->type != mod_sprite)
+    if (pModel->type != goldsrc::mod_sprite)
         return;
 
     pModel->needload = NL_NEEDS_LOADED;
 
-    msprite_t* spr = (msprite_t*)pModel->cache.data;
+    goldsrc::msprite_t* spr = (goldsrc::msprite_t*)pModel->cache.data;
     if (spr)
     {
         char name[256];
@@ -525,12 +533,12 @@ void Mod_UnloadSpriteTextures(model_t* pModel)
     }
 }
 
-void Mod_UnloadFiltered(const std::function<bool(model_t*)>& filter)
+void Mod_UnloadFiltered(const std::function<bool(goldsrc::model_t*)>& filter)
 {
     OPTICK_EVENT();
 
-    model_t* mod;
-    mod_known_info_t* p;
+    goldsrc::model_t* mod;
+    goldsrc::mod_known_info_t* p;
 
     for (int i = 0; i < mod_numknown; i++)
     {
@@ -541,17 +549,17 @@ void Mod_UnloadFiltered(const std::function<bool(model_t*)>& filter)
 
         Con_DPrintf(ConLogType::Info, "%s: unloading \"%s\"\n", __func__, mod->name);
 
-        if (mod->type == mod_studio || mod->type == mod_alias)
+        if (mod->type == goldsrc::mod_studio || mod->type == goldsrc::mod_alias)
         {
             if (Cache_Check(&mod->cache))
                 Cache_Free(&mod->cache);
         }
 
-        Q_memset(mod, 0, sizeof(model_t));
+        Q_memset(mod, 0, sizeof(goldsrc::model_t));
         mod->needload = NL_UNREFERENCED;
 
         p = &mod_known_info[i];
-        Q_memset(p, 0, sizeof(mod_known_info_t));
+        Q_memset(p, 0, sizeof(goldsrc::mod_known_info_t));
     }
 }
 
@@ -559,17 +567,17 @@ void Mod_ClearAll()
 {
     OPTICK_EVENT();
 
-    model_t* mod;
+    goldsrc::model_t* mod;
 
     for (int i = 0; i < mod_numknown; i++)
     {
         mod = &mod_known[i];
 
-        if (mod->type != mod_alias && mod->needload != NL_CLIENT)
+        if (mod->type != goldsrc::mod_alias && mod->needload != NL_CLIENT)
         {
             mod->needload = NL_UNREFERENCED;
 
-            if (mod->type == mod_sprite)
+            if (mod->type == goldsrc::mod_sprite)
                 mod->cache.data = nullptr;
         }
     }

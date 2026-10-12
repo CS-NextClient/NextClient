@@ -1,11 +1,15 @@
 #include "ViewmodelFrustumCalculator.h"
+#include <goldsrc/client_api.h>
+#include <goldsrc/cvar.h>
+#include <goldsrc/engine/video.h>
+
 #include "../engine.h"
 
 void ViewmodelFrustumCalculator::CalcFrustum(GLdouble& left_out, GLdouble& right_out, GLdouble& bottom_out, GLdouble& top_out)
 {
     bool fov_changed = false;
 
-    static cvar_t* vm_fov_scale = nullptr;
+    static goldsrc::cvar_t* vm_fov_scale = nullptr;
     if (!vm_fov_scale)
         vm_fov_scale = gEngfuncs.pfnGetCvarPointer("_vm_fov_scale");
 

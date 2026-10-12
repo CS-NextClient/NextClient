@@ -2,6 +2,7 @@
 #include "LabeledCommandComboBox.h"
 #include <KeyValues.h>
 #include <vgui/ILocalize.h>
+#include <goldsrc/client_api.h>
 
 CLabeledCommandComboBox::CLabeledCommandComboBox(vgui2::Panel *parent, const char *panelName) : vgui2::ComboBox(parent, panelName, 6, false)
 {

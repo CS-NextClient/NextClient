@@ -1,62 +1,79 @@
 #include "HudRadarAdvanced.h"
-#include "radar/RadarConfig.h"
-#include "radar/RadarDraw.h"
-#include "radar/RadarText.h"
-#include "radar/SmokeRegistry.h"
-#include "radar/RadarHooks.h"
-#include "radar/HudTextZone.h"
-#include "radar/RadarFade.h"
-#include "radar/RadarDebug.h"
-#include "radar/RadarDump.h"
-#include "radar/RadarBroadcast.h"
-#include "../main.h"
-#include "../view.h"
 
-#include <triangleapi.h>
-#include <screenfade.h>
-#include <ncl_math/vec3.h>
-#include <ncl_math/color.h>
-#include <ncl_math/clip.h>
-#include <next_client_mini/radar_cvars.h>
-#include <pm_defs.h>
-#include <pm_movevars.h>
-#include <cmath>
 #include <cstdlib>
 #include <cstring>
 #include <algorithm>
 #include <chrono>
+#include <string>
+#include <string_view>
+#include <utility>
+#include <vector>
+
+#include "main.h"
+
+#include <goldsrc/client_api.h>
+#include <goldsrc/cstrike/game.h>
+#include <goldsrc/cstrike/hud.h>
+#include <goldsrc/cstrike/hud_elements.h>
+#include <goldsrc/cstrike/spectator.h>
+#include <goldsrc/cvar.h>
+#include <goldsrc/engine/model.h>
+#include <goldsrc/entity.h>
+#include <goldsrc/event_api.h>
+#include <goldsrc/engine/client_state.h>
+#include <goldsrc/pmove.h>
+#include <goldsrc/view.h>
+#include <ncl_math/vec3.h>
+#include <ncl_math/color.h>
+#include <next_client_mini/radar_cvars.h>
+
+#include "hud/radar/map/Overview.h"
+#include "hud/radar/map/MapBspGeometry.h"
+#include "hud/radar/map/layers/MapLayerOverrides.h"
+#include "hud/radar/integration/RadarUtil.h"
+#include "hud/radar/integration/RadarConfig.h"
+#include "hud/radar/RadarLimits.h"
+#include "hud/radar/render/RadarDraw.h"
+#include "hud/radar/render/text/RadarText.h"
+#include "hud/radar/policy/SmokeRegistry.h"
+#include "hud/radar/integration/RadarHooks.h"
+#include "hud/radar/render/text/HudTextZone.h"
+#include "hud/radar/render/RadarFade.h"
+#include "hud/radar/integration/RadarDebug.h"
+#include "hud/radar/markers/RadarBroadcast.h"
+#include "view.h"
 
 namespace
 {
-    // Cvar value ranges shared with the settings dialog (see radar_cvars.h).
     constexpr RadarCvarDef kScaleCvar = RadarCvarDef_Get("hud_radar_scale");
     constexpr RadarCvarDef kMapScaleCvar = RadarCvarDef_Get("hud_radar_map_scale");
-    constexpr RadarCvarDef kOpacityCvar = RadarCvarDef_Get("hud_radar_opacity");
-    static_assert(kScaleCvar.name && kMapScaleCvar.name && kOpacityCvar.name);
+    static_assert(kScaleCvar.name && kMapScaleCvar.name);
 
-    // Fallback until the server movevars arrive; the policy scales its broadcast-lag
-    // tolerance with the running speed.
+    static_assert(static_cast<int>(RadarTeam::Unassigned) == goldsrc::cstrike::TEAM_UNASSIGNED);
+    static_assert(static_cast<int>(RadarTeam::Terrorist) == goldsrc::cstrike::TEAM_TERRORIST);
+    static_assert(static_cast<int>(RadarTeam::CounterTerrorist) == goldsrc::cstrike::TEAM_CT);
+    static_assert(static_cast<int>(RadarTeam::Spectator) == goldsrc::cstrike::TEAM_SPECTATOR);
+
     constexpr float kRunSpeedFallback = 320.0f;
+    constexpr int kDuckHull = 1;
+    constexpr int kPlayerHullCount = 4;
 
-    // Live hostage broadcasts pulled per frame; stock maps hold far fewer, and a mod
-    // re-purposing the message sends one or two markers.
-    constexpr int kMaxBroadcastHostages = 24;
+    // Set by Draw, read later in the same frame by the classic radar.
+    bool g_MapUnavailable;
 
-    void PolicyLog(const char* message)
+    void LogPolicyMessage(const char* message)
     {
         gEngfuncs.Con_Printf("radar: %s\n", message);
     }
 
-    // Optional serverinfo keys a server can set once ("serverinfo nc_ffa 1") to declare
-    // its mode instead of leaving the radar to work it out from the message stream.
-    const char* ServerInfoValue(const char* key)
+    // Optional server-set mode hint, broadcast as "serverinfo nc_ffa 1".
+    const char* GetServerInfoValue(const char* key)
     {
         const char* value = gEngfuncs.ServerInfo_ValueForKey(key);
         return value ? value : "";
     }
 
-    // "marker" re-purposes the message; the objective's own name ("bomb" / "hostage")
-    // pins it to its stock meaning.
+    // Values: "marker" re-purposes the message, the stock name ("bomb"/"hostage") pins it.
     MessageHint ParseMessageHint(const char* value, const char* stock_name)
     {
         if (stricmp(value, "marker") == 0)
@@ -72,313 +89,151 @@ namespace
         return MessageHint::None;
     }
 
-    // Radar fill/tile opacity as a 0..1 fraction, clamped to the cvar's range.
-    float OpacityFraction()
-    {
-        return std::clamp(g_RadarCfg.opacity->value, kOpacityCvar.min_value, kOpacityCvar.max_value) / kOpacityCvar.max_value;
-    }
-
-    // Clip a map tile quad to the radar box, recomputing UVs. out holds up to 8
-    // vertices. Used only on the no-shader fallback, where nothing masks the overspill.
-    int ClipTileToBox(const ncl_math::UvVertex quad[4], const RadarBox& box, ncl_math::UvVertex* out)
-    {
-        ncl_math::UvVertex a[10], b[10];
-        int n = ncl_math::ClipHalfPlane(quad, 4, 0, box.x, true, a);
-        n = ncl_math::ClipHalfPlane(a, n, 0, box.x + box.size, false, b);
-        n = ncl_math::ClipHalfPlane(b, n, 1, box.y, true, a);
-        n = ncl_math::ClipHalfPlane(a, n, 1, box.y + box.size, false, out);
-        return n;
-    }
-
 } // namespace
 
 HudRadarAdvanced::HudRadarAdvanced(nitroapi::NitroApiInterface* nitro_api) :
     HudBaseHelper(nitro_api)
 {
-    policy_.SetLogger(PolicyLog);
+    policy_.SetLogger(LogPolicyMessage);
+
+    RadarSinks sinks{};
+    sinks.smoke = &smoke_;
+    sinks.broadcast = &broadcast_;
+    sinks.players = &players_;
+    sinks.map_layers = &map_layers_;
+    sinks.layer_selection = &layer_context_.get_selection();
+    sinks.layer_cache = &backdrop_.get_overview().get_layer_cache();
+    sinks.layer_lifecycle = &layer_lifecycle_;
+    sinks.map_name = layer_map_;
+    sinks.correction_path = layer_correction_path_;
+    sinks.analysis_ms = &layer_analysis_ms_;
+    sinks.layer_preparation = &layer_preparation_;
+    sinks.layer_image_waiting_reason = &backdrop_.get_overview().get_layer_waiting_reason();
+    RadarHooks_SetSinks(sinks);
 }
 
-void HudRadarAdvanced::ResetRound()
+HudRadarAdvanced::~HudRadarAdvanced()
 {
-    // Wipe everything carried between rounds so trails, death marks and the fading
-    // hostage/bomb markers do not bleed into the next round. The RadarBroadcast bomb
-    // (server-pushed via gmsgBombDrop, not re-sent on a respawn) is the exception: it is
-    // cleared on a level change (VidInit) and by gmsgBombPickup, NOT here, because
-    // gmsgResetHUD also fires on mid-round respawns and clearing it would wipe a live
-    // bomb until round end. The client-derived bomb display state below still resets
-    // (the CT re-spots by line of sight; a genuine round restart clears RadarBroadcast).
-    players_.ResetRound();
-    objectives_.ResetRound();
+    RadarHooks_UpdateScoreboard(scoreboard_, nullptr);
+    RadarHooks_ClearSinks();
+    layer_analysis_job_.Shutdown();
+    RadarDraw_ResetGl();
+    text_.ResetGl();
+}
+
+void HudRadarAdvanced::OnPlayerRespawn(PlayersLayer::ResetReason reason, float previous_time, float time)
+{
+    layer_context_.Reset();
+    visibility_.Reset();
+    broadcast_.ResetPlayers();
+    players_.OnPlayerRespawn(reason, previous_time, time);
+    objectives_.OnPlayerRespawn();
 }
 
 void HudRadarAdvanced::VidInit()
 {
-    RadarDraw_ResetGl(); // a video mode change may have recreated the GL context
-    RadarText_ResetGl();
-    overview_.Invalidate(); // rebuild on every level (re)load; engine textures change
-    clamped_sprite_ = nullptr; // sprite textures are recreated with default wrap
+    RadarDraw_ResetGl();
+    text_.ResetGl();
+    ResetMapLayers();
     players_.OnVidInit();
     objectives_.OnVidInit();
-    RadarHooks_InvalidateGlyphMetrics(); // fonts rebuilt: cached glyph widths are stale
+    RadarHooks_InvalidateGlyphMetrics();
+    smoke_.Reset();
+    broadcast_.Reset(gEngfuncs.GetClientTime());
     visibility_.Reset();
-    // The mode decisions are per map: bomb targets, the server's hints and every
-    // teammate broadcast start over on the next level.
     policy_.OnLevelChange();
     last_hint_read_ = 0.0f;
-    ResetRound();
+    OnPlayerRespawn(PlayersLayer::ResetReason::Video);
 }
 
 void HudRadarAdvanced::InitHUDData()
 {
-    ResetRound(); // first spawn only (gmsgInitHUD)
+    ResetMapLayers();
+    OnPlayerRespawn(PlayersLayer::ResetReason::InitHud);
 }
 
 void HudRadarAdvanced::Reset()
 {
-    ResetRound(); // gmsgResetHUD: fires on every round restart / respawn
+    OnPlayerRespawn(); // gmsgResetHUD: also fires on a mid-round respawn
 }
 
-RadarBox HudRadarAdvanced::ComputeBox()
+RadarBox HudRadarAdvanced::ComputeBox(bool spectating)
 {
-    SCREENINFO screen;
-    screen.iSize = sizeof(SCREENINFO);
-    cl_enginefunc()->pfnGetScreenInfo(&screen);
+    int screen_w = 0;
+    int screen_h = 0;
+    GetScreenResolution(screen_w, screen_h);
 
     float scale = std::clamp(g_RadarCfg.scale->value, kScaleCvar.min_value, kScaleCvar.max_value);
-    bool spectating = g_iUser1 != 0 || cl_enginefunc()->IsSpectateOnly();
+    bool fullmap = g_RadarCfg.fullmap->value != 0.0f && RadarHooks_IsScoreboardVisible();
 
-    return RadarView_ComputeBox((float)screen.iWidth, (float)screen.iHeight, scale, spectating);
+    return RadarView_ComputeBox(static_cast<float>(screen_w), static_cast<float>(screen_h), scale, spectating, fullmap);
 }
 
-RadarTransform HudRadarAdvanced::ComputeTransform(const RadarBox& box)
+RadarTransform HudRadarAdvanced::ComputeTransform(const RadarBox& box, const RadarShape& shape, bool scoreboard)
 {
-    const overview_t& ov = overview_.data();
+    const RadarOverview& overview = backdrop_.get_overview();
+    const overview_t& ov = overview.get_data();
 
     RadarViewParams p;
     p.ov_zoom = ov.zoom;
     p.ov_origin = {ov.origin[0], ov.origin[1]};
     p.ov_rotated = ov.rotated != 0;
     p.map_scale = std::clamp(g_RadarCfg.map_scale->value, kMapScaleCvar.min_value, kMapScaleCvar.max_value);
+    p.map_shift = g_RadarCfg.map_shift->value != 0.0f;
     p.rotate = g_RadarCfg.rotate->value != 0.0f;
-    p.fullmap = g_RadarCfg.fullmap->value != 0.0f;
-    p.round = g_RadarCfg.round->value != 0.0f;
+    p.fullmap_enabled = g_RadarCfg.fullmap->value != 0.0f;
+    p.scoreboard_visible = scoreboard;
+    p.round = shape.round;
     p.view_origin = {g_MainViewOrigin[0], g_MainViewOrigin[1]};
     p.view_yaw = g_MainViewAngles[1];
-    p.sprite_frames = overview_.sprite() ? overview_.sprite()->numframes : 0;
+    p.sprite_frames = overview.get_sprite() ? overview.get_sprite()->numframes : 0;
+
+    if (overview.is_runtime())
+    {
+        p.map_bounds = overview.get_runtime_map().bounds;
+    }
+    else if (goldsrc::model_t* world = gEngfuncs.hudGetModelByIndex(1))
+    {
+        p.map_bounds = ncl_math::Aabb2{{world->mins[0], world->mins[1]}, {world->maxs[0], world->maxs[1]}};
+    }
 
     return RadarView_ComputeTransform(box, p);
 }
 
-void HudRadarAdvanced::DrawBackground(const RadarBox& box)
+bool HudRadarAdvanced::ShouldDraw()
 {
-    float opacity = OpacityFraction();
-    int a = (int)(opacity * 255.0f);
-
-    if (a <= 0)
+    // Before the observer short-circuit below: 'hideradar' is a standing instruction, not
+    // per-life state, so observing must not bring the radar back after it was turned off.
+    if (!gHUD()->m_Health->m_bDrawRadar)
     {
-        return;
+        return false;
     }
 
-    bool round = g_RadarCfg.round->value != 0.0f;
+    bool spectating = g_iUser1 != 0 || cl_enginefunc()->IsSpectateOnly();
 
-    if (g_RadarCfg.bg->value != 0.0f &&
-        RadarDraw_DrawBlurBackground(box.x, box.y, box.size, !round, 0.35f, opacity, box.screen_w, box.screen_h))
-    {
-        return;
-    }
-
-    if (round)
-    {
-        RadarDraw_DrawDisc({box.x + box.size * 0.5f, box.y + box.size * 0.5f}, box.size * 0.5f, {0, 0, 0, a});
-    }
-    else
-    {
-        ncl_math::Color c = RadarDraw_FadeColor({0, 0, 0});
-        FillRGBABlend((int)box.x, (int)box.y, (int)box.size, (int)box.size, c.r, c.g, c.b, a);
-    }
-}
-
-// No overview sprite: a top-down BSP image was generated at level load. Project
-// its world-aligned corners through the same transform as the markers and draw
-// it as one masked textured quad.
-void HudRadarAdvanced::DrawRuntimeMap(const RadarBox& box, const RadarTransform& t)
-{
-    float opacity = OpacityFraction();
-    bool round = g_RadarCfg.round->value != 0.0f;
-
-    const RuntimeMap& rm = overview_.runtime_map();
-    const float uv[8] = {0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 1.0f, 0.0f, 1.0f};
-    ncl_math::Vector2 c0 = t.WorldToScreen({rm.bounds.min.x, rm.bounds.min.y});
-    ncl_math::Vector2 c1 = t.WorldToScreen({rm.bounds.max.x, rm.bounds.min.y});
-    ncl_math::Vector2 c2 = t.WorldToScreen({rm.bounds.max.x, rm.bounds.max.y});
-    ncl_math::Vector2 c3 = t.WorldToScreen({rm.bounds.min.x, rm.bounds.max.y});
-    float xy[8] = {c0.x, c0.y, c1.x, c1.y, c2.x, c2.y, c3.x, c3.y};
-    RadarDraw_DrawMapTexture(rm.texture, xy, uv, {1.0f, 1.0f, 1.0f, opacity}, t.center, box.size * 0.5f, !round);
-}
-
-void HudRadarAdvanced::DrawOverviewTiles(const RadarBox& box, const RadarTransform& t)
-{
-    model_t* map = overview_.sprite();
-
-    if (!map)
-    {
-        return;
-    }
-
-    float opacity = OpacityFraction();
-    bool round = g_RadarCfg.round->value != 0.0f;
-
-    int total_frames = t.total_frames;
-    int x_tiles = t.x_tiles;
-    int y_tiles = t.y_tiles;
-
-    triangleapi_t* tri = cl_enginefunc()->pTriAPI;
-    tri->RenderMode(kRenderTransAlpha);
-    tri->CullFace(TRI_NONE);
-    tri->Color4f(1.0f, 1.0f, 1.0f, opacity);
-
-    // Clamp every frame texture once per loaded sprite so GL_LINEAR does not sample
-    // past tile edges (transparent seams); the wrap state then persists per texture.
-    if (map != clamped_sprite_)
-    {
-        for (int f = 0; f < total_frames; f++)
-        {
-            tri->SpriteTexture(map, f);
-            RadarDraw_ClampBoundTexture();
-        }
-
-        clamped_sprite_ = map;
-    }
-
-    bool masked = g_RadarCfg.map_mask->value != 0.0f && RadarDraw_Begin(t.center, box.size * 0.5f, 1.5f, 0.0f, !round);
-
-    ncl_math::Vector2 row = t.out;
-
-    int frame = 0;
-    for (int ty = 0; ty < y_tiles; ty++)
-    {
-        ncl_math::Vector2 base = row;
-
-        for (int tx = 0; tx < x_tiles; tx++)
-        {
-            if (frame >= total_frames)
-            {
-                break;
-            }
-
-            // Tiles fully outside the radar box draw nothing (the mask shader
-            // discards every pixel); skip them. In zoomed follow mode that is
-            // most of the grid.
-            ncl_math::Vector2 far_corner = base + t.right + t.up;
-            float tile_min_x = std::min({base.x, base.x + t.right.x, base.x + t.up.x, far_corner.x});
-            float tile_max_x = std::max({base.x, base.x + t.right.x, base.x + t.up.x, far_corner.x});
-            float tile_min_y = std::min({base.y, base.y + t.right.y, base.y + t.up.y, far_corner.y});
-            float tile_max_y = std::max({base.y, base.y + t.right.y, base.y + t.up.y, far_corner.y});
-            bool overlaps = tile_max_x >= box.x && tile_min_x <= box.x + box.size && tile_max_y >= box.y &&
-                tile_min_y <= box.y + box.size;
-
-            if (overlaps)
-            {
-                ncl_math::Vector2 right_corner = base + t.right;
-                ncl_math::Vector2 up_corner = base + t.up;
-                tri->SpriteTexture(map, frame);
-
-                if (masked)
-                {
-                    // The mask shader discards fragments outside the box, so draw the
-                    // whole tile and let it feather the radar edge.
-                    tri->Begin(TRI_QUADS);
-                    tri->TexCoord2f(0, 0);
-                    tri->Vertex3f(base.x, base.y, 0.0f);
-                    tri->TexCoord2f(0, 1);
-                    tri->Vertex3f(right_corner.x, right_corner.y, 0.0f);
-                    tri->TexCoord2f(1, 1);
-                    tri->Vertex3f(far_corner.x, far_corner.y, 0.0f);
-                    tri->TexCoord2f(1, 0);
-                    tri->Vertex3f(up_corner.x, up_corner.y, 0.0f);
-                    tri->End();
-                }
-                else
-                {
-                    // No mask shader: clip the tile to the box on the CPU so the map does
-                    // not spill past the radar (hard, square edge in this fallback).
-                    const ncl_math::UvVertex quad[4] = {
-                        {base, {0.0f, 0.0f}},
-                        {right_corner, {0.0f, 1.0f}},
-                        {far_corner, {1.0f, 1.0f}},
-                        {up_corner, {1.0f, 0.0f}},
-                    };
-                    ncl_math::UvVertex clipped[10];
-                    int cn = ClipTileToBox(quad, box, clipped);
-
-                    if (cn >= 3)
-                    {
-                        tri->Begin(TRI_TRIANGLE_FAN);
-
-                        for (int ci = 0; ci < cn; ci++)
-                        {
-                            tri->TexCoord2f(clipped[ci].uv.x, clipped[ci].uv.y);
-                            tri->Vertex3f(clipped[ci].pos.x, clipped[ci].pos.y, 0.0f);
-                        }
-
-                        tri->End();
-                    }
-                }
-            }
-
-            frame++;
-            base = base + t.up;
-        }
-
-        row = row + t.right;
-    }
-
-    if (masked)
-    {
-        RadarDraw_End();
-    }
-
-    tri->RenderMode(kRenderNormal);
-}
-
-
-// The hide/dead gates reflect the local living player's state; while observing
-// another player they do not apply, so the radar follows the observed target.
-bool HudRadarAdvanced::ShouldDraw(bool spectating)
-{
     if (spectating)
     {
-        return true;
+        float inset = cl_enginefunc()->pfnGetCvarFloat("spec_pip");
+        return g_iUser1 != goldsrc::OBS_MAP_FREE && g_iUser1 != goldsrc::OBS_MAP_CHASE && inset != goldsrc::cstrike::INSET_MAP_FREE &&
+               inset != goldsrc::cstrike::INSET_MAP_CHASE;
     }
 
-    if (m_iHideHUDDisplay & HIDEHUD_HEALTH)
+    if (m_iHideHUDDisplay & goldsrc::cstrike::HIDEHUD_HEALTH)
     {
         return false;
     }
 
-    // The player is alive and in play once they carry the suit, and that bit is set
-    // on every spawn (mid-round CSDM respawns included). m_fPlayerDead is not used
-    // here: the stock client freezes it while observing in first person and only
-    // clears it on the next CurWeapon, so after a respawn out of an observer it can
-    // stay stale-dead until the round restarts, wrongly hiding the radar.
-    if (!(m_iWeaponBits & (1 << WEAPON_SUIT)))
+    // The suit bit is set on every spawn, mid-round CSDM respawns included. Not m_fPlayerDead:
+    // the stock client freezes it while observing in first person and clears it only on the
+    // next CurWeapon, so it can stay stale-dead after a respawn and wrongly hide the radar.
+    if (!(m_iWeaponBits & (1 << goldsrc::cstrike::WEAPON_SUIT)))
     {
         return false;
     }
 
-    // On mp_fadetoblack 1 the just-killed player stays on the corpse cam with
-    // g_iUser1 still 0, so the gates here still apply; hide the radar while the
-    // player is actually dead so it does not paint live positions over the black
-    // fade. Health, not m_fPlayerDead, gates this: m_fPlayerDead can stay stale-true
-    // after a respawn out of an observer slot, which would wrongly keep it hidden.
+    // On mp_fadetoblack 1 the just-killed player stays on the corpse cam with g_iUser1 still
+    // 0, so without this gate the radar paints live positions over the black fade.
     if (gHUD()->m_Health->m_iHealth <= 0)
-    {
-        return false;
-    }
-
-    // Servers toggle this stock-client flag via the 'hideradar' / 'drawradar'
-    // commands; honour it like the classic radar path does.
-    if (!gHUD()->m_Health->m_bDrawRadar)
     {
         return false;
     }
@@ -386,26 +241,39 @@ bool HudRadarAdvanced::ShouldDraw(bool spectating)
     return true;
 }
 
-// Per-frame context (who we are / observe), reused by every marker draw so they do
-// not each re-query the engine. Drives the border colour and the shared visibility
-// set for the objective LOS gating and the enemy gating in DrawPlayers.
 void HudRadarAdvanced::UpdateFrameContext(bool spectating, float flTime)
 {
     ctx_ = FrameContext{};
+    ctx_.message_num = eng()->client_state->parsecount;
     ctx_.spectating = spectating;
+    ctx_.free_camera = spectating && RadarView_IsFreeCamera(g_iUser1);
 
-    if (cl_entity_t* local = cl_enginefunc()->GetLocalPlayer())
+    if (goldsrc::cl_entity_t* local = cl_enginefunc()->GetLocalPlayer())
     {
         ctx_.local = local;
         ctx_.self_idx = local->index;
-        ctx_.highlight_idx = (ctx_.spectating && g_iUser2 > 0 && g_iUser2 <= MAX_PLAYERS) ? g_iUser2 : ctx_.self_idx;
-        ctx_.highlight_team =
-            (ctx_.highlight_idx >= 1 && ctx_.highlight_idx <= MAX_PLAYERS) ? cl()->g_PlayerExtraInfo[ctx_.highlight_idx].teamnumber : 0;
-        ctx_.local_team = cl()->g_PlayerExtraInfo[ctx_.self_idx].teamnumber;
+        ctx_.highlight_idx = local->index;
+
+        if (ctx_.spectating && g_iUser1 != goldsrc::OBS_ROAMING && IsValidClientIndex(g_iUser2))
+        {
+            ctx_.highlight_idx = g_iUser2;
+            ctx_.observed_idx = g_iUser2;
+        }
+
+        if (IsValidClientIndex(ctx_.highlight_idx))
+        {
+            ctx_.highlight_team = RadarTeam_From(cl()->g_PlayerExtraInfo[ctx_.highlight_idx].teamnumber);
+        }
+
+        ctx_.local_team = RadarTeam_From(cl()->g_PlayerExtraInfo[ctx_.self_idx].teamnumber);
     }
 
-    // The policy answers who still counts as a teammate this frame, and the visibility
-    // pass builds its viewer and target sets from that answer, so it runs in between.
+    if (!RadarView_ShouldHighlightPlayer(g_iUser1))
+    {
+        ctx_.highlight_idx = 0;
+    }
+
+    // Runs here: the visibility pass below builds its sets from the policy's teammate answer.
     UpdatePolicy(flTime);
 
     if (ctx_.local)
@@ -416,35 +284,33 @@ void HudRadarAdvanced::UpdateFrameContext(bool spectating, float flTime)
 
 void HudRadarAdvanced::UpdatePolicy(float flTime)
 {
-    policy_.SetLogging(RadarDebug_Enabled());
+    policy_.SetLogging(RadarDebug_IsEnabled());
     policy_.SetForceAllyGating(g_RadarCfg.allies->value == 0.0f);
 
-    const RadarMapObjectives& map = objectives_.map_objectives();
-    policy_.SetMapObjectives(map.site_count(), map.hostage_count());
+    const RadarMapObjectives& map = objectives_.get_map_objectives();
+    policy_.SetMapObjectives(map.get_site_count(), map.get_hostage_count());
 
     if (flTime - last_hint_read_ >= kHintInterval || flTime < last_hint_read_)
     {
         last_hint_read_ = flTime;
-        policy_.SetServerFfaHint(std::atoi(ServerInfoValue("nc_ffa")) != 0);
-        policy_.SetBombHint(ParseMessageHint(ServerInfoValue("nc_bombmsg"), "bomb"));
-        policy_.SetHostageHint(ParseMessageHint(ServerInfoValue("nc_hostagemsg"), "hostage"));
+        policy_.SetServerFfaHint(std::atoi(GetServerInfoValue("nc_ffa")) != 0);
+        policy_.SetBombHint(ParseMessageHint(GetServerInfoValue("nc_bombmsg"), "bomb"));
+        policy_.SetHostageHint(ParseMessageHint(GetServerInfoValue("nc_hostagemsg"), "hostage"));
     }
 
     float run_speed = (pmove && pmove->movevars) ? pmove->movevars->maxspeed : kRunSpeedFallback;
-    bool applicable = ctx_.local != nullptr && !ctx_.spectating && ctx_.local_team != 0;
+    bool applicable = ctx_.local != nullptr && !ctx_.spectating && ctx_.local_team != RadarTeam::Unassigned;
     policy_.BeginFrame(flTime, run_speed, applicable);
 
-    // The objective messages are classified for spectators too: what they mean does not
-    // depend on which team is watching.
-    const RadarBroadcast::Bomb& bomb = RadarBroadcast::GetBomb();
+    // Classified for spectators too: what a message means does not depend on who watches.
+    const RadarBroadcast::Bomb& bomb = broadcast_.get_bomb();
     policy_.ObserveBomb({bomb.seq, bomb.active, bomb.pos, bomb.planted, bomb.time}, flTime);
 
-    RadarBroadcast::Hostage hostages[kMaxBroadcastHostages];
-    int hostage_count = RadarBroadcast::CollectHostages(hostages, kMaxBroadcastHostages);
+    RadarBroadcast::Hostage hostages[RadarPolicy::kMaxHostages];
+    int hostage_count = broadcast_.CollectHostages(hostages);
 
-    // The engine sends HostagePos to living Counter-Terrorists only, so nobody else can
-    // conclude anything from its absence.
-    policy_.ObserveHostageBroadcast(!ctx_.spectating && ctx_.local_team == TEAM_CT, hostage_count);
+    // HostagePos reaches living Counter-Terrorists only: nobody else may read its absence.
+    policy_.ObserveHostageBroadcast(!ctx_.spectating && ctx_.local_team == RadarTeam::CounterTerrorist, hostage_count);
 
     for (int i = 0; i < hostage_count; i++)
     {
@@ -456,8 +322,8 @@ void HudRadarAdvanced::UpdatePolicy(float flTime)
         return;
     }
 
-    int message_num = ctx_.local->curstate.messagenum;
-    int max_clients = std::min<int>(MAX_PLAYERS, cl_enginefunc()->GetMaxClients());
+    int message_num = ctx_.message_num;
+    int max_clients = std::min<int>(goldsrc::cstrike::MAX_PLAYERS, cl_enginefunc()->GetMaxClients());
 
     for (int i = 1; i <= max_clients; i++)
     {
@@ -466,40 +332,385 @@ void HudRadarAdvanced::UpdatePolicy(float flTime)
             continue;
         }
 
-        extra_player_info_t& ext = cl()->g_PlayerExtraInfo[i];
+        goldsrc::cstrike::extra_player_info_t& ext = cl()->g_PlayerExtraInfo[i];
 
-        if (ext.dead || ext.teamnumber != ctx_.local_team)
+        if (ext.dead || RadarTeam_From(ext.teamnumber) != ctx_.local_team)
         {
             continue;
         }
 
-        cl_entity_t* ent = cl_enginefunc()->GetEntityByIndex(i);
+        goldsrc::cl_entity_t* ent = cl_enginefunc()->GetEntityByIndex(i);
         bool live = ent && ent->player && ent->curstate.messagenum == message_num;
-        ncl_math::Vector2 live_pos = live ? ncl_math::Vector2{ent->origin[0], ent->origin[1]} : ncl_math::Vector2{};
+        ncl_math::Vector3 live_world = live ? RadarFrame_GetPlayerPosition(*ent) : ncl_math::Vector3{};
+        ncl_math::Vector2 live_pos{live_world.x, live_world.y};
 
         policy_.ObserveAlly(i, live, live_pos, ncl_math::Vector3::Ref(ext.origin));
     }
 }
 
+void HudRadarAdvanced::ReportLayerFailure(RadarMapMode mode, int layer)
+{
+    std::string_view reason = layer_lifecycle_.get_failure_reason();
+    gEngfuncs.Con_Printf(
+        "radar: layers fallback map=%s mode=%d layer=%d reason=%.*s\n",
+        layer_map_,
+        static_cast<int>(mode),
+        layer,
+        (int)reason.size(),
+        reason.data()
+    );
+}
+
+void HudRadarAdvanced::ResetMapLayers()
+{
+    layer_analysis_job_.Reset();
+    layer_context_.Reset();
+    backdrop_.OnVidInit();
+    objectives_.ResetLayerCache();
+    map_layers_.Reset();
+    layer_lifecycle_.Reset();
+
+    layer_map_[0] = 0;
+    layer_correction_path_[0] = 0;
+    layer_analysis_ms_ = 0.0f;
+    layer_preparation_ = {};
+    map_mode_ = RadarMapMode::None;
+    has_layer_frame_time_ = false;
+}
+
+RadarMapStatus HudRadarAdvanced::EnsureMapLayers(RadarMapMode mode)
+{
+    char map_name[64]{};
+    const char* level_name = gEngfuncs.pfnGetLevelName();
+
+    if (level_name)
+    {
+        RadarUtil_ExtractMapName(level_name, map_name);
+    }
+
+    if (std::strcmp(layer_map_, map_name) != 0)
+    {
+        ResetMapLayers();
+        V_strcpy_safe(layer_map_, map_name);
+        V_sprintf_safe(layer_correction_path_, "overviews/%s_layers.txt", map_name);
+    }
+
+    if (map_mode_ != mode)
+    {
+        layer_context_.Reset();
+        backdrop_.ResetLayerImages();
+
+        if (!layer_lifecycle_.is_layout_ready() &&
+            !(layer_analysis_job_.is_pending() && RadarLayerContext_IsLayeredMode(mode) && RadarLayerContext_IsLayeredMode(map_mode_)))
+        {
+            layer_analysis_job_.Reset();
+            objectives_.ResetLayerCache();
+            map_layers_.Reset();
+            layer_lifecycle_.Reset();
+            layer_preparation_ = {};
+        }
+        else
+        {
+            layer_lifecycle_.ResetImage();
+        }
+
+        map_mode_ = mode;
+    }
+
+    layer_preparation_.mode = static_cast<int>(mode);
+    layer_preparation_.waiting_reason.clear();
+
+    if (!RadarLayerContext_IsLayeredMode(mode))
+    {
+        return RadarMapStatus::Ready;
+    }
+
+    if (!map_name[0])
+    {
+        layer_preparation_.waiting_reason = "stage=map_name level_name=" + std::string(level_name ? level_name : "missing");
+
+        return RadarMapStatus::Waiting;
+    }
+
+    if (std::unique_ptr<RadarLayerAnalysisResult> result = layer_analysis_job_.Poll())
+    {
+        objectives_.ResetLayerCache();
+        map_layers_ = std::move(result->map);
+        layer_analysis_ms_ = result->analysis_ms;
+
+        if (!result->warning.empty())
+        {
+            gEngfuncs.Con_Printf("radar: %s: %s\n", layer_correction_path_, result->warning.c_str());
+        }
+
+        if (layer_lifecycle_.SetGeometryStatus(result->status, result->failure_reason))
+        {
+            ReportLayerFailure(mode, -1);
+        }
+    }
+
+    if (layer_analysis_job_.is_pending())
+    {
+        layer_preparation_.waiting_reason = "stage=analysis_worker state=scheduled";
+
+        return RadarMapStatus::Waiting;
+    }
+
+    if (layer_lifecycle_.should_build_geometry())
+    {
+        ++layer_preparation_.attempts;
+
+        goldsrc::model_t* world = gEngfuncs.hudGetModelByIndex(1);
+        goldsrc::event_api_s* events = gEngfuncs.pEventAPI;
+
+        if (!world)
+        {
+            layer_preparation_.waiting_reason = "stage=world_model missing=model_index_1";
+
+            return RadarMapStatus::Waiting;
+        }
+
+        if (!events)
+        {
+            layer_preparation_.waiting_reason = "stage=event_api missing=pEventAPI";
+
+            return RadarMapStatus::Waiting;
+        }
+
+        if (!events->EV_LocalPlayerBounds)
+        {
+            layer_preparation_.waiting_reason = "stage=crouch_bounds missing=EV_LocalPlayerBounds";
+
+            return RadarMapStatus::Waiting;
+        }
+
+        ncl_math::Aabb3 crouch_bounds{};
+        events->EV_LocalPlayerBounds(kDuckHull, crouch_bounds.min.data(), crouch_bounds.max.data());
+
+        if (!pmove)
+        {
+            layer_preparation_.waiting_reason = "stage=crouch_hull missing=playermove";
+
+            return RadarMapStatus::Waiting;
+        }
+
+        const goldsrc::hull_t* hull =
+            MapBspGeometry_SelectPlayerHull(*pmove, *events, *world, kDuckHull, &layer_preparation_.waiting_reason);
+
+        if (!hull)
+        {
+            return RadarMapStatus::Waiting;
+        }
+
+        const auto capture_start = std::chrono::steady_clock::now();
+        RadarMapGeometry geometry;
+
+        if (!MapBspGeometry_Collect(*world, *hull, crouch_bounds, geometry, &layer_preparation_.waiting_reason))
+        {
+            return RadarMapStatus::Waiting;
+        }
+
+        std::optional<RadarLayerOverrides> overrides;
+        const char* path = layer_correction_path_;
+        int length = 0;
+        char* file = reinterpret_cast<char*>(gEngfuncs.COM_LoadFile(path, 5, &length));
+
+        if (file)
+        {
+            std::vector<std::string> tokens;
+            char token[kComParseTokenSize];
+            char* cursor = file;
+
+            while (cursor)
+            {
+                token[0] = 0;
+                cursor = gEngfuncs.COM_ParseFile(cursor, token);
+
+                if (token[0])
+                {
+                    tokens.emplace_back(token);
+                }
+            }
+
+            gEngfuncs.COM_FreeFile(file);
+
+            RadarLayerOverrides parsed;
+            std::string error;
+
+            if (MapLayerOverrides_Parse(tokens, parsed, error))
+            {
+                overrides.emplace(std::move(parsed));
+            }
+            else
+            {
+                gEngfuncs.Con_Printf("radar: %s: %s\n", path, error.c_str());
+            }
+        }
+
+        layer_preparation_.capture_ms = std::chrono::duration<float, std::milli>(std::chrono::steady_clock::now() - capture_start).count();
+        layer_analysis_job_.Start(std::move(geometry), std::move(overrides));
+        layer_preparation_.waiting_reason = "stage=analysis_worker state=scheduled";
+    }
+
+    if (layer_lifecycle_.is_layout_ready())
+    {
+        return RadarMapStatus::Ready;
+    }
+
+    return layer_lifecycle_.should_use_fallback() ? RadarMapStatus::Failed : RadarMapStatus::Waiting;
+}
+
+RadarMapStatus HudRadarAdvanced::EnsureMapLayout(RadarMapMode mode, bool prepare_only)
+{
+    RadarMapStatus status = EnsureMapLayers(mode);
+
+    if (RadarLayerContext_IsLayeredMode(mode))
+    {
+        backdrop_.EnsureMap(mode, &map_layers_, true);
+
+        if (status != RadarMapStatus::Ready || layer_lifecycle_.should_use_fallback())
+        {
+            if (backdrop_.EnsureTopMap(mode, prepare_only, &map_layers_) == RadarMapStatus::Failed)
+            {
+                return RadarMapStatus::Failed;
+            }
+        }
+
+        return RadarMapStatus::Ready;
+    }
+
+    return backdrop_.EnsureMap(mode, nullptr, prepare_only);
+}
+
+void HudRadarAdvanced::UpdateLayerContext(bool spectating, float time)
+{
+    goldsrc::cl_entity_t* local = gEngfuncs.GetLocalPlayer();
+    RadarLayerSource source = RadarLayerContext_ChooseSource(g_iUser1, local ? local->index : 0, g_iUser2, spectating);
+
+    RadarLayerObservation observation{};
+    observation.time = time;
+    observation.source = source.entity;
+    observation.free_camera = source.camera;
+
+    float sample_time = time;
+    float speed = pmove && pmove->movevars ? std::max(kRunSpeedFallback, pmove->movevars->maxspeed) : kRunSpeedFallback;
+
+    if (source.camera)
+    {
+        observation.feet = ncl_math::Vector3::Ref(g_MainViewOrigin);
+        observation.valid = true;
+
+        if (pmove && pmove->movevars)
+        {
+            speed = std::max(speed, pmove->movevars->spectatormaxspeed);
+        }
+    }
+    else
+    {
+        goldsrc::cl_entity_t* entity = source.entity > 0 ? gEngfuncs.GetEntityByIndex(source.entity) : nullptr;
+
+        if (entity && entity->player && local && (entity == local || entity->curstate.messagenum == eng()->client_state->parsecount))
+        {
+            int hull = entity == local && !spectating && eng()->client_state ? eng()->client_state->usehull : entity->curstate.usehull;
+
+            if (hull >= 0 && hull < kPlayerHullCount)
+            {
+                ncl_math::Aabb3 bounds{};
+                gEngfuncs.pEventAPI->EV_LocalPlayerBounds(hull, bounds.min.data(), bounds.max.data());
+
+                bool predicted = entity == local && !spectating;
+                ncl_math::Vector3 origin =
+                    predicted ? ncl_math::Vector3::Ref(g_LastClientData.origin) : ncl_math::Vector3::Ref(entity->curstate.origin);
+
+                observation.feet = RadarLayerContext_Feet(origin, bounds.min);
+                observation.valid = true;
+                observation.grounded = predicted && pmove && pmove->onground >= 0;
+                observation.discontinuity = (entity->curstate.effects & goldsrc::EF_NOINTERP) != 0;
+
+                if (!predicted)
+                {
+                    sample_time = entity->curstate.msg_time;
+                }
+
+                ncl_math::Vector3 velocity = predicted && eng()->client_state ? ncl_math::Vector3::Ref(eng()->client_state->simvel)
+                                                                              : ncl_math::Vector3::Ref(entity->curstate.velocity);
+                ncl_math::Vector3 base_velocity = predicted && pmove ? ncl_math::Vector3::Ref(pmove->basevelocity)
+                                                                     : ncl_math::Vector3::Ref(entity->curstate.basevelocity);
+                speed = std::max(speed, (velocity + base_velocity).Length());
+
+                if (pmove && (observation.grounded || !predicted))
+                {
+                    std::optional<RadarLayerContact> contact =
+                        RadarLayerContext_TraceSupport(*gEngfuncs.pEventAPI, *pmove, observation.feet, bounds);
+
+                    if (contact)
+                    {
+                        observation.support = contact->support;
+                    }
+
+                    if (!predicted)
+                    {
+                        observation.grounded = contact && contact->grounded;
+                    }
+                }
+            }
+        }
+    }
+
+    layer_context_.Update(map_layers_, observation, sample_time, speed);
+}
+
+void HudRadarAdvanced::PrepareHudTextZone()
+{
+    g_MapUnavailable = false;
+
+    if (!RadarConfig_CheckAdvancedActive() || !ShouldDraw())
+    {
+        return;
+    }
+
+    if (EnsureMapLayout(RadarMapMode_FromCvar(g_RadarCfg.map_mode->value), true) != RadarMapStatus::Ready)
+    {
+        g_MapUnavailable = true;
+        return;
+    }
+
+    RadarBox box = ComputeBox(g_iUser1 != 0 || cl_enginefunc()->IsSpectateOnly());
+    HudTextZone_SetZone(box.x, box.y, box.size);
+}
+
+void HudRadarAdvanced::UpdateScoreboard(bool hud_visible)
+{
+    if (hud_visible && RadarConfig_CheckAdvancedActive() && ShouldDraw() && !g_MapUnavailable && g_RadarCfg.shift_scoreboard->value != 0.0f)
+    {
+        RadarBox box = ComputeBox(g_iUser1 != 0 || cl_enginefunc()->IsSpectateOnly());
+        RadarHooks_UpdateScoreboard(scoreboard_, &box);
+    }
+    else
+    {
+        RadarHooks_UpdateScoreboard(scoreboard_, nullptr);
+    }
+}
+
 void HudRadarAdvanced::Draw(float flTime)
 {
-    if (!RadarConfig_AdvancedActive())
+    g_MapUnavailable = false;
+
+    if (!RadarConfig_CheckAdvancedActive())
     {
         return;
     }
 
-    bool spectating = g_iUser1 != 0 || cl_enginefunc()->IsSpectateOnly();
-
-    if (!ShouldDraw(spectating))
+    if (!ShouldDraw())
     {
         return;
     }
 
-    bool debug = RadarDebug_Enabled();
+    bool debug = RadarDebug_IsEnabled();
     std::chrono::steady_clock::time_point debug_start;
 
     RadarDraw_ResetStats();
-    RadarText_ResetStats();
+    text_.ResetStats();
     visibility_.ResetStats();
 
     if (debug)
@@ -507,30 +718,68 @@ void HudRadarAdvanced::Draw(float flTime)
         debug_start = std::chrono::steady_clock::now();
     }
 
+    if (has_layer_frame_time_)
+    {
+        flTime = RadarFrame_NormalizeTime(flTime, layer_frame_time_);
+    }
+
     GetAllPlayersInfo();
     players_.BeginFrame(flTime);
 
-    overview_.EnsureLoaded(RadarMapMode_FromCvar(g_RadarCfg.map_mode->value));
+    ++frame_count_;
 
-    if (!overview_.valid())
+    if (has_layer_frame_time_ && flTime < layer_frame_time_)
     {
+        OnPlayerRespawn(PlayersLayer::ResetReason::RadarClock, layer_frame_time_, flTime);
+    }
+
+    layer_frame_time_ = flTime;
+    has_layer_frame_time_ = true;
+    RadarMapMode mode = RadarMapMode_FromCvar(g_RadarCfg.map_mode->value);
+
+    if (EnsureMapLayout(mode) != RadarMapStatus::Ready)
+    {
+        g_MapUnavailable = true;
         return;
     }
 
-    RadarBox box = ComputeBox();
-    HudTextZone::SetZone(box.x, box.y, box.size); // reserve this area from HUD text
-    RadarTransform t = ComputeTransform(box);
+    bool spectating = g_iUser1 != 0 || cl_enginefunc()->IsSpectateOnly();
+    bool scoreboard = RadarHooks_IsScoreboardVisible();
+    bool fullmap = scoreboard && g_RadarCfg.fullmap->value != 0.0f;
 
-    RadarDump::BeginFrame(flTime, box.x, box.y, box.size); // no-op unless radar_dump requested
+    if (RadarLayerContext_IsLayeredMode(mode) && layer_lifecycle_.is_layout_ready() && !layer_lifecycle_.should_use_fallback())
+    {
+        UpdateLayerContext(spectating, flTime);
+
+        if (layer_lifecycle_.should_render_image())
+        {
+            int layer = layer_context_.get_view().active;
+            RadarMapStatus image_status = backdrop_.EnsureLayerImage(map_layers_, layer, frame_count_);
+
+            if (layer_lifecycle_.SetImageStatus(image_status, backdrop_.get_overview().get_layer_failure_reason()))
+            {
+                ReportLayerFailure(mode, layer);
+            }
+
+            if (image_status != RadarMapStatus::Ready && backdrop_.EnsureTopMap(mode, false, &map_layers_) == RadarMapStatus::Failed)
+            {
+                g_MapUnavailable = true;
+                return;
+            }
+        }
+    }
+
+    RadarBox box = ComputeBox(spectating);
+    RadarShape shape = RadarView_ComputeShape(box, !fullmap && g_RadarCfg.round->value != 0.0f);
+    HudTextZone_SetZone(box.x, box.y, box.size);
+    RadarTransform transform = ComputeTransform(box, shape, scoreboard);
 
     UpdateFrameContext(spectating, flTime);
 
-    // A flashbang washes the whole radar by tinting every primitive toward the fade
-    // colour as it is drawn, so the interior, the border ring and the markers that
-    // protrude past the rim all blind together with the view, without an overlay
-    // fill (which would leave a fading halo on the backdrop around the radar).
+    // Every primitive is tinted toward the fade colour as it is drawn rather than covered
+    // by an overlay fill, which would leave a fading halo around the radar.
     ncl_math::Color flash_col;
-    flash_alpha_ = FlashAlpha(flash_col);
+    flash_alpha_ = ComputeFlashAlpha(flash_col);
 
     if (flash_alpha_ > 0)
     {
@@ -541,68 +790,44 @@ void HudRadarAdvanced::Draw(float flTime)
         RadarDraw_ClearFade();
     }
 
-    RadarFrame frame{box, t, flTime, (float)m_flTimeDelta, ctx_, flash_alpha_, g_RadarCfg.round->value != 0.0f};
+    RadarFrame frame{box, transform, flTime, (float)m_flTimeDelta, ctx_, flash_alpha_, shape};
+    frame.layer_view = layer_context_.get_view();
+    frame.layer_view.enabled = frame.layer_view.enabled && RadarLayerContext_IsLayeredMode(mode) && layer_lifecycle_.is_image_ready();
 
-    DrawBackground(box);
-
-    // Commit the background disc (queued in the prim batch) before the map draws: the
-    // no-shader tile path draws through the engine TriAPI, which never triggers the
-    // program bind that would otherwise flush the batch, so the disc would land over
-    // the map at the next flush instead of under it.
-    RadarDraw_FlushPrims();
-
-    if (overview_.runtime())
-    {
-        DrawRuntimeMap(box, t);
-    }
-    else
-    {
-        DrawOverviewTiles(box, t);
-    }
-
-    DrawSmoke(box, t, flTime);
-    DrawBorder(box);
-    // One entity-list sweep per frame feeds both the bomb and the hostage draws.
+    backdrop_.Draw(frame);
     objectives_.CollectEntities(frame);
-    // The bomb/hostage objective draws each line-of-sight test world points; set up
-    // the player-prediction trace context once for the whole batch.
+    // Player-prediction trace context, live for the objective line-of-sight tests below.
     visibility_.BeginObjectiveTests();
-    objectives_.DrawBomb(frame); // under the bomb-site letters
-    objectives_.DrawSites(frame);
-    objectives_.DrawHostages(frame);
+    objectives_.Draw(frame);
     visibility_.EndObjectiveTests();
-    players_.DrawPlayers(frame);
-    players_.DrawDeaths(frame);
+    players_.Draw(frame);
 
-    RadarDraw_ClearFade();
-    RadarDump::EndFrame();
+    RadarDraw_EndFrame();
 
     if (debug)
     {
-        RadarDrawStats stats = RadarDraw_Stats();
+        RadarDrawStats stats = RadarDraw_GetStats();
         float total_ms = std::chrono::duration<float, std::milli>(std::chrono::steady_clock::now() - debug_start).count();
-        RadarDebug_Frame(box, total_ms, stats.blur_ms, visibility_.traces_ms(), RadarText_Ms(), stats.batches);
+        RadarDebug_DrawFrame(box, total_ms, stats.blur_ms, visibility_.get_traces_ms(), text_.get_ms(), stats.batches);
     }
 }
 
-int HudRadarAdvanced::FlashAlpha(ncl_math::Color& color)
+int HudRadarAdvanced::ComputeFlashAlpha(ncl_math::Color& color)
 {
-    // The engine blends the screen fade onto the 3D scene before the HUD is drawn,
-    // so a flashbang leaves the radar fully readable. Read the current fade so the
-    // radar can be washed out together with the view (see RadarDraw_SetFade).
-    screenfade_t fade;
+    // The engine blends the screen fade onto the 3D scene before the HUD is drawn, so a
+    // flashbang leaves the radar fully readable unless it is washed here too.
+    goldsrc::screenfade_t fade;
     std::memset(&fade, 0, sizeof(fade));
     cl_enginefunc()->pfnGetScreenFade(&fade);
 
-    // Only a near-white flashbang washes the radar; ignore fade-to-black and other
-    // tinted fades (death, round transitions). Shares the predicate with the enemy
-    // line-of-sight gating so the two agree on what counts as a flash.
-    if (!RadarFade::NearWhite(fade))
+    // Near-white only, so death and round-transition fades do not wash the radar. Shared
+    // with the enemy line-of-sight gating so the two agree on what counts as a flash.
+    if (!RadarFade_IsNearWhite(fade))
     {
         return 0;
     }
 
-    int a = std::min(RadarFade::Alpha(fade, cl_enginefunc()->GetClientTime()), 255);
+    int a = RadarFade_ComputeAlpha(fade, cl_enginefunc()->GetClientTime());
 
     if (a <= 0)
     {
@@ -616,72 +841,7 @@ int HudRadarAdvanced::FlashAlpha(ncl_math::Color& color)
     return a;
 }
 
-void HudRadarAdvanced::DrawSmoke(const RadarBox& box, const RadarTransform& t, float time)
+bool HudRadarAdvanced::is_map_unavailable()
 {
-    RadarSmoke::Disc smokes[16];
-    int n = RadarSmoke::Collect(smokes, 16, time);
-
-    if (n == 0)
-    {
-        return;
-    }
-
-    bool round = g_RadarCfg.round->value != 0.0f;
-    float cx = box.x + box.size * 0.5f;
-    float cy = box.y + box.size * 0.5f;
-    RadarDraw_SetPrimClip({cx, cy}, box.size * 0.5f, !round);
-    RadarDraw_BeginPrims();
-
-    for (int i = 0; i < n; i++)
-    {
-        ncl_math::Vector2 s = t.WorldToScreen({smokes[i].center.x, smokes[i].center.y});
-        ncl_math::Vector2 e = t.WorldToScreen({smokes[i].center.x + smokes[i].radius, smokes[i].center.y});
-        float sr = std::max(2.0f, (e - s).Length());
-        RadarDump::AddMarker("smoke", i, smokes[i].center.x, smokes[i].center.y, s.x, s.y, 210, 210, 210, 110, "");
-        RadarDraw_DrawDisc(s, sr, {210, 210, 210, 110});
-    }
-
-    RadarDraw_EndPrims();
-    RadarDraw_ClearPrimClip();
-}
-
-void HudRadarAdvanced::DrawBorder(const RadarBox& box)
-{
-    // The rim takes the current (or observed) player's team colour: a saturated gold
-    // for terrorists, light blue for counter-terrorists, and the neutral warm tone
-    // when there is no team (free-look spectator, warmup).
-    ncl_math::Color rim{230, 220, 150};
-
-    if (ctx_.highlight_team == TEAM_TERRORIST)
-    {
-        rim = {235, 215, 95};
-    }
-    else if (ctx_.highlight_team == TEAM_CT)
-    {
-        rim = {120, 190, 255};
-    }
-
-    const byte ca = 255;
-    const int thickness = 1;
-
-    float cx = box.x + box.size * 0.5f;
-    float cy = box.y + box.size * 0.5f;
-
-    if (g_RadarCfg.round->value != 0.0f)
-    {
-        float outer = box.size * 0.5f;
-        float inner = outer - (float)thickness - 0.5f;
-        RadarDraw_DrawBorderRing({cx, cy}, outer, inner, 1.0f, rim.WithAlpha(ca));
-        return;
-    }
-
-    int x1 = (int)box.x;
-    int y1 = (int)box.y;
-    int w = (int)box.size;
-
-    ncl_math::Color f = RadarDraw_FadeColor(rim);
-    FillRGBABlend(x1, y1, w, thickness, f.r, f.g, f.b, ca);
-    FillRGBABlend(x1, y1 + w - thickness, w, thickness, f.r, f.g, f.b, ca);
-    FillRGBABlend(x1, y1, thickness, w, f.r, f.g, f.b, ca);
-    FillRGBABlend(x1 + w - thickness, y1, thickness, w, f.r, f.g, f.b, ca);
+    return g_MapUnavailable;
 }

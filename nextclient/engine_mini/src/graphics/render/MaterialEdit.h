@@ -3,8 +3,7 @@
 #include <string_view>
 
 #include <ncl_material/MaterialDoc.h>
-
-typedef struct cl_entity_s cl_entity_t;
+#include <goldsrc/fwd.h>
 
 class MaterialEditInterface;
 
@@ -43,7 +42,7 @@ namespace render
     // Both are the caller's to hand over: this file is the panel's side of the editor, and
     // the client state belongs to the engine side. They are restored when the panel stops
     // driving, so the game gets its weapon back where it left it.
-    void MaterialEdit_ApplyViewmodel(cl_entity_t* entity, float now, int* weapon_sequence, float* weapon_start_time);
+    void MaterialEdit_ApplyViewmodel(goldsrc::cl_entity_t* entity, float now, int* weapon_sequence, float* weapon_start_time);
 
     // Whether a panel holds the editor at all. What the editor puts into the running game is
     // gated on this, so that a closed panel changes nothing about what the game draws.
@@ -60,7 +59,7 @@ namespace render
     // The panel writes that state through the client a whole step earlier; whether it is
     // still there when the model is posed is a different question, and one nothing else in
     // the report can answer.
-    void MaterialEdit_NoteViewmodel(const cl_entity_t* entity, float now);
+    void MaterialEdit_NoteViewmodel(const goldsrc::cl_entity_t* entity, float now);
 
     MaterialEditInterface* MaterialEdit_Get();
 

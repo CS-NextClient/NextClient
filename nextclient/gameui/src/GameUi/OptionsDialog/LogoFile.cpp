@@ -1,5 +1,9 @@
 
+#ifdef _WIN32
 #include <Windows.h>
+#else
+#include "utils/bmp_compat.h"
+#endif
 #include <cstdio>
 #include "utlbuffer.h"
 #include <vgui/VGUI2.h>

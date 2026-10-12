@@ -1,8 +1,5 @@
 // NextClient advanced radar - per-map bomb site A/B override.
 //
-// Standard overview .txt files are NOT touched (they stay compatible with the
-// stock client). This separate file is read only by the advanced radar.
-//
 // Format:  "mapname"  "letters"
 //   letters are assigned to the bomb sites in left-to-right order (by world X),
 //   so the count of letters matches the number of sites (1, 2 or more).

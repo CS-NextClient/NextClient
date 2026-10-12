@@ -2,11 +2,10 @@
 
 #include <cstring>
 
-#include <Windows.h>
-
 #include <glad/glad.h>
 #include "graphics/render/RenderDevice.h"
 
+#include "common/common.h"
 #include "console/console.h"
 #include "graphics/render/RenderConfig.h"
 #include "graphics/render/RenderDebug.h"
@@ -121,7 +120,7 @@ void render::Debug_Apply()
     // is the same escape hatch, and there for the same reason, as -noshaderwarmup.
     int level = g_RenderCfg.debug_output != nullptr
         ? static_cast<int>(g_RenderCfg.debug_output->value)
-        : (std::strstr(GetCommandLineA(), "-gldebug") != nullptr ? 2 : 0);
+        : (COM_CheckParm("-gldebug") != 0 ? 2 : 0);
 
     if (level <= 0)
     {

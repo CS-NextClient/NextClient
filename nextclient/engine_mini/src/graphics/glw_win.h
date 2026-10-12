@@ -30,11 +30,13 @@
 
 #pragma once
 
-#ifndef _WIN32
-    #error "You should not be including this file on this platform!"
+#ifdef _WIN32
+    #include <Windows.h>
+#else
+    #include <nitroapi/modules/engine/EngineData.h>
 #endif
 
-#include <Windows.h>
+#include <goldsrc/types.h>
 #include "hlsdk.h"
 
 struct glwstate_t
@@ -48,9 +50,9 @@ struct glwstate_t
 
     HINSTANCE hinstOpenGL; // HINSTANCE for the OpenGL library
 
-    qboolean minidriver;
-    qboolean allowdisplaydepthchange;
-    qboolean mcd_accelerated;
+    goldsrc::qboolean minidriver;
+    goldsrc::qboolean allowdisplaydepthchange;
+    goldsrc::qboolean mcd_accelerated;
 
     FILE *log_fp;
 };

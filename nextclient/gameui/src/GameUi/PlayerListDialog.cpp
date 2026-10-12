@@ -4,6 +4,7 @@
 #include <vgui_controls/ListPanel.h>
 #include "GameUi.h"
 #include <tier2/tier2.h>
+#include <goldsrc/client_api.h>
 #include "PlayerListDialog.h"
 
 CPlayerListDialog::CPlayerListDialog( vgui2::Panel* parent )

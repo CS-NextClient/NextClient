@@ -1,8 +1,9 @@
 #pragma once
 
-#include "../main.h"
+#include "main.h"
 
 #include <ncl_math/color.h>
+#include <goldsrc/client_api.h>
 
 using namespace std;
 

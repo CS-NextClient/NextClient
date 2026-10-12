@@ -14,13 +14,8 @@ target_include_directories(${PROJECT_NAME} PUBLIC
         include
 )
 
-# The studio file layout comes from the SDK's studio.h, but nothing here links against
-# the SDK, so only its include paths are pulled in and only for the implementation.
-target_include_directories(${PROJECT_NAME} PRIVATE
-        $<TARGET_PROPERTY:hl1_source_sdk::hl1_source_sdk,INTERFACE_INCLUDE_DIRECTORIES>
-)
-
 target_link_libraries(${PROJECT_NAME} PUBLIC
+        goldsrc::abi
         ncl_math::ncl_math
         ncl_utils::ncl_utils
 )

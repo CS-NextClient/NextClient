@@ -3,7 +3,7 @@
 #include <string>
 #include <vector>
 
-#include "RadarPolicy.h"
+#include "hud/radar/policy/RadarPolicy.h"
 
 namespace
 {
@@ -54,7 +54,7 @@ TEST_F(RadarPolicyTest, AllyWithoutAnyBroadcastIsGated)
     Frame(10.0f);
     policy.ObserveAlly(3, true, {100.0f, 100.0f}, {});
 
-    EXPECT_FALSE(policy.AllyRevealed(3));
+    EXPECT_FALSE(policy.IsAllyRevealed(3));
     EXPECT_TRUE(LogContains("no radar broadcast"));
 }
 
@@ -63,7 +63,7 @@ TEST_F(RadarPolicyTest, AllyTrackedByTheServerIsRevealed)
     Frame(10.0f);
     policy.ObserveAlly(3, true, {100.0f, 100.0f}, {100.0f, 100.0f, 0.0f});
 
-    EXPECT_TRUE(policy.AllyRevealed(3));
+    EXPECT_TRUE(policy.IsAllyRevealed(3));
     EXPECT_TRUE(LogContains("the server broadcasts it"));
 }
 
@@ -71,12 +71,12 @@ TEST_F(RadarPolicyTest, BroadcastZeroedMidMapReadsAsFreeForAll)
 {
     Frame(10.0f);
     policy.ObserveAlly(3, true, {100.0f, 100.0f}, {100.0f, 100.0f, 0.0f});
-    ASSERT_TRUE(policy.AllyRevealed(3));
+    ASSERT_TRUE(policy.IsAllyRevealed(3));
 
     Frame(11.0f);
     policy.ObserveAlly(3, true, {120.0f, 100.0f}, {});
 
-    EXPECT_FALSE(policy.AllyRevealed(3));
+    EXPECT_FALSE(policy.IsAllyRevealed(3));
     EXPECT_TRUE(LogContains("free-for-all"));
 }
 
@@ -84,55 +84,53 @@ TEST_F(RadarPolicyTest, FrozenBroadcastGatesOnlyAfterTheGraceWindow)
 {
     Frame(10.0f);
     policy.ObserveAlly(3, true, {1000.0f, 0.0f}, {1000.0f, 0.0f, 0.0f});
-    ASSERT_TRUE(policy.AllyRevealed(3));
+    ASSERT_TRUE(policy.IsAllyRevealed(3));
 
-    // The ally keeps moving while the broadcast stays put: a blocked Radar message.
     Frame(11.0f);
     policy.ObserveAlly(3, true, {2000.0f, 0.0f}, {1000.0f, 0.0f, 0.0f});
-    EXPECT_TRUE(policy.AllyRevealed(3));
+    EXPECT_TRUE(policy.IsAllyRevealed(3));
 
     Frame(11.0f + RadarPolicy::kStaleTime);
     policy.ObserveAlly(3, true, {2000.0f + RadarPolicy::kStaleMoveDist, 0.0f}, {1000.0f, 0.0f, 0.0f});
 
-    EXPECT_FALSE(policy.AllyRevealed(3));
+    EXPECT_FALSE(policy.IsAllyRevealed(3));
     EXPECT_TRUE(LogContains("broadcast stuck"));
 }
 
 TEST_F(RadarPolicyTest, StandingAllyWithAStaleBroadcastIsNotGated)
 {
     // Freezetime: the broadcast still holds last round's position and the server has no
-    // reason to refresh it, so the disagreement alone must not read as withheld.
+    // reason to refresh it.
     for (int i = 0; i < 10; i++)
     {
         Frame(10.0f + (float)i);
         policy.ObserveAlly(3, true, {2000.0f, 0.0f}, {1000.0f, 0.0f, 0.0f});
     }
 
-    EXPECT_TRUE(policy.AllyRevealed(3));
+    EXPECT_TRUE(policy.IsAllyRevealed(3));
 }
 
 TEST_F(RadarPolicyTest, LagToleranceScalesWithTheServerRunSpeed)
 {
-    // The same 1000-unit lag is within tolerance once the server allows 1000 u/s.
     policy.BeginFrame(10.0f, 1000.0f, true);
     policy.ObserveAlly(3, true, {2000.0f, 0.0f}, {1000.0f, 0.0f, 0.0f});
 
     policy.BeginFrame(20.0f, 1000.0f, true);
-    policy.ObserveAlly(3, true, {2000.0f, 0.0f}, {1000.0f, 0.0f, 0.0f});
+    policy.ObserveAlly(3, true, {2128.0f, 0.0f}, {1000.0f, 0.0f, 0.0f});
 
-    EXPECT_TRUE(policy.AllyRevealed(3));
+    EXPECT_TRUE(policy.IsAllyRevealed(3));
 }
 
 TEST_F(RadarPolicyTest, ReturningBroadcastRevealsTheAllyAgain)
 {
     Frame(10.0f);
     policy.ObserveAlly(3, true, {100.0f, 100.0f}, {});
-    ASSERT_FALSE(policy.AllyRevealed(3));
+    ASSERT_FALSE(policy.IsAllyRevealed(3));
 
     Frame(11.0f);
     policy.ObserveAlly(3, true, {100.0f, 100.0f}, {100.0f, 100.0f, 0.0f});
 
-    EXPECT_TRUE(policy.AllyRevealed(3));
+    EXPECT_TRUE(policy.IsAllyRevealed(3));
 }
 
 TEST_F(RadarPolicyTest, AllyOutsideThePvsRidesOnTheBroadcastAlone)
@@ -140,7 +138,7 @@ TEST_F(RadarPolicyTest, AllyOutsideThePvsRidesOnTheBroadcastAlone)
     Frame(10.0f);
     policy.ObserveAlly(3, false, {}, {1000.0f, 0.0f, 0.0f});
 
-    EXPECT_TRUE(policy.AllyRevealed(3));
+    EXPECT_TRUE(policy.IsAllyRevealed(3));
 }
 
 TEST_F(RadarPolicyTest, SpectatingGatesNothing)
@@ -148,7 +146,7 @@ TEST_F(RadarPolicyTest, SpectatingGatesNothing)
     policy.BeginFrame(10.0f, kRunSpeed, false);
     policy.ObserveAlly(3, true, {100.0f, 100.0f}, {});
 
-    EXPECT_TRUE(policy.AllyRevealed(3));
+    EXPECT_TRUE(policy.IsAllyRevealed(3));
     EXPECT_TRUE(g_Log.empty());
 }
 
@@ -158,7 +156,7 @@ TEST_F(RadarPolicyTest, CvarForcesAllyGating)
     Frame(10.0f);
     policy.ObserveAlly(3, true, {100.0f, 100.0f}, {100.0f, 100.0f, 0.0f});
 
-    EXPECT_FALSE(policy.AllyRevealed(3));
+    EXPECT_FALSE(policy.IsAllyRevealed(3));
     EXPECT_TRUE(LogContains("hud_radar_allies 0"));
 }
 
@@ -168,7 +166,7 @@ TEST_F(RadarPolicyTest, ServerHintForcesAllyGating)
     Frame(10.0f);
     policy.ObserveAlly(3, true, {100.0f, 100.0f}, {100.0f, 100.0f, 0.0f});
 
-    EXPECT_FALSE(policy.AllyRevealed(3));
+    EXPECT_FALSE(policy.IsAllyRevealed(3));
     EXPECT_TRUE(LogContains("serverinfo nc_ffa"));
 }
 
@@ -177,8 +175,8 @@ TEST_F(RadarPolicyTest, BombMessageOnAMapWithoutTargetsIsAMarker)
     policy.SetMapObjectives(0, 0);
     policy.ObserveBomb({1, true, {100.0f, 100.0f, 0.0f}, false, 10.0f}, 10.0f);
 
-    EXPECT_EQ(policy.bomb_intent(), BombIntent::Marker);
-    EXPECT_TRUE(policy.marker_visible());
+    EXPECT_EQ(policy.get_bomb_intent(), BombIntent::Marker);
+    EXPECT_TRUE(policy.is_marker_visible());
     EXPECT_TRUE(LogContains("no bomb targets"));
 }
 
@@ -192,8 +190,8 @@ TEST_F(RadarPolicyTest, StationaryBombOnABombMapStaysABomb)
         policy.ObserveBomb({(std::uint32_t)(i + 1), true, {500.0f, 500.0f, 0.0f}, false, time}, time);
     }
 
-    EXPECT_EQ(policy.bomb_intent(), BombIntent::Bomb);
-    EXPECT_FALSE(policy.marker_visible());
+    EXPECT_EQ(policy.get_bomb_intent(), BombIntent::Bomb);
+    EXPECT_FALSE(policy.is_marker_visible());
     EXPECT_TRUE(LogContains("treated as the bomb"));
 }
 
@@ -201,11 +199,11 @@ TEST_F(RadarPolicyTest, PlantedBombThatMovesIsAMarker)
 {
     policy.SetMapObjectives(2, 0);
     policy.ObserveBomb({1, true, {500.0f, 500.0f, 0.0f}, true, 10.0f}, 10.0f);
-    ASSERT_EQ(policy.bomb_intent(), BombIntent::Bomb);
+    ASSERT_EQ(policy.get_bomb_intent(), BombIntent::Bomb);
 
     policy.ObserveBomb({2, true, {700.0f, 500.0f, 0.0f}, true, 11.0f}, 11.0f);
 
-    EXPECT_EQ(policy.bomb_intent(), BombIntent::Marker);
+    EXPECT_EQ(policy.get_bomb_intent(), BombIntent::Marker);
     EXPECT_TRUE(LogContains("planted bomb moved"));
 }
 
@@ -219,31 +217,63 @@ TEST_F(RadarPolicyTest, BombTravellingTooFarForTooLongIsAMarker)
         policy.ObserveBomb({(std::uint32_t)(i + 1), true, {500.0f + 100.0f * i, 500.0f, 0.0f}, false, time}, time);
     }
 
-    EXPECT_EQ(policy.bomb_intent(), BombIntent::Marker);
+    EXPECT_EQ(policy.get_bomb_intent(), BombIntent::Marker);
     EXPECT_TRUE(LogContains("travelled"));
+}
+
+TEST_F(RadarPolicyTest, ThrownBombThatComesToRestStaysABomb)
+{
+    policy.SetMapObjectives(2, 0);
+
+    // The drop reports the thrower's origin, then the landing spot repeats once a second.
+    policy.ObserveBomb({1, true, {0.0f, 0.0f, 0.0f}, false, 10.0f}, 10.0f);
+
+    for (int i = 1; i <= 4; i++)
+    {
+        float time = 10.0f + (float)i;
+        policy.ObserveBomb({(std::uint32_t)(i + 1), true, {230.0f, 0.0f, 0.0f}, false, time}, time);
+    }
+
+    EXPECT_EQ(policy.get_bomb_intent(), BombIntent::Bomb);
+}
+
+TEST_F(RadarPolicyTest, BombFallingThroughOneReportStaysABomb)
+{
+    policy.SetMapObjectives(2, 0);
+
+    policy.ObserveBomb({1, true, {0.0f, 0.0f, 0.0f}, false, 10.0f}, 10.0f);
+    policy.ObserveBomb({2, true, {150.0f, 0.0f, 0.0f}, false, 11.0f}, 11.0f);
+
+    for (int i = 2; i <= 4; i++)
+    {
+        float time = 10.0f + (float)i;
+        policy.ObserveBomb({(std::uint32_t)(i + 1), true, {230.0f, 0.0f, 0.0f}, false, time}, time);
+    }
+
+    EXPECT_EQ(policy.get_bomb_intent(), BombIntent::Bomb);
 }
 
 TEST_F(RadarPolicyTest, MarkerClassificationHoldsForTheRestOfTheMap)
 {
     policy.SetMapObjectives(0, 0);
     policy.ObserveBomb({1, true, {100.0f, 100.0f, 0.0f}, false, 10.0f}, 10.0f);
-    ASSERT_EQ(policy.bomb_intent(), BombIntent::Marker);
+    ASSERT_EQ(policy.get_bomb_intent(), BombIntent::Marker);
 
-    policy.SetMapObjectives(2, 0); // the map is re-scanned; the decision must not flip back
+    policy.SetMapObjectives(2, 0);
     policy.ObserveBomb({2, true, {100.0f, 100.0f, 0.0f}, false, 11.0f}, 11.0f);
 
-    EXPECT_EQ(policy.bomb_intent(), BombIntent::Marker);
+    EXPECT_EQ(policy.get_bomb_intent(), BombIntent::Marker);
 }
 
 TEST_F(RadarPolicyTest, MarkerHidesWhenTheServerStopsRefreshingIt)
 {
     policy.SetMapObjectives(0, 0);
     policy.ObserveBomb({1, true, {100.0f, 100.0f, 0.0f}, false, 10.0f}, 10.0f);
-    ASSERT_TRUE(policy.marker_visible());
+    ASSERT_TRUE(policy.is_marker_visible());
 
     policy.ObserveBomb({1, true, {100.0f, 100.0f, 0.0f}, false, 10.0f}, 10.0f + RadarPolicy::kMarkerTimeout + 0.1f);
 
-    EXPECT_FALSE(policy.marker_visible());
+    EXPECT_FALSE(policy.is_marker_visible());
     EXPECT_TRUE(LogContains("no update for"));
 }
 
@@ -252,11 +282,19 @@ TEST_F(RadarPolicyTest, ServerHintOutranksTheHeuristics)
     policy.SetMapObjectives(2, 0);
     policy.SetBombHint(MessageHint::Marker);
 
-    EXPECT_EQ(policy.bomb_intent(), BombIntent::Marker);
+    EXPECT_EQ(policy.get_bomb_intent(), BombIntent::Marker);
     EXPECT_TRUE(LogContains("serverinfo nc_bombmsg"));
 
     policy.ObserveBomb({1, true, {500.0f, 500.0f, 0.0f}, false, 10.0f}, 10.0f);
-    EXPECT_EQ(policy.bomb_intent(), BombIntent::Marker);
+    EXPECT_EQ(policy.get_bomb_intent(), BombIntent::Marker);
+
+    policy.SetBombHint(MessageHint::Stock);
+    policy.SetMapObjectives(0, 0);
+    ASSERT_EQ(policy.get_bomb_intent(), BombIntent::Bomb);
+
+    policy.ObserveBomb({2, true, {500.0f, 500.0f, 0.0f}, false, 11.0f}, 11.0f);
+    EXPECT_EQ(policy.get_bomb_intent(), BombIntent::Bomb);
+    EXPECT_FALSE(policy.is_marker_visible());
 }
 
 TEST_F(RadarPolicyTest, HostageMessageOnAMapWithoutHostagesIsAMarker)
@@ -264,8 +302,8 @@ TEST_F(RadarPolicyTest, HostageMessageOnAMapWithoutHostagesIsAMarker)
     policy.SetMapObjectives(2, 0);
     policy.ObserveHostage({1, 1, 10.0f}, 10.0f);
 
-    EXPECT_EQ(policy.hostage_intent(), HostageIntent::Marker);
-    EXPECT_TRUE(policy.HostageMarkerVisible(1));
+    EXPECT_EQ(policy.get_hostage_intent(), HostageIntent::Marker);
+    EXPECT_TRUE(policy.IsHostageMarkerVisible(1));
     EXPECT_TRUE(LogContains("the map has no hostages"));
 }
 
@@ -273,15 +311,15 @@ TEST_F(RadarPolicyTest, HostageOnARescueMapStaysAHostage)
 {
     policy.SetMapObjectives(0, 4);
 
-    // The server's own cadence: one position per second while the hostage walks.
+    // CHostage's cadence: one position per second while the hostage walks.
     for (int i = 0; i < 6; i++)
     {
         float time = 10.0f + (float)i;
         policy.ObserveHostage({2, (std::uint32_t)(i + 1), time}, time);
     }
 
-    EXPECT_EQ(policy.hostage_intent(), HostageIntent::Hostage);
-    EXPECT_FALSE(policy.HostageMarkerVisible(2));
+    EXPECT_EQ(policy.get_hostage_intent(), HostageIntent::Hostage);
+    EXPECT_FALSE(policy.IsHostageMarkerVisible(2));
     EXPECT_TRUE(LogContains("treated as a hostage"));
 }
 
@@ -290,7 +328,7 @@ TEST_F(RadarPolicyTest, HostageIndexPastTheMapsHostagesIsAMarker)
     policy.SetMapObjectives(0, 4);
     policy.ObserveHostage({9, 1, 10.0f}, 10.0f);
 
-    EXPECT_EQ(policy.hostage_intent(), HostageIntent::Marker);
+    EXPECT_EQ(policy.get_hostage_intent(), HostageIntent::Marker);
     EXPECT_TRUE(LogContains("past the map's 4 hostage(s)"));
 }
 
@@ -304,7 +342,7 @@ TEST_F(RadarPolicyTest, HostageUpdatesFasterThanTheServerCanSendAreAMarker)
         policy.ObserveHostage({1, (std::uint32_t)(i + 1), time}, time);
     }
 
-    EXPECT_EQ(policy.hostage_intent(), HostageIntent::Marker);
+    EXPECT_EQ(policy.get_hostage_intent(), HostageIntent::Marker);
     EXPECT_TRUE(LogContains("above the rate CHostage can send"));
 }
 
@@ -312,11 +350,11 @@ TEST_F(RadarPolicyTest, HostageMarkerHidesWhenUpdatesStop)
 {
     policy.SetMapObjectives(2, 0);
     policy.ObserveHostage({1, 1, 10.0f}, 10.0f);
-    ASSERT_TRUE(policy.HostageMarkerVisible(1));
+    ASSERT_TRUE(policy.IsHostageMarkerVisible(1));
 
     policy.ObserveHostage({1, 1, 10.0f}, 10.0f + RadarPolicy::kMarkerTimeout + 0.1f);
 
-    EXPECT_FALSE(policy.HostageMarkerVisible(1));
+    EXPECT_FALSE(policy.IsHostageMarkerVisible(1));
     EXPECT_TRUE(LogContains("server marker 1 hidden"));
 }
 
@@ -325,12 +363,12 @@ TEST_F(RadarPolicyTest, HostagesAreGatedWhenTheServerSendsNoBroadcast)
     policy.SetMapObjectives(0, 4);
     policy.ObserveHostageBroadcast(true, 0);
 
-    EXPECT_FALSE(policy.hostages_revealed());
+    EXPECT_FALSE(policy.are_hostages_revealed());
     EXPECT_TRUE(LogContains("sends no hostage broadcast"));
 
     policy.ObserveHostageBroadcast(true, 2);
 
-    EXPECT_TRUE(policy.hostages_revealed());
+    EXPECT_TRUE(policy.are_hostages_revealed());
 }
 
 TEST_F(RadarPolicyTest, HostageGatingNeverAppliesOffTheCtSide)
@@ -339,7 +377,7 @@ TEST_F(RadarPolicyTest, HostageGatingNeverAppliesOffTheCtSide)
     policy.SetMapObjectives(0, 4);
     policy.ObserveHostageBroadcast(false, 0);
 
-    EXPECT_TRUE(policy.hostages_revealed());
+    EXPECT_TRUE(policy.are_hostages_revealed());
     EXPECT_TRUE(g_Log.empty());
 }
 
@@ -348,7 +386,7 @@ TEST_F(RadarPolicyTest, HostageGatingNeverAppliesOnAMapWithoutHostages)
     policy.SetMapObjectives(2, 0);
     policy.ObserveHostageBroadcast(true, 0);
 
-    EXPECT_TRUE(policy.hostages_revealed());
+    EXPECT_TRUE(policy.are_hostages_revealed());
     EXPECT_TRUE(g_Log.empty());
 }
 
@@ -357,11 +395,19 @@ TEST_F(RadarPolicyTest, HostageHintOutranksTheHeuristics)
     policy.SetMapObjectives(0, 4);
     policy.SetHostageHint(MessageHint::Marker);
 
-    EXPECT_EQ(policy.hostage_intent(), HostageIntent::Marker);
+    EXPECT_EQ(policy.get_hostage_intent(), HostageIntent::Marker);
     EXPECT_TRUE(LogContains("serverinfo nc_hostagemsg"));
 
     policy.ObserveHostage({1, 1, 10.0f}, 10.0f);
-    EXPECT_EQ(policy.hostage_intent(), HostageIntent::Marker);
+    EXPECT_EQ(policy.get_hostage_intent(), HostageIntent::Marker);
+
+    policy.SetHostageHint(MessageHint::Stock);
+    policy.SetMapObjectives(0, 0);
+    ASSERT_EQ(policy.get_hostage_intent(), HostageIntent::Hostage);
+
+    policy.ObserveHostage({1, 2, 11.0f}, 11.0f);
+    EXPECT_EQ(policy.get_hostage_intent(), HostageIntent::Hostage);
+    EXPECT_FALSE(policy.IsHostageMarkerVisible(1));
 }
 
 TEST_F(RadarPolicyTest, LevelChangeForgetsTheDecisions)
@@ -371,17 +417,17 @@ TEST_F(RadarPolicyTest, LevelChangeForgetsTheDecisions)
     policy.ObserveHostage({1, 1, 10.0f}, 10.0f);
     Frame(10.0f);
     policy.ObserveAlly(3, true, {100.0f, 100.0f}, {});
-    ASSERT_EQ(policy.bomb_intent(), BombIntent::Marker);
-    ASSERT_EQ(policy.hostage_intent(), HostageIntent::Marker);
-    ASSERT_FALSE(policy.AllyRevealed(3));
+    ASSERT_EQ(policy.get_bomb_intent(), BombIntent::Marker);
+    ASSERT_EQ(policy.get_hostage_intent(), HostageIntent::Marker);
+    ASSERT_FALSE(policy.IsAllyRevealed(3));
 
     policy.OnLevelChange();
     Frame(11.0f);
     policy.ObserveAlly(3, true, {100.0f, 100.0f}, {100.0f, 100.0f, 0.0f});
 
-    EXPECT_EQ(policy.bomb_intent(), BombIntent::Unknown);
-    EXPECT_EQ(policy.hostage_intent(), HostageIntent::Unknown);
-    EXPECT_TRUE(policy.AllyRevealed(3));
+    EXPECT_EQ(policy.get_bomb_intent(), BombIntent::Unknown);
+    EXPECT_EQ(policy.get_hostage_intent(), HostageIntent::Unknown);
+    EXPECT_TRUE(policy.IsAllyRevealed(3));
 }
 
 TEST(RadarPolicyLogging, DecisionsAreSilentUntilDebugIsEnabled)
@@ -397,7 +443,6 @@ TEST(RadarPolicyLogging, DecisionsAreSilentUntilDebugIsEnabled)
 
     EXPECT_TRUE(g_Log.empty());
 
-    // Enabling it mid-map reports what is already in force.
     policy.SetLogging(true);
 
     EXPECT_TRUE(LogContains("1 ally(ies) gated"));

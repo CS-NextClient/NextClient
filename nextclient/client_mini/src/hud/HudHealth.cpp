@@ -1,8 +1,15 @@
 #include "HudHealth.h"
-#include "../main.h"
-#include <parsemsg.h>
-#include "DrawUtils.h"
+
+#include "main.h"
+
+#include <data_types/MessageReader.h>
 #include <ncl_math/color.h>
+#include <goldsrc/client_api.h>
+#include <goldsrc/cstrike/game.h>
+#include <goldsrc/cstrike/hud.h>
+#include <goldsrc/cstrike/hud_elements.h>
+
+#include "DrawUtils.h"
 
 constexpr int MAX_HEALTH_TO_RENDER = 99999999;
 constexpr int MAX_HEALTH_DIGITS_TO_RENDER = 8;
@@ -12,7 +19,7 @@ HudHealth::HudHealth(nitroapi::NitroApiInterface* nitro_api)
 	, m_fFade(gHUD()->m_Health->m_fFade)
 	, m_iHealth(gHUD()->m_Health->m_iHealth)
  {
-	DeferUnsub(cl()->CHudHealth__Draw |= [this](CHudHealth* const ptr, float flTime, const auto& next) {
+	DeferUnsub(cl()->CHudHealth__Draw |= [this](goldsrc::cstrike::CHudHealth* const ptr, float flTime, const auto& next) {
 		return 1;
 	});
 }
@@ -20,10 +27,10 @@ HudHealth::HudHealth(nitroapi::NitroApiInterface* nitro_api)
 HudHealth::~HudHealth() {}
 
 void HudHealth::Draw(float flTime) {
-	if (m_iHideHUDDisplay & HIDEHUD_HEALTH || cl_enginefunc()->IsSpectateOnly())
+	if (m_iHideHUDDisplay & goldsrc::cstrike::HIDEHUD_HEALTH || cl_enginefunc()->IsSpectateOnly())
 		return;
 
-    if(m_fPlayerDead || ~m_iWeaponBits & (1<<(WEAPON_SUIT))) 
+    if (m_fPlayerDead || ~m_iWeaponBits & (1 << (goldsrc::cstrike::WEAPON_SUIT))) 
 		return;
 
 	int health = std::min(m_iHealth, MAX_HEALTH_TO_RENDER);
@@ -37,7 +44,8 @@ void HudHealth::Draw(float flTime) {
     int a;
     ncl_math::Color color;
 
-	if(health > 25) color = DrawUtils::UnpackRGB(RGB_YELLOWISH);
+	if (health > 25)
+		color = DrawUtils::UnpackRGB(goldsrc::cstrike::RGB_YELLOWISH);
 	else {
 		color = {255, 0, 0, 255};
 	}
@@ -45,13 +53,13 @@ void HudHealth::Draw(float flTime) {
 	if (m_fFade) {
 		m_fFade -= (m_flTimeDelta * 20);
 		if (m_fFade <= 0) {
-			a = MIN_ALPHA;
+			a = goldsrc::cstrike::MIN_ALPHA;
 			m_fFade = 0;
 		}
-		a = MIN_ALPHA + (m_fFade / FADE_TIME) * 128;
+		a = goldsrc::cstrike::MIN_ALPHA + (m_fFade / goldsrc::cstrike::FADE_TIME) * 128;
 	}
 	else
-		a = MIN_ALPHA;
+		a = goldsrc::cstrike::MIN_ALPHA;
 
 	color = DrawUtils::ScaleColors(color, a);
 
@@ -69,12 +77,12 @@ void HudHealth::VidInit() {
 }
 
 static int MsgFunc_HealthNext(const char* pszName, int iSize, void* pbuf) {
-	BEGIN_READ(pbuf, iSize);
-	int health = READ_LONG();
+	MessageReader reader(pbuf, iSize);
+	int health = reader.ReadLong();
 
 	gHUD->m_Health->m_iFlags |= 1u;
 	if (health != gHUD->m_Health->m_iHealth) {
-		gHUD->m_Health->m_fFade = FADE_TIME;
+		gHUD->m_Health->m_fFade = goldsrc::cstrike::FADE_TIME;
 		gHUD->m_Health->m_iHealth = health;
 	}
 

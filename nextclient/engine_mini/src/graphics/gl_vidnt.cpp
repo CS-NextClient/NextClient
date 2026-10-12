@@ -1,12 +1,18 @@
 #include "engine.h"
 
 #include <SDL_video.h>
-#include <Windows.h>
+#ifdef _WIN32
+    #include <Windows.h>
+#endif
 #include <common/cvar.h>
 #include <glad/glad.h>
+#include <goldsrc/cvar.h>
+#include <goldsrc/types.h>
+#include <nitro_utils/platform.h>
 #include "graphics/render/RenderDevice.h"
 
 #include "common/cmd.h"
+#include "common/common.h"
 #include "common/sys_dll.h"
 #include "console/console.h"
 #include "graphics/detailtexture.h"
@@ -23,24 +29,24 @@ static const char* gl_renderer;
 static const char* gl_version;
 
 // Cvars mirrored from the engine's R_Init
-static cvar_t gl_dither_cvar_tmp{"gl_dither", const_cast<char*>("1"), FCVAR_ARCHIVE, 1.f};
-static cvar_t gl_spriteblend_cvar_tmp{"gl_spriteblend", const_cast<char*>("1"), FCVAR_ARCHIVE, 1.f};
-cvar_t* r_lightmap;
-cvar_t* gl_clear;
-cvar_t* r_novis;
-cvar_t* r_fullbright;
-cvar_t* gl_monolights;
-cvar_t* gl_wireframe;
-cvar_t* r_dynamic;
-cvar_t* gl_alphamin;
-cvar_t* gl_polyoffset;
+static goldsrc::cvar_t gl_dither_cvar_tmp{"gl_dither", const_cast<char*>("1"), goldsrc::FCVAR_ARCHIVE, 1.f};
+static goldsrc::cvar_t gl_spriteblend_cvar_tmp{"gl_spriteblend", const_cast<char*>("1"), goldsrc::FCVAR_ARCHIVE, 1.f};
+goldsrc::cvar_t* r_lightmap;
+goldsrc::cvar_t* gl_clear;
+goldsrc::cvar_t* r_novis;
+goldsrc::cvar_t* r_fullbright;
+goldsrc::cvar_t* gl_monolights;
+goldsrc::cvar_t* gl_wireframe;
+goldsrc::cvar_t* r_dynamic;
+goldsrc::cvar_t* gl_alphamin;
+goldsrc::cvar_t* gl_polyoffset;
 
 // These globals are mirrored by the original engine's hw.dll; the engine's
 // rendering code reads its own copies, so both must be kept in sync.
 int TEXTURE0_SGIS = QGL_TEXTURE0_SGIS;
 int TEXTURE1_SGIS = QGL_TEXTURE1_SGIS;
 int TEXTURE2_SGIS = QGL_TEXTURE2_SGIS;
-qboolean bSupportsNPOTTextures;
+goldsrc::qboolean bSupportsNPOTTextures;
 int gl_mtexable;
 
 // and these:
@@ -160,7 +166,7 @@ void GL_SetMode_Subscriber(void* mainwindow, HDC* pmaindc, HGLRC* pbaseRC, const
         // freeze mid-game, and this runs while the game is starting up anyway. Read from
         // the raw command line because no cvar exists yet at this point, and the flag is
         // the escape hatch for a driver whose GLSL compiler cannot survive the build.
-        if (strstr(GetCommandLineA(), "-noshaderwarmup") == nullptr)
+        if (COM_CheckParm("-noshaderwarmup") == 0)
         {
             render::Studio_WarmPrograms();
         }
@@ -172,7 +178,7 @@ void GL_Config()
     // Host_Init() call order:
     //   GL_Init -> VID_Init -> Draw_Init -> ... -> R_Init
     // Draw_Init sub-calls reference gl_dither and gl_spriteblend, but the engine
-    // only registers them later in R_Init. Pre-assign temporary cvar_t objects
+    // only registers them later in R_Init. Pre-assign temporary goldsrc::cvar_t objects
     // here so the pointers are valid when Draw_Init runs.
     gl_dither_cvar = &gl_dither_cvar_tmp;
     gl_spriteblend = &gl_spriteblend_cvar_tmp;
@@ -276,12 +282,14 @@ void GL_Config()
 // CheckMultiTextureExtensions(), which searches gl_extensions for
 // "GL_ARB_multitexture ". Patching data_arb_multitexture with a fake string
 // is the way to prevent the engine's own copy from enabling multitexture.
+// On Linux the string lives in .rodata, hence the SetProtect.
 void GL_Init()
 {
     g_DisableMultitexture = g_UserConfig->get_value_int("disable_multitexture", 0);
 
     if (g_DisableMultitexture)
     {
+        nitro_utils::SetProtect(*eng()->data_arb_multitexture, sizeof(*eng()->data_arb_multitexture), nitro_utils::ProtectMode::PROTECT_RW);
         V_strcpy_safe(*eng()->data_arb_multitexture, "fake_extension 0000 ");
     }
 

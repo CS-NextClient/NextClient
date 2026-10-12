@@ -1,220 +1,399 @@
 #include "PlayersLayer.h"
 
-#include "../RadarConfig.h"
-#include "../RadarDraw.h"
-#include "../RadarLabel.h"
-#include "../RadarPalette.h"
-#include "../RadarPolicy.h"
-#include "../RadarText.h"
-#include "../Visibility.h"
-#include "../RadarDump.h"
-#include "../../../main.h"
-#include "../../../view.h"
-
-#include <strtools.h>
-#include <ncl_math/vec3.h>
-#include <next_client_mini/radar_cvars.h>
-#include <pm_defs.h>
-#include <pm_movevars.h>
-
 #include <algorithm>
+#include <ranges>
 #include <cmath>
 #include <cstdint>
 #include <cstring>
 
+#include "main.h"
+
+#include <strtools.h>
+#include <ncl_math/vec3.h>
+#include <next_client_mini/radar_cvars.h>
+#include <goldsrc/client_api.h>
+#include <goldsrc/cstrike/hud.h>
+#include <goldsrc/cvar.h>
+#include <goldsrc/entity.h>
+#include <goldsrc/pmove.h>
+
+#include "hud/radar/integration/RadarConfig.h"
+#include "hud/radar/integration/RadarDebug.h"
+#include "hud/radar/layers/players/PlayerObserver.h"
+#include "hud/radar/markers/RadarBroadcast.h"
+#include "hud/radar/render/RadarDraw.h"
+#include "hud/radar/render/text/RadarLabel.h"
+#include "hud/radar/markers/RadarLayerMarker.h"
+#include "hud/radar/render/RadarPalette.h"
+#include "hud/radar/policy/RadarPolicy.h"
+#include "hud/radar/render/text/RadarText.h"
+#include "hud/radar/policy/Visibility.h"
+#include "view.h"
+
 namespace
 {
-    // Marker sizes as a fraction of box.elem (the resolution-damped box size).
-    constexpr float kPlayerDotScale = 0.023f;
-    constexpr float kDeathCrossScale = 0.02f;
+    // Fractions of box.marker_px.
+    constexpr float kPlayerDotScale = 0.026f;
+    constexpr float kCarrierRingWidthScale = 0.15f;
+    constexpr float kMemoryMarkScale = 0.025f;
+    constexpr float kMemoryMarkMinSize = 2.5f;
+    constexpr float kMemoryMarkWidthScale = 0.36f;
+    constexpr float kMemoryMarkMinHalfWidth = 1.15f;
+    constexpr float kQuestionMarkWidthFactor = 0.9f;
     constexpr float kTrackWidth = 2.0f;
 
-    // Teleport detection.
-    constexpr float kRunSpeedFallback = 320.0f; // stock sv_maxspeed, used until movevars are up
-    constexpr float kTeleportPad = 24.0f; // slack added to the per-frame move budget
-    constexpr float kTrailAlphaTail = 30.0f; // trail alpha gradient: oldest sample...
-    constexpr float kTrailAlphaHead = 200.0f; // ...toward the newest
+    constexpr float kRunSpeedFallback = 320.0f; // stock sv_maxspeed
+    constexpr float kTeleportPad = 24.0f;
+    constexpr float kTrailAlphaTail = 30.0f;
+    constexpr float kTrailAlphaHead = 200.0f;
 
-    // Nicknames render a touch smaller than the standard HUD text, then scale with the size cvar.
     constexpr float kNameScale = 0.85f;
-    // Fallback nickname height (fraction of box.elem) used only until the scheme font resolves.
-    constexpr float kNameHeightScale = 0.055f;
+    constexpr float kNameHeightScale = 0.055f; // fraction of box.marker_px
     constexpr int kNameMinPx = 9;
     constexpr int kNameMaxPx = 28;
 
-    // Longest nickname drawn on the radar, counted in Unicode codepoints; longer names are cut.
+    // Codepoints, not bytes.
     constexpr int kMaxNameChars = 16;
 
-    // Cvar value ranges shared with the settings dialog (see radar_cvars.h).
     constexpr RadarCvarDef kHealthSizeCvar = RadarCvarDef_Get("hud_radar_health_size");
     static_assert(kHealthSizeCvar.name != nullptr);
 
     constexpr RadarCvarDef kNameSizeCvar = RadarCvarDef_Get("hud_radar_name_size");
     static_assert(kNameSizeCvar.name != nullptr);
 
-    bool IsKnownOrigin(const float* o)
+    const char* ResetReasonName(PlayersLayer::ResetReason reason)
     {
-        return o[0] != 0.0f || o[1] != 0.0f || o[2] != 0.0f;
+        switch (reason)
+        {
+            case PlayersLayer::ResetReason::Hud:
+                return "hud";
+            case PlayersLayer::ResetReason::InitHud:
+                return "init_hud";
+            case PlayersLayer::ResetReason::Video:
+                return "video";
+            case PlayersLayer::ResetReason::PlayerClock:
+                return "player_clock";
+            case PlayersLayer::ResetReason::RadarClock:
+                return "radar_clock";
+            case PlayersLayer::ResetReason::Team:
+                return "team";
+            case PlayersLayer::ResetReason::Observer:
+                return "observer";
+            case PlayersLayer::ResetReason::Count:
+                break;
+        }
+        return "unknown";
     }
 
-    // Copies at most max_cp UTF-8 codepoints of `in` into `out` (NUL-terminated). Counts whole
-    // codepoints from their lead byte, so a multibyte nickname is never cut mid-character.
-    void TruncateUtf8(const char* in, int max_cp, char* out, size_t out_size)
+    bool IsKnownOrigin(const ncl_math::Vector3& o)
     {
-        const uint8_t* s = reinterpret_cast<const uint8_t*>(in);
-        size_t oi = 0;
-        int cp = 0;
-
-        while (*s != 0 && cp < max_cp)
-        {
-            int len = 1;
-
-            if (*s >= 0xF0)
-            {
-                len = 4;
-            }
-            else if (*s >= 0xE0)
-            {
-                len = 3;
-            }
-            else if (*s >= 0xC0)
-            {
-                len = 2;
-            }
-
-            // A truncated trailing sequence stops the copy rather than reading past the string.
-            int actual = 0;
-            while (actual < len && s[actual] != 0)
-            {
-                actual++;
-            }
-
-            if (oi + (size_t)actual + 1 > out_size)
-            {
-                break;
-            }
-
-            for (int k = 0; k < actual; k++)
-            {
-                out[oi++] = (char)s[k];
-            }
-
-            s += actual;
-            cp++;
-        }
-
-        out[oi] = '\0';
+        return o.x != 0.0f || o.y != 0.0f || o.z != 0.0f;
     }
 } // namespace
 
-PlayersLayer::PlayersLayer(RadarVisibility& visibility, const RadarPolicy& policy) :
+PlayersLayer::PlayersLayer(RadarVisibility& visibility, const RadarPolicy& policy, const RadarBroadcast& broadcast, RadarText& text) :
     visibility_(visibility),
-    policy_(policy)
+    policy_(policy),
+    text_(text),
+    broadcast_(broadcast)
 {
-    static_assert(kMaxPlayers == MAX_PLAYERS, "player table size mismatch");
 }
 
 void PlayersLayer::BeginFrame(float time)
 {
+    if (time < last_time_)
+    {
+        OnPlayerRespawn(ResetReason::PlayerClock, last_time_, time);
+    }
+    
+    last_time_ = time;
+    drawn_.fill(false);
+    fading_players_ = 0;
+    broadcast_players_ = 0;
+    fading_in_players_ = 0;
+    overlapping_players_ = 0;
+    snapshot_step_players_ = 0;
     tracks_.BeginFrame(time);
 }
 
-void PlayersLayer::ResetRound()
+void PlayersLayer::Draw(const RadarFrame& frame)
 {
+    if (team_ != frame.ctx.highlight_team || spectating_ != frame.ctx.spectating)
+    {
+        OnPlayerRespawn(spectating_ != frame.ctx.spectating ? ResetReason::Observer : ResetReason::Team, last_time_, frame.time);
+        tracks_.BeginFrame(frame.time);
+        team_ = frame.ctx.highlight_team;
+        spectating_ = frame.ctx.spectating;
+    }
+
+    if (frame.ctx.spectating)
+    {
+        DrawObserver(frame);
+        DrawObserverStatus(frame);
+        return;
+    }
+
+    DrawPlayers(frame);
+    DrawLastSeen(frame);
+    DrawDeaths(frame);
+}
+
+void PlayersLayer::DrawObserver(const RadarFrame& frame)
+{
+    int player = frame.ctx.observed_idx;
+    const goldsrc::cl_entity_t* entity = nullptr;
+    bool alive = false;
+    
+    if (!frame.ctx.free_camera && player >= 1 && player <= std::min<int>(kRadarMaxPlayers, gEngfuncs.GetMaxClients()))
+    {
+        entity = gEngfuncs.GetEntityByIndex(player);
+        alive = !client()->g_PlayerExtraInfo[player].dead;
+    }
+    
+    PlayerObserverMarker marker =
+        PlayerObserver_ChooseMarker(frame.ctx, entity, alive, ncl_math::Vector3::Ref(g_MainViewOrigin), g_MainViewAngles[1]);
+    
+    if (marker.player != 0)
+    {
+        prev_pos_[marker.player] = marker.pos;
+        drawn_[marker.player] = true;
+    }
+
+    int dot = std::max(2, (int)(frame.box.marker_px * kPlayerDotScale));
+    RadarLayerStyle style = RadarLayerMarker_ComputeStyle(frame.layer_view, marker.pos);
+    int extent = frame.layer_view.enabled ? dot * 2 : dot;
+    ncl_math::Vector2 raw = frame.t.WorldToScreen({marker.pos.x, marker.pos.y});
+    ncl_math::Vector2 dir = frame.t.MarkerDirection(marker.yaw);
+    RadarPlayerPlacement player_placement = RadarLayerMarker_PlacePlayer(
+        frame.shape,
+        raw,
+        dir,
+        dot,
+        extent,
+        style
+    );
+    
+    const RadarLayerPlacement& placement = player_placement.placement;
+    ncl_math::Vector2 pos = placement.marker;
+    ncl_math::Color color = RadarPalette::kHighlight.WithAlpha((int)(255 * style.opacity));
+
+    RadarDraw_BeginPrims();
+    
+    if (placement.offscreen)
+    {
+        DrawEdgeArrow(pos, player_placement.out_dir, dot, color);
+    }
+    else
+    {
+        RadarDraw_DrawCone(pos, dir, dot * 6.5f, ComputeHighlightConeSpread(frame), color, 0.65f * style.opacity);
+        DrawMarker(pos, dir, dot, color);
+    }
+    
+    RadarDraw_DrawLayerIndicator(placement.indicator, style.vertical, dot, color);
+    RadarDraw_EndPrims();
+}
+
+void PlayersLayer::DrawObserverStatus(const RadarFrame& frame)
+{
+    PlayerObserverIcon icon = PlayerObserver_BuildStatusIcon(frame.box, frame.shape);
+    RadarDraw_BeginPrims();
+    RadarDraw_DrawDisc(icon.center, icon.radius, {0, 0, 0, 190});
+    RadarDraw_DrawDisconnectedSignal(icon.center, icon.half_extent, icon.line_width * 0.5f, {255, 205, 100, 255});
+    RadarDraw_EndPrims();
+}
+
+void PlayersLayer::OnPlayerRespawn(ResetReason reason, float previous_time, float time)
+{
+    // Keep diagnostic history across resets so a mass fade can be traced to its reset.
+    marker_resets_++;
+    reset_counts_[(size_t)reason]++;
+    reset_reason_ = reason;
+    reset_previous_time_ = previous_time;
+    reset_time_ = time;
+    
+    if (RadarDebug_IsEnabled())
+    {
+        gEngfuncs.Con_Printf(
+            "radar reset: count=%d reason=%s previous_time=%.6f time=%.6f message=%d\n",
+            marker_resets_,
+            ResetReasonName(reason),
+            previous_time,
+            time,
+            eng()->client_state->parsecount
+        );
+    }
+    
     tracks_.Reset();
+    last_seen_.Reset();
+    marker_fade_.fill(PlayerMarkerFade{});
     prev_alive_.fill(false);
+    prev_snapshot_.fill(false);
+    drawn_.fill(false);
     deaths_.Reset();
+}
+
+void PlayersLayer::DumpMarkers() const
+{
+    gEngfuncs.Con_Printf(
+        "radar resets: total=%d hud=%d init_hud=%d video=%d player_clock=%d radar_clock=%d team=%d observer=%d "
+        "last=%s previous_time=%.6f time=%.6f\n",
+        marker_resets_,
+        reset_counts_[(size_t)ResetReason::Hud],
+        reset_counts_[(size_t)ResetReason::InitHud],
+        reset_counts_[(size_t)ResetReason::Video],
+        reset_counts_[(size_t)ResetReason::PlayerClock],
+        reset_counts_[(size_t)ResetReason::RadarClock],
+        reset_counts_[(size_t)ResetReason::Team],
+        reset_counts_[(size_t)ResetReason::Observer],
+        ResetReasonName(reset_reason_),
+        reset_previous_time_,
+        reset_time_
+    );
+    std::array<PlayerMarkerHistory::Sample, PlayerMarkerHistory::kMaxSamples> samples{};
+    
+    int sample_count = marker_history_.CopySamples(samples);
+    float span = sample_count > 0 ? samples[sample_count - 1].frame.time - samples[0].frame.time : 0.0f;
+    gEngfuncs.Con_Printf("radar marker history: samples=%d span=%.3f; enable hud_radar_debug 1 before reproducing\n", sample_count, span);
+    
+    for (int sample = 0; sample < sample_count; sample++)
+    {
+        PlayerMarkerHistory_PrintSample(samples[sample], gEngfuncs.Con_Printf);
+    }
+    
+    int message_num = eng()->client_state->parsecount;
+    float time = gEngfuncs.GetClientTime();
+    gEngfuncs.Con_Printf("radar markers: time=%.3f drawn_time=%.3f message=%d spectating=%d\n", time, last_time_, message_num, spectating_);
+    
+    int max_clients = std::min<int>(kRadarMaxPlayers, gEngfuncs.GetMaxClients());
+    
+    for (int i = 1; i <= max_clients; i++)
+    {
+        const goldsrc::cl_entity_t* entity = gEngfuncs.GetEntityByIndex(i);
+        
+        if (!entity || !entity->player)
+        {
+            continue;
+        }
+        
+        const RadarBroadcast::Player& report = broadcast_.get_player(i);
+        const ncl_math::Vector3& shown = prev_pos_[i];
+        gEngfuncs.Con_Printf(
+            "player=%d team=%d drawn=%d current=%d messages=%d/%d effects=%d "
+            "raw=(%.1f %.1f %.1f) interpolated=(%.1f %.1f %.1f) shown=(%.1f %.1f %.1f) "
+            "radar_seq=%u radar_age=%.3f radar=(%.1f %.1f %.1f)\n",
+            i,
+            client()->g_PlayerExtraInfo[i].teamnumber,
+            drawn_[i],
+            entity->curstate.messagenum == message_num,
+            entity->prevstate.messagenum,
+            entity->curstate.messagenum,
+            entity->curstate.effects,
+            entity->curstate.origin[0],
+            entity->curstate.origin[1],
+            entity->curstate.origin[2],
+            entity->origin[0],
+            entity->origin[1],
+            entity->origin[2],
+            shown.x,
+            shown.y,
+            shown.z,
+            report.seq,
+            report.seq != 0 ? time - report.time : -1.0f,
+            report.pos.x,
+            report.pos.y,
+            report.pos.z
+        );
+    }
 }
 
 void PlayersLayer::OnVidInit()
 {
+    marker_history_.Reset();
+    marker_resets_ = 0;
+    reset_counts_ = {};
+    reset_reason_ = ResetReason::Hud;
+    reset_previous_time_ = reset_time_ = 0.0f;
     name_widths_.fill(NameWidth{}); // the console font scales with the video mode
 }
 
-void PlayersLayer::DrawMarker(ncl_math::Vector2 pos, ncl_math::Vector2 dir, int size, ncl_math::Color color, float halo_radius)
+void PlayersLayer::DrawMarker(ncl_math::Vector2 pos, ncl_math::Vector2 dir, int size, ncl_math::Color color)
 {
-    // The FOV cone is drawn by its own pass in DrawPlayerLayers, so this only lays
-    // down the dot and its arrowhead; a zero dir draws the dot alone.
-    int ai = std::clamp((int)color.a, 0, 255);
-
-    float dir_len = dir.Length();
-    bool is_dir = dir_len > ncl_math::kNearZero;
-    ncl_math::Vector2 fwd = is_dir ? dir / dir_len : ncl_math::Vector2{};
+    // A zero dir draws the dot alone.
+    ncl_math::Vector2 fwd{};
+    bool is_dir = ncl_math::TryNormalize(dir, &fwd);
 
     if (is_dir)
     {
-        // White arrowhead growing out of the dot. Both base corners sit on the dot's
-        // rim (or the carrier halo's rim), so the head flows out of the circle and
-        // never juts out the side or back; the tip reaches a bit further out. The
-        // base half-angle sets how blunt the head is.
-        float cut = std::max((float)size, halo_radius);
-        float spread = 0.62f; // half-angle of the base on the rim
+        // Both base corners sit on the dot's rim, so the head never juts out its side or back.
+        float cut = (float)size;
+        float spread = 0.62f; // base half-angle, radians
         float tip_d = cut + size * 1.0f;
         ncl_math::Vector2 tip = pos + fwd * tip_d;
         ncl_math::Vector2 base_l = pos + fwd.Rotated(spread) * cut;
         ncl_math::Vector2 base_r = pos + fwd.Rotated(-spread) * cut;
-        RadarDraw_DrawTriangle(tip, base_l, base_r, {240, 240, 240, ai});
+        RadarDraw_DrawTriangle(tip, base_l, base_r, {240, 240, 240, color.a});
     }
 
-    RadarDraw_DrawDisc(pos, (float)size, color.WithAlpha(ai));
+    RadarDraw_DrawDisc(pos, (float)size, color);
 }
 
 void PlayersLayer::DrawEdgeArrow(ncl_math::Vector2 pos, ncl_math::Vector2 out_dir, int size, ncl_math::Color color)
 {
-    float len = out_dir.Length();
+    ncl_math::Vector2 fwd;
 
-    // A degenerate heading (player projected onto the exact centre) cannot happen off the rim, but
-    // fall back to the plain dot rather than emit a zero-area triangle.
-    if (len <= ncl_math::kNearZero)
+    // Cannot happen off the rim, but a plain dot beats a zero-area triangle.
+    if (!ncl_math::TryNormalize(out_dir, &fwd))
     {
         RadarDraw_DrawDisc(pos, (float)size, color);
         return;
     }
 
-    ncl_math::Vector2 fwd = out_dir / len;
     ncl_math::Vector2 perp = fwd.Perp();
 
-    // Isosceles arrowhead pointing outward: the tip reaches toward the rim, the base sits behind
-    // the clamped position, sized off the dot so it reads at the same scale as the markers.
-    ncl_math::Vector2 tip = pos + fwd * (size * 1.7f);
-    ncl_math::Vector2 base = pos - fwd * (size * 0.8f);
-    ncl_math::Vector2 base_l = base + perp * (size * 1.2f);
-    ncl_math::Vector2 base_r = base - perp * (size * 1.2f);
+    ncl_math::Vector2 tip = pos + fwd * (size * RadarPlayerMarkerGeometry::kTipScale);
+    ncl_math::Vector2 base = pos - fwd * (size * RadarPlayerMarkerGeometry::kBaseScale);
+    ncl_math::Vector2 base_l = base + perp * (size * RadarPlayerMarkerGeometry::kHalfWidthScale);
+    ncl_math::Vector2 base_r = base - perp * (size * RadarPlayerMarkerGeometry::kHalfWidthScale);
 
     RadarDraw_DrawTriangle(tip, base_l, base_r, color);
 }
 
-void PlayersLayer::DrawTrack(const RadarFrame& frame, int player, ncl_math::Vector2 pos, ncl_math::Color color)
+void PlayersLayer::DrawTrack(const RadarFrame& frame, int player, ncl_math::Color color)
 {
-    tracks_.Sample(player, pos, frame.time);
-
-    ncl_math::Vector2 world[PlayerTracks::kMaxPoints];
+    PlayerTrackPoint world[PlayerTracks::kMaxPoints];
     int count = tracks_.CopyPoints(player, world);
-
     if (count < 2)
     {
         return;
     }
 
-    ncl_math::Vector2 pts[PlayerTracks::kMaxPoints];
-    uint8_t al[PlayerTracks::kMaxPoints];
+    ncl_math::Vector2 points[PlayerTracks::kMaxPoints];
+    uint8_t alpha[PlayerTracks::kMaxPoints];
+    int start = 0;
 
     for (int k = 0; k < count; k++)
     {
-        pts[k] = RadarView_ClampToRadar(frame.box, frame.round, 1, frame.t.WorldToScreen(world[k]));
-        al[k] = (uint8_t)ncl_math::Lerp(kTrailAlphaTail, kTrailAlphaHead, (float)k / (float)std::max(1, count));
+        points[k] = frame.shape.Clamp(1, frame.t.WorldToScreen({world[k].pos.x, world[k].pos.y}));
+        alpha[k] = (uint8_t)ncl_math::Lerp(kTrailAlphaTail, kTrailAlphaHead, (float)k / (float)(count - 1));
+
+        if (k > 0 && !RadarLayerMarker_IsTrailSegmentVisible(frame.layer_view, world[k - 1].layer, world[k].layer))
+        {
+            if (k - start >= 2)
+            {
+                RadarDraw_DrawPolyline({points + start, (size_t)(k - start)}, {alpha + start, (size_t)(k - start)}, color, kTrackWidth);
+            }
+
+            start = k;
+        }
     }
 
-    // Record the trail head (newest sample) so it is covered by radar_dump.
-    RadarDump::AddMarker(
-        "trail", player, world[count - 1].x, world[count - 1].y, pts[count - 1].x, pts[count - 1].y, color.r, color.g, color.b,
-        al[count - 1], ""
-    );
-
-    RadarDraw_DrawPolyline(pts, al, count, color, kTrackWidth);
+    if (count - start >= 2)
+    {
+        RadarDraw_DrawPolyline({points + start, (size_t)(count - start)}, {alpha + start, (size_t)(count - start)}, color, kTrackWidth);
+    }
 }
 
-void PlayersLayer::RecordPlayerDeathIfNew(int player, int teamnumber, float time)
+void PlayersLayer::RecordPlayerDeathIfNew(int player, RadarTeam team, float time)
 {
     if (!prev_alive_[player])
     {
@@ -223,31 +402,36 @@ void PlayersLayer::RecordPlayerDeathIfNew(int player, int teamnumber, float time
 
     prev_alive_[player] = false;
 
-    if (teamnumber == TEAM_TERRORIST || teamnumber == TEAM_CT)
+    if (team == RadarTeam::Terrorist || team == RadarTeam::CounterTerrorist)
     {
-        const ncl_math::Color& dc = (teamnumber == TEAM_TERRORIST) ? RadarPalette::kTerrorist : RadarPalette::kCounterTerrorist;
+        const ncl_math::Color& dc = (team == RadarTeam::Terrorist) ? RadarPalette::kTerrorist : RadarPalette::kCounterTerrorist;
         deaths_.Add(prev_pos_[player], dc, time);
+        last_seen_.OnPlayerDeath(player);
     }
 }
 
-int PlayersLayer::PlayerNameWidth(int player, const char* name)
+int PlayersLayer::ComputePlayerNameWidth(int player, const char* name)
 {
     NameWidth& e = name_widths_[player];
 
     if (std::strcmp(e.name, name) != 0)
     {
         V_strcpy_safe(e.name, name);
-        int width = 0, height = 0;
+        
+        int width = 0;
+        int height = 0;
         gEngfuncs.pfnDrawConsoleStringLen(name, &width, &height);
+        
         e.width = width;
     }
 
     return e.width;
 }
 
-void PlayersLayer::DrawHealthBar(ncl_math::Vector2 pos, int dot, int sb_health)
+void PlayersLayer::DrawHealthBar(ncl_math::Vector2 pos, int dot, int sb_health, float opacity)
 {
-    float sx = pos.x, sy = pos.y;
+    float sx = pos.x;
+    float sy = pos.y;
     int hp = std::clamp(sb_health, 0, 100);
     float hsz = std::clamp(g_RadarCfg.health_size->value, kHealthSizeCvar.min_value, kHealthSizeCvar.max_value);
     int bw = std::max(2, (int)(dot * 3 * hsz));
@@ -269,10 +453,10 @@ void PlayersLayer::DrawHealthBar(ncl_math::Vector2 pos, int dot, int sb_health)
         hp_col = {230, 40, 40};
     }
 
-    // The shader applies the flashbang wash, so the colours are passed through unfaded.
-    RadarDraw_DrawRect({(float)(bx - 1), (float)(by - 1)}, {(float)(bx + bw + 1), (float)(by + bh + 1)}, {0, 0, 0, 150});
-    RadarDraw_DrawRect({(float)bx, (float)by}, {(float)(bx + bw), (float)(by + bh)}, {30, 30, 30, 200});
-    RadarDraw_DrawRect({(float)bx, (float)by}, {(float)(bx + bw * hp / 100), (float)(by + bh)}, hp_col.WithAlpha(255));
+    // The shader applies the flashbang wash, so the colors are passed through unfaded.
+    RadarDraw_DrawRect({(float)(bx - 1), (float)(by - 1)}, {(float)(bx + bw + 1), (float)(by + bh + 1)}, {0, 0, 0, (int)(150 * opacity)});
+    RadarDraw_DrawRect({(float)bx, (float)by}, {(float)(bx + bw), (float)(by + bh)}, {30, 30, 30, (int)(200 * opacity)});
+    RadarDraw_DrawRect({(float)bx, (float)by}, {(float)(bx + bw * hp / 100), (float)(by + bh)}, hp_col.WithAlpha((int)(255 * opacity)));
 }
 
 void PlayersLayer::DrawPlayers(const RadarFrame& frame)
@@ -282,15 +466,58 @@ void PlayersLayer::DrawPlayers(const RadarFrame& frame)
         return;
     }
 
-    int dot = std::max(2, (int)(frame.box.elem * kPlayerDotScale));
-    std::array<PlayerJob, kMaxPlayers + 1> jobs;
-    int njobs = CollectPlayerJobs(frame, dot, jobs.data());
-    DrawPlayerLayers(frame, jobs.data(), njobs, dot, HighlightConeSpread(frame));
+    int dot = std::max(2, (int)(frame.box.marker_px * kPlayerDotScale));
+    std::array<PlayerJob, kRadarMaxPlayers * 2> jobs;
+    bool record_diagnostics = RadarDebug_IsEnabled();
+    RadarDrawStats before{};
+
+    if (record_diagnostics)
+    {
+        before = RadarDraw_GetStats();
+    }
+
+    std::span<const PlayerJob> collected = CollectPlayerJobs(frame, dot, jobs, record_diagnostics);
+    DrawPlayerLayers(frame, collected, dot, ComputeHighlightConeSpread(frame));
+
+    if (record_diagnostics)
+    {
+        RadarDrawStats after = RadarDraw_GetStats();
+        PlayerMarkerHistory::Frame diagnostic{
+            .time = frame.time,
+            .message = frame.ctx.message_num,
+            .layer = frame.layer_view.active,
+            .resets = marker_resets_,
+            .jobs = (int)collected.size(),
+            .batches = after.batches - before.batches,
+            .quads = after.quads - before.quads,
+            .broadcast = broadcast_players_,
+            .fading = fading_players_,
+            .fade_in = fading_in_players_,
+            .overlap = overlapping_players_,
+            .snapshot_steps = snapshot_step_players_,
+        };
+        std::array<std::uint32_t, kRadarMaxPlayers> sequences{};
+
+        for (int player = 1; player <= kRadarMaxPlayers; player++)
+        {
+            sequences[player - 1] = broadcast_.get_player(player).seq;
+            if (!drawn_[player])
+            {
+                continue;
+            }
+            std::uint64_t bit = std::uint64_t{1} << (player - 1);
+            diagnostic.drawn |= bit;
+            if (prev_snapshot_[player])
+            {
+                diagnostic.snapshot |= bit;
+            }
+        }
+        marker_history_.Record(diagnostic, sequences);
+    }
 }
 
-float PlayersLayer::HighlightConeSpread(const RadarFrame& frame)
+float PlayersLayer::ComputeHighlightConeSpread(const RadarFrame& frame)
 {
-    // Cone half-angle for the highlighted player from its current FOV.
     float fov = 90.0f;
 
     if (gHUD && gHUD->m_iFOV && *gHUD->m_iFOV > 1)
@@ -298,9 +525,10 @@ float PlayersLayer::HighlightConeSpread(const RadarFrame& frame)
         fov = (float)*gHUD->m_iFOV;
     }
 
-    if (frame.ctx.spectating && gHUD && gHUD->m_pPlayerFOV && frame.ctx.highlight_idx >= 1 && frame.ctx.highlight_idx < 64)
+    if (frame.ctx.spectating && !frame.ctx.free_camera && gHUD && gHUD->m_pPlayerFOV && frame.ctx.observed_idx >= 1 &&
+        frame.ctx.observed_idx < 64)
     {
-        int pf = (*gHUD->m_pPlayerFOV)[frame.ctx.highlight_idx];
+        int pf = (*gHUD->m_pPlayerFOV)[frame.ctx.observed_idx];
 
         if (pf > 1)
         {
@@ -311,76 +539,66 @@ float PlayersLayer::HighlightConeSpread(const RadarFrame& frame)
     return std::clamp(fov, 10.0f, 130.0f) * 0.5f * ncl_math::kDeg2Rad;
 }
 
-// Decides where player i is drawn from this frame: the view origin for the local
-// player, the live entity or the radar broadcast for allies, the line-of-sight spot
-// memory for enemies, the PVS for spectators. False = not drawn (the caller drops
-// the trail).
-bool PlayersLayer::ResolvePlayerSpot(const RadarFrame& frame, int i, bool is_self, cl_entity_t* ent, PlayerSpot* out)
+bool PlayersLayer::ResolvePlayerSpot(const RadarFrame& frame, int i, bool is_self, goldsrc::cl_entity_t* ent, PlayerSpot& out)
 {
-    cl_entity_t* local = frame.ctx.local;
-    extra_player_info_t& ext = client()->g_PlayerExtraInfo[i];
-    int team = ext.teamnumber;
-    bool live = ent && ent->player && ent->curstate.messagenum == local->curstate.messagenum;
-    bool is_ally = is_self || (team == frame.ctx.highlight_team && frame.ctx.highlight_team != 0);
+    goldsrc::cl_entity_t* local = frame.ctx.local;
+    goldsrc::cstrike::extra_player_info_t& ext = client()->g_PlayerExtraInfo[i];
+    RadarTeam team = RadarTeam_From(ext.teamnumber);
+    bool live = ent && ent->player && RadarFrame_IsEntityCurrent(frame.ctx, ent);
+    bool is_ally = is_self || (team == frame.ctx.highlight_team && frame.ctx.highlight_team != RadarTeam::Unassigned);
 
-    // Sharing a team is the client's notion of an ally; the right to draw one without
-    // the line-of-sight gate is the server's to give, and a free-for-all server takes
-    // it back by withholding the radar broadcast. Without it the teammate is resolved
-    // like an enemy (see RadarPolicy).
-    if (is_ally && !is_self && !policy_.AllyRevealed(i))
+    if (is_ally && !is_self && !policy_.IsAllyRevealed(i))
     {
         is_ally = false;
     }
 
-    const float* origin = nullptr;
-    float spot_xy[3] = {};
+    ncl_math::Vector3 origin{};
     float facing_yaw = 0.0f;
     bool has_dir = false;
-    int marker_alpha = 255;
+    bool from_broadcast = false;
 
     if (is_self)
     {
-        origin = local->origin;
+        origin = ncl_math::Vector3::Ref(local->origin);
         facing_yaw = g_MainViewAngles[1];
         has_dir = true;
     }
-    else if (is_ally)
+    else if (is_ally && !frame.ctx.spectating)
     {
         if (live)
         {
-            origin = ent->origin;
+            origin = RadarFrame_GetPlayerPosition(*ent);
             facing_yaw = ent->angles[1];
             has_dir = true;
         }
         else
         {
-            origin = ext.origin; // teammate radar broadcast (current map only)
+            const RadarBroadcast::Player& report = broadcast_.get_player(i);
+            origin = report.seq != 0 ? report.pos : ncl_math::Vector3::Ref(ext.origin);
+            if (!IsKnownOrigin(origin))
+            {
+                return false;
+            }
+            from_broadcast = true;
         }
     }
-    else if (visibility_.gating())
+    else if (visibility_.is_gating())
     {
-        // Enemy: reveal only while the team's line-of-sight memory is fresh,
-        // fading the marker out over the tail of that window. Always use the
-        // spotted position/facing (updated only while actually seen) so the
-        // marker freezes the instant sight is lost instead of tracking live.
-        ncl_math::Vector2 p;
-        float a = 1.0f, yaw = 0.0f;
+        ncl_math::Vector3 p;
+        float yaw = 0.0f;
 
-        if (!visibility_.ShouldShowEnemy(i, frame.time, &p, &yaw, &a))
+        if (!visibility_.IsEnemyVisible(i, p, yaw))
         {
             return false;
         }
-        marker_alpha = (int)(a * 255.0f);
-        spot_xy[0] = p.x;
-        spot_xy[1] = p.y;
-        origin = spot_xy;
+
+        origin = p;
         facing_yaw = yaw;
         has_dir = true;
     }
     else if (live)
     {
-        // Spectator or LOS disabled: show whoever the PVS provides.
-        origin = ent->origin;
+        origin = RadarFrame_GetPlayerPosition(*ent);
         facing_yaw = ent->angles[1];
         has_dir = true;
     }
@@ -389,270 +607,406 @@ bool PlayersLayer::ResolvePlayerSpot(const RadarFrame& frame, int i, bool is_sel
         return false;
     }
 
-    if (!IsKnownOrigin(origin))
+    out.pos = origin;
+    out.yaw = facing_yaw;
+    out.has_dir = has_dir;
+    out.snapshot = is_self || live;
+    out.from_broadcast = from_broadcast;
+    return true;
+}
+
+bool PlayersLayer::IsTeleported(int player, ncl_math::Vector3 pos, float run_speed, float dt) const
+{
+    if (!prev_alive_[player])
     {
         return false;
     }
 
-    out->pos = {origin[0], origin[1]};
-    out->yaw = facing_yaw;
-    out->alpha = marker_alpha;
-    out->has_dir = has_dir;
-    return true;
+    float frame_move = run_speed * std::clamp(dt, 0.005f, 0.1f) + kTeleportPad;
+
+    return (pos - prev_snapshot_pos_[player]).LengthSqr() > frame_move * frame_move;
 }
 
-int PlayersLayer::CollectPlayerJobs(const RadarFrame& frame, int dot, PlayerJob* jobs)
+void PlayersLayer::UpdatePlayerTrail(
+    const RadarFrame& frame,
+    int player,
+    const goldsrc::cl_entity_t* ent,
+    ncl_math::Vector3 world,
+    ncl_math::Color color,
+    bool offscreen,
+    bool teleported,
+    bool break_on_jump
+)
 {
-    // Trails draw here as their players are resolved, so they land under every marker
-    // layer; the markers themselves are deferred into jobs for the layered passes.
-    int my_team = frame.ctx.highlight_team;
-    int njobs = 0;
+    // An offscreen player's samples would all clamp onto the rim as a squiggle under the
+    // edge arrow; the trail is left intact across the gap so it resumes on return.
+    if (player == frame.ctx.highlight_idx)
+    {
+        tracks_.Clear(player);
+        return;
+    }
 
-    // The engine caps maxclients at 32; the client arrays are sized for 64, but the
-    // slots past maxclients are always empty, so do not walk them.
-    int max_clients = std::min<int>(kMaxPlayers, gEngfuncs.GetMaxClients());
+    if (g_RadarCfg.tracks->value == 0.0f || offscreen)
+    {
+        return;
+    }
 
-    // Live server speed limit, so the teleport heuristic stays valid on servers
-    // with a modified sv_maxspeed.
+    if (teleported || (ent && (ent->curstate.effects & goldsrc::EF_NOINTERP)))
+    {
+        tracks_.Clear(player);
+    }
+
+    if (tracks_.IsSuppressed(frame.time))
+    {
+        tracks_.Clear(player);
+        return;
+    }
+
+    if (tracks_.is_sample_due(player, frame.time))
+    {
+        int layer = -1;
+        if (frame.layer_view.enabled && frame.layer_view.map)
+        {
+            layer = frame.layer_view.map->Locate(world, RadarLayerQuery::Below, frame.layer_view.active).layer;
+        }
+        tracks_.Sample(player, world, layer, frame.time, break_on_jump);
+    }
+    DrawTrack(frame, player, color);
+}
+
+void PlayersLayer::FillPlayerJob(
+    const RadarFrame& frame,
+    int player,
+    bool is_self,
+    RadarTeam team,
+    const PlayerSpot& spot,
+    const goldsrc::cstrike::extra_player_info_t& ext,
+    int dot,
+    PlayerJob& job
+) const
+{
+    ncl_math::Color col = team == RadarTeam::Terrorist ? RadarPalette::kTerrorist : RadarPalette::kCounterTerrorist;
+
+    if (!frame.ctx.spectating && player == frame.ctx.highlight_idx)
+    {
+        col = RadarPalette::kHighlight;
+    }
+
+    RadarLayerStyle style = RadarLayerMarker_ComputeStyle(frame.layer_view, spot.pos);
+    ncl_math::Vector2 marker_raw = frame.t.WorldToScreen({spot.pos.x, spot.pos.y});
+    int extent = frame.layer_view.enabled ? (int)std::ceil(dot * 2.4f) : dot;
+    ncl_math::Vector2 dir = spot.has_dir ? frame.t.MarkerDirection(spot.yaw) : ncl_math::Vector2{};
+    
+    RadarPlayerPlacement player_placement = RadarLayerMarker_PlacePlayer(
+        frame.shape,
+        marker_raw,
+        dir,
+        dot,
+        extent,
+        style
+    );
+    
+    const RadarLayerPlacement& placement = player_placement.placement;
+    bool carrier = team == RadarTeam::Terrorist && ext.has_c4 && !placement.offscreen;
+    RadarTeam my_team = frame.ctx.highlight_team;
+
+    job.pos = placement.marker;
+    job.indicator = placement.indicator;
+    job.vertical = style.vertical;
+    job.dir = dir;
+    job.out_dir = player_placement.out_dir;
+    job.col = col;
+    job.alpha = (int)(255 * style.opacity);
+    job.base_alpha = job.alpha;
+    job.fade_weight = 1.0f;
+    job.cone = (player == frame.ctx.highlight_idx);
+    job.carrier = carrier;
+    job.offscreen = placement.offscreen;
+    // sb_health is broadcast to teammates by the ReGameDLL HealthInfo message
+    // (mp_scoreboard_showhealth), unlike .health which only refreshes while aiming at one.
+    job.health = !placement.offscreen && g_RadarCfg.health->value != 0.0f && player != frame.ctx.highlight_idx &&
+                 my_team != RadarTeam::Unassigned && team == my_team && policy_.IsAllyRevealed(player) && ext.sb_health > 0;
+    job.sb_health = ext.sb_health;
+    job.name = !placement.offscreen && g_RadarCfg.names->value != 0.0f;
+    job.index = player;
+    job.is_self = is_self;
+}
+
+std::span<const PlayersLayer::PlayerJob> PlayersLayer::CollectPlayerJobs(
+    const RadarFrame& frame,
+    int dot,
+    std::span<PlayerJob> jobs,
+    bool record_diagnostics
+)
+{
+    int job_count = 0;
+    PlayerLastSeen::Observation visible[kRadarMaxPlayers];
+    int visible_count = 0;
+    float move_tolerance = dot * 2.0f / frame.t.projection.ApplyVector({frame.t.k, 0.0f}).Length();
+
+    int max_clients = std::min<int>(kRadarMaxPlayers, gEngfuncs.GetMaxClients());
+
+    // The live limit, so the teleport heuristic holds on a modified sv_maxspeed.
     float run_speed = (pmove && pmove->movevars) ? pmove->movevars->maxspeed : kRunSpeedFallback;
 
-    for (int i = 1; i <= max_clients; i++)
+    for (int i = 1; i <= kRadarMaxPlayers; i++)
     {
-        extra_player_info_t& ext = client()->g_PlayerExtraInfo[i];
+        goldsrc::hud_player_info_t info{};
+        if (i <= max_clients)
+        {
+            gEngfuncs.pfnGetPlayerInfo(i, &info);
+        }
+
+        if (!info.name || !info.name[0])
+        {
+            tracks_.Clear(i);
+            prev_alive_[i] = false;
+            prev_snapshot_[i] = false;
+            last_seen_.Forget(i);
+            marker_fade_[i].Reset();
+            continue;
+        }
+
+        goldsrc::cstrike::extra_player_info_t& ext = client()->g_PlayerExtraInfo[i];
 
         if (ext.dead)
         {
-            RecordPlayerDeathIfNew(i, ext.teamnumber, frame.time);
+            RecordPlayerDeathIfNew(i, RadarTeam_From(ext.teamnumber), frame.time);
             tracks_.Clear(i);
+            prev_snapshot_[i] = false;
+            last_seen_.Forget(i);
+            marker_fade_[i].Reset();
             continue;
         }
 
-        int team = ext.teamnumber;
+        RadarTeam team = RadarTeam_From(ext.teamnumber);
         bool is_self = (i == frame.ctx.self_idx && !frame.ctx.spectating);
 
-        if (team != TEAM_CT && team != TEAM_TERRORIST && !is_self)
-        {
-            continue;
-        }
-
-        cl_entity_t* ent = gEngfuncs.GetEntityByIndex(i);
-        PlayerSpot spot;
-
-        if (!ResolvePlayerSpot(frame, i, is_self, ent, &spot))
-        {
-            // Keep the trail across a transient PVS gap so it resumes on return instead of restarting;
-            // the trail's own break distance handles a far re-acquire.
-            continue;
-        }
-
-        // Detect a teleport/respawn by a single-frame jump larger than running
-        // could cover that frame. This catches a round restart onto a nearby
-        // spawn, where the move is too small for the trail's per-sample check.
-        bool teleported = false;
-
-        if (prev_alive_[i])
-        {
-            float frame_move = run_speed * std::clamp(frame.dt, 0.005f, 0.1f) + kTeleportPad;
-            ncl_math::Vector2 jump = spot.pos - prev_pos_[i];
-            teleported = jump.LengthSqr() > frame_move * frame_move;
-        }
-
-        prev_alive_[i] = true;
-        prev_pos_[i] = spot.pos;
-
-        // The scoreboard VIP bit is server-controlled and routinely re-purposed to mark admins, so it does not tint the marker.
-        ncl_math::Color col = team == TEAM_TERRORIST ? RadarPalette::kTerrorist : RadarPalette::kCounterTerrorist;
-
-        // The controlled/observed player is shown green to stand out from both teams.
-        if (i == frame.ctx.highlight_idx)
-        {
-            col = RadarPalette::kHighlight;
-        }
-
-        ncl_math::Vector2 marker_raw = frame.t.WorldToScreen(spot.pos);
-
-        ncl_math::Vector2 dir{};
-
-        if (spot.has_dir)
-        {
-            dir = frame.t.MarkerDirection(spot.yaw);
-        }
-
-        ncl_math::Vector2 marker = RadarView_ClampToRadar(frame.box, frame.round, dot, marker_raw);
-
-        // Off the radar only when the projected position leaves the radar shape itself, tested against
-        // the true rim (box.size*0.5) rather than the dot-inset clamp above, so a player still inside
-        // the disc but within a dot's width of the border keeps their dot/name/health. Such a player is
-        // drawn as an arrow pointing their way, with no name/health/halo (see the draw passes), and
-        // out_dir carries the radial heading from the centre toward the real position.
-        ncl_math::Vector2 off = marker_raw - frame.t.center;
-        float off_len = off.Length();
-        float half = frame.box.size * 0.5f;
-        bool offscreen = frame.round
-            ? off.LengthSqr() > half * half
-            : (std::abs(off.x) > half || std::abs(off.y) > half);
-        ncl_math::Vector2 out_dir = (offscreen && off_len > ncl_math::kNearZero) ? off / off_len : ncl_math::Vector2{};
-
-        // No trail for the controlled/observed player (it clutters the centred marker) nor for an
-        // offscreen player (its samples would all clamp onto the rim as a squiggle under the arrow);
-        // the trail is left intact across the gap so it resumes on return.
-        if (g_RadarCfg.tracks->value != 0.0f && i != frame.ctx.highlight_idx && !offscreen)
-        {
-            if (teleported || (ent && (ent->curstate.effects & EF_NOINTERP)))
-            {
-                tracks_.Clear(i);
-            }
-
-            if (!tracks_.Suppressed(frame.time))
-            {
-                DrawTrack(frame, i, spot.pos, col);
-            }
-            else
-            {
-                tracks_.Clear(i);
-            }
-        }
-        else if (i == frame.ctx.highlight_idx)
+        if (team != RadarTeam::CounterTerrorist && team != RadarTeam::Terrorist && !is_self)
         {
             tracks_.Clear(i);
+            prev_alive_[i] = false;
+            prev_snapshot_[i] = false;
+            last_seen_.Forget(i);
+            marker_fade_[i].Reset();
+            continue;
         }
 
-        bool carrier = team == TEAM_TERRORIST && ext.has_c4 && !offscreen;
+        goldsrc::cl_entity_t* ent = gEngfuncs.GetEntityByIndex(i);
+        PlayerSpot spot;
 
-        PlayerJob& job = jobs[njobs++];
-        job.pos = marker;
-        job.dir = dir;
-        job.out_dir = out_dir;
-        job.col = col;
-        job.alpha = spot.alpha;
-        job.cone = (i == frame.ctx.highlight_idx);
-        job.carrier = carrier;
-        job.halo = carrier ? dot * 1.4f : 0.0f; // ring hugs the dot edge
-        job.offscreen = offscreen;
-        // sb_health is broadcast to teammates via the ReGameDLL HealthInfo message
-        // (mp_scoreboard_showhealth, default 3) on every damage event and every 5s,
-        // unlike .health which only refreshes when aiming at a teammate. A teammate the
-        // server no longer reveals is an opponent, so its health is withheld too.
-        job.health = !offscreen && g_RadarCfg.health->value != 0.0f && i != frame.ctx.highlight_idx && my_team != 0 &&
-            team == my_team && policy_.AllyRevealed(i) && ext.sb_health > 0;
-        job.sb_health = ext.sb_health;
-        job.name = !offscreen && g_RadarCfg.names->value != 0.0f;
-        job.index = i;
+        if (!ResolvePlayerSpot(frame, i, is_self, ent, spot))
+        {
+            marker_fade_[i].Lose();
+            prev_snapshot_[i] = false;
+            if (team == frame.ctx.highlight_team && i != frame.ctx.highlight_idx && g_RadarCfg.tracks->value != 0.0f &&
+                !tracks_.IsSuppressed(frame.time))
+            {
+                DrawTrack(frame, i, team == RadarTeam::Terrorist ? RadarPalette::kTerrorist : RadarPalette::kCounterTerrorist);
+            }
+            continue;
+        }
 
-        RadarDump::AddMarker(
-            "player", i, spot.pos.x, spot.pos.y, marker.x, marker.y, col.r, col.g, col.b, spot.alpha,
-            i == frame.ctx.highlight_idx ? "highlight" : ""
-        );
+        PlayerMarkerFade::Visible marker{spot.pos};
+        if (!is_self)
+        {
+            marker = marker_fade_[i].Update(spot.pos, frame.time, !spot.from_broadcast, broadcast_.get_player(i).seq, move_tolerance);
+            spot.pos = marker.pos;
+        }
+
+        std::uint64_t bit = 0;
+
+        if (record_diagnostics)
+        {
+            bit = std::uint64_t{1} << (i - 1);
+
+            if (spot.from_broadcast)
+            {
+                broadcast_players_ |= bit;
+            }
+
+            if (!is_self)
+            {
+                if (marker.alpha < 1.0f || marker.previous_alpha > 0.0f)
+                {
+                    fading_players_ |= bit;
+                }
+
+                if (marker.alpha < 1.0f && marker.previous_alpha == 0.0f)
+                {
+                    fading_in_players_ |= bit;
+                }
+
+                ncl_math::Vector2 move{spot.pos.x - prev_pos_[i].x, spot.pos.y - prev_pos_[i].y};
+
+                if (spot.snapshot && prev_snapshot_[i] && marker.alpha == 1.0f && marker.previous_alpha == 0.0f &&
+                    move.LengthSqr() > move_tolerance * move_tolerance)
+                {
+                    snapshot_step_players_ |= bit;
+                }
+            }
+        }
+
+        if (!is_self)
+        {
+            visible[visible_count++] = {i, spot.pos, team, spot.yaw, spot.has_dir, team == RadarTeam::Terrorist && ext.has_c4};
+        }
+
+        bool teleported = false;
+        if (spot.snapshot)
+        {
+            ncl_math::Vector3 snapshot_pos = is_self ? ncl_math::Vector3::Ref(frame.ctx.local->origin) : RadarFrame_GetPlayerPosition(*ent);
+            teleported = prev_snapshot_[i] && IsTeleported(i, snapshot_pos, run_speed, frame.dt);
+            prev_snapshot_pos_[i] = snapshot_pos;
+        }
+
+        bool break_on_jump = spot.snapshot && prev_snapshot_[i];
+        prev_snapshot_[i] = spot.snapshot;
+        prev_alive_[i] = true;
+        prev_pos_[i] = spot.pos;
+        drawn_[i] = true;
+
+        PlayerJob& job = jobs[job_count++];
+        FillPlayerJob(frame, i, is_self, team, spot, ext, dot, job);
+        job.alpha = (int)(job.alpha * marker.alpha);
+        job.fade_weight = marker.alpha;
+
+        UpdatePlayerTrail(frame, i, spot.snapshot ? ent : nullptr, spot.pos, job.col, job.offscreen, teleported, break_on_jump);
+        if (marker.previous_alpha > 0.0f)
+        {
+            PlayerSpot previous = spot;
+            previous.pos = marker.previous_pos;
+            PlayerJob& previous_job = jobs[job_count++];
+            FillPlayerJob(frame, i, is_self, team, previous, ext, dot, previous_job);
+            previous_job.alpha = (int)(previous_job.alpha * marker.previous_alpha);
+            previous_job.fade_weight = marker.previous_alpha;
+
+            if (record_diagnostics && (job.pos - previous_job.pos).LengthSqr() < dot * dot * 4.0f)
+            {
+                overlapping_players_ |= bit;
+            }
+        }
     }
 
-    return njobs;
+    last_seen_.Update({visible, (size_t)visible_count}, frame.time);
+
+    return jobs.first(job_count);
 }
 
-void PlayersLayer::DrawPlayerLayers(const RadarFrame& frame, const PlayerJob* jobs, int njobs, int dot, float cone_spread)
+void PlayersLayer::DrawPlayerLayers(const RadarFrame& frame, std::span<const PlayerJob> jobs, int dot, float cone_spread)
 {
-    // FOV cones (additive wash), batched together. Drawn under the dots so a cone
-    // never brightens another player's marker sitting inside its spread.
     RadarDraw_BeginPrims();
-
-    for (int j = 0; j < njobs; j++)
+    for (const PlayerJob& job : jobs)
     {
-        const PlayerJob& job = jobs[j];
-
         if (!job.cone || job.offscreen)
         {
             continue;
         }
 
-        float dir_len = job.dir.Length();
+        ncl_math::Vector2 fwd;
 
-        if (dir_len <= ncl_math::kNearZero)
+        if (!ncl_math::TryNormalize(job.dir, &fwd))
         {
             continue;
         }
 
-        ncl_math::Vector2 fwd = job.dir / dir_len;
-        // Lightened two thirds toward white, matching the old in-marker cone.
         ncl_math::Color light = ncl_math::Lerp(job.col.WithAlpha(job.alpha), ncl_math::Color{255, 255, 255}, 2.0f / 3.0f);
         RadarDraw_DrawCone(job.pos, fwd, dot * 6.5f, cone_spread, light, 0.65f * (job.alpha / 255.0f));
     }
-
     RadarDraw_EndPrims();
 
-    // The carrier halo, arrowhead and dot of every player, batched together. The
-    // arrowhead starts beyond the halo ring so it stays readable over the map.
     RadarDraw_BeginPrims();
-
-    for (int j = 0; j < njobs; j++)
+    for (size_t index = 0; index < jobs.size(); index++)
     {
-        const PlayerJob& job = jobs[j];
-
-        if (job.offscreen)
+        size_t first = index;
+        const PlayerJob& job = jobs[index];
+        
+        if (index + 1 < jobs.size() && jobs[index + 1].index == job.index)
+        {
+            const PlayerJob& previous = jobs[++index];
+            
+            RadarDrawPlayerMarker current_marker{
+                job.pos, job.offscreen ? job.out_dir : job.dir, job.base_alpha / 255.0f, job.fade_weight, job.offscreen
+            };
+            
+            RadarDrawPlayerMarker previous_marker{
+                previous.pos,
+                previous.offscreen ? previous.out_dir : previous.dir,
+                previous.base_alpha / 255.0f,
+                previous.fade_weight,
+                previous.offscreen,
+            };
+            
+            RadarDraw_DrawPlayerMarkerFade(current_marker, previous_marker, (float)dot, job.col);
+        }
+        else if (job.offscreen)
         {
             DrawEdgeArrow(job.pos, job.out_dir, dot, job.col.WithAlpha(job.alpha));
-            continue;
         }
-
-        if (job.carrier)
+        else
         {
-            RadarDraw_DrawRing(job.pos, job.halo, (float)dot, RadarPalette::kGold.WithAlpha(job.alpha));
+            DrawMarker(job.pos, job.dir, dot, job.col.WithAlpha(job.alpha));
         }
-
-        DrawMarker(job.pos, job.dir, dot, job.col.WithAlpha(job.alpha), job.halo);
+        for (size_t carrier_index = first; carrier_index <= index; carrier_index++)
+        {
+            const PlayerJob& carrier = jobs[carrier_index];
+            
+            if (carrier.carrier)
+            {
+                RadarDraw_DrawRing(
+                    carrier.pos, (float)dot, dot * (1.0f - kCarrierRingWidthScale), RadarPalette::kGold.WithAlpha(carrier.alpha)
+                );
+            }
+        }
     }
 
-    // Health bars share the marker batch now that they are prim quads rather than engine
-    // immediate-mode fills; they sit above the dot, so drawing them here keeps them over it.
-    for (int j = 0; j < njobs; j++)
+    for (const PlayerJob& job : jobs)
     {
-        const PlayerJob& job = jobs[j];
+        RadarDraw_DrawLayerIndicator(job.indicator, job.vertical, dot, job.col.WithAlpha(job.alpha));
+    }
 
+    for (const PlayerJob& job : jobs)
+    {
         if (job.health)
         {
-            DrawHealthBar(job.pos, dot, job.sb_health);
+            DrawHealthBar(job.vertical > 0 ? job.indicator : job.pos, dot, job.sb_health, job.alpha / 255.0f);
         }
     }
-
     RadarDraw_EndPrims();
 
-    DrawNames(frame, jobs, njobs, dot);
+    DrawNames(frame, jobs, dot);
 }
 
-int PlayersLayer::NameHeightPx(const RadarFrame& frame)
+int PlayersLayer::ComputeNameHeightPx(const RadarFrame& frame)
 {
     float mul = std::clamp(g_RadarCfg.name_size->value, kNameSizeCvar.min_value, kNameSizeCvar.max_value);
-    int standard = RadarText_StandardPx();
+    int standard = text_.ResolveStandardPx();
 
-    // Size relative to the standard HUD text (slightly smaller), scaled by the user's size cvar. Fall
-    // back to the box-relative ladder only until the scheme font resolves.
-    int px = standard > 0 ? (int)std::lround(standard * kNameScale * mul)
-                          : (int)std::lround(frame.box.elem * kNameHeightScale * mul);
-
-    return std::clamp(px, kNameMinPx, kNameMaxPx);
-}
-
-void PlayersLayer::DrawNames(const RadarFrame& frame, const PlayerJob* jobs, int njobs, int dot)
-{
-    bool any_name = false;
-
-    for (int j = 0; j < njobs && !any_name; j++)
+    // kNameMinPx/kNameMaxPx bound the fallback ladder alone: applied to the scheme-derived
+    // size they cap below the cvar's range and the top of the settings slider does nothing.
+    if (standard > 0)
     {
-        any_name = jobs[j].name;
+        return (int)std::lround(standard * kNameScale * mul);
     }
 
-    // Nothing to draw: return before touching the font, so the GDI face and the atlas are
-    // never built for a player who keeps names off.
+    return std::clamp((int)std::lround(frame.box.marker_px * kNameHeightScale * mul), kNameMinPx, kNameMaxPx);
+}
+
+void PlayersLayer::DrawNames(const RadarFrame& frame, std::span<const PlayerJob> jobs, int dot)
+{
+    bool any_name = std::ranges::any_of(jobs, [](const PlayerJob& job) { return job.name; });
+
+    // Return before touching the font: the GDI face and the atlas must not be built for a
+    // player who keeps names off.
     if (!any_name)
     {
         return;
     }
 
-    int name_px = NameHeightPx(frame);
-    bool batched = RadarText_Available(name_px);
+    int name_px = ComputeNameHeightPx(frame);
+    bool batched = text_.CheckAvailable(name_px);
 
-    // The batched glyph fades through the prim batch's per-vertex alpha, so the label can ramp out with
-    // the flash instead of the hard cut the console-font fallback forces (its baked black shadow cannot
-    // fade). The fallback keeps the hard cut, since it still draws the baked-shadow console font.
-    float flash_fade = batched ? RadarLabel_FlashFade(frame.flash_alpha) : (frame.flash_alpha >= kLabelFlashHide ? 0.0f : 1.0f);
+    float flash_fade = RadarLabel_ComputeFlashFadeFor(batched, frame.flash_alpha);
 
     if (flash_fade <= 0.0f)
     {
@@ -664,16 +1018,19 @@ void PlayersLayer::DrawNames(const RadarFrame& frame, const PlayerJob* jobs, int
         RadarDraw_BeginPrims();
     }
 
-    for (int j = 0; j < njobs; j++)
+    for (const PlayerJob& job : jobs)
     {
-        const PlayerJob& job = jobs[j];
-
         if (!job.name)
         {
             continue;
         }
 
-        hud_player_info_t info;
+        if (job.is_self)
+        {
+            continue;
+        }
+
+        goldsrc::hud_player_info_t info;
         std::memset(&info, 0, sizeof(info));
         gEngfuncs.pfnGetPlayerInfo(job.index, &info);
 
@@ -683,19 +1040,18 @@ void PlayersLayer::DrawNames(const RadarFrame& frame, const PlayerJob* jobs, int
         }
 
         char name[80];
-        TruncateUtf8(info.name, kMaxNameChars, name, sizeof(name));
+        V_strcpy_safe(name, info.name);
+        Q_UnicodeTruncate(name, kMaxNameChars);
 
         if (batched)
         {
-            // The shader applies the flashbang colour wash to the glyphs; the flash also ramps the
-            // label alpha here so it fades out toward the blinding peak and back in as sight returns.
             int alpha = (int)(job.alpha * flash_fade);
-            RadarText_DrawCentered(job.index, name, {job.pos.x, job.pos.y + dot + 1}, name_px, job.col.WithAlpha(alpha));
+            text_.DrawCentered(job.index, name, {job.pos.x, job.pos.y + dot + 1}, name_px, job.col.WithAlpha(alpha));
         }
         else
         {
-            int tw = PlayerNameWidth(job.index, name);
-            RadarLabel_Draw(name, (int)job.pos.x - tw / 2, (int)job.pos.y + dot + 1, job.col, frame.flash_alpha);
+            int tw = ComputePlayerNameWidth(job.index, name);
+            RadarLabel_Draw(name, (int)job.pos.x - tw / 2, (int)job.pos.y + dot + 1, job.col.WithAlpha(job.alpha), frame.flash_alpha);
         }
     }
 
@@ -705,27 +1061,95 @@ void PlayersLayer::DrawNames(const RadarFrame& frame, const PlayerJob* jobs, int
     }
 }
 
+void PlayersLayer::DrawLastSeen(const RadarFrame& frame)
+{
+    if (last_seen_.get_marks().empty())
+    {
+        return;
+    }
+
+    float sz = std::max(kMemoryMarkMinSize, frame.box.marker_px * kMemoryMarkScale);
+    float hw = std::max(kMemoryMarkMinHalfWidth, sz * kMemoryMarkWidthScale) * kQuestionMarkWidthFactor;
+    int question_inset = (int)std::ceil(sz + hw);
+    int dot = std::max(2, (int)(frame.box.marker_px * kPlayerDotScale));
+    int marker_inset = frame.layer_view.enabled ? (int)std::ceil(dot * 2.4f) : dot;
+    
+    RadarDraw_BeginPrims();
+
+    for (const PlayerLastSeen::Mark& mark : last_seen_.get_marks())
+    {
+        RadarLayerStyle style = RadarLayerMarker_ComputeStyle(frame.layer_view, mark.pos);
+        int inset = mark.uncertain ? question_inset : marker_inset;
+        int indicator_size = mark.uncertain ? inset : dot;
+        ncl_math::Vector2 raw = frame.t.WorldToScreen({mark.pos.x, mark.pos.y});
+        ncl_math::Vector2 dir = mark.has_dir ? frame.t.MarkerDirection(mark.yaw) : ncl_math::Vector2{};
+        std::optional<float> half_height;
+
+        if (mark.uncertain)
+        {
+            half_height = sz + hw;
+        }
+
+        RadarPlayerPlacement player_placement = RadarLayerMarker_PlacePlayer(
+            frame.shape,
+            raw,
+            dir,
+            dot,
+            inset,
+            style,
+            indicator_size,
+            half_height
+        );
+        
+        const RadarLayerPlacement& placement = player_placement.placement;
+        ncl_math::Vector2 pos = placement.marker;
+        ncl_math::Color color = mark.team == RadarTeam::Terrorist ? RadarPalette::kTerrorist : RadarPalette::kCounterTerrorist;
+        color = color.WithAlpha((int)(mark.alpha * style.opacity));
+
+        if (mark.uncertain)
+        {
+            RadarDraw_DrawQuestionMark(pos, sz, hw, color);
+        }
+        else if (placement.offscreen)
+        {
+            DrawEdgeArrow(pos, player_placement.out_dir, dot, color);
+        }
+        else
+        {
+            DrawMarker(pos, dir, dot, color);
+
+            if (mark.carrier)
+            {
+                RadarDraw_DrawRing(pos, (float)dot, dot * (1.0f - kCarrierRingWidthScale), RadarPalette::kGold.WithAlpha(color.a));
+            }
+        }
+        RadarDraw_DrawLayerIndicator(placement.indicator, style.vertical, indicator_size, color);
+    }
+
+    RadarDraw_EndPrims();
+}
+
 void PlayersLayer::DrawDeaths(const RadarFrame& frame)
 {
     DeathMarks::Visible marks[DeathMarks::kMax];
-    int n = deaths_.CollectVisible(marks, DeathMarks::kMax, frame.time);
-    float sz = std::max(2.0f, frame.box.elem * kDeathCrossScale);
+    int n = deaths_.CollectVisible(marks, frame.time);
+    float sz = std::max(kMemoryMarkMinSize, frame.box.marker_px * kMemoryMarkScale);
+    float hw = std::max(kMemoryMarkMinHalfWidth, sz * kMemoryMarkWidthScale);
+    int inset = (int)std::ceil(sz * std::sqrt(2.0f) + hw);
 
     RadarDraw_BeginPrims();
 
     for (int i = 0; i < n; i++)
     {
-        ncl_math::Vector2 s = RadarView_ClampToRadar(frame.box, frame.round, (int)sz, frame.t.WorldToScreen(marks[i].pos));
+        RadarLayerStyle style = RadarLayerMarker_ComputeStyle(frame.layer_view, marks[i].pos);
+        RadarLayerPlacement placement =
+            RadarLayerMarker_Place(frame.shape, frame.t.WorldToScreen({marks[i].pos.x, marks[i].pos.y}), inset, style, inset, sz + hw);
+        ncl_math::Vector2 s = placement.marker;
 
-        RadarDump::AddMarker(
-            "death", i, marks[i].pos.x, marks[i].pos.y, s.x, s.y, marks[i].color.r, marks[i].color.g, marks[i].color.b,
-            marks[i].alpha, ""
-        );
+        ncl_math::Color color = marks[i].color.WithAlpha((int)(marks[i].alpha * style.opacity));
 
-        // Line half-width scales with the cross so it does not look thin at high
-        // resolutions. One shape, so the centre fades at the same rate as the arms.
-        float hw = std::max(1.3f, sz * 0.42f);
-        RadarDraw_DrawCross(s, sz, hw, marks[i].color.WithAlpha(marks[i].alpha));
+        RadarDraw_DrawCross(s, sz, hw, color);
+        RadarDraw_DrawLayerIndicator(placement.indicator, style.vertical, inset, color);
     }
 
     RadarDraw_EndPrims();

@@ -3,12 +3,8 @@
 #include <ncl_material/MaterialResolve.h>
 #include <ncl_studio/StudioMesh.h>
 
-// studio.h uses vec3_t without declaring it. The studio types are typedefs of anonymous
-// structs, so they cannot be forward declared and the header has to be pulled in.
-#include <tier0/basetypes.h>
-#include <studio.h>
-
-typedef struct model_s model_t;
+#include <goldsrc/format/studio.h>
+#include <goldsrc/fwd.h>
 
 namespace render
 {
@@ -25,16 +21,16 @@ namespace render
     // Converts and uploads on first use, then returns the cached model. Returns nullptr
     // when the pipeline is unavailable or the model cannot be converted; a failure is
     // cached so a broken model is not retried every frame.
-    const StudioGpuModel* Geometry_Get(model_t* model, const studiohdr_t* header);
+    const StudioGpuModel* Geometry_Get(goldsrc::model_t* model, const goldsrc::studiohdr_t* header);
 
     // The material for one texture of a model, resolved once per model rather than per
     // draw: resolution copies a material, and doing that per submodel would undo the
     // work that made this path cheap. Never null once the model is cached; a model with
     // no authored description still gets the material implied by its texture flags.
     const ncl_material::Material* Geometry_Material(
-        model_t* model,
-        const studiohdr_t* header,
-        const studiohdr_t* texture_header,
+        goldsrc::model_t* model,
+        const goldsrc::studiohdr_t* header,
+        const goldsrc::studiohdr_t* texture_header,
         int texture_index
     );
 

@@ -1,17 +1,24 @@
 #include "HudRadar.h"
-#include "radar/RadarConfig.h"
+#include <goldsrc/client_api.h>
+#include <goldsrc/cstrike/game.h>
+#include <goldsrc/cstrike/hud_elements.h>
+
+#include "HudRadarAdvanced.h"
+#include "hud/radar/integration/RadarConfig.h"
 
 HudRadar::HudRadar(nitroapi::NitroApiInterface* nitro_api)
 	: HudBaseHelper(nitro_api)
 	, m_bDrawRadar(gHUD()->m_Health->m_bDrawRadar) {}
 
 void HudRadar::Draw(float flTime) {
-	if (RadarConfig_AdvancedActive())
+	// Yield to the advanced radar unless it had no map to draw this frame, in which case
+	// neither radar would render and the corner would sit blank.
+	if (RadarConfig_CheckAdvancedActive() && !HudRadarAdvanced::is_map_unavailable())
 	{
 		return;
 	}
 
-	if (m_iHideHUDDisplay & HIDEHUD_HEALTH || cl_enginefunc()->IsSpectateOnly())
+	if (m_iHideHUDDisplay & goldsrc::cstrike::HIDEHUD_HEALTH || cl_enginefunc()->IsSpectateOnly())
 		return;
 
     GetAllPlayersInfo();

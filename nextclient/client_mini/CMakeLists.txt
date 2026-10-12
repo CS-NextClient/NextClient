@@ -55,6 +55,8 @@ add_library(${PROJECT_NAME} SHARED
         src/color_chat_in_console.h
         src/inspect.cpp
         src/inspect.h
+        src/commands.cpp
+        src/commands.h
         src/camera.cpp
         src/camera.h
         src/hud/HudDamageDirection.cpp
@@ -69,53 +71,104 @@ add_library(${PROJECT_NAME} SHARED
         src/hud/HudRadar.h
         src/hud/HudRadarAdvanced.cpp
         src/hud/HudRadarAdvanced.h
-        src/hud/radar/RadarConfig.cpp
-        src/hud/radar/RadarConfig.h
-        src/hud/radar/RadarView.cpp
-        src/hud/radar/RadarView.h
+        src/hud/radar/integration/RadarConfig.cpp
+        src/hud/radar/integration/RadarConfig.h
+        src/hud/radar/render/RadarView.cpp
+        src/hud/radar/integration/RadarScoreboard.h
+        src/hud/radar/integration/RadarScoreboard.cpp
+        src/hud/radar/render/RadarView.h
         src/hud/radar/RadarFrame.h
-        src/hud/radar/RadarLabel.cpp
-        src/hud/radar/RadarLabel.h
-        src/hud/radar/RadarText.cpp
-        src/hud/radar/RadarText.h
-        src/hud/radar/RadarPalette.h
-        src/hud/radar/RadarPolicy.cpp
-        src/hud/radar/RadarPolicy.h
-        src/hud/radar/RadarMemory.cpp
-        src/hud/radar/RadarMemory.h
-        src/hud/radar/RadarDump.cpp
-        src/hud/radar/RadarDump.h
-        src/hud/radar/RadarShot.cpp
-        src/hud/radar/RadarShot.h
-        src/hud/radar/RadarTestPlan.cpp
-        src/hud/radar/RadarTestPlan.h
-        src/hud/radar/Overview.cpp
-        src/hud/radar/Overview.h
-        src/hud/radar/MapRender.cpp
-        src/hud/radar/MapRender.h
-        src/hud/radar/MapObjectives.cpp
-        src/hud/radar/MapObjectives.h
-        src/hud/radar/Visibility.cpp
-        src/hud/radar/Visibility.h
-        src/hud/radar/SmokeRegistry.cpp
-        src/hud/radar/SmokeRegistry.h
-        src/hud/radar/RadarBroadcast.cpp
-        src/hud/radar/RadarBroadcast.h
-        src/hud/radar/HudTextZone.cpp
-        src/hud/radar/HudTextZone.h
-        src/hud/radar/RadarHooks.cpp
-        src/hud/radar/RadarHooks.h
-        src/hud/radar/RadarDraw.cpp
-        src/hud/radar/RadarDraw.h
-        src/hud/radar/RadarDebug.cpp
-        src/hud/radar/RadarDebug.h
-        src/hud/radar/RadarFade.cpp
-        src/hud/radar/RadarFade.h
-        src/hud/radar/RadarUtil.h
+        src/hud/radar/RadarFrame.cpp
+        src/hud/radar/render/text/RadarLabel.cpp
+        src/hud/radar/render/text/RadarLabel.h
+        src/hud/radar/render/text/RadarText.cpp
+        src/hud/radar/render/text/RadarText.h
+        src/hud/radar/render/RadarPalette.h
+        src/hud/radar/policy/RadarPolicy.cpp
+        src/hud/radar/policy/RadarPolicy.h
+        src/hud/radar/policy/ObjectiveSource.cpp
+        src/hud/radar/policy/ObjectiveSource.h
+        src/hud/radar/markers/RadarLayerMarker.cpp
+        src/hud/radar/markers/RadarLayerMarker.h
+        src/hud/radar/markers/ServerMarkerMotion.cpp
+        src/hud/radar/markers/ServerMarker.cpp
+        src/hud/radar/markers/ServerMarker.h
+        src/hud/radar/map/Overview.cpp
+        src/hud/radar/map/Overview.h
+        src/hud/radar/map/layers/MapLayerOverrides.cpp
+        src/hud/radar/map/layers/MapLayerOverrides.h
+        src/hud/radar/map/MapGeometry.cpp
+        src/hud/radar/map/MapReachability.cpp
+        src/hud/radar/map/MapGeometry.h
+        src/hud/radar/map/layers/RadarMapLayers.cpp
+        src/hud/radar/map/layers/RadarLayerSelection.cpp
+        src/hud/radar/map/layers/RadarMapLayers.h
+        src/hud/radar/map/layers/RadarLayerAnalysisJob.cpp
+        src/hud/radar/map/layers/RadarLayerAnalysisJob.h
+        src/hud/radar/map/MapBspGeometry.cpp
+        src/hud/radar/map/MapBspGeometry.h
+        src/hud/radar/map/MapRender.cpp
+        src/hud/radar/map/layers/MapLayerCache.cpp
+        src/hud/radar/map/MapLayerRenderer.cpp
+        src/hud/radar/map/MapRenderState.cpp
+        src/hud/radar/map/MapImageTone.cpp
+        src/hud/radar/map/MapImageTone.h
+        src/hud/radar/map/layers/RadarLayerContext.cpp
+        src/hud/radar/map/MapRender.h
+        src/hud/radar/map/MapObjectives.cpp
+        src/hud/radar/map/MapObjectives.h
+        src/hud/radar/policy/Visibility.cpp
+        src/hud/radar/policy/Visibility.h
+        src/hud/radar/policy/SmokeRegistry.cpp
+        src/hud/radar/policy/SmokeRegistry.h
+        src/hud/radar/markers/RadarBroadcast.cpp
+        src/hud/radar/markers/RadarBroadcast.h
+        src/hud/radar/markers/MarkerIdentity.cpp
+        src/hud/radar/markers/MarkerIdentity.h
+        src/hud/radar/markers/MarkerFeed.cpp
+        src/hud/radar/markers/MarkerFeed.h
+        src/hud/radar/render/text/HudTextBuffer.cpp
+        src/hud/radar/render/text/HudTextZone.cpp
+        src/hud/radar/render/text/HudTextZone.h
+        src/hud/radar/integration/RadarHooks.cpp
+        src/hud/radar/integration/RadarHooks.h
+        src/hud/radar/render/RadarDraw.cpp
+        src/hud/radar/render/RadarDraw.h
+        src/hud/radar/render/RadarDrawEffects.cpp
+        src/hud/radar/render/RadarDrawInternal.h
+        src/hud/radar/integration/RadarLayersDump.cpp
+        src/hud/radar/integration/RadarLayersDump.h
+        src/hud/radar/integration/RadarDebug.cpp
+        src/hud/radar/integration/RadarDebug.h
+        src/hud/radar/render/RadarFade.cpp
+        src/hud/radar/render/RadarFade.h
+        src/hud/radar/integration/RadarUtil.h
+        src/hud/radar/RadarTeam.h
+        src/hud/radar/RadarLimits.h
+        src/hud/radar/layers/BackdropLayer.h
+        src/hud/radar/layers/BackdropLayer.cpp
         src/hud/radar/layers/PlayersLayer.h
         src/hud/radar/layers/PlayersLayer.cpp
+        src/hud/radar/layers/players/PlayerTracks.h
+        src/hud/radar/layers/players/PlayerTracks.cpp
+        src/hud/radar/layers/players/PlayerMarkerFade.h
+        src/hud/radar/layers/players/PlayerMarkerFade.cpp
+        src/hud/radar/layers/players/PlayerMarkerHistory.h
+        src/hud/radar/layers/players/PlayerMarkerHistory.cpp
+        src/hud/radar/layers/players/PlayerObserver.h
+        src/hud/radar/layers/players/PlayerObserver.cpp
+        src/hud/radar/layers/players/PlayerLastSeen.h
+        src/hud/radar/layers/players/PlayerLastSeen.cpp
+        src/hud/radar/layers/players/DeathMarks.h
+        src/hud/radar/layers/players/DeathMarks.cpp
         src/hud/radar/layers/ObjectivesLayer.h
         src/hud/radar/layers/ObjectivesLayer.cpp
+        src/hud/radar/layers/objectives/ObjectiveEntities.h
+        src/hud/radar/layers/objectives/ObjectiveEntities.cpp
+        src/hud/radar/layers/objectives/BombMarker.h
+        src/hud/radar/layers/objectives/BombMarker.cpp
+        src/hud/radar/layers/objectives/HostageMarkers.h
+        src/hud/radar/layers/objectives/HostageMarkers.cpp
         src/hud/HudBase.h
         src/hud/HudBaseHelper.h
         src/hud/GameHud.h
@@ -137,6 +190,7 @@ cmrc_add_resource_library(
 
 target_include_directories(${PROJECT_NAME} PRIVATE
         include
+        src
 )
 
 target_link_libraries(${PROJECT_NAME} PRIVATE
@@ -145,10 +199,21 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
         NextClient::engine_mini
         optic::optic
         glad::glad
+        data_types::data_types
         ncl_math::ncl_math
         ncl_gl::ncl_gl
+        ncl_utils::ncl_utils
         ${PROJECT_NAME}::rc
+        view::view
+        cvars::cvars
+        crosshair::crosshair
+        TaskCoro::TaskCoro
 )
+
+if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    # TaskCoro runtime and synchronization context state belong to each module.
+    target_link_options(${PROJECT_NAME} PRIVATE "LINKER:--exclude-libs,$<TARGET_FILE_NAME:TaskCoro>")
+endif()
 
 if (MSVC)
     target_compile_options(${PROJECT_NAME} PRIVATE

@@ -43,6 +43,13 @@
 
 using namespace vgui2;
 
+namespace
+{
+    constexpr const char* kCountryNativeNamesPath = "servers/country_native_names.txt";
+    // the shipped copy only: the game and download directories come first in the search order
+    constexpr const char* kCountryNativeNamesPathId = "PLATFORM";
+} // namespace
+
 static CServerBrowserDialog *s_InternetDlg = NULL;
 
 CServerBrowserDialog &ServerBrowserDialog()
@@ -68,6 +75,8 @@ CServerBrowserDialog::CServerBrowserDialog(vgui2::Panel *parent) : Frame(parent,
     //m_pUniqueGames = nullptr;
     m_pFriendsGames = nullptr;
 
+    // the pages apply the saved country filter as they are created
+    LoadCountryNativeNames();
     LoadUserData();
 
     m_pInternetGames = new CInternetGames(this, false);
@@ -165,6 +174,28 @@ void CServerBrowserDialog::Open()
     m_pTabPanel->RequestFocus();
 
     ivgui()->PostMessage(m_pTabPanel->GetActivePage()->GetVPanel(), new KeyValues("PageShow"), GetVPanel());
+}
+
+void CServerBrowserDialog::LoadCountryNativeNames()
+{
+    FileHandle_t file = g_pFullFileSystem->Open(kCountryNativeNamesPath, "rb", kCountryNativeNamesPathId);
+
+    if (!file)
+    {
+        return;
+    }
+
+    std::string text(g_pFullFileSystem->Size(file), '\0');
+    int read = g_pFullFileSystem->Read(text.data(), static_cast<int>(text.size()), file);
+    g_pFullFileSystem->Close(file);
+
+    text.resize(read > 0 ? static_cast<size_t>(read) : 0);
+    m_CountryNativeNames = ServerBrowserText_ParseCountryNativeNames(text);
+}
+
+const CountryNativeNames& CServerBrowserDialog::get_country_native_names() const
+{
+    return m_CountryNativeNames;
 }
 
 void CServerBrowserDialog::LoadUserData()

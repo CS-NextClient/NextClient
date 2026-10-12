@@ -19,6 +19,10 @@ add_library(${PROJECT_NAME} STATIC
 )
 add_library(TaskCoro::TaskCoro ALIAS ${PROJECT_NAME})
 
+if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    set_target_properties(${PROJECT_NAME} PROPERTIES POSITION_INDEPENDENT_CODE ON)
+endif()
+
 target_include_directories(${PROJECT_NAME} PUBLIC
         include
 )

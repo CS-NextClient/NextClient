@@ -6,6 +6,7 @@
 #include <optick.h>
 #include <nitro_utils/string_utils.h>
 #include <steam/steam_api.h>
+#include <goldsrc/client_api.h>
 
 #include "HttpMasterClient.h"
 #include "FileMasterClient.h"
@@ -58,7 +59,7 @@ std::shared_ptr<MasterClientCacheInterface> MasterClientFactory::CreateCacheClie
         return std::make_shared<NullCacheMasterClient>();
     }
 
-    return std::make_shared<FileMasterClient>(L"internet_cache.dat");
+    return std::make_shared<FileMasterClient>("internet_cache.dat");
 }
 
 void MasterClientFactory::LoadConfigIfNeeded()

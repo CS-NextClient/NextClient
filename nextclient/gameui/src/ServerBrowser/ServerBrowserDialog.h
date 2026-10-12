@@ -22,6 +22,7 @@
 #include <steam/steam_api.h>
 
 #include "FriendsGames.h"
+#include "ServerBrowser/ServerBrowserText.h"
 
 class CServerContextMenu;
 
@@ -54,6 +55,7 @@ public:
     void ActivateTab(ServerBrowserTab tab);
     void SaveUserData();
     KeyValues *GetFilterSaveData(const char *filterSet);
+    const CountryNativeNames& get_country_native_names() const;
 
     Panel *GetActivePage();
     void RefreshCurrentPage();
@@ -80,6 +82,8 @@ public:
 
 private:
     void ReloadFilterSettings();
+    // Loads the country native names file; without it no country has native names
+    void LoadCountryNativeNames();
 
     bool GetDefaultScreenPosition(int &x, int &y, int &wide, int &tall) override;
     void ActivateBuildMode() override;
@@ -106,6 +110,7 @@ private:
 
     KeyValues *m_pSavedData;
     KeyValues *m_pFilterData;
+    CountryNativeNames m_CountryNativeNames{};
 
     CServerContextMenu *m_pContextMenu;
 

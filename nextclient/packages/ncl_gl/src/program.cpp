@@ -138,6 +138,11 @@ namespace ncl_gl
     {
         p = Program{};
 
+        for (GLint& loc : p.loc)
+        {
+            loc = -1;
+        }
+
         GLuint prog = LinkProgram(vs_src, fs_src, attribs, attrib_count, info_log);
 
         if (prog == 0)
@@ -206,6 +211,11 @@ namespace ncl_gl
     )
     {
         p = Program{};
+
+        for (GLint& loc : p.loc)
+        {
+            loc = -1;
+        }
 
         if (data == nullptr || size == 0 || !ProgramBinarySupported())
         {

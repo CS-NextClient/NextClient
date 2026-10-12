@@ -1,10 +1,17 @@
 #include <ncl_gl/loader.h>
 
+#include <cstddef>
+
+#if defined(_WIN32)
 #include <windows.h>
+#else
+#include <SDL_video.h>
+#endif
 #include <glad/glad.h>
 
 void* ncl_gl::LoadProc(const char* name)
 {
+#if defined(_WIN32)
     void* p = reinterpret_cast<void*>(wglGetProcAddress(name));
 
     if (p == nullptr || p == reinterpret_cast<void*>(1) || p == reinterpret_cast<void*>(2) || p == reinterpret_cast<void*>(3) ||
@@ -15,6 +22,9 @@ void* ncl_gl::LoadProc(const char* name)
     }
 
     return p;
+#else
+    return SDL_GL_GetProcAddress(name);
+#endif
 }
 
 namespace

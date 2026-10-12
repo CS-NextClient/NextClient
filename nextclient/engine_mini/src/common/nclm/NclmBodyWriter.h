@@ -1,17 +1,18 @@
 #pragma once
 #include <string>
 #include <vector>
+#include <goldsrc/engine/net.h>
 
 #include "hlsdk.h"
 
 class NclmBodyWriter
 {
-    sizebuf_t* output_buf_{};
-    sizebuf_t temp_buf_{};
+    goldsrc::sizebuf_t* output_buf_{};
+    goldsrc::sizebuf_t temp_buf_{};
     std::vector<uint8_t> temp_buf_data_{};
 
 public:
-    explicit NclmBodyWriter(sizebuf_t* output_buf, int maxsize = 4096);
+    explicit NclmBodyWriter(goldsrc::sizebuf_t* output_buf, int maxsize = 4096);
 
     NclmBodyWriter* WriteByte(uint8_t data);
     NclmBodyWriter* WriteString(const std::string& data);
@@ -26,6 +27,6 @@ public:
 protected:
     std::vector<uint8_t> GetTempBufCurSizeSlice();
     void ReplaceTempBufWithSlice(std::vector<uint8_t>& slice);
-    sizebuf_t* GetTempSizeBuf();
-    sizebuf_t* GetOutputSizeBuf() const;
+    goldsrc::sizebuf_t* GetTempSizeBuf();
+    goldsrc::sizebuf_t* GetOutputSizeBuf() const;
 };

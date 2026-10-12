@@ -4,6 +4,13 @@
 
 #include <next_engine_mini/cl_private_resources.h>
 #include <nitro_utils/string_utils.h>
+#include <cstdint>
+
+#include <goldsrc/engine/client_state.h>
+#include <goldsrc/engine/model.h>
+#include <goldsrc/engine/net.h>
+#include <goldsrc/engine/resource.h>
+#include <goldsrc/types.h>
 
 #include "../engine.h"
 #include "../console/console.h"
@@ -22,51 +29,55 @@ namespace
     constexpr std::string_view kMaterialsPath = "materials/";
 }
 
-static resourcetype_t GetResourceTypeByPath(const std::string& filepath)
+static goldsrc::resourcetype_t GetResourceTypeByPath(const std::string& filepath)
 {
     std::filesystem::path path = filepath;
     if (!path.has_extension() || !path.has_filename())
     {
-        return rt_max;
+        return goldsrc::rt_max;
     }
 
-    resourcetype_t resource_type = rt_max;
+    goldsrc::resourcetype_t resource_type = goldsrc::rt_max;
 
     std::string path_lower = nitro_utils::to_lower_copy(path.string());
 
     if (path_lower.starts_with("sprites/") &&
         (path_lower.ends_with(".spr") || path_lower.ends_with(".txt")))
     {
-        resource_type = t_generic;
+        resource_type = goldsrc::t_generic;
     }
     else if (path_lower.starts_with(kSoundPath) &&
         (path_lower.ends_with(".wav") || path_lower.ends_with(".mp3")))
     {
-        resource_type = t_sound;
+        resource_type = goldsrc::t_sound;
     }
     // .mat is a material preset, .png and .tga are the only images a material may name.
     else if (path_lower.starts_with(kMaterialsPath) &&
         (path_lower.ends_with(".mat") || path_lower.ends_with(".png") || path_lower.ends_with(".tga")))
     {
-        resource_type = t_generic;
+        resource_type = goldsrc::t_generic;
     }
 
     return resource_type;
 }
 
-static resourcetype_t ValidateClientResourceAndGetType(const ResourceDescriptor& resource_descriptor)
+static goldsrc::resourcetype_t ValidateClientResourceAndGetType(const ResourceDescriptor& resource_descriptor)
 {
-    resourcetype_t download_type = GetResourceTypeByPath(resource_descriptor.get_download_path());
+    goldsrc::resourcetype_t download_type = GetResourceTypeByPath(resource_descriptor.get_download_path());
 
     if (download_type != GetResourceTypeByPath(resource_descriptor.get_filename()))
     {
-        return rt_max;
+        return goldsrc::rt_max;
     }
 
     return download_type;
 }
 
-static void AddPrivateResource(bool client_only, const std::string& filename, const std::string& download_path, CRC32_t server_crc, int size)
+static void AddPrivateResource(bool client_only,
+                               const std::string& filename,
+                               const std::string& download_path,
+                               goldsrc::CRC32_t server_crc,
+                               int size)
 {
     client_stateex.privateResources.try_emplace(filename, ResourceDescriptor { filename, download_path, server_crc, size, client_only });
     client_stateex.privateResourcesReverseCache[download_path].emplace(filename);
@@ -102,18 +113,18 @@ void PrivateRes_ListRequest()
 
     CL_HTTPStop_f();
 
-    byte data[65536];
-    sizebuf_t msg;
+    uint8_t data[65536];
+    goldsrc::sizebuf_t msg;
 
     MSG_Init(&msg, "Private ResList", data, sizeof(data));
 
-    if (cls->state == ca_disconnected || cls->state == ca_active)
+    if (cls->state == goldsrc::ca_disconnected || cls->state == goldsrc::ca_active)
     {
         Con_DPrintf(ConLogType::Info, "Invalid state for PrivateRes_ListRequest: %d. skipping download of %s\n", cls->state, filename);
         return;
     }
 
-    MSG_WriteByte(&msg, clc_stringcmd);
+    MSG_WriteByte(&msg, goldsrc::clc_stringcmd);
     MSG_WriteString(&msg, va("dlfile \"%s\"", filename));
 
     Netchan_CreateFragments(false, &cls->netchan, &msg);
@@ -209,29 +220,29 @@ void PrivateRes_ParseDownloadPath(const std::string& cmd)
     }
 }
 
-void PrivateRes_AddClientOnlyResources(resource_t* list)
+void PrivateRes_AddClientOnlyResources(goldsrc::resource_t* list)
 {
     for (const auto& [filepath, res_descriptor] : client_stateex.privateResources)
     {
         if (!res_descriptor.is_client_only())
             continue;
 
-        resourcetype_t resource_type = ValidateClientResourceAndGetType(res_descriptor);
+        goldsrc::resourcetype_t resource_type = ValidateClientResourceAndGetType(res_descriptor);
 
-        if (resource_type == rt_max)
+        if (resource_type == goldsrc::rt_max)
         {
             Con_DPrintf(ConLogType::Info, "Can't add private resource to resource list '%s' for security reason\n", res_descriptor.get_filename().c_str());
             continue;
         }
 
-        // resource list keeps t_sound paths relative to DEFAULT_SOUNDPATH, while a private resource is keyed by the full client path
+        // resource list keeps goldsrc::t_sound paths relative to DEFAULT_SOUNDPATH, while a private resource is keyed by the full client path
         const char* resource_name = filepath.c_str();
-        if (resource_type == t_sound)
+        if (resource_type == goldsrc::t_sound)
         {
             resource_name += kSoundPath.size();
         }
 
-        auto* res = (resource_t*)Mem_ZeroMalloc(sizeof(resource_t));
+        auto* res = (goldsrc::resource_t*)Mem_ZeroMalloc(sizeof(goldsrc::resource_t));
         V_strcpy_safe(res->szFileName, resource_name);
         res->type = resource_type;
         res->nDownloadSize = res_descriptor.get_download_size();
@@ -245,7 +256,7 @@ void PrivateRes_UnloadResources()
     if (client_stateex.privateResources.empty())
         return;
 
-    Mod_UnloadFiltered([](model_t* model) {
+    Mod_UnloadFiltered([](goldsrc::model_t* model) {
         return client_stateex.privateResources.contains(model->name);
     });
 

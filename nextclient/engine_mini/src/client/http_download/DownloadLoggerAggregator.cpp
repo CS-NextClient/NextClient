@@ -1,5 +1,7 @@
 #include "DownloadLoggerAggregator.h"
 
+#include <algorithm>
+
 void DownloadLoggerAggregator::AddLogFileError(const char* filename, LogFileTypeError type, int error_code, int http_code)
 {
     for (auto& logger : loggers_)

@@ -1,6 +1,6 @@
 #pragma once
 
-#include <ref_params.h>
+#include <goldsrc/view.h>
 
 void CameraInit();
-void CameraApplyMovement(ref_params_t *pparams);
+void CameraApplyMovement(goldsrc::ref_params_t* pparams);

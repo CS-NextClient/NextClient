@@ -9,9 +9,7 @@
 #include <cmath>
 
 #include <FileSystem.h>
-// studio.h uses vec3_t without declaring it.
-#include <tier0/basetypes.h>
-#include <studio.h>
+#include <goldsrc/format/studio.h>
 #include <vgui/ILocalize.h>
 #include <vgui/IScheme.h>
 #include <vgui/ISurfaceNext.h>
@@ -299,7 +297,7 @@ namespace
             return false;
         }
 
-        studiohdr_t header = {};
+        goldsrc::studiohdr_t header{};
         int read = g_pFullFileSystem->Read(&header, sizeof(header), file);
 
         g_pFullFileSystem->Close(file);

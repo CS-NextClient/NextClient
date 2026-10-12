@@ -1,0 +1,27 @@
+In file included from C:\fixture\build\probe.cpp:1:
+In file included from C:/fixture/nextclient/client_mini/src/use.cpp:1:
+C:\fixture\dep\NclNitroApi\dep\ncl-hl1-source-sdk\common\values.h(18,6): warning: forward references to 'enum' types are a Microsoft extension [-Wmicrosoft-enum-forward-reference]
+   18 | enum late_e;
+      |      ^
+C:\fixture\build\probe.cpp(16,15): error: static assertion failed due to requirement 'sizeof(packed_s) == 40': goldsrc_abi 12
+   16 | static_assert(sizeof(struct ::packed_s) == 40, "goldsrc_abi 12");
+      |               ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+C:\fixture\build\probe.cpp(16,41): note: expression evaluates to '42 == 40'
+   16 | static_assert(sizeof(struct ::packed_s) == 40, "goldsrc_abi 12");
+      |               ~~~~~~~~~~~~~~~~~~~~~~~~~~^~~~~
+C:\fixture\build\probe.cpp(19,15): error: no member named 'missing_member' in 'packed_s'
+   19 | static_assert(__builtin_offsetof(struct ::packed_s, missing_member) == 1, "goldsrc_abi 15");
+      |               ^                                     ~~~~~~~~~~~~~~
+C:\fixture\build\probe.cpp(34,15): warning: 'offsetof' on non-standard-layout type 'class ::IProbeHost' [-Winvalid-offsetof]
+   34 | static_assert(__builtin_offsetof(class ::IProbeHost, m_count) == 8, "goldsrc_abi 30");
+      |               ^                                      ~~~~~~~
+C:\fixture\build\probe.cpp(35,15): warning: 'offsetof' on non-standard-layout type 'class ::IProbeHost' [-Winvalid-offsetof]
+   35 | static_assert(__builtin_offsetof(class ::IProbeHost, m_phase) == 12, "goldsrc_abi 31");
+      |               ^                                      ~~~~~~~
+C:\fixture\build\probe.cpp(36,15): warning: 'offsetof' on non-standard-layout type 'class ::IProbeHost' [-Winvalid-offsetof]
+   36 | static_assert(__builtin_offsetof(class ::IProbeHost, m_slots) == 16, "goldsrc_abi 32");
+      |               ^                                      ~~~~~~~
+C:\fixture\build\probe.cpp(78,15): error: static assertion failed: goldsrc_abi probe end
+   78 | static_assert(false, "goldsrc_abi probe end");
+      |               ^~~~~
+4 warnings and 3 errors generated.

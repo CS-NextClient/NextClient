@@ -6,8 +6,7 @@
 
 #include <ncl_studio/StudioTextures.h>
 
-#include <tier0/basetypes.h>
-#include <studio.h>
+#include <goldsrc/format/studio.h>
 
 using namespace ncl_studio;
 
@@ -22,25 +21,25 @@ namespace
     public:
         TextureFileBuilder()
         {
-            buffer_.resize(sizeof(studiohdr_t) + 4096);
+            buffer_.resize(sizeof(goldsrc::studiohdr_t) + 4096);
             std::memset(buffer_.data(), 0, buffer_.size());
 
             header().version = kStudioVersion;
             header().length = static_cast<int>(buffer_.size());
 
             header().numbones = 1;
-            header().boneindex = sizeof(studiohdr_t);
+            header().boneindex = sizeof(goldsrc::studiohdr_t);
 
             header().numbodyparts = 1;
-            header().bodypartindex = sizeof(studiohdr_t) + 512;
+            header().bodypartindex = sizeof(goldsrc::studiohdr_t) + 512;
 
             header().numtextures = 2;
-            header().textureindex = sizeof(studiohdr_t) + 1536;
-            header().texturedataindex = sizeof(studiohdr_t) + 2048;
+            header().textureindex = sizeof(goldsrc::studiohdr_t) + 1536;
+            header().texturedataindex = sizeof(goldsrc::studiohdr_t) + 2048;
 
             header().numskinref = 2;
             header().numskinfamilies = 2;
-            header().skinindex = sizeof(studiohdr_t) + 1024;
+            header().skinindex = sizeof(goldsrc::studiohdr_t) + 1024;
 
             for (int i = 0; i < header().numtextures; i++)
             {
@@ -57,12 +56,12 @@ namespace
             skins()[3] = 0;
         }
 
-        studiohdr_t& header() { return *reinterpret_cast<studiohdr_t*>(buffer_.data()); }
+        goldsrc::studiohdr_t& header() { return *reinterpret_cast<goldsrc::studiohdr_t*>(buffer_.data()); }
 
-        mstudiotexture_t& texture(int index)
+        goldsrc::mstudiotexture_t& texture(int index)
         {
-            mstudiotexture_t* textures =
-                reinterpret_cast<mstudiotexture_t*>(buffer_.data() + header().textureindex);
+            goldsrc::mstudiotexture_t* textures =
+                reinterpret_cast<goldsrc::mstudiotexture_t*>(buffer_.data() + header().textureindex);
 
             return textures[index];
         }
@@ -102,7 +101,7 @@ TEST(StudioTextures, RejectsABufferShorterThanTheHeader)
 {
     TextureFileBuilder file;
 
-    ncl_utils::ResultT<StudioTextures> result = ReadStudioTextures(file.data(), sizeof(studiohdr_t) - 1);
+    ncl_utils::ResultT<StudioTextures> result = ReadStudioTextures(file.data(), sizeof(goldsrc::studiohdr_t) - 1);
     ASSERT_TRUE(result.has_error());
     EXPECT_NE(result.error_str().find("smaller than a studio header"), std::string::npos) << result.error_str();
 }

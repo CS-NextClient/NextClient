@@ -1,10 +1,16 @@
 #include "BaseGamesPage.h"
 #include "ServerListCompare.h"
 #include "ServerBrowserDialog.h"
+#include "ServerBrowser/ServerBrowserText.h"
+#include "ServerBrowser/ServerFilterComboBox.h"
+#include "ServerBrowser/ServerFilterCounts.h"
+#include "ServerBrowser/ServerGameModeNames.h"
 #include <GameServerHelpers.h>
 
+#include <vgui/IInputInternal.h>
 #include <vgui/ILocalize.h>
 #include <vgui/ISchemeNext.h>
+#include <vgui/ISystem.h>
 #include <vgui/IVGui.h>
 #include <vgui/KeyCode.h>
 #include <vgui/IPanel.h>
@@ -17,22 +23,102 @@
 #include <vgui_controls/ListPanel.h>
 #include <vgui_controls/Tooltip.h>
 
+#include <algorithm>
 #include <cstdio>
 #include <format>
 #include <iomanip>
+#include <iterator>
+#include <set>
 #include <sstream>
+#include <string_view>
 #include <utility>
 
+#include <nitro_utils/string_utils.h>
+
+#ifdef _WIN32
 #include <Windows.h>
+#else
+#ifndef MAX_PATH
+#define MAX_PATH 260
+#endif
+#endif
 
 using namespace vgui2;
+
+namespace
+{
+    constexpr int kFlagColumnWidth = 20;
+    // the All item and every mode of kServerGameModeNames
+    constexpr int kGameModeFilterLines = 17;
+    constexpr int kCountryFilterLines = 10;
+    constexpr double kFilterCountsIntervalSeconds = 0.2;
+    // the "All" item heads the mode and country filters; their values follow it
+    constexpr int kAllFilterItemRow = 0;
+    constexpr int kFirstFilterValueRow = kAllFilterItemRow + 1;
+
+    std::string CountryNameToken(const char* country_code)
+    {
+        return std::format("NextClient_Country_{}", country_code);
+    }
+
+    // the code must be lower case, as the scheme names the flag images
+    std::string FlagImageName(std::string_view country_code)
+    {
+        return std::format("servers/flags/{}", country_code);
+    }
+
+    // a tooltip takes Unicode text only through a localization token, and AddString stores another copy of the
+    // value every time, so a country is registered again only when a name replaces its code
+    void RegisterCountryTooltip(const char* country_code, const char* country_name)
+    {
+        static std::unordered_map<std::string, std::string> registered_labels;
+
+        std::string label = ServerBrowserText_GetCountryLabel(country_code, country_name);
+        auto registered_it = registered_labels.find(country_code);
+
+        if (registered_it != registered_labels.end() && (!country_name[0] || registered_it->second == label))
+        {
+            return;
+        }
+
+        registered_labels[country_code] = label;
+
+        std::wstring text = nitro_utils::utf8_to_wide(label);
+        g_pVGuiLocalize->AddString(CountryNameToken(country_code).c_str(), text.data(), "");
+    }
+
+    struct GameModeListing
+    {
+        std::wstring display_name{};
+        const ServerGameModeName* mode_name{};
+    };
+
+    std::vector<GameModeListing> ListGameModesByDisplayName()
+    {
+        std::vector<GameModeListing> listings;
+
+        for (const ServerGameModeName& mode_name : kServerGameModeNames)
+        {
+            const wchar_t* display_name = g_pVGuiLocalize->Find(mode_name.token);
+            listings.push_back({display_name != nullptr ? display_name : nitro_utils::utf8_to_wide(mode_name.name), &mode_name});
+        }
+
+        std::ranges::sort(listings, [](const GameModeListing& a, const GameModeListing& b) {
+            return _wcsicmp(a.display_name.c_str(), b.display_name.c_str()) < 0;
+        });
+
+        return listings;
+    }
+} // namespace
 
 const std::vector<GameListColumnType> CBaseGamesPage::DefaultColumns
 {
     GameListColumnType::Password,
     GameListColumnType::Bots,
     GameListColumnType::Secure,
+    GameListColumnType::Country,
     GameListColumnType::ServerName,
+    GameListColumnType::GameMode,
     GameListColumnType::GameDesc,
     GameListColumnType::Players,
     GameListColumnType::Map,
@@ -45,6 +131,9 @@ CGameListPanel::CGameListPanel(CBaseGamesPage *pOuter, const char *pName) : Base
     m_pOuter = pOuter;
 
     SetIgnoreDoubleClick(false);
+
+    // a tooltip that exists when the cursor enters the list gets its show delay armed by the entry
+    GetTooltip();
 }
 
 void CGameListPanel::OnKeyCodeTyped(vgui2::KeyCode code)
@@ -58,6 +147,65 @@ void CGameListPanel::OnKeyCodeTyped(vgui2::KeyCode code)
 CBaseGamesPage *CGameListPanel::GetOuterGamesPage() const
 {
     return m_pOuter;
+}
+
+void CGameListPanel::OnThink()
+{
+    BaseClass::OnThink();
+
+    const char* country_code = "";
+
+    int cursor_x;
+    int cursor_y;
+    input()->GetCursorPos(cursor_x, cursor_y);
+
+    int row;
+    int column;
+
+    // rows move under a still cursor when the list scrolls, sorts or refills
+    bool over_cell = input()->GetMouseOver() == GetVPanel() && GetCellAtPos(cursor_x, cursor_y, row, column);
+
+    if (over_cell && column == m_pOuter->GetColumnIndex(GameListColumnType::Country))
+    {
+        country_code = GetItem(GetItemIDFromRow(row))->GetString("_country");
+    }
+
+    SetTooltipCountry(country_code);
+}
+
+void CGameListPanel::OnCursorExited()
+{
+    SetTooltipCountry("");
+
+    BaseClass::OnCursorExited();
+}
+
+void CGameListPanel::RemoveAll()
+{
+    BaseClass::RemoveAll();
+
+    m_pOuter->OnGameListCleared();
+}
+
+void CGameListPanel::SetTooltipCountry(const char* country_code)
+{
+    if (!V_strcmp(country_code, m_szTooltipCountryCode))
+    {
+        return;
+    }
+
+    V_strcpy_safe(m_szTooltipCountryCode, country_code);
+
+    if (!country_code[0])
+    {
+        GetTooltip()->SetText("");
+        GetTooltip()->HideTooltip();
+        return;
+    }
+
+    // a tooltip already on screen is re-laid out at once; one not shown yet keeps its delay
+    GetTooltip()->SetText(("#" + CountryNameToken(country_code)).c_str());
+    GetTooltip()->ShowTooltip(this);
 }
 
 CBaseGamesPage::CBaseGamesPage(vgui2::Panel *parent, const char *name, const char *pCustomResFilename, const std::vector<GameListColumnType>& columns) :
@@ -98,6 +246,14 @@ CBaseGamesPage::CBaseGamesPage(vgui2::Panel *parent, const char *name, const cha
             m_pGameList->SetColumnHeaderTooltip(i, "#ServerBrowser_PasswordColumn_Tooltip");
             break;
 
+        case GameListColumnType::Country:
+            m_pGameList->AddColumnHeader(
+                i, "Country", "#ServerBrowser_Country", kFlagColumnWidth, ListPanel::COLUMN_FIXEDSIZE | ListPanel::COLUMN_IMAGE
+            );
+            m_pGameList->SetSortFunc(i, CountryCompare);
+            m_pGameList->SetColumnHeaderTooltip(i, "#ServerBrowser_CountryColumn_Tooltip");
+            break;
+
         case GameListColumnType::Bots:
             m_pGameList->AddColumnHeader(i, "Bots", "#ServerBrowser_Bots", 17, ListPanel::COLUMN_FIXEDSIZE | ListPanel::COLUMN_HIDDEN);
             m_pGameList->SetSortFunc(i, BotsCompare);
@@ -114,6 +270,10 @@ CBaseGamesPage::CBaseGamesPage(vgui2::Panel *parent, const char *name, const cha
             break;
         case GameListColumnType::ServerDesc:
             m_pGameList->AddColumnHeader(i, "ServerDesc", "#ServerBrowser_ServerDesc", 100, ListPanel::COLUMN_RESIZEWITHWINDOW);
+            break;
+        case GameListColumnType::GameMode:
+            m_pGameList->AddColumnHeader(i, "GameMode", "#ServerBrowser_GameMode", 70, 70, 300);
+            m_pGameList->SetSortFunc(i, GameModeCompare);
             break;
         case GameListColumnType::GameDesc:
             m_pGameList->AddColumnHeader(i, "GameDesc", "#ServerBrowser_Game", 112, 112, 300);
@@ -225,6 +385,15 @@ bool CBaseGamesPage::IsActivated()
 void CBaseGamesPage::OnTick()
 {
     BaseClass::OnTick();
+
+    bool servers_changed = m_Servers.get_revision() != m_iFilterCountsRevision;
+    double now = vgui2::system()->GetFrameTime();
+
+    if ((servers_changed || m_bFilterCountsStale || m_bCountryFilterItemsStale) && now >= m_flNextFilterCountsTime)
+    {
+        m_flNextFilterCountsTime = now + kFilterCountsIntervalSeconds;
+        UpdateFilterCounts();
+    }
 }
 
 void CBaseGamesPage::ApplySchemeSettings(IScheme *pScheme)
@@ -240,6 +409,16 @@ void CBaseGamesPage::ApplySchemeSettings(IScheme *pScheme)
     int column_password = imageList->AddImage(scheme()->GetImage("servers/icon_password_column", false));
     int column_bots = imageList->AddImage(scheme()->GetImage("servers/icon_bots_column", false));
     int secure_column = imageList->AddImage(scheme()->GetImage("servers/icon_robotron_column", false));
+    int column_country = imageList->AddImage(scheme()->GetImage("servers/icon_country_column", false));
+
+    // the flags go back in their original order so the indices stored in the rows stay valid
+    m_pImageList = imageList;
+    m_FlagImages.clear();
+
+    for (const std::string& country_code : m_FlagImageOrder)
+    {
+        m_FlagImages.emplace(country_code, imageList->AddImage(scheme()->GetImage(FlagImageName(country_code).c_str(), false)));
+    }
 
     m_pGameList->SetImageList(imageList, true);
     m_hFont = pScheme->GetFont("ListSmall", IsProportional());
@@ -257,6 +436,11 @@ void CBaseGamesPage::ApplySchemeSettings(IScheme *pScheme)
 
     if (m_ColumnsMap.contains(GameListColumnType::Secure))
         m_pGameList->SetColumnHeaderImage(m_ColumnsMap[GameListColumnType::Secure], secure_column);
+
+    if (m_ColumnsMap.contains(GameListColumnType::Country))
+    {
+        m_pGameList->SetColumnHeaderImage(m_ColumnsMap[GameListColumnType::Country], column_country);
+    }
 
     OnButtonToggled(m_pFilter, false);
 }
@@ -277,6 +461,20 @@ void CBaseGamesPage::CreateFilters()
     m_pLocationFilter->AddItem("", NULL);
 
     m_pMapFilter = new TextEntry(this, "MapFilter");
+
+    m_pGameModeFilter = new CServerFilterComboBox(this, "GameModeFilter", kGameModeFilterLines, false);
+    m_pGameModeFilter->AddItem("#ServerBrowser_All", nullptr);
+
+    for (const GameModeListing& listing : ListGameModesByDisplayName())
+    {
+        KeyValues* mode = new KeyValues("mode", "name", listing.mode_name->name);
+        m_pGameModeFilter->AddItem(listing.mode_name->token, mode);
+        mode->deleteThis();
+    }
+
+    m_pCountryFilter = new CServerFilterComboBox(this, "CountryFilter", kCountryFilterLines, true);
+    m_pCountryFilter->AddItem("#ServerBrowser_All", nullptr);
+
     m_pPingFilter = new ComboBox(this, "PingFilter", 6, false);
     m_pPingFilter->AddItem("#ServerBrowser_All", NULL);
     m_pPingFilter->AddItem("#ServerBrowser_LessThan50", NULL);
@@ -318,6 +516,29 @@ void CBaseGamesPage::LoadFilterSettings()
 
     m_pMapFilter->SetText(m_szMapFilter);
     m_pLocationFilter->ActivateItem(filter->GetInt("location"));
+
+    V_strcpy_safe(m_szGameModeFilter, filter->GetString("GameMode"));
+
+    for (int i = 0; i < m_pGameModeFilter->GetItemCount(); i++)
+    {
+        KeyValues* mode = m_pGameModeFilter->GetItemUserData(i);
+
+        if (!V_stricmp(mode ? mode->GetString("name") : "", m_szGameModeFilter))
+        {
+            m_pGameModeFilter->ActivateItem(i);
+            break;
+        }
+    }
+
+    std::wstring country_text = nitro_utils::utf8_to_wide(filter->GetString("Country"));
+    V_wcscpy_safe(m_wszCountryFilter, nitro_utils::to_lower_copy(country_text).c_str());
+
+    if (m_wszCountryFilter[0])
+    {
+        V_strcpy_safe(m_szCountryCodeFilter, filter->GetString("CountryCode"));
+    }
+
+    m_pCountryFilter->SetText(country_text.c_str());
 
     if (m_iPingFilter)
     {
@@ -368,11 +589,8 @@ void CBaseGamesPage::UpdateGameFilter()
     }
 }
 
-void CBaseGamesPage::ServerResponded(serveritem_t &server)
+void CBaseGamesPage::UpdateServerListItem(serveritem_t &server, bool sort_on_add)
 {
-    if (!CheckPrimaryFilters(server) || !CheckSecondaryFilters(server))
-        return;
-
     KeyValues *kv;
     bool newItem = !m_pGameList->IsValidItemID(server.listEntryID) || m_pGameList->GetItemUserData(server.listEntryID) != server.serverID;
 
@@ -388,6 +606,9 @@ void CBaseGamesPage::ServerResponded(serveritem_t &server)
     kv->SetInt("password", server.gs.m_bPassword ? 1 : 0);
     kv->SetString("secure", server.gs.m_bSecure ? std::format("!img:{}", m_iSecureImage).c_str() : "");
     kv->SetString("bots", server.gs.m_nBotPlayers > 0 ? std::to_string(server.gs.m_nBotPlayers).c_str() : "");
+    kv->SetInt("Country", GetFlagImageIndex(server.next_details.country_code));
+    kv->SetString("_country", server.next_details.country_code);
+    kv->SetString("GameMode", ServerGameMode_GetCellText(server.next_details.game_mode));
     kv->SetString("address", server.gs.m_NetAdr.GetConnectionAddressString().c_str());
     kv->SetInt("_ip", server.gs.m_NetAdr.GetIP());
     kv->SetInt("_port", server.gs.m_NetAdr.GetConnectionPort());
@@ -411,9 +632,189 @@ void CBaseGamesPage::ServerResponded(serveritem_t &server)
         kv->SetString("Ping", "");
 
     if (newItem)
-        server.listEntryID = m_pGameList->AddItem(kv, server.serverID, false, true);
+    {
+        server.listEntryID = m_pGameList->AddItem(kv, server.serverID, false, sort_on_add);
+        kv->deleteThis();
+    }
     else
+    {
         m_pGameList->ApplyItemChanges(server.listEntryID);
+    }
+}
+
+int CBaseGamesPage::GetFlagImageIndex(const char* country_code)
+{
+    if (!country_code[0] || !m_pImageList)
+    {
+        return 0;
+    }
+
+    std::string code = country_code;
+    V_strlower(code.data());
+
+    auto it = m_FlagImages.find(code);
+
+    if (it != m_FlagImages.end())
+    {
+        return it->second;
+    }
+
+    int index = m_pImageList->AddImage(scheme()->GetImage(FlagImageName(code).c_str(), false));
+    m_FlagImages.emplace(code, index);
+    m_FlagImageOrder.push_back(code);
+
+    return index;
+}
+
+void CBaseGamesPage::RegisterCountry(const ServerDetailsNext& details)
+{
+    if (!details.country_code[0])
+    {
+        return;
+    }
+
+    RegisterCountryTooltip(details.country_code, details.country_name);
+
+    auto [country, inserted] = m_KnownCountries.try_emplace(details.country_code, details.country_name);
+
+    if (!inserted && (!country->second.empty() || !details.country_name[0]))
+    {
+        return;
+    }
+
+    country->second = details.country_name;
+    m_bCountryFilterItemsStale = true;
+}
+
+void CBaseGamesPage::UpdateFilterCounts()
+{
+    ServerFilterCounts counts;
+
+    for (auto& entry : m_Servers)
+    {
+        serveritem_t& server = entry.second;
+
+        if (!server.hadSuccessfulResponse || !CheckPrimaryFilters(server) || !MatchesServerInfoFilters(server))
+        {
+            continue;
+        }
+
+        const ServerDetailsNext& details = server.next_details;
+        ServerFilterCounts_Add(details, MatchesGameModeFilter(details), MatchesCountryFilter(details), &counts);
+    }
+
+    m_iFilterCountsRevision = m_Servers.get_revision();
+    m_bFilterCountsStale = false;
+
+    m_pGameModeFilter->SetItemCount(m_pGameModeFilter->GetItemIDFromRow(kAllFilterItemRow), counts.all_game_modes);
+
+    for (int row = kFirstFilterValueRow; row < m_pGameModeFilter->GetItemCount(); row++)
+    {
+        int item_id = m_pGameModeFilter->GetItemIDFromRow(row);
+        int game_mode = ServerGameMode_FindIndex(m_pGameModeFilter->GetItemUserData(item_id)->GetString("name"));
+
+        m_pGameModeFilter->SetItemCount(item_id, counts.game_modes[game_mode]);
+    }
+
+    // rebuilding an open drop-down would pull its rows from under the cursor
+    if (m_bCountryFilterItemsStale && m_pCountryFilter->IsDropdownVisible())
+    {
+        AddMissingCountryFilterItems();
+    }
+    else if (m_bCountryFilterItemsStale)
+    {
+        RebuildCountryFilterItems();
+    }
+
+    m_pCountryFilter->SetItemCount(m_pCountryFilter->GetItemIDFromRow(kAllFilterItemRow), counts.all_countries);
+
+    for (int row = kFirstFilterValueRow; row < m_pCountryFilter->GetItemCount(); row++)
+    {
+        int item_id = m_pCountryFilter->GetItemIDFromRow(row);
+        auto count_it = counts.countries.find(m_pCountryFilter->GetItemUserData(item_id)->GetString("code"));
+
+        m_pCountryFilter->SetItemCount(item_id, count_it != counts.countries.end() ? count_it->second : 0);
+    }
+}
+
+void CBaseGamesPage::RebuildCountryFilterItems()
+{
+    std::vector<std::pair<std::wstring, std::string>> countries;
+
+    for (const auto& [code, name] : m_KnownCountries)
+    {
+        countries.emplace_back(nitro_utils::utf8_to_wide(ServerBrowserText_GetCountryLabel(code, name)), code);
+    }
+
+    std::sort(countries.begin(), countries.end());
+
+    m_pCountryFilter->RemoveAll();
+    m_pCountryFilter->AddItem("#ServerBrowser_All", nullptr);
+
+    for (const auto& [label, code] : countries)
+    {
+        AddCountryFilterItem(label, code);
+    }
+
+    m_bCountryFilterItemsStale = false;
+}
+
+void CBaseGamesPage::AddMissingCountryFilterItems()
+{
+    std::set<std::string> listed_codes;
+
+    for (int row = kFirstFilterValueRow; row < m_pCountryFilter->GetItemCount(); row++)
+    {
+        listed_codes.insert(m_pCountryFilter->GetItemUserData(m_pCountryFilter->GetItemIDFromRow(row))->GetString("code"));
+    }
+
+    for (const auto& [code, name] : m_KnownCountries)
+    {
+        if (!listed_codes.contains(code))
+        {
+            AddCountryFilterItem(nitro_utils::utf8_to_wide(ServerBrowserText_GetCountryLabel(code, name)), code);
+        }
+    }
+}
+
+void CBaseGamesPage::AddCountryFilterItem(const std::wstring& label, const std::string& code)
+{
+    KeyValues* country = new KeyValues("country", "code", code.c_str());
+    m_pCountryFilter->AddItem(label.c_str(), country);
+    country->deleteThis();
+}
+
+int CBaseGamesPage::GetColumnIndex(GameListColumnType type) const
+{
+    auto it = m_ColumnsMap.find(type);
+
+    return it != m_ColumnsMap.end() ? it->second : -1;
+}
+
+void CBaseGamesPage::OnGameListCleared()
+{
+    m_KnownCountries.clear();
+    m_bCountryFilterItemsStale = true;
+}
+
+void CBaseGamesPage::ServerResponded(serveritem_t &server)
+{
+    RegisterCountry(server.next_details);
+
+    if (!CheckPrimaryFilters(server) || !CheckSecondaryFilters(server))
+    {
+        if (m_pGameList->IsValidItemID(server.listEntryID))
+        {
+            m_pGameList->SetItemVisible(server.listEntryID, false);
+            UpdateRefreshStatusText();
+        }
+
+        return;
+    }
+
+    UpdateServerListItem(server, true);
+
+    m_pGameList->SetItemVisible(server.listEntryID, true);
 
     UpdateRefreshStatusText();
 
@@ -521,23 +922,7 @@ void CBaseGamesPage::ApplyGameFilters()
         else if (server.hadSuccessfulResponse)
         {
             if (!m_pGameList->IsValidItemID(server.listEntryID))
-            {
-                auto *kv = new KeyValues("Server");
-                kv->SetString("name", server.gs.GetName().c_str());
-                kv->SetString("map", server.gs.m_szMap);
-                kv->SetString("GameDir", server.gs.m_szGameDir);
-                kv->SetString("GameDesc", server.gs.m_szGameDescription);
-
-                char buf[256];
-                sprintf(buf, "%d / %d", GetHumanPlayerCount(server.gs), server.gs.m_nMaxPlayers);
-                kv->SetString("Players", buf);
-                kv->SetInt("Ping", server.gs.m_nPing);
-                kv->SetInt("password", server.gs.m_bPassword ? 1 : 0);
-                kv->SetInt("Secure", server.gs.m_bSecure ? 1 : 0);
-                kv->SetInt("ValidSteamAccount", server.gs.m_steamID.IsValid() ? 1 : 0);
-
-                server.listEntryID = m_pGameList->AddItem(kv, server.serverID, false, false);
-            }
+                UpdateServerListItem(server, false);
 
             m_pGameList->SetItemVisible(server.listEntryID, true);
         }
@@ -558,7 +943,11 @@ void CBaseGamesPage::UpdateRefreshStatusText()
         wchar_t header[256];
         wchar_t count[128];
 
+#ifdef _WIN32
         _itow(m_pGameList->GetItemCount(), count, 10);
+#else
+        swprintf(count, sizeof(count) / sizeof(count[0]), L"%d", m_pGameList->GetItemCount());
+#endif
         g_pVGuiLocalize->ConstructString(header, sizeof(header), g_pVGuiLocalize->Find("#ServerBrowser_ServersCount"), 1, count);
 
         if (m_ColumnsMap.contains(GameListColumnType::ServerName))
@@ -608,6 +997,25 @@ void CBaseGamesPage::UpdateFilterSettings()
     m_bFilterNoPasswordedServers = m_pNoPasswordFilterCheck->IsSelected();
     //m_bFilterValidSteamAccount = m_pValidSteamAccountFilterCheck->IsSelected();
 
+    KeyValues* mode = m_pGameModeFilter->GetActiveItemUserData();
+
+    V_strcpy_safe(m_szGameModeFilter, mode ? mode->GetString("name") : "");
+
+    wchar_t country_text[kCountryFilterTextSize];
+    m_pCountryFilter->GetText(country_text, sizeof(country_text));
+    std::wstring country_filter = nitro_utils::to_lower_copy(country_text);
+
+    // the code found for the text is kept until the text changes
+    if (country_filter != m_wszCountryFilter || !m_szCountryCodeFilter[0])
+    {
+        V_wcscpy_safe(m_wszCountryFilter, country_filter.c_str());
+
+        const CountryNativeNames& native_names = ServerBrowserDialog().get_country_native_names();
+        V_strcpy_safe(
+            m_szCountryCodeFilter, ServerBrowserText_FindCountryCode(m_KnownCountries, native_names, country_filter.c_str()).c_str()
+        );
+    }
+
     buf[0] = 0;
 
     if (m_szGameFilter[0])
@@ -650,10 +1058,15 @@ void CBaseGamesPage::UpdateFilterSettings()
     filter->SetInt("NoFull", m_bFilterNoFullServers);
     filter->SetInt("NoEmpty", m_bFilterNoEmptyServers);
     filter->SetInt("NoPassword", m_bFilterNoPasswordedServers);
+    filter->SetString("GameMode", m_szGameModeFilter);
+    filter->SetString("Country", nitro_utils::wide_to_utf8(country_text).c_str());
+    filter->SetString("CountryCode", m_szCountryCodeFilter);
 
     OnSaveFilter(filter);
 
     RecalculateMasterFilter();
+
+    m_bFilterCountsStale = true;
 }
 
 void CBaseGamesPage::OnSaveFilter(KeyValues *filter)
@@ -719,10 +1132,15 @@ bool CBaseGamesPage::CheckPrimaryFilters(serveritem_t &server)
 
 bool CBaseGamesPage::CheckSecondaryFilters(serveritem_t &server)
 {
+    return MatchesServerInfoFilters(server) && MatchesGameModeFilter(server.next_details) && MatchesCountryFilter(server.next_details);
+}
+
+bool CBaseGamesPage::MatchesServerInfoFilters(const serveritem_t& server) const
+{
     if (m_bFilterNoEmptyServers && GetHumanPlayerCount(server.gs) < 1)
         return false;
 
-    if (m_bFilterNoFullServers && GetHumanPlayerCount(server.gs) >= server.gs.m_nMaxPlayers)
+    if (m_bFilterNoFullServers && IsServerFull(server.gs))
         return false;
 
     if (m_iPingFilter && server.gs.m_nPing > m_iPingFilter)
@@ -739,12 +1157,23 @@ bool CBaseGamesPage::CheckSecondaryFilters(serveritem_t &server)
                                       (!server.gs.m_bSecure && m_iSelectedSecureFilterRow == kSecureFilterRowSecure))
         return false;
 
-    int count = Q_strlen(m_szMapFilter);
-
-    if (count && Q_strnicmp(server.gs.m_szMap, m_szMapFilter, count))
+    if (m_szMapFilter[0] && !Q_stristr(server.gs.m_szMap, m_szMapFilter))
         return false;
 
     return true;
+}
+
+bool CBaseGamesPage::MatchesGameModeFilter(const ServerDetailsNext& details) const
+{
+    return !m_szGameModeFilter[0] || ServerGameMode_MatchesFilter(details.game_mode, m_szGameModeFilter);
+}
+
+bool CBaseGamesPage::MatchesCountryFilter(const ServerDetailsNext& details) const
+{
+    const CountryNativeNames& native_names = ServerBrowserDialog().get_country_native_names();
+
+    return !m_wszCountryFilter[0] ||
+           ServerBrowserText_MatchesCountryFilter(details, native_names, m_szCountryCodeFilter, m_wszCountryFilter);
 }
 
 MatchMakingKeyValuePair_t** CBaseGamesPage::GetFilter()
@@ -929,6 +1358,7 @@ std::wstring CBaseGamesPage::FormatUnixTime(const char* format, uint32_t unix_ti
     ss.imbue(std::locale(setlocale(LC_TIME, nullptr)));
     ss << std::put_time(date, format);
 
+#ifdef _WIN32
     std::wstring wstr_time;
     int convert_result = MultiByteToWideChar(CP_ACP, 0, ss.str().c_str(), ss.str().size(), NULL, 0);
     if (convert_result != 0)
@@ -936,6 +1366,9 @@ std::wstring CBaseGamesPage::FormatUnixTime(const char* format, uint32_t unix_ti
         wstr_time.resize(convert_result);
         MultiByteToWideChar(CP_ACP, 0, ss.str().c_str(), ss.str().size(), wstr_time.data(), (int)wstr_time.size());
     }
+#else
+    std::wstring wstr_time = nitro_utils::utf8_to_wide(ss.str());
+#endif
 
     return wstr_time;
 }

@@ -10,7 +10,7 @@
 #include "graphics/render/RenderDevice.h"
 #include <ncl_material/MaterialParse.h>
 #include <ncl_studio/StudioMeshBuilder.h>
-#include <studio.h>
+#include <goldsrc/format/studio.h>
 
 #include "common/filesystem.h"
 #include "console/console.h"
@@ -52,7 +52,7 @@ namespace
     struct Entry
     {
         std::string name;
-        const studiohdr_t* header;
+        const goldsrc::studiohdr_t* header;
         bool failed;
 
         ncl_studio::StudioMesh mesh;
@@ -66,7 +66,7 @@ namespace
         // entry, so remembering which header these belong to is enough.
         ncl_material::MaterialDoc document;
         bool document_loaded;
-        const studiohdr_t* material_header;
+        const goldsrc::studiohdr_t* material_header;
         unsigned int server_generation;
         uint32_t shader_generation;
         std::vector<ncl_material::Material> materials;
@@ -119,7 +119,7 @@ namespace
         entry.vao = 0;
     }
 
-    Entry* Find(const char* name, const studiohdr_t* header)
+    Entry* Find(const char* name, const goldsrc::studiohdr_t* header)
     {
         for (size_t i = g_Models.size(); i > 0; i--)
         {
@@ -195,7 +195,7 @@ namespace
             static_cast<unsigned>(entry.document.entries.size()));
     }
 
-    size_t CachedModelSize(const studiohdr_t* header)
+    size_t CachedModelSize(const goldsrc::studiohdr_t* header)
     {
         return header->textureindex != 0
             ? static_cast<size_t>(header->texturedataindex)
@@ -289,7 +289,7 @@ namespace
     }
 }
 
-const render::StudioGpuModel* render::Geometry_Get(model_t* model, const studiohdr_t* header)
+const render::StudioGpuModel* render::Geometry_Get(goldsrc::model_t* model, const goldsrc::studiohdr_t* header)
 {
     if (!render::Device_Available() || model == nullptr || header == nullptr)
     {
@@ -335,9 +335,9 @@ const render::StudioGpuModel* render::Geometry_Get(model_t* model, const studioh
 }
 
 const ncl_material::Material* render::Geometry_Material(
-    model_t* model,
-    const studiohdr_t* header,
-    const studiohdr_t* texture_header,
+    goldsrc::model_t* model,
+    const goldsrc::studiohdr_t* header,
+    const goldsrc::studiohdr_t* texture_header,
     int texture_index
 )
 {
@@ -383,7 +383,7 @@ const ncl_material::Material* render::Geometry_Material(
     if (entry->materials.empty())
     {
         entry->origins.clear();
-        const mstudiotexture_t* textures = reinterpret_cast<const mstudiotexture_t*>(
+        const goldsrc::mstudiotexture_t* textures = reinterpret_cast<const goldsrc::mstudiotexture_t*>(
             reinterpret_cast<const uint8_t*>(texture_header) + texture_header->textureindex
         );
 
@@ -482,14 +482,14 @@ namespace
         return nullptr;
     }
 
-    const mstudiotexture_t* TexturesOf(const Entry& entry)
+    const goldsrc::mstudiotexture_t* TexturesOf(const Entry& entry)
     {
         if (entry.material_header == nullptr)
         {
             return nullptr;
         }
 
-        return reinterpret_cast<const mstudiotexture_t*>(
+        return reinterpret_cast<const goldsrc::mstudiotexture_t*>(
             reinterpret_cast<const uint8_t*>(entry.material_header) + entry.material_header->textureindex
         );
     }
@@ -545,14 +545,14 @@ namespace
     // combinations nobody is going to page through.
     constexpr int kMaxBodyValues = 64;
 
-    const mstudiobodyparts_t* BodyPartsOf(const Entry& entry)
+    const goldsrc::mstudiobodyparts_t* BodyPartsOf(const Entry& entry)
     {
         if (entry.header == nullptr || entry.header->numbodyparts <= 0)
         {
             return nullptr;
         }
 
-        return reinterpret_cast<const mstudiobodyparts_t*>(
+        return reinterpret_cast<const goldsrc::mstudiobodyparts_t*>(
             reinterpret_cast<const uint8_t*>(entry.header) + entry.header->bodypartindex
         );
     }
@@ -561,7 +561,7 @@ namespace
 int render::Geometry_BodyCount(const char* model)
 {
     const Entry* entry = FindByName(model);
-    const mstudiobodyparts_t* parts = entry != nullptr ? BodyPartsOf(*entry) : nullptr;
+    const goldsrc::mstudiobodyparts_t* parts = entry != nullptr ? BodyPartsOf(*entry) : nullptr;
 
     if (parts == nullptr)
     {
@@ -588,7 +588,7 @@ int render::Geometry_BodyCount(const char* model)
 bool render::Geometry_BodyName(const char* model, int body, char* out, int out_len)
 {
     const Entry* entry = FindByName(model);
-    const mstudiobodyparts_t* parts = entry != nullptr ? BodyPartsOf(*entry) : nullptr;
+    const goldsrc::mstudiobodyparts_t* parts = entry != nullptr ? BodyPartsOf(*entry) : nullptr;
 
     if (parts == nullptr || out == nullptr || out_len <= 0 || body < 0)
     {
@@ -603,7 +603,7 @@ bool render::Geometry_BodyName(const char* model, int body, char* out, int out_l
         int base = parts[i].base > 0 ? parts[i].base : 1;
         int chosen = (body / base) % models;
 
-        const mstudiomodel_t* submodels = reinterpret_cast<const mstudiomodel_t*>(
+        const goldsrc::mstudiomodel_t* submodels = reinterpret_cast<const goldsrc::mstudiomodel_t*>(
             reinterpret_cast<const uint8_t*>(entry->header) + parts[i].modelindex
         );
 
@@ -650,7 +650,7 @@ const ncl_material::Material* render::Geometry_MaterialByName(
         return nullptr;
     }
 
-    const mstudiotexture_t* textures = TexturesOf(*entry);
+    const goldsrc::mstudiotexture_t* textures = TexturesOf(*entry);
 
     for (int i = 0; i < entry->material_header->numtextures; i++)
     {

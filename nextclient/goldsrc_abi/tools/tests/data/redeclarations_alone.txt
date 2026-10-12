@@ -1,0 +1,116 @@
+0 matches.
+0 matches.
+0 matches.
+
+Match #1:
+
+C:\fixture\nextclient\client_mini\src\fwd.h(2,9): note: "redecl" binds here
+    2 | typedef struct thing_s thing_t;
+      |         ^~~~~~~~~~~~~~
+Binding for "redecl":
+CXXRecordDecl 0x164738cea90 <C:\fixture\nextclient\client_mini\src\fwd.h:2:9, col:16> col:16 struct thing_s
+
+C:\fixture\nextclient\client_mini\src\fwd.h(2,16): note: "ref" binds here
+    2 | typedef struct thing_s thing_t;
+      |                ^~~~~~~
+Binding for "ref":
+RecordTypeLoc <C:\fixture\nextclient\client_mini\src\fwd.h:2:9, col:16> 'struct thing_s' owns_tag struct
+`-CXXRecord 0x164738cea90 'thing_s'
+
+
+Match #2:
+
+C:\fixture\nextclient\client_mini\src\fwd.h(2,1): note: "redecl" binds here
+    2 | typedef struct thing_s thing_t;
+      | ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Binding for "redecl":
+TypedefDecl 0x164738cebd0 <C:\fixture\nextclient\client_mini\src\fwd.h:2:1, col:24> col:24 referenced thing_t 'struct thing_s'
+`-RecordType 0x164738ceb80 'struct thing_s' owns_tag struct
+  `-CXXRecord 0x164738cea90 'thing_s'
+
+C:\fixture\nextclient\client_mini\src\fwd.h(6,10): note: "ref" binds here
+    6 | void use(thing_t* t, extra_t* e, nitroapi::viddef_s* v, own_t* o);
+      |          ^~~~~~~
+Binding for "ref":
+TypedefTypeLoc <C:\fixture\nextclient\client_mini\src\fwd.h:6:10> 'thing_t'
+`-Typedef 0x164738cebd0 'thing_t'
+
+
+Match #3:
+
+C:\fixture\nextclient\client_mini\src\fwd.h(3,1): note: "redecl" binds here
+    3 | struct extra_t;
+      | ^~~~~~~~~~~~~~
+Binding for "redecl":
+CXXRecordDecl 0x164738cec48 <C:\fixture\nextclient\client_mini\src\fwd.h:3:1, col:8> col:8 referenced struct extra_t
+
+C:\fixture\nextclient\client_mini\src\fwd.h(6,22): note: "ref" binds here
+    6 | void use(thing_t* t, extra_t* e, nitroapi::viddef_s* v, own_t* o);
+      |                      ^~~~~~~
+Binding for "ref":
+RecordTypeLoc <C:\fixture\nextclient\client_mini\src\fwd.h:6:22> 'extra_t'
+`-CXXRecord 0x164738cec48 'extra_t'
+
+
+Match #4:
+
+C:\fixture\nextclient\client_mini\src\fwd.h(4,22): note: "redecl_nitroapi" binds here
+    4 | namespace nitroapi { struct viddef_s; }
+      |                      ^~~~~~~~~~~~~~~
+Binding for "redecl_nitroapi":
+CXXRecordDecl 0x164738ced88 <C:\fixture\nextclient\client_mini\src\fwd.h:4:22, col:29> col:29 referenced struct viddef_s
+
+C:\fixture\nextclient\client_mini\src\fwd.h(6,44): note: "ref" binds here
+    6 | void use(thing_t* t, extra_t* e, nitroapi::viddef_s* v, own_t* o);
+      |                                            ^~~~~~~~
+Binding for "ref":
+RecordTypeLoc <C:\fixture\nextclient\client_mini\src\fwd.h:6:34, col:44> 'nitroapi::viddef_s'
+|-NestedNameSpecifier Namespace 0x164738cecf8 'nitroapi'
+`-CXXRecord 0x164738ced88 'viddef_s'
+
+
+Match #5:
+
+C:\fixture\nextclient\client_mini\src\fwd.h(5,1): note: "redecl" binds here
+    5 | struct own_t;
+      | ^~~~~~~~~~~~
+Binding for "redecl":
+CXXRecordDecl 0x164738cee38 <C:\fixture\nextclient\client_mini\src\fwd.h:5:1, col:8> col:8 referenced struct own_t
+
+C:\fixture\nextclient\client_mini\src\fwd.h(6,57): note: "ref" binds here
+    6 | void use(thing_t* t, extra_t* e, nitroapi::viddef_s* v, own_t* o);
+      |                                                         ^~~~~
+Binding for "ref":
+RecordTypeLoc <C:\fixture\nextclient\client_mini\src\fwd.h:6:57> 'own_t'
+`-CXXRecord 0x164738cee38 'own_t'
+
+
+Match #6:
+
+C:\fixture\nextclient\client_mini\src\fwd.h(2,1): note: "redecl" binds here
+    2 | typedef struct thing_s thing_t;
+      | ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Binding for "redecl":
+TypedefDecl 0x164738cebd0 <C:\fixture\nextclient\client_mini\src\fwd.h:2:1, col:24> col:24 referenced thing_t 'struct thing_s'
+`-RecordType 0x164738ceb80 'struct thing_s' owns_tag struct
+  `-CXXRecord 0x164738cea90 'thing_s'
+
+C:\fixture\nextclient\client_mini\src\alone.cpp(2,1): note: "ref" binds here
+    2 | thing_t* alone;
+      | ^~~~~~~
+Binding for "ref":
+TypedefTypeLoc <C:\fixture\nextclient\client_mini\src\alone.cpp:2:1> 'thing_t'
+`-Typedef 0x164738cebd0 'thing_t'
+
+6 matches.
+
+Match #1:
+
+C:\fixture\nextclient\client_mini\src\fwd.h(7,1): note: "shadow" binds here
+    7 | const int THING_LIMIT = 4;
+      | ^~~~~~~~~~~~~~~~~~~~~~~~~
+Binding for "shadow":
+VarDecl 0x164738cf728 <C:\fixture\nextclient\client_mini\src\fwd.h:7:1, col:25> col:11 THING_LIMIT 'const int' cinit
+`-IntegerLiteral 0x164738cf790 <col:25> 'int' 4
+
+1 match.

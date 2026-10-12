@@ -1,11 +1,7 @@
 #pragma once
 
-// studio.h uses vec3_t without declaring it. The studio types are typedefs of anonymous
-// structs, so they cannot be forward declared and the header has to be pulled in.
-#include <tier0/basetypes.h>
-#include <studio.h>
-
-typedef struct model_s model_t;
+#include <goldsrc/format/studio.h>
+#include <goldsrc/fwd.h>
 
 namespace render
 {
@@ -16,7 +12,7 @@ namespace render
     // untouched: the engine hands out the address of its own submodel pointer rather
     // than the pointer itself, and which of the two it is has to be decided against the
     // model buffer rather than assumed.
-    bool Studio_TryDraw(model_t* model, const studiohdr_t* header, void* submodel);
+    bool Studio_TryDraw(goldsrc::model_t* model, const goldsrc::studiohdr_t* header, void* submodel);
 
     // Drops whatever is still queued. The queue normally empties itself once a model's
     // last body part has been submitted; one that survives to the end of the scene cannot

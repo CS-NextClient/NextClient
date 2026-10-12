@@ -35,9 +35,10 @@
 #endif
 
 #include <GL/gl.h>
+#include <goldsrc/types.h>
 #include "../hlsdk.h"
 
-qboolean QGL_Init();
+goldsrc::qboolean QGL_Init();
 void QGL_Shutdown();
 
 extern void (APIENTRY *qglAccum)(GLenum op, GLfloat value);

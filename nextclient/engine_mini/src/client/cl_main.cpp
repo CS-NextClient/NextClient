@@ -1,9 +1,19 @@
 #include "engine.h"
 #include "cl_main.h"
+#include "client.h"
 
 #include <optick.h>
 #include <next_engine_mini/nclm_proto.h>
 #include <hwid_collector/hwid_collector.h>
+#include <goldsrc/client_api.h>
+#include <goldsrc/cvar.h>
+#include <goldsrc/engine/client_state.h>
+#include <goldsrc/engine/event.h>
+#include <goldsrc/engine/net.h>
+#include <goldsrc/engine/resource.h>
+#include <goldsrc/limits.h>
+#include <goldsrc/types.h>
+#include <goldsrc/view.h>
 
 #include "ncl_entity/cl_ncl_entity_sync.h"
 #include "graphics/gl_local.h"
@@ -26,13 +36,15 @@
 #include "vgui_int.h"
 #include "cl_private_resources.h"
 #include "cl_string_registry.h"
+#include "client/client.h"
+#include "client/cl_sound.h"
 #include "graphics/render/ServerMaterials.h"
 
 namespace
 {
     NextClientVersion g_ServerModuleVersion{};
 
-    void SendVerificationResponse(sizebuf_t* msgbuf, const uint8_t nonce[NCLM_VERIF_PAYLOAD_SIZE_PADDED])
+    void SendVerificationResponse(goldsrc::sizebuf_t* msgbuf, const uint8_t nonce[NCLM_VERIF_PAYLOAD_SIZE_PADDED])
     {
         // Pad the response to the full 256 bytes. This works around a bug in server
         // module 1.5.0, which mis-parses a 196-byte payload and resumes reading at the
@@ -45,7 +57,7 @@ namespace
         MSG_WriteBuf(msgbuf, NCLM_VERIF_PAYLOAD_SIZE_PADDED, const_cast<uint8_t*>(nonce));
     }
 
-    void SendHwidToServer(sizebuf_t* msgbuf, const uint8_t* nonce, size_t nonce_size)
+    void SendHwidToServer(goldsrc::sizebuf_t* msgbuf, const uint8_t* nonce, size_t nonce_size)
     {
         uint8_t salted_hwid[NCLM_HWID_SIGNATURE_SIZE];
         size_t salted_size = 0;
@@ -73,6 +85,25 @@ namespace
         }
         writer.Send();
     }
+
+    void SendClientPlatform(goldsrc::sizebuf_t* msgbuf)
+    {
+#if defined(_WIN32)
+        const NCLM_PLATFORM platform = NCLM_PLATFORM::Windows;
+#elif defined(__linux__)
+        const NCLM_PLATFORM platform = NCLM_PLATFORM::Linux;
+#else
+#error "Unknown platform for CLIENT_PLATFORM"
+#endif
+
+        MSG_WriteByte(msgbuf, clc_ncl_message);
+        MSG_WriteLong(msgbuf, NCLM_HEADER);
+
+        NclmBodyWriter writer(msgbuf);
+        writer.WriteByte(static_cast<uint8_t>(NCLM_C2S::CLIENT_PLATFORM));
+        writer.WriteByte(static_cast<uint8_t>(platform));
+        writer.Send();
+    }
 } // namespace
 
 void SetCareerAudioState(int state)
@@ -89,7 +120,7 @@ void AddStartupTiming(const char* name)
     eng()->AddStartupTiming.InvokeChained(name);
 }
 
-void CL_ClearState(qboolean quiet)
+void CL_ClearState(goldsrc::qboolean quiet)
 {
     OPTICK_EVENT();
 
@@ -106,7 +137,7 @@ void CL_Disconnect()
     PrivateRes_Clear();
     client_stateex.resourcesNeeded.clear();
 
-    *p_g_careerState = CAREER_NONE;
+    *p_g_careerState = goldsrc::CAREER_NONE;
 
     SetCareerAudioState(0);
     SPR_Shutdown_NoModelFree();
@@ -116,7 +147,8 @@ void CL_Disconnect()
     {
         CL_StopPlayback();
     }
-    else if (cls->state == ca_connected || cls->state == ca_active || cls->state == ca_uninitialized || cls->state == ca_connecting)
+    else if (cls->state == goldsrc::ca_connected || cls->state == goldsrc::ca_active || cls->state == goldsrc::ca_uninitialized ||
+             cls->state == goldsrc::ca_connecting)
     {
         if (cls->demorecording)
         {
@@ -130,10 +162,10 @@ void CL_Disconnect()
             NET_LeaveGroup(cls->netchan.sock, cls->connect_stream);
             NET_LeaveGroup(cls->netchan.sock, cls->game_stream);
         }
-        else if (cls->netchan.remote_address.GetType() != NA_UNUSED)
+        else if (cls->netchan.remote_address.type != goldsrc::NA_UNUSED)
         {
             char final[32];
-            final[0] = clc_stringcmd;
+            final[0] = goldsrc::clc_stringcmd;
             V_strcpy(&final[1], "dropclient\n");
 
             Netchan_Transmit(&cls->netchan, 13, reinterpret_cast<uint8_t*>(final));
@@ -141,16 +173,16 @@ void CL_Disconnect()
             Netchan_Transmit(&cls->netchan, 13, reinterpret_cast<uint8_t*>(final));
         }
 
-        cls->state = ca_disconnected;
+        cls->state = goldsrc::ca_disconnected;
 
-        netadr_t* cur_addr = p_net_local_adr;
-        if (p_g_GameServerAddress->GetType() != NA_LOOPBACK)
+        goldsrc::netadr_t* cur_addr = p_net_local_adr;
+        if (p_g_GameServerAddress->type != goldsrc::NA_LOOPBACK)
         {
             cur_addr = p_g_GameServerAddress;
         }
 
-        SteamUser()->TerminateGameConnection(cur_addr->GetIPHostByteOrder(), cur_addr->GetPortHostByteOrder());
-        V_memset(p_g_GameServerAddress, 0, sizeof(netadr_t));
+        SteamUser()->TerminateGameConnection(NET_ToTier1(*cur_addr).GetIPHostByteOrder(), NET_ToTier1(*cur_addr).GetPortHostByteOrder());
+        V_memset(p_g_GameServerAddress, 0, sizeof(goldsrc::netadr_t));
 
         if (Host_IsServerActive())
         {
@@ -207,14 +239,14 @@ void CL_ConnectionlessPacket()
     eng()->CL_ConnectionlessPacket.InvokeChained();
 }
 
-qboolean CL_IsDevOverviewMode()
+goldsrc::qboolean CL_IsDevOverviewMode()
 {
     OPTICK_EVENT();
 
     return eng()->CL_IsDevOverviewMode.InvokeChained();
 }
 
-void CL_SetDevOverView(refdef_t* refdef)
+void CL_SetDevOverView(goldsrc::refdef_t* refdef)
 {
     OPTICK_EVENT();
 
@@ -281,7 +313,7 @@ void CL_ClearClientState()
 
     CL_ClearCaches();
 
-    Q_memset(cl, 0, sizeof(client_state_t));
+    Q_memset(cl, 0, sizeof(goldsrc::client_state_t));
 
     cl->resourcesneeded.pPrev = &cl->resourcesneeded;
     cl->resourcesneeded.pNext = &cl->resourcesneeded;
@@ -297,7 +329,7 @@ void CL_ConnectClient()
 
     ContinueLoadingProgressBar("ClientConnect", 2, 0.0);
 
-    if (cls->state == ca_connected)
+    if (cls->state == goldsrc::ca_connected)
     {
         if (cls->demoplayback == false)
             Con_DPrintf(ConLogType::Info, "Duplicate connect ack. received.  Ignored.\n");
@@ -317,21 +349,21 @@ void CL_ConnectClient()
             cls->build_num = V_atoi(Cmd_Argv(4));
     }
 
-    Netchan_Setup(NS_CLIENT, &cls->netchan, *net_from, -1, &cls, CL_GetFragmentSize);
+    Netchan_Setup(goldsrc::NS_CLIENT, &cls->netchan, *net_from, -1, &cls, CL_GetFragmentSize);
 
     NET_ClearLagData(true, false);
 
     if (fs_startup_timings->value != 0.0)
         AddStartupTiming("connection accepted by server");
 
-    if (net_from->IsLoopback())
+    if (NET_ToTier1(*net_from).IsLoopback())
         Con_DPrintf(ConLogType::Info, "Connection accepted.\n");
     else
         Con_Printf("Connection accepted by %s\n", NET_AdrToString(*net_from));
 
     g_ServerModuleVersion = NextClientVersion{};
 
-    sizebuf_t* msgbuf = &cls->netchan.message;
+    goldsrc::sizebuf_t* msgbuf = &cls->netchan.message;
 
     if (g_NclmVerificator != nullptr)
     {
@@ -353,10 +385,10 @@ void CL_ConnectClient()
         writer.Send();
     }
 
-    MSG_WriteByte(msgbuf, clc_stringcmd);
+    MSG_WriteByte(msgbuf, goldsrc::clc_stringcmd);
     MSG_WriteString(msgbuf, "new\n");
 
-    cls->state = ca_connected;
+    cls->state = goldsrc::ca_connected;
     cls->demonum = -1;
     cls->signon = 0;
     cls->lastoutgoingcommand = -1;
@@ -379,20 +411,20 @@ bool CL_PrecacheResources()
 
     PrivateRes_PrepareToPrecache();
 
-    for (resource_t *pResource = cl->resourcesonhand.pNext, *pNext; pResource != &cl->resourcesonhand; pResource = pNext)
+    for (goldsrc::resource_t *pResource = cl->resourcesonhand.pNext, *pNext; pResource != &cl->resourcesonhand; pResource = pNext)
     {
         pNext = pResource->pNext;
 
-        if (FBitSet(pResource->ucFlags, RES_PRECACHED))
+        if (FBitSet(pResource->ucFlags, goldsrc::RES_PRECACHED))
             continue;
 
         switch (pResource->type)
         {
-            case t_sound:
-                if (FBitSet(pResource->ucFlags, RES_WASMISSING))
+            case goldsrc::t_sound:
+                if (FBitSet(pResource->ucFlags, goldsrc::RES_WASMISSING))
                 {
                     cl->sound_precache[pResource->nIndex] = nullptr;
-                    SetBits(pResource->ucFlags, RES_PRECACHED);
+                    SetBits(pResource->ucFlags, goldsrc::RES_PRECACHED);
                     break;
                 }
 
@@ -400,9 +432,9 @@ bool CL_PrecacheResources()
                 cl->sound_precache[pResource->nIndex] = S_PrecacheSound(pResource->szFileName);
                 S_EndPrecaching();
 
-                if (cl->sound_precache[pResource->nIndex] || !FBitSet(pResource->ucFlags, RES_FATALIFMISSING))
+                if (cl->sound_precache[pResource->nIndex] || !FBitSet(pResource->ucFlags, goldsrc::RES_FATALIFMISSING))
                 {
-                    SetBits(pResource->ucFlags, RES_PRECACHED);
+                    SetBits(pResource->ucFlags, goldsrc::RES_PRECACHED);
                     break;
                 }
 
@@ -410,18 +442,18 @@ bool CL_PrecacheResources()
                 CL_Disconnect();
                 return false;
 
-            case t_skin:
-            case t_generic:
-                SetBits(pResource->ucFlags, RES_PRECACHED);
+            case goldsrc::t_skin:
+            case goldsrc::t_generic:
+                SetBits(pResource->ucFlags, goldsrc::RES_PRECACHED);
                 break;
 
-            case t_model:
+            case goldsrc::t_model:
                 if (pResource->nIndex >= cl->model_precache_count)
-                    cl->model_precache_count = std::min(pResource->nIndex + 1, MAX_MODELS);
+                    cl->model_precache_count = std::min(pResource->nIndex + 1, goldsrc::MAX_MODELS);
 
                 if (pResource->szFileName[0] == '*')
                 {
-                    SetBits(pResource->ucFlags, RES_PRECACHED);
+                    SetBits(pResource->ucFlags, goldsrc::RES_PRECACHED);
                     break;
                 }
 
@@ -440,7 +472,7 @@ bool CL_PrecacheResources()
                 {
                     Con_Printf("Model %s not found and not available from server\n", pResource->szFileName);
 
-                    if (FBitSet(pResource->ucFlags, RES_FATALIFMISSING))
+                    if (FBitSet(pResource->ucFlags, goldsrc::RES_FATALIFMISSING))
                     {
                         COM_ExplainDisconnection(true, "Cannot continue without model %s, disconnecting.", pResource->szFileName);
                         CL_Disconnect();
@@ -452,31 +484,31 @@ bool CL_PrecacheResources()
                 if (!Q_stricmp(pResource->szFileName, "models/player.mdl"))
                     *cl_playerindex = pResource->nIndex;
 
-                SetBits(pResource->ucFlags, RES_PRECACHED);
+                SetBits(pResource->ucFlags, goldsrc::RES_PRECACHED);
                 break;
 
-            case t_decal:
-                if (!FBitSet(pResource->ucFlags, RES_CUSTOM))
+            case goldsrc::t_decal:
+                if (!FBitSet(pResource->ucFlags, goldsrc::RES_CUSTOM))
                     Draw_DecalSetName(pResource->nIndex, pResource->szFileName);
 
-                SetBits(pResource->ucFlags, RES_PRECACHED);
+                SetBits(pResource->ucFlags, goldsrc::RES_PRECACHED);
                 break;
 
-            case t_eventscript:
+            case goldsrc::t_eventscript:
                 cl->event_precache[pResource->nIndex].filename = Mem_Strdup(pResource->szFileName);
                 cl->event_precache[pResource->nIndex].pszScript = (const char*)COM_LoadFile(pResource->szFileName, 5, 0);
 
                 if (cl->event_precache[pResource->nIndex].pszScript)
                 {
-                    SetBits(pResource->ucFlags, RES_PRECACHED);
+                    SetBits(pResource->ucFlags, goldsrc::RES_PRECACHED);
                     break;
                 }
 
                 Con_Printf("Script %s not found and not available from server\n", pResource->szFileName);
 
-                if (!FBitSet(pResource->ucFlags, RES_FATALIFMISSING))
+                if (!FBitSet(pResource->ucFlags, goldsrc::RES_FATALIFMISSING))
                 {
-                    SetBits(pResource->ucFlags, RES_PRECACHED);
+                    SetBits(pResource->ucFlags, goldsrc::RES_PRECACHED);
                     break;
                 }
 
@@ -510,6 +542,9 @@ void CL_HandleNclMessage()
         case NCLM_S2C::SERVER_HELLO:
             {
                 ParseNextClientVersion(body.ReadString(), g_ServerModuleVersion);
+
+                goldsrc::sizebuf_t* msgbuf = &cls->netchan.message;
+                SendClientPlatform(msgbuf);
                 break;
             }
 
@@ -531,7 +566,7 @@ void CL_HandleNclMessage()
                     break;
                 }
 
-                sizebuf_t* msgbuf = &cls->netchan.message;
+                goldsrc::sizebuf_t* msgbuf = &cls->netchan.message;
                 SendVerificationResponse(msgbuf, nonce);
 
                 if (g_ServerModuleVersion >= NextClientVersion{1, 6, 0})
@@ -560,25 +595,25 @@ void CL_Send_CvarValue()
 
     const char* cvar_name = MSG_ReadString();
 
-    MSG_WriteByte(&cls->netchan.message, clc_cvarvalue);
+    MSG_WriteByte(&cls->netchan.message, goldsrc::clc_cvarvalue);
     if (V_strlen(cvar_name) >= 255)
     {
         MSG_WriteString(&cls->netchan.message, "Bad CVAR request");
         return;
     }
 
-    cvar_t* cvar = Cvar_FindVar(cvar_name);
+    goldsrc::cvar_t* cvar = Cvar_FindVar(cvar_name);
     if (!cvar)
     {
         MSG_WriteString(&cls->netchan.message, "Bad CVAR request");
         return;
     }
 
-    if (FBitSet(cvar->flags, FCVAR_PRIVILEGED))
+    if (FBitSet(cvar->flags, goldsrc::FCVAR_PRIVILEGED))
         MSG_WriteString(&cls->netchan.message, "CVAR is privileged");
-    else if (FBitSet(cvar->flags, FCVAR_SERVER))
+    else if (FBitSet(cvar->flags, goldsrc::FCVAR_SERVER))
         MSG_WriteString(&cls->netchan.message, "CVAR is server-only");
-    else if (FBitSet(cvar->flags, FCVAR_PROTECTED))
+    else if (FBitSet(cvar->flags, goldsrc::FCVAR_PROTECTED))
         MSG_WriteString(&cls->netchan.message, "CVAR is protected");
     else
         MSG_WriteString(&cls->netchan.message, cvar->string);

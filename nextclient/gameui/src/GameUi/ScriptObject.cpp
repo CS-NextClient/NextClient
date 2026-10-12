@@ -1,9 +1,12 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <algorithm>
 #include "ScriptObject.h"
 #include "GameUi.h"
 #include <vgui_controls/Label.h>
 #include "FileSystem.h"
+#include <cstdint>
+#include <goldsrc/client_api.h>
 // memdbgon must be the last include file in a .cpp file!!!
 #include <tier0/memdbgon.h>
 
@@ -302,10 +305,10 @@ void CScriptObject::WriteToFile(FileHandle_t fp)
             fVal = fcurValue;
 
             if (fMin != -1.0)
-                fVal = __max(fVal, fMin);
+                fVal = std::max(fVal, fMin);
 
             if (fMax != -1.0)
-                fVal = __min(fVal, fMax);
+                fVal = std::min(fVal, fMax);
 
             g_pFullFileSystem->FPrintf(fp, "\"%f\"\r\n", fVal);
             break;
@@ -370,10 +373,10 @@ void CScriptObject::WriteToConfig(void)
             fVal = fcurValue;
 
             if (fMin != -1.0)
-                fVal = __max(fVal, fMin);
+                fVal = std::max(fVal, fMin);
 
             if (fMax != -1.0)
-                fVal = __min(fVal, fMax);
+                fVal = std::min(fVal, fMax);
 
             Q_snprintf(szValue, sizeof(szValue), "%s", CleanFloat(fVal));
             break;
@@ -846,7 +849,7 @@ bool CDescription::InitFromFile(const char *pszFileName)
 
     int len = g_pFullFileSystem->Size(file);
 
-    byte *buffer = new unsigned char[len];
+    uint8_t* buffer = new uint8_t[len];
     Assert(buffer);
     g_pFullFileSystem->Read(buffer, len, file);
     g_pFullFileSystem->Close(file);

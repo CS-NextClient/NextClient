@@ -4,6 +4,7 @@
 
 #include <vgui/VGUI2.h>
 #include <IGameUI.h>
+#include <goldsrc/client_api.h>
 #include <GameUINext.h>
 #include <ISystemModule.h>
 #include <vgui_controls/Panel.h>
@@ -11,6 +12,7 @@
 #include <utils/TaskRun.h>
 #include <IGameClientExports.h>
 #include <next_engine_mini/engine_mini.h>
+#include <next_engine_mini/ScenePreviewInterface.h>
 
 #include "LoadingDialog.h"
 
@@ -28,7 +30,7 @@ public:
 
 public:
     virtual void Initialize(CreateInterfaceFn *factories, int count);
-    virtual void Start(cl_enginefuncs_s *engineFuncs, int interfaceVersion, void *system);
+    virtual void Start(goldsrc::cl_enginefunc_t* engineFuncs, int interfaceVersion, void* system);
     virtual void Shutdown();
     virtual int ActivateGameUI();
     virtual int ActivateDemoUI();
@@ -59,9 +61,6 @@ public:
     // frame floating over the running game while in a level. Called directly from the
     // Options button (there is no console command for it).
     void OpenHudRadarDialog();
-
-    // Opens the material editor over the running game. Only useful in a level, because it
-    // edits the material of a model the author is looking at.
     void OpenMaterialEditDialog();
 
     // Shows a VGUI panel over the running game instead of the menu: reparents it to
@@ -69,7 +68,8 @@ public:
     // GameUI so the engine resumes drawing the HUD, and enables the mouse cursor.
     // While a panel is registered this way, Esc closes only it (ActivateGameUI is
     // suppressed). The registration is a safe panel handle, so a destroyed panel
-    // clears it on its own; a level transition (disconnect, new load) clears it too.
+    // clears it on its own; a level transition closes the dialog before releasing
+    // its registration.
     // Returns false when not in a level (the caller shows a normal dialog instead).
     bool BeginPanelOverGame(vgui2::Panel* panel);
 
@@ -86,10 +86,7 @@ public:
 
 private:
     void OpenServerBrowserIfNeeded();
-
-    // Closes the panel shown over the running game, if there is one. The panel's own OnClose
-    // is the only place that takes back what it put into the renderer, so a level that ends
-    // has to close it rather than drop the handle.
+    void CloseHudRadarDialog();
     void ClosePanelOverGame();
 
 private:
@@ -108,15 +105,16 @@ private:
 
     std::shared_ptr<TaskCoroImpl> task_run_impl_;
 
-    class ContainerExtensionGameUiApi* browserExtensionGameUiApi;
+    class ContainerExtensionGameUiApi* browserExtensionGameUiApi = nullptr;
 };
 
 extern CGameUI& GameUI();
 extern vgui2::Panel* StaticPanel();
 extern IBaseSystem* SystemWrapper();
-extern cl_enginefunc_t* engine;
+extern goldsrc::cl_enginefunc_t* engine;
 extern vgui2::DHANDLE<CLoadingDialog> g_hLoadingDialog;
 extern IGameClientExports* GameClientExports();
 extern EngineMiniInterface* EngineMini();
+extern ScenePreviewInterface* ScenePreview();
 
 #endif

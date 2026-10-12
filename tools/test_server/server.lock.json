@@ -1,0 +1,281 @@
+{
+  "schema": 1,
+  "base": {
+    "app_id": 90,
+    "mod": "cstrike",
+    "branch": "steam_legacy"
+  },
+  "components": [
+    {
+      "name": "steamcmd",
+      "version": "bootstrap",
+      "platform": "windows-x86",
+      "url": "https://steamcdn-a.akamaihd.net/client/installer/steamcmd.zip",
+      "sha256": "7669b170dee42db8ee2273775ed7dfb2d173bdba1b849f70d2c7b379290bce13",
+      "copies": [
+        {
+          "source": "",
+          "destination": "",
+          "executable": false
+        }
+      ],
+      "required_files": [
+        "steamcmd.exe"
+      ]
+    },
+    {
+      "name": "rehlds",
+      "version": "3.15.0.896",
+      "platform": "windows-x86",
+      "url": "https://github.com/rehlds/ReHLDS/releases/download/3.15.0.896/rehlds-bin-3.15.0.896.zip",
+      "sha256": "997baeb7ef3842dab3e034d82dc651ebfe560c23b158adce660a6b97976b4e2b",
+      "copies": [
+        {
+          "source": "bin/win32",
+          "destination": "",
+          "executable": false
+        }
+      ],
+      "required_files": [
+        "hlds.exe",
+        "swds.dll",
+        "filesystem_stdio.dll"
+      ]
+    },
+    {
+      "name": "regamedll",
+      "version": "5.30.0.814",
+      "platform": "windows-x86",
+      "url": "https://github.com/rehlds/ReGameDLL_CS/releases/download/5.30.0.814/regamedll-bin-5.30.0.814.zip",
+      "sha256": "457f5c96a4d10280fcad47f106cbd5be86363a47df1ccab91c514e9d1bc6fd18",
+      "copies": [
+        {
+          "source": "bin/win32/cstrike",
+          "destination": "cstrike",
+          "executable": false
+        }
+      ],
+      "required_files": [
+        "cstrike/dlls/mp.dll"
+      ]
+    },
+    {
+      "name": "metamod",
+      "version": "1.3.0.138",
+      "platform": "windows-x86",
+      "url": "https://github.com/rehlds/Metamod-R/releases/download/1.3.0.138/metamod-bin-1.3.0.138.zip",
+      "sha256": "f69b72b31303384d84807ab9270da15aa0a4cc6257680657d9cc7aec81ecb232",
+      "copies": [
+        {
+          "source": "addons/metamod/config.ini",
+          "destination": "cstrike/addons/metamod/config.ini",
+          "executable": false
+        },
+        {
+          "source": "addons/metamod/metamod.dll",
+          "destination": "cstrike/addons/metamod/metamod.dll",
+          "executable": false
+        }
+      ],
+      "required_files": [
+        "cstrike/addons/metamod/metamod.dll"
+      ]
+    },
+    {
+      "name": "amxx-base",
+      "version": "1.10.0-git5484",
+      "platform": "windows-x86",
+      "url": "https://amxmodx.org/amxxdrop/1.10/amxmodx-1.10.0-git5484-base-windows.zip",
+      "sha256": "40c5b62d795c381fc03657340b16b7eec2422b1aac6bfd570dbbde8585ea8848",
+      "copies": [
+        {
+          "source": "addons",
+          "destination": "cstrike/addons",
+          "executable": false
+        }
+      ],
+      "required_files": [
+        "cstrike/addons/amxmodx/scripting/amxxpc.exe",
+        "cstrike/addons/amxmodx/dlls/amxmodx_mm.dll",
+        "cstrike/addons/amxmodx/plugins/admin.amxx"
+      ]
+    },
+    {
+      "name": "amxx-cstrike",
+      "version": "1.10.0-git5484",
+      "platform": "windows-x86",
+      "url": "https://amxmodx.org/amxxdrop/1.10/amxmodx-1.10.0-git5484-cstrike-windows.zip",
+      "sha256": "1c322de8cda7ed0e64906d4c59cf806ca9893fcdf60fae3bb6ac4b91edf00e9e",
+      "copies": [
+        {
+          "source": "addons",
+          "destination": "cstrike/addons",
+          "executable": false
+        }
+      ],
+      "required_files": [
+        "cstrike/addons/amxmodx/modules/cstrike_amxx.dll"
+      ]
+    },
+    {
+      "name": "reapi",
+      "version": "5.29.0.358",
+      "runtime_version": "5.29.0.359-dev",
+      "platform": "windows-x86",
+      "url": "https://github.com/rehlds/ReAPI/releases/download/5.29.0.358/reapi-bin-5.29.0.358.zip",
+      "sha256": "f33a7435540bea8706db3fa948e51a85b511f5b18c383b97402a204dc5419195",
+      "copies": [
+        {
+          "source": "addons/amxmodx/modules/reapi_amxx.dll",
+          "destination": "cstrike/addons/amxmodx/modules/reapi_amxx.dll",
+          "executable": false
+        },
+        {
+          "source": "addons/amxmodx/scripting/include",
+          "destination": "cstrike/addons/amxmodx/scripting/include",
+          "executable": false
+        }
+      ],
+      "required_files": [
+        "cstrike/addons/amxmodx/modules/reapi_amxx.dll",
+        "cstrike/addons/amxmodx/scripting/include/reapi.inc"
+      ]
+    },
+    {
+      "name": "steamcmd",
+      "version": "bootstrap",
+      "platform": "linux-x86",
+      "url": "https://steamcdn-a.akamaihd.net/client/installer/steamcmd_linux.tar.gz",
+      "sha256": "cebf0046bfd08cf45da6bc094ae47aa39ebf4155e5ede41373b579b8f1071e7c",
+      "copies": [
+        {
+          "source": "",
+          "destination": "",
+          "executable": true
+        }
+      ],
+      "required_files": [
+        "steamcmd.sh",
+        "linux32/steamcmd"
+      ]
+    },
+    {
+      "name": "rehlds",
+      "version": "3.15.0.896",
+      "platform": "linux-x86",
+      "url": "https://github.com/rehlds/ReHLDS/releases/download/3.15.0.896/rehlds-bin-3.15.0.896.zip",
+      "sha256": "997baeb7ef3842dab3e034d82dc651ebfe560c23b158adce660a6b97976b4e2b",
+      "copies": [
+        {
+          "source": "bin/linux32",
+          "destination": "",
+          "executable": true
+        }
+      ],
+      "required_files": [
+        "hlds_linux",
+        "engine_i486.so",
+        "filesystem_stdio.so"
+      ]
+    },
+    {
+      "name": "regamedll",
+      "version": "5.30.0.814",
+      "platform": "linux-x86",
+      "url": "https://github.com/rehlds/ReGameDLL_CS/releases/download/5.30.0.814/regamedll-bin-5.30.0.814.zip",
+      "sha256": "457f5c96a4d10280fcad47f106cbd5be86363a47df1ccab91c514e9d1bc6fd18",
+      "copies": [
+        {
+          "source": "bin/linux32/cstrike",
+          "destination": "cstrike",
+          "executable": false
+        }
+      ],
+      "required_files": [
+        "cstrike/dlls/cs.so"
+      ]
+    },
+    {
+      "name": "metamod",
+      "version": "1.3.0.138",
+      "platform": "linux-x86",
+      "url": "https://github.com/rehlds/Metamod-R/releases/download/1.3.0.138/metamod-bin-1.3.0.138.zip",
+      "sha256": "f69b72b31303384d84807ab9270da15aa0a4cc6257680657d9cc7aec81ecb232",
+      "copies": [
+        {
+          "source": "addons/metamod/config.ini",
+          "destination": "cstrike/addons/metamod/config.ini",
+          "executable": false
+        },
+        {
+          "source": "addons/metamod/metamod_i386.so",
+          "destination": "cstrike/addons/metamod/metamod_i386.so",
+          "executable": false
+        }
+      ],
+      "required_files": [
+        "cstrike/addons/metamod/metamod_i386.so"
+      ]
+    },
+    {
+      "name": "amxx-base",
+      "version": "1.10.0-git5484",
+      "platform": "linux-x86",
+      "url": "https://amxmodx.org/amxxdrop/1.10/amxmodx-1.10.0-git5484-base-linux.tar.gz",
+      "sha256": "479adf033874fa398c130ab7045433a33c4ec067580bf5903586fa367ea9ceab",
+      "copies": [
+        {
+          "source": "addons",
+          "destination": "cstrike/addons",
+          "executable": true
+        }
+      ],
+      "required_files": [
+        "cstrike/addons/amxmodx/scripting/amxxpc",
+        "cstrike/addons/amxmodx/dlls/amxmodx_mm_i386.so",
+        "cstrike/addons/amxmodx/plugins/admin.amxx"
+      ]
+    },
+    {
+      "name": "amxx-cstrike",
+      "version": "1.10.0-git5484",
+      "platform": "linux-x86",
+      "url": "https://amxmodx.org/amxxdrop/1.10/amxmodx-1.10.0-git5484-cstrike-linux.tar.gz",
+      "sha256": "ce8ec3b232f8d2c57b6b854401bfda0a79f15280800f5d30e40d1cac2403a639",
+      "copies": [
+        {
+          "source": "addons",
+          "destination": "cstrike/addons",
+          "executable": false
+        }
+      ],
+      "required_files": [
+        "cstrike/addons/amxmodx/modules/cstrike_amxx_i386.so"
+      ]
+    },
+    {
+      "name": "reapi",
+      "version": "5.29.0.358",
+      "runtime_version": "5.29.0.359-dev",
+      "platform": "linux-x86",
+      "url": "https://github.com/rehlds/ReAPI/releases/download/5.29.0.358/reapi-bin-5.29.0.358.zip",
+      "sha256": "f33a7435540bea8706db3fa948e51a85b511f5b18c383b97402a204dc5419195",
+      "copies": [
+        {
+          "source": "addons/amxmodx/modules/reapi_amxx_i386.so",
+          "destination": "cstrike/addons/amxmodx/modules/reapi_amxx_i386.so",
+          "executable": false
+        },
+        {
+          "source": "addons/amxmodx/scripting/include",
+          "destination": "cstrike/addons/amxmodx/scripting/include",
+          "executable": false
+        }
+      ],
+      "required_files": [
+        "cstrike/addons/amxmodx/modules/reapi_amxx_i386.so",
+        "cstrike/addons/amxmodx/scripting/include/reapi.inc"
+      ]
+    }
+  ]
+}

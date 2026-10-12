@@ -257,16 +257,16 @@ namespace
     // How long one run of a sequence lasts, as the model declares it. Needed because the
     // engine poses the weapon from a moment in time rather than from a frame, so a frame has
     // to be expressed as one.
-    float SequenceSeconds(model_t* model, int sequence)
+    float SequenceSeconds(goldsrc::model_t* model, int sequence)
     {
-        const studiohdr_t* header = static_cast<const studiohdr_t*>(Mod_Extradata(model));
+        const goldsrc::studiohdr_t* header = static_cast<const goldsrc::studiohdr_t*>(Mod_Extradata(model));
 
         if (header == nullptr || sequence < 0 || sequence >= header->numseq)
         {
             return 0.0f;
         }
 
-        const mstudioseqdesc_t* description = reinterpret_cast<const mstudioseqdesc_t*>(
+        const goldsrc::mstudioseqdesc_t* description = reinterpret_cast<const goldsrc::mstudioseqdesc_t*>(
             reinterpret_cast<const uint8_t*>(header) + header->seqindex
         ) + sequence;
 
@@ -281,14 +281,14 @@ namespace
     // A model's own box, which is not in model_t: the studio loader leaves those bounds at
     // zero and keeps the real ones in the header. Some models fill only one of the two pairs
     // it can carry, and a few fill neither.
-    void BoundsOf(model_t* model, ncl_math::Vector3& mins, ncl_math::Vector3& maxs)
+    void BoundsOf(goldsrc::model_t* model, ncl_math::Vector3& mins, ncl_math::Vector3& maxs)
     {
         constexpr float kAssumedHalfSize = 16.0f;
 
         mins = ncl_math::Vector3(-kAssumedHalfSize, -kAssumedHalfSize, -kAssumedHalfSize);
         maxs = ncl_math::Vector3(kAssumedHalfSize, kAssumedHalfSize, kAssumedHalfSize);
 
-        const studiohdr_t* header = static_cast<const studiohdr_t*>(Mod_Extradata(model));
+        const goldsrc::studiohdr_t* header = static_cast<const goldsrc::studiohdr_t*>(Mod_Extradata(model));
         if (header == nullptr)
         {
             return;
@@ -665,9 +665,9 @@ namespace
 
             for (int i = 0; i < *p_cl_numvisedicts; i++)
             {
-                cl_entity_t* entity = p_cl_visedicts[i];
+                goldsrc::cl_entity_t* entity = p_cl_visedicts[i];
 
-                if (entity == nullptr || entity->model == nullptr || entity->model->type != mod_studio)
+                if (entity == nullptr || entity->model == nullptr || entity->model->type != goldsrc::mod_studio)
                 {
                     continue;
                 }
@@ -1662,7 +1662,7 @@ bool render::MaterialEdit_DrivesViewmodel()
     return g_PanelOpen && g_Viewmodel.overriding;
 }
 
-void render::MaterialEdit_ApplyViewmodel(cl_entity_t* entity, float now, int* weapon_sequence, float* weapon_start_time)
+void render::MaterialEdit_ApplyViewmodel(goldsrc::cl_entity_t* entity, float now, int* weapon_sequence, float* weapon_start_time)
 {
     if (weapon_sequence == nullptr || weapon_start_time == nullptr)
     {
@@ -1704,7 +1704,7 @@ void render::MaterialEdit_ApplyViewmodel(cl_entity_t* entity, float now, int* we
     *weapon_start_time = now - animation.frame * SequenceSeconds(entity != nullptr ? entity->model : nullptr, animation.sequence);
 }
 
-void render::MaterialEdit_NoteViewmodel(const cl_entity_t* entity, float now)
+void render::MaterialEdit_NoteViewmodel(const goldsrc::cl_entity_t* entity, float now)
 {
     if (!g_PanelOpen || entity == nullptr)
     {
@@ -1714,7 +1714,7 @@ void render::MaterialEdit_NoteViewmodel(const cl_entity_t* entity, float now)
     // The first bone's translation, which is what a moving pose moves. Taken because a frame
     // that advances proves only that the number changed: whether the model followed it is a
     // separate question, and this is the answer to it.
-    const engine_studio_api_t* api = render::Studio_OriginalApi();
+    const goldsrc::engine_studio_api_t* api = render::Studio_OriginalApi();
     const float* bones = api != nullptr && api->StudioGetBoneTransform != nullptr
         ? reinterpret_cast<const float*>(api->StudioGetBoneTransform())
         : nullptr;

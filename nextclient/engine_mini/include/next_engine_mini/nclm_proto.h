@@ -3,8 +3,8 @@
 // Makes a 4-byte "packed ID" int out of 4 characters
 #define NCL_MAKEID(d,c,b,a)			              ( ((int)(a) << 24) | ((int)(b) << 16) | ((int)(c) << 8) | ((int)(d)) )
 
-#define clc_ncl_message						       3   // clc_stringcmd
-#define SVC_NCL_MESSAGE						       57  // SVC_SENDCVARVALUE
+#define clc_ncl_message						       3   // goldsrc::clc_stringcmd
+#define SVC_NCL_MESSAGE						       57  // goldsrc::SVC_SENDCVARVALUE
 #define NCLM_HEADER_OLD						       NCL_MAKEID('n', 'c', 'l', 'a')
 #define NCLM_HEADER							       NCL_MAKEID('n', 'c', 'l', 'm')
 
@@ -17,6 +17,12 @@ constexpr size_t NCLM_HWID_SIZE                    = 64; // SHA-256 hex
 constexpr size_t NCLM_HWID_NONCE_BINDING_SIZE      = 32; // Recoverable signed message: raw HWID hex || SHA-256(verification nonce).
 constexpr size_t NCLM_HWID_SIGNED_MESSAGE_SIZE     = NCLM_HWID_SIZE + NCLM_HWID_NONCE_BINDING_SIZE;
 constexpr size_t NCLM_HWID_SIGNATURE_SIZE          = NCLM_VERIF_ENCRYPTED_PAYLOAD_SIZE;
+
+enum class NCLM_PLATFORM : uint8_t
+{
+    Windows = 0,
+    Linux = 1,
+};
 
 enum class NCLM_C2S
 {
@@ -52,6 +58,17 @@ enum class NCLM_C2S
      * The server validates the signature and recovers the message from it.
      */
     HARDWARE_ID,
+
+    /*
+     * Tells the server which OS the client is running on.
+     * Sent in reply to SERVER_HELLO, so servers without the nclm module never see it.
+     * The value is not verified and can be forged by the player.
+     *
+     * Payload:
+     *   byte       Message header (this opcode = 0x05)
+     *   byte       Platform: 0 = Windows, 1 = Linux
+     */
+    CLIENT_PLATFORM,
 };
 
 enum class NCLM_S2C
