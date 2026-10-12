@@ -17,7 +17,7 @@ using namespace vgui2;
 namespace
 {
     constexpr int kWide = 420;
-    constexpr int kTall = 250;
+    constexpr int kTall = 330;
     constexpr int kLeft = 12;
     constexpr int kTop = 34;
     constexpr int kRowTall = 24;
@@ -44,7 +44,12 @@ CShareSettingsDialog::CShareSettingsDialog(Panel* parent, std::function<settings
     SetSizeable(false);
     SetDeleteSelfOnClose(true);
 
-    note_ = new Label(this, "Note", "#GameUI_ShareSettingsNote");
+    own_caption_ = new Label(this, "OwnCaption", "#GameUI_ShareSettingsOwnCode");
+
+    own_field_ = new TextEntry(this, "OwnCode");
+    own_field_->SetEditable(false);
+
+    paste_caption_ = new Label(this, "PasteCaption", "#GameUI_ShareSettingsPasteCode");
 
     for (int i = 0; i < settings_code::kSectionCount; i++)
     {
@@ -57,6 +62,8 @@ CShareSettingsDialog::CShareSettingsDialog(Panel* parent, std::function<settings
 
     status_ = new Label(this, "Status", "");
 
+    UpdateSectionChecks(0);
+
     new Button(this, "Copy", "#GameUI_ShareSettingsCopy", this, "copy");
     new Button(this, "Apply", "#GameUI_ShareSettingsApply", this, "apply");
     new Button(this, "Close", "#GameUI_Close", this, "close");
@@ -66,6 +73,8 @@ void CShareSettingsDialog::Activate()
 {
     MoveToCenterOfScreen();
     BaseClass::Activate();
+
+    ShowOwnCode();
 
     previous_modal_ = input()->GetAppModalSurface();
     input()->SetAppModalSurface(GetVPanel());
@@ -89,12 +98,26 @@ void CShareSettingsDialog::PerformLayout()
     BaseClass::PerformLayout();
 
     int y = kTop;
+    int content_wide = kWide - 2 * kLeft;
 
-    note_->SetBounds(kLeft, y, kWide - 2 * kLeft, kRowTall);
+    own_caption_->SetBounds(kLeft, y, content_wide, kRowTall);
+    y += kRowTall;
+
+    own_field_->SetBounds(kLeft, y, content_wide - kButtonWide - 8, kRowTall);
+    if (Panel* copy = FindChildByName("Copy"))
+    {
+        copy->SetBounds(kLeft + content_wide - kButtonWide, y, kButtonWide, kRowTall);
+    }
+    y += kRowTall + 16;
+
+    paste_caption_->SetBounds(kLeft, y, content_wide, kRowTall);
+    y += kRowTall;
+
+    code_field_->SetBounds(kLeft, y, content_wide, kRowTall);
     y += kRowTall + 4;
 
     // two columns: three checks on the left, two on the right
-    int column_wide = (kWide - 2 * kLeft) / 2;
+    int column_wide = content_wide / 2;
 
     for (int i = 0; i < settings_code::kSectionCount; i++)
     {
@@ -103,21 +126,18 @@ void CShareSettingsDialog::PerformLayout()
         section_checks_[i]->SetBounds(kLeft + column * column_wide, y + row * kRowTall, column_wide, kRowTall);
     }
 
-    y += 3 * kRowTall + 8;
+    y += 3 * kRowTall + 4;
 
-    code_field_->SetBounds(kLeft, y, kWide - 2 * kLeft, kRowTall);
-    y += kRowTall + 4;
-
-    status_->SetBounds(kLeft, y, kWide - 2 * kLeft, kRowTall);
+    status_->SetBounds(kLeft, y, content_wide, kRowTall);
 
     int buttons_y = kTall - kLeft - kRowTall;
-    const char* buttons[] = {"Copy", "Apply", "Close"};
+    const char* buttons[] = {"Apply", "Close"};
 
-    for (int i = 0; i < 3; i++)
+    for (int i = 0; i < 2; i++)
     {
         if (Panel* button = FindChildByName(buttons[i]))
         {
-            button->SetBounds(kLeft + i * (kButtonWide + 8), buttons_y, kButtonWide, kRowTall);
+            button->SetBounds(kLeft + content_wide - (2 - i) * kButtonWide - (1 - i) * 8, buttons_y, kButtonWide, kRowTall);
         }
     }
 }
@@ -158,7 +178,7 @@ void CShareSettingsDialog::OnTextChanged(Panel* panel)
     std::optional<settings_code::Decoded> decoded = settings_code::Decode(code);
 
     status_->SetText(decoded || code[0] == '\0' ? "" : "#GameUI_ShareSettingsInvalid");
-    UpdateSectionChecks(decoded ? decoded->sections : settings_code::kAllSections);
+    UpdateSectionChecks(decoded ? decoded->sections : 0);
 }
 
 uint8_t CShareSettingsDialog::CheckedSections() const
@@ -184,21 +204,17 @@ void CShareSettingsDialog::UpdateSectionChecks(uint8_t sections)
     }
 }
 
+void CShareSettingsDialog::ShowOwnCode()
+{
+    own_field_->SetText(settings_code::Encode(read_page_(), settings_code::kAllSections).c_str());
+}
+
 void CShareSettingsDialog::CopyCode()
 {
-    uint8_t sections = CheckedSections();
-    if (sections == 0)
-    {
-        status_->SetText("#GameUI_ShareSettingsNoTabs");
-        return;
-    }
+    char code[128];
+    own_field_->GetText(code, sizeof(code));
 
-    std::string code = settings_code::Encode(read_page_(), sections);
-    code_field_->SetText(code.c_str());
-
-    UpdateSectionChecks(settings_code::kAllSections);
-
-    system()->SetClipboardText(code.c_str(), static_cast<int>(code.size()));
+    system()->SetClipboardText(code, V_strlen(code));
     status_->SetText("#GameUI_ShareSettingsCopied");
 }
 
@@ -222,6 +238,7 @@ void CShareSettingsDialog::ApplyCode()
     }
 
     write_page_(*decoded);
+    ShowOwnCode();
 
     status_->SetText("#GameUI_ShareSettingsApplied");
 }

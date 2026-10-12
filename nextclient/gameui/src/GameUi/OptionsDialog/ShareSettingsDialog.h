@@ -15,8 +15,8 @@ namespace vgui2
     class TextEntry;
 } // namespace vgui2
 
-// Turns the Game tab into a share code and back: the checks pick the sections a code is
-// made of, and of a pasted code, the sections that get applied.
+// Shows the Game tab as a share code with every section, and loads a pasted code into the
+// tab; the checks pick which of the pasted code's sections are loaded.
 class CShareSettingsDialog : public vgui2::Frame
 {
     DECLARE_CLASS_SIMPLE(CShareSettingsDialog, vgui2::Frame);
@@ -37,7 +37,9 @@ private:
     std::function<settings_code::Values()> read_page_;
     std::function<void(const settings_code::Decoded&)> write_page_;
 
-    vgui2::Label* note_{};
+    vgui2::Label* own_caption_{};
+    vgui2::TextEntry* own_field_{};
+    vgui2::Label* paste_caption_{};
     std::array<vgui2::CheckButton*, settings_code::kSectionCount> section_checks_{};
     vgui2::TextEntry* code_field_{};
     vgui2::Label* status_{};
@@ -47,6 +49,7 @@ private:
 
     uint8_t CheckedSections() const;
     void UpdateSectionChecks(uint8_t sections);
+    void ShowOwnCode();
     void CopyCode();
     void ApplyCode();
 };
