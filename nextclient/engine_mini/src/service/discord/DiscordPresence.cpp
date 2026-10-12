@@ -89,7 +89,8 @@ namespace
         tao::json::value assets = {{"large_image", "logo"}, {"large_text", "NextClient"}};
 
         tao::json::value button = {
-            {"label", Localized("#NextClient_Discord_GetNextClient", "Get NextClient")}, {"url", "https://nextclient.ru/"}
+            {"label", Localized("#NextClient_Discord_GetNextClient", "Get NextClient")},
+            {"url", "https://github.com/CS-NextClient/NextClient"}
         };
         tao::json::value buttons = tao::json::value::array({button});
 
