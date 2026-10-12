@@ -301,9 +301,12 @@ def Results_Build(config):
 
 def Results_Present(config, source):
     try:
+        root = Path_Resolve(config["paths"]["reports"])
+        source = source.resolve()
+        relative = source.relative_to(root).as_posix()
+
         presentation = Results_Build(config)["details"]
-        relative = source.relative_to(Path_Resolve(config["paths"]["reports"])).as_posix()
-        html_path = Results_HtmlPath(source, Path_Resolve(config["paths"]["reports"]))
+        html_path = Results_HtmlPath(source, root)
         available = html_path.is_file() and not any(issue.startswith(relative + ":") for issue in presentation["issues"])
         return {"html_path": str(html_path) if available else None, "index_path": presentation["path"],
                 "presentation_issues": presentation["issues"]}

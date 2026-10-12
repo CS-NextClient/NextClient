@@ -42,7 +42,7 @@ class ResultsTests(unittest.TestCase):
     def setUp(self):
         self.directory = tempfile.TemporaryDirectory()
         self.addCleanup(self.directory.cleanup)
-        self.root = Path(self.directory.name)
+        self.root = Path(self.directory.name).resolve()
         self.reports = self.root / "reports with spaces"
         self.config = self.root / "config.json"
         Json_Write(self.config, {"schema": 1, "server": {"root": str(self.root / "absent-server")},
@@ -108,6 +108,33 @@ class ResultsTests(unittest.TestCase):
         self.assertIn("events.clean.jsonl", hrefs)
         self.assertIn("server.clean.log", hrefs)
         self.assertFalse(any("rcon.secret" in value or "javascript:" in value or "server.raw.log" in value for value in hrefs))
+
+    def test_present_selects_report_page_through_equivalent_path(self):
+        source = self.reports / "index.json"
+        Json_Write(source, {"ok": False, "code": "stack_smoke", "details": {
+            "error": "path alias failure marker"}})
+        original = source.read_bytes()
+        alias = self.reports / ".." / self.reports.name / source.name
+
+        paths = results.Results_Present({"paths": {"reports": str(self.reports)}}, alias)
+
+        self.assertEqual(paths["presentation_issues"], [])
+        self.assertEqual(paths["html_path"], str(self.reports / "index.json.html"))
+        self.assertEqual(paths["index_path"], str(self.reports / "index.html"))
+        self.assertIn("path alias failure marker", " ".join(Page(Path(paths["html_path"])).text))
+        self.assertEqual(source.read_bytes(), original)
+
+    def test_present_rejects_report_path_outside_reports_directory(self):
+        source = self.root / "private.json"
+        Json_Write(source, {"ok": False, "code": "stack_smoke", "details": {"error": "private fixture"}})
+        source.with_suffix(".html").write_text("private page", encoding="utf-8")
+        alias = self.reports / ".." / source.name
+
+        paths = results.Results_Present({"paths": {"reports": str(self.reports)}}, alias)
+
+        self.assertIsNone(paths["html_path"])
+        self.assertTrue(paths["presentation_issues"])
+        self.assertEqual(source.with_suffix(".html").read_text(encoding="utf-8"), "private page")
 
     def test_smoke_success_does_not_imply_visual_acceptance(self):
         path = self.reports / "archived checks" / "bomb.json"

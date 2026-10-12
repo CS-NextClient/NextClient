@@ -163,6 +163,7 @@ def load_codemodel(build_dir, config):
         raise FileNotFoundError("no CMake file API reply in %s; configure the build directory first" % reply_dir)
 
     index = _load_json(indexes[-1])
+    generator = index.get("cmake", {}).get("generator", {}).get("name", "")
     codemodel_file = next(item["jsonFile"] for item in index["objects"] if item["kind"] == "codemodel")
     codemodel = _load_json(os.path.join(reply_dir, codemodel_file))
     source_root = codemodel["paths"]["source"]
@@ -172,6 +173,10 @@ def load_codemodel(build_dir, config):
     artifacts = {target_id: [paths.key(os.path.join(build_dir, item["path"]))
                              for item in data.get("artifacts", [])]
                  for target_id, data in data_of.items()}
+    object_artifacts = {target_id: artifacts[target_id] for target_id, data in data_of.items()
+                        if data["type"] == "OBJECT_LIBRARY"}
+    generator_utilities = {target_id for target_id, data in data_of.items()
+                           if data["type"] == "UTILITY" and data.get("isGeneratorProvided")}
 
     targets = {}
     for target_id, data in data_of.items():
@@ -184,14 +189,21 @@ def load_codemodel(build_dir, config):
             include_dirs = [item["path"] for item in groups[group_index].get("includes", []) if not item.get("isSystem")]
             target.sources.append(CompiledSource(paths.canonical(os.path.join(source_root, source["path"])), include_dirs))
         target.dependencies = sorted(names[item["id"]] for item in data.get("dependencies", [])
-                                     if item["id"] in names)
-        target.link_dependencies = sorted(names[linked] for linked in _linked_ids(data, artifacts, build_dir)
-                                          if linked in names)
+                                     if item["id"] in names and item["id"] not in generator_utilities)
+
+        link_dir = build_dir
+        if generator.startswith("Visual Studio "):
+            link_dir = os.path.join(build_dir, data["paths"]["build"])
+
+        linked_ids = _linked_ids(data, artifacts, link_dir)
+        linked_ids.update(_object_ids(data, object_artifacts, source_root, config))
+        target.link_dependencies = sorted(names[linked] for linked in linked_ids
+                                          if linked in names and linked not in generator_utilities)
         targets[target.name] = target
     return source_root, targets
 
 
-def _linked_ids(data, artifacts, build_dir):
+def _linked_ids(data, artifacts, link_dir):
     """Ids of the targets whose objects reach this target's link, out of every dependency the codemodel
     lists: an order-only dependency (add_dependencies) puts nothing of its own into the consumer and must
     not be read as one that does.
@@ -200,12 +212,9 @@ def _linked_ids(data, artifacts, build_dir):
     names the latter, so the difference is the answer; the direct entries of `linkLibraries` are added back,
     since a target may be linked and waited for at once.
 
-    A target that links nothing carries neither key - every static library here is such a target, with an
-    `archive` in place of a `link` - and then the link line is the evidence: a binary's carries its whole
-    flattened closure, each library under its own artifact path, while an order-only dependency never
-    appears there. A static library has no link line at all, so this branch leaves its own dependencies to
-    the binary that links it, and provenance.py reports every dependency a closure left out so that a
-    change in how CMake flattens shows up instead of quietly dropping files."""
+    Without these keys, the link line supplies the library paths. Visual Studio makes them relative to
+    the target build directory, while Ninja uses the top-level build directory. Static library link
+    dependencies are flattened into the binary's link line; object inputs are handled by _object_ids."""
     if "orderDependencies" in data:
         order_only = {item["id"] for item in data["orderDependencies"]}
         direct = {item["id"] for item in data.get("linkLibraries", []) if "id" in item}
@@ -216,8 +225,16 @@ def _linked_ids(data, artifacts, build_dir):
         if fragment.get("role") != "libraries":
             continue
         for token in _link_tokens(fragment["fragment"]):
-            linked.add(paths.key(os.path.join(build_dir, token)))
+            linked.add(paths.key(os.path.join(link_dir, token)))
     return {target_id for target_id, keys in artifacts.items() if any(key in linked for key in keys)}
+
+
+def _object_ids(data, artifacts, source_root, config):
+    # Object inputs are sources rather than link fragments, including inputs to static archives.
+    # Visual Studio leaves its configuration macro in these paths even in a per-configuration reply.
+    objects = {paths.key(os.path.join(source_root, source["path"].replace("$(Configuration)", config)))
+               for source in data.get("sources", []) if "compileGroupIndex" not in source}
+    return {target_id for target_id, keys in artifacts.items() if any(key in objects for key in keys)}
 
 
 def _link_tokens(fragment):

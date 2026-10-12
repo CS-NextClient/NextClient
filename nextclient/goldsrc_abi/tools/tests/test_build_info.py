@@ -126,13 +126,14 @@ class InputStateTest(unittest.TestCase):
             build_info.version_line("")
 
 
-def _write_reply(root, app):
+def _write_reply(root, app, generator="Ninja Multi-Config"):
     """A CMake file API reply under root/build for `app` plus a linked static library and an order-only
     object library; returns the build directory."""
     build = os.path.join(root, "build")
     reply = os.path.join(build, ".cmake", "api", "v1", "reply")
     write_json(os.path.join(reply, "index-2026.json"),
-               {"objects": [{"kind": "codemodel", "jsonFile": "codemodel-v2-1.json"}]})
+               {"cmake": {"generator": {"name": generator}},
+                "objects": [{"kind": "codemodel", "jsonFile": "codemodel-v2-1.json"}]})
     write_json(os.path.join(reply, "codemodel-v2-1.json"), {
         "paths": {"source": root, "build": build},
         "configurations": [{"name": "Release", "targets": [
@@ -141,13 +142,16 @@ def _write_reply(root, app):
             {"id": "test::@1", "name": "test", "jsonFile": "target-test.json"},
         ]}],
     })
-    write_json(os.path.join(reply, "target-app.json"), app)
+    write_json(os.path.join(reply, "target-app.json"),
+               dict({"paths": {"source": ".", "build": "."}}, **app))
     write_json(os.path.join(reply, "target-lib.json"), {
         "name": "lib", "type": "STATIC_LIBRARY", "sources": [],
+        "paths": {"source": "sub dir", "build": "sub dir"},
         "artifacts": [{"path": "sub dir/lib.lib"}],
     })
     write_json(os.path.join(reply, "target-test.json"), {
         "name": "test", "type": "OBJECT_LIBRARY", "sources": [],
+        "paths": {"source": ".", "build": "."},
         "artifacts": [{"path": "CMakeFiles/test.dir/test.cpp.obj"}],
     })
     return build
@@ -204,6 +208,93 @@ class CodemodelTest(unittest.TestCase):
             })
 
             _source_root, targets = build_info.load_codemodel(build, "Release")
+            self.assertEqual(targets["app"].link_dependencies, ["lib"])
+
+    def test_link_paths_use_the_generators_working_directory(self):
+        cases = [
+            ("Visual Studio 17 2022", r'"..\sub dir\lib.lib" kernel32.lib'),
+            ("Ninja Multi-Config", r'"sub dir\lib.lib" kernel32.lib'),
+        ]
+        for generator, fragment in cases:
+            with self.subTest(generator=generator), tempfile.TemporaryDirectory() as root:
+                build = _write_reply(root, {
+                    "name": "app", "type": "SHARED_LIBRARY", "sources": [],
+                    "paths": {"source": "application", "build": "application"},
+                    "dependencies": [{"id": "lib::@1"}, {"id": "test::@1"}],
+                    "link": {"commandFragments": [{"fragment": fragment, "role": "libraries"}]},
+                }, generator=generator)
+
+                _source_root, targets = build_info.load_codemodel(build, "Release")
+
+                self.assertEqual(targets["app"].link_dependencies, ["lib"])
+                self.assertEqual(targets["app"].dependencies, ["lib", "test"])
+
+    def test_visual_studio_object_sources_reach_links_and_archives(self):
+        for target_type in ("SHARED_LIBRARY", "STATIC_LIBRARY"):
+            with self.subTest(target_type=target_type), tempfile.TemporaryDirectory() as root:
+                object_source = os.path.join(root, "build", "CMakeFiles", "test.dir",
+                                             "$(Configuration)", "test.cpp.obj")
+                build = _write_reply(root, {
+                    "name": "app", "type": target_type,
+                    "sources": [{"path": object_source, "isGenerated": True}],
+                    "dependencies": [{"id": "test::@1"}],
+                }, generator="Visual Studio 17 2022")
+                reply = os.path.join(build, ".cmake", "api", "v1", "reply")
+                write_json(os.path.join(reply, "target-test.json"), {
+                    "name": "test", "type": "OBJECT_LIBRARY", "sources": [],
+                    "paths": {"source": ".", "build": "."},
+                    "artifacts": [{"path": "CMakeFiles/test.dir/Release/test.cpp.obj"}],
+                })
+
+                _source_root, targets = build_info.load_codemodel(build, "Release")
+
+                self.assertEqual(targets["app"].link_dependencies, ["test"])
+
+    def test_generator_utilities_do_not_require_provenance_confirmation(self):
+        for is_generator_provided, expected in ((True, ["lib", "test"]),
+                                               (False, ["ZERO_CHECK", "lib", "test"])):
+            with self.subTest(is_generator_provided=is_generator_provided), tempfile.TemporaryDirectory() as root:
+                build = _write_reply(root, {
+                    "name": "app", "type": "SHARED_LIBRARY", "sources": [],
+                    "dependencies": [{"id": "ZERO_CHECK::@1"}, {"id": "lib::@1"}, {"id": "test::@1"}],
+                })
+                reply = os.path.join(build, ".cmake", "api", "v1", "reply")
+                write_json(os.path.join(reply, "codemodel-v2-1.json"), {
+                    "paths": {"source": root, "build": build},
+                    "configurations": [{"name": "Release", "targets": [
+                        {"id": "app::@1", "name": "app", "jsonFile": "target-app.json"},
+                        {"id": "lib::@1", "name": "lib", "jsonFile": "target-lib.json"},
+                        {"id": "test::@1", "name": "test", "jsonFile": "target-test.json"},
+                        {"id": "ZERO_CHECK::@1", "name": "ZERO_CHECK", "jsonFile": "target-zero.json"},
+                    ]}],
+                })
+                write_json(os.path.join(reply, "target-zero.json"), {
+                    "name": "ZERO_CHECK", "type": "UTILITY", "sources": [],
+                    "isGeneratorProvided": is_generator_provided,
+                })
+
+                _source_root, targets = build_info.load_codemodel(build, "Release")
+
+                self.assertEqual(targets["app"].dependencies, expected)
+
+    def test_generator_utilities_do_not_become_link_dependencies(self):
+        with tempfile.TemporaryDirectory() as root:
+            build = _write_reply(root, {
+                "name": "app", "type": "SHARED_LIBRARY", "sources": [],
+                "dependencies": [{"id": "lib::@1"}, {"id": "test::@1"}],
+                "orderDependencies": [{"id": "lib::@1"}],
+                "linkLibraries": [{"id": "lib::@1"}],
+            })
+            reply = os.path.join(build, ".cmake", "api", "v1", "reply")
+            write_json(os.path.join(reply, "target-test.json"), {
+                "name": "test", "type": "UTILITY", "sources": [],
+                "paths": {"source": ".", "build": "."},
+                "isGeneratorProvided": True,
+            })
+
+            _source_root, targets = build_info.load_codemodel(build, "Release")
+
+            self.assertEqual(targets["app"].dependencies, ["lib"])
             self.assertEqual(targets["app"].link_dependencies, ["lib"])
 
     def test_missing_reply_is_reported(self):
