@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   build:
-    name: Build (vs2022, Release, x86)
+    name: Build (ninja, Release, x86)
     runs-on: windows-2022
 
     env:
@@ -39,12 +39,18 @@ jobs:
       - name: Bootstrap vcpkg
         run: .\vcpkg\bootstrap-vcpkg.bat -disableMetrics
 
+      - name: Set up MSVC x86
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: amd64_x86
+          vsversion: '2022'
+
       - name: Request the CMake file API codemodel
         shell: pwsh
-        run: New-Item -ItemType File -Force -Path "build/vs2022/.cmake/api/v1/query/codemodel-v2" | Out-Null
+        run: New-Item -ItemType File -Force -Path "build/ninja/.cmake/api/v1/query/codemodel-v2" | Out-Null
 
       - name: Configure
-        run: cmake --preset vs2022 "-DNEXTCLIENT_INSTALL_DIR=${{ github.workspace }}\install"
+        run: cmake --preset ninja "-DNEXTCLIENT_INSTALL_DIR=${{ github.workspace }}\install"
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -55,12 +61,12 @@ jobs:
         run: python -m unittest discover -s nextclient/goldsrc_abi/tools -t nextclient/goldsrc_abi/tools -p "test_*.py"
 
       - name: Build
-        run: cmake --build --preset vs2022-release --target BUILD_ALL
+        run: cmake --build --preset ninja-release --target BUILD_ALL --parallel
 
       # After the build: the gate resolves the includes of every compiled source, and the cmrc
       # sources of client_mini_rc and gui_app_core_rc are copied into place by a build rule.
       - name: Provenance gate
-        run: python nextclient/goldsrc_abi/tools/provenance.py --build-dir build/vs2022 --config Release --allowlist .github/provenance-allowlist.json --report build/provenance-report.json
+        run: python nextclient/goldsrc_abi/tools/provenance.py --build-dir build/ninja --config Release --allowlist .github/provenance-allowlist.json --report build/provenance-report.json
 
       - name: Upload provenance report
         if: always()
@@ -86,13 +92,13 @@ jobs:
 
       # after the uploads: a test build writes its PDBs into out/pdb as well
       - name: Configure tests
-        run: cmake --preset vs2022-tests
+        run: cmake --preset ninja -B build/ninja-tests -DNEXTCLIENT_BUILD_TESTS=ON
 
       - name: Build tests
-        run: cmake --build --preset vs2022-tests-release
+        run: cmake --build build/ninja-tests --config Release --parallel
 
       - name: Run tests
-        run: ctest --test-dir build/vs2022-tests -C Release --output-on-failure
+        run: ctest --test-dir build/ninja-tests -C Release --output-on-failure
 
   build-linux:
     name: Build (linux, Release, x86)
