@@ -22,9 +22,9 @@ class CShareSettingsDialog : public vgui2::Frame
     DECLARE_CLASS_SIMPLE(CShareSettingsDialog, vgui2::Frame);
 
 public:
-    // read_page returns what the tab shows, applied or not; reload_page reads the cvars back
-    // into the tab after a code has changed them.
-    CShareSettingsDialog(vgui2::Panel* parent, std::function<settings_code::Values()> read_page, std::function<void()> reload_page);
+    // read_page returns what the tab shows, applied or not; write_page puts a code's sections
+    // into the tab's controls.
+    CShareSettingsDialog(vgui2::Panel* parent, std::function<settings_code::Values()> read_page, std::function<void(const settings_code::Decoded&)> write_page);
 
     void Activate() override;
     void OnClose() override;
@@ -35,7 +35,7 @@ public:
 
 private:
     std::function<settings_code::Values()> read_page_;
-    std::function<void()> reload_page_;
+    std::function<void(const settings_code::Decoded&)> write_page_;
 
     vgui2::Label* note_{};
     std::array<vgui2::CheckButton*, settings_code::kSectionCount> section_checks_{};

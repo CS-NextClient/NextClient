@@ -12,8 +12,6 @@
 #include <vgui_controls/Label.h>
 #include <vgui_controls/TextEntry.h>
 
-#include "SettingsShare.h"
-
 using namespace vgui2;
 
 namespace
@@ -36,10 +34,10 @@ namespace
     static_assert(std::size(kSectionCaptions) == settings_code::kSectionCount);
 }
 
-CShareSettingsDialog::CShareSettingsDialog(Panel* parent, std::function<settings_code::Values()> read_page, std::function<void()> reload_page) :
+CShareSettingsDialog::CShareSettingsDialog(Panel* parent, std::function<settings_code::Values()> read_page, std::function<void(const settings_code::Decoded&)> write_page) :
     BaseClass(parent, "ShareSettingsDialog"),
     read_page_(std::move(read_page)),
-    reload_page_(std::move(reload_page))
+    write_page_(std::move(write_page))
 {
     SetTitle("#GameUI_ShareSettingsTitle", true);
     SetBounds(0, 0, kWide, kTall);
@@ -223,8 +221,7 @@ void CShareSettingsDialog::ApplyCode()
         return;
     }
 
-    settings_share::WriteCvars(*decoded);
-    reload_page_();
+    write_page_(*decoded);
 
     status_->SetText("#GameUI_ShareSettingsApplied");
 }

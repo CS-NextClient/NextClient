@@ -738,7 +738,7 @@ void COptionsSubGame::OnCommand(const char* command)
 
     if (!stricmp(command, "ShareSettings"))
     {
-        CShareSettingsDialog* dialog = new CShareSettingsDialog(this, [this] { return GetShareValues(); }, [this] { OnResetData(); });
+        CShareSettingsDialog* dialog = new CShareSettingsDialog(this, [this] { return GetShareValues(); }, [this](const settings_code::Decoded& decoded) { SetShareValues(decoded); });
         dialog->Activate();
         return;
     }
@@ -969,6 +969,55 @@ settings_code::Values COptionsSubGame::GetShareValues() const
     values[settings_code::kBobCamera] = camera_check_->IsSelected() ? 1.0f : 0.0f;
 
     return values;
+}
+
+void COptionsSubGame::SetShareValues(const settings_code::Decoded& decoded)
+{
+    const settings_code::Values& values = decoded.values;
+    auto carries = [&decoded](settings_code::Section section) { return ((decoded.sections >> section) & 1) != 0; };
+
+    for (const SliderRow& row : rows_)
+    {
+        if (carries(settings_code::kFields[row.field].section))
+        {
+            SetSliderValue(row.slider, values[row.field]);
+        }
+    }
+
+    if (carries(settings_code::kCrosshair))
+    {
+        crosshair_type_combo_->ActivateItem(static_cast<int>(values[settings_code::kCrosshairType]));
+        crosshair_size_combo_->ActivateItem(static_cast<int>(values[settings_code::kCrosshairSize]));
+        SetCrosshairColor(ncl_math::Color{static_cast<int>(values[settings_code::kCrosshairColorR]),
+                                          static_cast<int>(values[settings_code::kCrosshairColorG]),
+                                          static_cast<int>(values[settings_code::kCrosshairColorB])});
+        crosshair_translucent_check_->SetSelected(values[settings_code::kCrosshairTranslucent] != 0.0f);
+        crosshair_dynamic_check_->SetSelected(values[settings_code::kDynamicCrosshair] != 0.0f);
+    }
+
+    if (carries(settings_code::kBobbing))
+    {
+        style_combo_->ActivateItemByRow(static_cast<int>(values[settings_code::kBobStyle]));
+    }
+
+    if (carries(settings_code::kModel))
+    {
+        disable_shift_check_->SetSelected(values[settings_code::kViewmodelDisableShift] != 0.0f);
+    }
+
+    if (carries(settings_code::kInertia))
+    {
+        lag_style_combo_->ActivateItemByRow(static_cast<int>(values[settings_code::kLagStyle]));
+    }
+
+    if (carries(settings_code::kCamera))
+    {
+        camera_check_->SetSelected(values[settings_code::kBobCamera] != 0.0f);
+    }
+
+    UpdateControlStates();
+    SyncPreview();
+    NotifyDataChanged();
 }
 
 void COptionsSubGame::UpdateControlStates()

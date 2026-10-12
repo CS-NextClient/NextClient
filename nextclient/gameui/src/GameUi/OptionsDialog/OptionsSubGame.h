@@ -178,6 +178,8 @@ private:
     int GetSelectedLagStyle() const;
     // what the controls show, applied or not
     settings_code::Values GetShareValues() const;
+    // into the controls only, so the dialog's Cancel still undoes it
+    void SetShareValues(const settings_code::Decoded& decoded);
     void SetPreviewMove(PreviewMove move);
     void UpdateControlStates();
     void NotifyDataChanged();
