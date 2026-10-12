@@ -23,7 +23,8 @@
 #include "IGameUIFuncs.h"
 #include <vstdlib/IKeyValuesSystem.h>
 
-#include "keydefs.h"
+#include <goldsrc/client_api.h>
+#include <goldsrc/keys.h>
 // memdbgon must be the last include file in a .cpp file!!!
 #include <tier0/memdbgon.h>
 
@@ -112,35 +113,35 @@ int ConvertVGUIToEngine( vgui2::KeyCode code )
         case vgui2::KEY_Z:
             return 'z';
         case vgui2::KEY_PAD_0:
-            return K_KP_INS;
+            return goldsrc::K_KP_INS;
         case vgui2::KEY_PAD_1:
-            return K_KP_END;
+            return goldsrc::K_KP_END;
         case vgui2::KEY_PAD_2:
-            return K_KP_DOWNARROW;
+            return goldsrc::K_KP_DOWNARROW;
         case vgui2::KEY_PAD_3:
-            return K_KP_PGDN;
+            return goldsrc::K_KP_PGDN;
         case vgui2::KEY_PAD_4:
-            return K_KP_LEFTARROW;
+            return goldsrc::K_KP_LEFTARROW;
         case vgui2::KEY_PAD_5:
-            return K_KP_5;
+            return goldsrc::K_KP_5;
         case vgui2::KEY_PAD_6:
-            return K_KP_RIGHTARROW;
+            return goldsrc::K_KP_RIGHTARROW;
         case vgui2::KEY_PAD_7:
-            return K_KP_HOME;
+            return goldsrc::K_KP_HOME;
         case vgui2::KEY_PAD_8:
-            return K_KP_UPARROW;
+            return goldsrc::K_KP_UPARROW;
         case vgui2::KEY_PAD_9:
-            return K_KP_PGUP;
+            return goldsrc::K_KP_PGUP;
         case vgui2::KEY_PAD_DIVIDE:
-            return K_KP_SLASH;
+            return goldsrc::K_KP_SLASH;
         case vgui2::KEY_PAD_MINUS:
-            return K_KP_MINUS;
+            return goldsrc::K_KP_MINUS;
         case vgui2::KEY_PAD_PLUS:
-            return K_KP_PLUS;
+            return goldsrc::K_KP_PLUS;
         case vgui2::KEY_PAD_ENTER:
-            return K_KP_ENTER;
+            return goldsrc::K_KP_ENTER;
         case vgui2::KEY_PAD_DECIMAL:
-            return K_KP_DEL;
+            return goldsrc::K_KP_DEL;
         case vgui2::KEY_PAD_MULTIPLY:
             return '*';
         case vgui2::KEY_LBRACKET:
@@ -166,75 +167,75 @@ int ConvertVGUIToEngine( vgui2::KeyCode code )
         case vgui2::KEY_EQUAL:
             return '=';
         case vgui2::KEY_ENTER:
-            return K_ENTER;
+            return goldsrc::K_ENTER;
         case vgui2::KEY_SPACE:
-            return K_SPACE;
+            return goldsrc::K_SPACE;
         case vgui2::KEY_BACKSPACE:
-            return K_BACKSPACE;
+            return goldsrc::K_BACKSPACE;
         case vgui2::KEY_TAB:
-            return K_TAB;
+            return goldsrc::K_TAB;
         case vgui2::KEY_CAPSLOCK:
-            return K_CAPSLOCK;
+            return goldsrc::K_CAPSLOCK;
         case vgui2::KEY_ESCAPE:
-            return K_ESCAPE;
+            return goldsrc::K_ESCAPE;
         case vgui2::KEY_INSERT:
-            return K_INS;
+            return goldsrc::K_INS;
         case vgui2::KEY_DELETE:
-            return K_DEL;
+            return goldsrc::K_DEL;
         case vgui2::KEY_HOME:
-            return K_HOME;
+            return goldsrc::K_HOME;
         case vgui2::KEY_END:
-            return K_END;
+            return goldsrc::K_END;
         case vgui2::KEY_PAGEUP:
-            return K_PGUP;
+            return goldsrc::K_PGUP;
         case vgui2::KEY_PAGEDOWN:
-            return K_PGDN;
+            return goldsrc::K_PGDN;
         case vgui2::KEY_BREAK:
-            return K_PAUSE;
+            return goldsrc::K_PAUSE;
         case vgui2::KEY_LSHIFT:
-            return K_SHIFT;
+            return goldsrc::K_SHIFT;
         case vgui2::KEY_RSHIFT:
-            return K_SHIFT;
+            return goldsrc::K_SHIFT;
         case vgui2::KEY_LALT:
-            return K_ALT;
+            return goldsrc::K_ALT;
         case vgui2::KEY_RALT:
-            return K_ALT;
+            return goldsrc::K_ALT;
         case vgui2::KEY_LCONTROL:
-            return K_CTRL;
+            return goldsrc::K_CTRL;
         case vgui2::KEY_RCONTROL:
-            return K_CTRL;
+            return goldsrc::K_CTRL;
         case vgui2::KEY_UP:
-            return K_UPARROW;
+            return goldsrc::K_UPARROW;
         case vgui2::KEY_LEFT:
-            return K_LEFTARROW;
+            return goldsrc::K_LEFTARROW;
         case vgui2::KEY_DOWN:
-            return K_DOWNARROW;
+            return goldsrc::K_DOWNARROW;
         case vgui2::KEY_RIGHT:
-            return K_RIGHTARROW;
+            return goldsrc::K_RIGHTARROW;
         case vgui2::KEY_F1:
-            return K_F1;
+            return goldsrc::K_F1;
         case vgui2::KEY_F2:
-            return K_F2;
+            return goldsrc::K_F2;
         case vgui2::KEY_F3:
-            return K_F3;
+            return goldsrc::K_F3;
         case vgui2::KEY_F4:
-            return K_F4;
+            return goldsrc::K_F4;
         case vgui2::KEY_F5:
-            return K_F5;
+            return goldsrc::K_F5;
         case vgui2::KEY_F6:
-            return K_F6;
+            return goldsrc::K_F6;
         case vgui2::KEY_F7:
-            return K_F7;
+            return goldsrc::K_F7;
         case vgui2::KEY_F8:
-            return K_F8;
+            return goldsrc::K_F8;
         case vgui2::KEY_F9:
-            return K_F9;
+            return goldsrc::K_F9;
         case vgui2::KEY_F10:
-            return K_F10;
+            return goldsrc::K_F10;
         case vgui2::KEY_F11:
-            return K_F11;
+            return goldsrc::K_F11;
         case vgui2::KEY_F12:
-            return K_F12;
+            return goldsrc::K_F12;
 
             // Not defined by HL engine
         case vgui2::KEY_NUMLOCK:

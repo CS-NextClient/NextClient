@@ -1,6 +1,10 @@
 #include "GameHud.h"
+#include <goldsrc/client_api.h>
 
-extern cl_enginefunc_t gEngfuncs;
+#include "hud/radar/integration/RadarConfig.h"
+#include "hud/radar/integration/RadarDebug.h"
+
+extern goldsrc::cl_enginefunc_t gEngfuncs;
 
 GameHud::GameHud(nitroapi::NitroApiInterface* nitro_api)
 {
@@ -21,6 +25,9 @@ GameHud::GameHud(nitroapi::NitroApiInterface* nitro_api)
 
     radar_ = std::make_shared<HudRadar>(nitro_api);
     all_hud_.push_back(radar_);
+
+    radar_advanced_ = std::make_shared<HudRadarAdvanced>(nitro_api);
+    all_hud_.push_back(radar_advanced_);
 
     death_notice_ = std::make_shared<HudDeathNotice>(nitro_api);
     all_hud_.push_back(death_notice_);
@@ -45,8 +52,28 @@ void GameHud::VidInit()
 
 void GameHud::Draw(float time)
 {
-    for (auto& item : all_hud_)
+    for (auto& item : all_hud_) {
+        if (item == radar_advanced_)
+        {
+            continue; // drawn separately via DrawRadar
+        }
         item->Draw(time);
+    }
+}
+
+void GameHud::PrepareRadar()
+{
+    radar_advanced_->PrepareHudTextZone();
+}
+
+void GameHud::UpdateRadarScoreboard(bool hud_visible)
+{
+    radar_advanced_->UpdateScoreboard(hud_visible);
+}
+
+void GameHud::DrawRadar(float time)
+{
+    radar_advanced_->Draw(time);
 }
 
 void GameHud::Think(float time)
@@ -70,4 +97,7 @@ void GameHud::InitHUDData()
 void GameHud::FetchCvars()
 {
     cl_righthand = gEngfuncs.pfnGetCvarPointer("cl_righthand");
+
+    RadarConfig_Init();
+    RadarDebug_Init();
 }

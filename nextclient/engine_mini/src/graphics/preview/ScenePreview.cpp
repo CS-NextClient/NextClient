@@ -15,7 +15,7 @@ namespace
 {
     // Screen coordinates to frame buffer pixels: the two differ under -stretchaspect and in
     // full screen, and GL counts y from the bottom.
-    PreviewRect ToFrameBuffer(const PreviewRect& rect, const SCREENINFO& screen, const GLint* viewport)
+    PreviewRect ToFrameBuffer(const PreviewRect& rect, const goldsrc::SCREENINFO& screen, const GLint* viewport)
     {
         float scale_x = static_cast<float>(viewport[2]) / screen.iWidth;
         float scale_y = static_cast<float>(viewport[3]) / screen.iHeight;
@@ -74,7 +74,7 @@ void ScenePreview::FreeScene(PreviewSceneHandle scene)
 
 void ScenePreview::Draw(const PreviewDrawParams& params, const PreviewRect& rect, const PreviewRect& clip)
 {
-    SCREENINFO screen;
+    goldsrc::SCREENINFO screen;
     screen.iSize = sizeof(screen);
     gEngfuncs.pfnGetScreenInfo(&screen);
 
@@ -117,7 +117,7 @@ void ScenePreview::Draw(const PreviewDrawParams& params, const PreviewRect& rect
     qglScissor(scissor.x, scissor.y, scissor.wide, scissor.tall);
     qglEnable(GL_SCISSOR_TEST);
 
-    // glClear honours the depth write mask, which may be off on entry
+    // glClear honors the depth write mask, which may be off on entry
     qglDepthMask(GL_TRUE);
 
     if (params.clear)

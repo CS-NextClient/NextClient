@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>
+#include <goldsrc/engine/resource.h>
 
 // Private resource folder accessible from filesytem interface.
 // The client must be connected to the server to use the function!
@@ -22,4 +23,4 @@ void PrivateRes_PrepareToPrecache();
 void PrivateRes_Clear();
 
 //
-void PrivateRes_AddClientOnlyResources(resource_t* list);
+void PrivateRes_AddClientOnlyResources(goldsrc::resource_t* list);

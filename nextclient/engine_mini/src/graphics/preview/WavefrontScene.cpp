@@ -6,6 +6,7 @@
 #include <string_view>
 #include <utility>
 
+#include <goldsrc/format/wad.h>
 #include <next_engine_mini/ScenePreviewInterface.h>
 
 #include "engine.h"
@@ -22,15 +23,15 @@ namespace
     constexpr int kPaletteColors = 256;
 
     // Read straight into the engine's own structures, which need no packing pragma.
-    static_assert(sizeof(wadinfo_t) == 12);
-    static_assert(sizeof(lumpinfo_s) == 32);
-    static_assert(sizeof(miptex_t) == 40);
+    static_assert(sizeof(goldsrc::wadinfo_t) == 12);
+    static_assert(sizeof(goldsrc::lumpinfo_t) == 32);
+    static_assert(sizeof(goldsrc::miptex_t) == 40);
 
     // Names are stored padded to a fixed field, in whatever case the author used, while a
     // material refers to them in another; both sides go through the engine's own rule.
     bool SameName(const char* stored, std::string_view wanted)
     {
-        char stored_clean[sizeof(lumpinfo_s::name)];
+        char stored_clean[sizeof(goldsrc::lumpinfo_t::name)];
         W_CleanupName(stored, stored_clean);
 
         char wanted_padded[sizeof(stored_clean) + 1]{};
@@ -47,12 +48,12 @@ namespace
     // here would then name whatever took its slot. Returns -1 for a lump that holds none.
     int LoadMiptex(const char* identifier, uint8_t* lump, int lump_size)
     {
-        if (lump_size < static_cast<int>(sizeof(miptex_t)))
+        if (lump_size < static_cast<int>(sizeof(goldsrc::miptex_t)))
         {
             return -1;
         }
 
-        miptex_t header;
+        goldsrc::miptex_t header;
         std::memcpy(&header, lump, sizeof(header));
 
         int wide = static_cast<int>(header.width);
@@ -229,26 +230,26 @@ void WavefrontScene::LoadTexturesFrom(const char* wad_name)
         return;
     }
 
-    if (length < static_cast<int>(sizeof(wadinfo_t)))
+    if (length < static_cast<int>(sizeof(goldsrc::wadinfo_t)))
     {
         gEngfuncs.COM_FreeFile(archive);
         return;
     }
 
-    wadinfo_t header;
+    goldsrc::wadinfo_t header;
     std::memcpy(&header, archive, sizeof(header));
 
     // Bounded in 64 bits, like the lumps below: a corrupt count times the entry size, or a
     // corrupt position plus a size, wraps a 32 bit sum and would then admit the whole file.
-    int64_t directory_end = static_cast<int64_t>(header.infotableofs) + static_cast<int64_t>(header.numlumps) * sizeof(lumpinfo_s);
+    int64_t directory_end = static_cast<int64_t>(header.infotableofs) + static_cast<int64_t>(header.numlumps) * sizeof(goldsrc::lumpinfo_t);
 
     bool usable = std::memcmp(header.identification, kWadIdent, sizeof(header.identification)) == 0 && header.numlumps > 0 &&
                   header.infotableofs >= 0 && directory_end <= length;
 
     for (int i = 0; usable && i < header.numlumps; i++)
     {
-        lumpinfo_s lump;
-        std::memcpy(&lump, archive + header.infotableofs + i * sizeof(lumpinfo_s), sizeof(lump));
+        goldsrc::lumpinfo_t lump;
+        std::memcpy(&lump, archive + header.infotableofs + i * sizeof(goldsrc::lumpinfo_t), sizeof(lump));
 
         if (lump.type != kMiptexType || lump.compression != 0)
         {

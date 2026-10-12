@@ -1,3 +1,5 @@
+#include <goldsrc/engine/net.h>
+
 #include "../engine.h"
 
 void MSG_BeginReading()
@@ -15,28 +17,28 @@ const char* MSG_ReadStringLine()
     return eng()->MSG_ReadStringLine.InvokeChained();
 }
 
-void MSG_WriteByte(sizebuf_t *sb, int c)
+void MSG_WriteByte(goldsrc::sizebuf_t* sb, int c)
 {
     eng()->MSG_WriteByte.InvokeChained(sb, c);
 }
 
-void MSG_WriteShort(sizebuf_t *sb, int c)
+void MSG_WriteShort(goldsrc::sizebuf_t* sb, int c)
 {
     eng()->MSG_WriteShort.InvokeChained(sb, c);
 }
 
-void MSG_WriteLong(sizebuf_t *sb, int c)
+void MSG_WriteLong(goldsrc::sizebuf_t* sb, int c)
 {
     uint32* data = reinterpret_cast<uint32*>(SZ_GetSpace(sb, 4));
     *data = c;
 }
 
-void MSG_WriteString(sizebuf_t *sb, const char *s)
+void MSG_WriteString(goldsrc::sizebuf_t* sb, const char* s)
 {
     eng()->MSG_WriteString.InvokeChained(sb, s);
 }
 
-void MSG_WriteBuf(sizebuf_t *sb, int iSize, void *buf)
+void MSG_WriteBuf(goldsrc::sizebuf_t* sb, int iSize, void* buf)
 {
     if (buf)
         SZ_Write(sb, buf, iSize);

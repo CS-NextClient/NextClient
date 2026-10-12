@@ -5,6 +5,7 @@
 #include <taskcoro/TaskCoro.h>
 
 #include "engine.h"
+#include "common/net_ws.h"
 #include "service/matchmaking/sourcequery/MultiSourceQuery.h"
 
 using namespace taskcoro;
@@ -21,7 +22,7 @@ namespace
 
 void DiscordHostname_Shutdown()
 {
-    // A query still in flight holds its own references and finds the token cancelled
+    // A query still in flight holds its own references and finds the token canceled
     if (g_CancellationToken)
     {
         g_CancellationToken->SetCanceled();
@@ -35,14 +36,14 @@ void DiscordHostname_Shutdown()
 
 void DiscordHostname_Update()
 {
-    if (cls->state != ca_active || cls->demoplayback || cls->netchan.remote_address.IsLoopback())
+    if (cls->state != goldsrc::ca_active || cls->demoplayback || cls->netchan.remote_address.type == goldsrc::NA_LOOPBACK)
     {
         g_HasQueriedAddress = false;
         g_Hostname.clear();
         return;
     }
 
-    netadr_t address = cls->netchan.remote_address;
+    netadr_t address = NET_ToTier1(cls->netchan.remote_address);
     if (g_HasQueriedAddress && address == g_QueriedAddress)
     {
         return;

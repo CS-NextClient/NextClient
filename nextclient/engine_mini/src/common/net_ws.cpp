@@ -1,5 +1,8 @@
 #include "net_ws.h"
 
+#include <cstring>
+#include <type_traits>
+
 #ifdef _WIN32
     #include <winsock2.h>
 #else
@@ -12,47 +15,59 @@
 #endif
 #include <optick.h>
 
+#include "engine.h"
 #include "console/console.h"
-#include "sys_dll.h"
+#include "common/sys_dll.h"
 
-void NET_ClearLagData(qboolean bClient, qboolean bServer)
+void NET_ClearLagData(goldsrc::qboolean bClient, goldsrc::qboolean bServer)
 {
     eng()->NET_ClearLagData.InvokeChained(bClient, bServer);
 }
 
-const char* NET_AdrToString(netadr_t a)
+static_assert(sizeof(goldsrc::netadr_t) == sizeof(::netadr_t));
+static_assert(std::is_trivially_copyable_v<goldsrc::netadr_t> && std::is_trivially_copyable_v<::netadr_t>);
+
+::netadr_t NET_ToTier1(const goldsrc::netadr_t& address)
 {
-    return a.ToString();
+    ::netadr_t converted;
+    std::memcpy(&converted, &address, sizeof(converted));
+
+    return converted;
 }
 
-qboolean NET_LeaveGroup(netsrc_t sock, netadr_t addr)
+const char* NET_AdrToString(goldsrc::netadr_t a)
+{
+    return NET_ToTier1(a).ToString();
+}
+
+goldsrc::qboolean NET_LeaveGroup(goldsrc::netsrc_t sock, goldsrc::netadr_t addr)
 {
     return eng()->NET_LeaveGroup(sock, addr);
 }
 
-qboolean NET_CompareAdr(netadr_t a, netadr_t b)
+goldsrc::qboolean NET_CompareAdr(goldsrc::netadr_t a, goldsrc::netadr_t b)
 {
-    return a == b;
+    return NET_ToTier1(a) == NET_ToTier1(b);
 }
 
-void NET_SendPacket(netsrc_t sock, int length, void* data, netadr_t to)
+void NET_SendPacket(goldsrc::netsrc_t sock, int length, void* data, goldsrc::netadr_t to)
 {
     OPTICK_EVENT();
 
-    const netadrtype_t addr_type = to.GetType();
+    const goldsrc::netadrtype_t addr_type = to.type;
 
-    if (addr_type == NA_LOOPBACK)
+    if (addr_type == goldsrc::NA_LOOPBACK)
     {
         eng()->NET_SendLoopPacket(sock, length, data, to);
         return;
     }
 
     int net_socket;
-    if (addr_type == NA_BROADCAST || addr_type == NA_IP)
+    if (addr_type == goldsrc::NA_BROADCAST || addr_type == goldsrc::NA_IP)
     {
         net_socket = p_ip_sockets[sock];
     }
-    else if (addr_type == NA_IPX || addr_type == NA_BROADCAST_IPX)
+    else if (addr_type == goldsrc::NA_IPX || addr_type == goldsrc::NA_BROADCAST_IPX)
     {
         net_socket = p_ipx_sockets[sock];
     }
@@ -87,7 +102,7 @@ void NET_SendPacket(netsrc_t sock, int length, void* data, netadr_t to)
     }
 
     // some PPP links dont allow broadcasts
-    if (err == WSAEADDRNOTAVAIL && (addr_type == NA_BROADCAST || addr_type == NA_BROADCAST_IPX))
+    if (err == WSAEADDRNOTAVAIL && (addr_type == goldsrc::NA_BROADCAST || addr_type == goldsrc::NA_BROADCAST_IPX))
     {
         return;
     }

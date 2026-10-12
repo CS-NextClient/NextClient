@@ -21,14 +21,16 @@ is reached through NitroApi; local wrappers must keep its ABI and callback order
 
 ## Rendering and DLL boundaries
 
-- Release GL objects explicitly while the context is live. Static destruction after engine
-  teardown is too late for GL calls or access to engine-owned objects.
+- Release GL objects explicitly while the context is live. On Windows, `Draw_Shutdown` uninstalls
+  the text surface adapter and releases the text renderer before shutting down drawing. Static
+  destruction after engine teardown is too late for GL calls or access to engine-owned objects.
 - Save and restore the GL state actually touched by a draw path, including active texture unit,
   bindings, current color and blend state. The stock renderer continues drawing afterward.
 - Framebuffer capture must account for the engine's bound draw framebuffer. Do not assume the
   scene is in framebuffer zero or that read and draw bindings are equal.
 - VGUI interfaces are resolved through DLL factories. Preserve the identity of the engine's
   shared surface rather than introducing a second surface or font store in a consumer DLL.
+  The text renderer has [additional rules](src/graphics/text/AGENTS.md).
 
 ## Verification
 

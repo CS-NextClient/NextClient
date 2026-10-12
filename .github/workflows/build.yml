@@ -39,11 +39,36 @@ jobs:
       - name: Bootstrap vcpkg
         run: .\vcpkg\bootstrap-vcpkg.bat -disableMetrics
 
+      - name: Request the CMake file API codemodel
+        shell: pwsh
+        run: New-Item -ItemType File -Force -Path "build/vs2022/.cmake/api/v1/query/codemodel-v2" | Out-Null
+
       - name: Configure
         run: cmake --preset vs2022 "-DNEXTCLIENT_INSTALL_DIR=${{ github.workspace }}\install"
 
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Test goldsrc_abi tools
+        run: python -m unittest discover -s nextclient/goldsrc_abi/tools -t nextclient/goldsrc_abi/tools -p "test_*.py"
+
       - name: Build
         run: cmake --build --preset vs2022-release --target BUILD_ALL
+
+      # After the build: the gate resolves the includes of every compiled source, and the cmrc
+      # sources of client_mini_rc and gui_app_core_rc are copied into place by a build rule.
+      - name: Provenance gate
+        run: python nextclient/goldsrc_abi/tools/provenance.py --build-dir build/vs2022 --config Release --allowlist .github/provenance-allowlist.json --report build/provenance-report.json
+
+      - name: Upload provenance report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: provenance-report-${{ github.sha }}
+          path: build/provenance-report.json
+          if-no-files-found: ignore
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
@@ -61,10 +86,10 @@ jobs:
 
       # after the uploads: a test build writes its PDBs into out/pdb as well
       - name: Configure tests
-        run: cmake --preset vs2022 -B build/vs2022-tests -DNEXTCLIENT_BUILD_TESTS=ON
+        run: cmake --preset vs2022-tests
 
       - name: Build tests
-        run: cmake --build build/vs2022-tests --config Release --target engine_mini-tests gameui-tests view-tests crosshair-tests
+        run: cmake --build --preset vs2022-tests-release
 
       - name: Run tests
         run: ctest --test-dir build/vs2022-tests -C Release --output-on-failure
@@ -111,8 +136,17 @@ jobs:
       - name: Bootstrap vcpkg
         run: ./vcpkg/bootstrap-vcpkg.sh -disableMetrics
 
+      - name: Check GoldSrc ABI models
+        run: python3 nextclient/goldsrc_abi/tools/library.py check
+
+      - name: Test portable platform tools
+        run: python3 -m unittest discover -s nextclient/goldsrc_abi/tools -t nextclient/goldsrc_abi/tools -p "test_platforms.py"
+
       - name: Configure
         run: cmake --preset linux "-DNEXTCLIENT_INSTALL_DIR=$GITHUB_WORKSPACE/install"
+
+      - name: Check Linux x86 ABI layouts
+        run: cmake --build --preset linux-release --target goldsrc_abi_golden
 
       - name: Build
         run: cmake --build --preset linux-release --target BUILD_ALL
@@ -132,7 +166,7 @@ jobs:
         run: cmake --preset linux -B build/linux-tests -DNEXTCLIENT_BUILD_TESTS=ON
 
       - name: Build tests
-        run: cmake --build build/linux-tests --config Release --target engine_mini-tests gameui-tests view-tests crosshair-tests
+        run: cmake --build build/linux-tests --config Release
 
       - name: Run tests
         run: ctest --test-dir build/linux-tests -C Release --output-on-failure

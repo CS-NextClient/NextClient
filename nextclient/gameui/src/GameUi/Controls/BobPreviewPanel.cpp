@@ -107,7 +107,7 @@ namespace
         140,
     };
 
-    float CvarValue(const cvar_t* cvar)
+    float CvarValue(const goldsrc::cvar_t* cvar)
     {
         return cvar != nullptr ? cvar->value : 0.0f;
     }

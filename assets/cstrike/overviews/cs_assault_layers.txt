@@ -1,0 +1,5 @@
+radar_layers
+{
+    layer { name "Main" min_z "-4096" max_z "4096" }
+    hide { mins "-688 1616 384" maxs "688 2752 1024" }
+}

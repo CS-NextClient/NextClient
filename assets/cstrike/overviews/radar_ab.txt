@@ -1,0 +1,25 @@
+// NextClient advanced radar - per-map bomb site A/B override.
+//
+// Format:  "mapname"  "letters"
+//   letters are assigned to the bomb sites in left-to-right order (by world X),
+//   so the count of letters matches the number of sites (1, 2 or more).
+//
+// Maps NOT listed here use automatic labelling:
+//   1) the letter encoded in the bomb target name (a_crates, bomb_a, targeta,
+//      tgt_a, ...) - already correct for de_dust, de_dust2, de_cbble, de_aztec,
+//      de_piranesi and similar named maps;
+//   2) otherwise a left-to-right A/B by world X.
+//
+// Use entries below only for maps whose automatic A/B comes out wrong. The ones
+// here are best-effort for unnamed maps and should be verified in game (flip the
+// two letters if reversed). Detected left-to-right site order is noted in comments.
+
+"de_inferno"  "BA"     // sites (W..E): banana=B, pit=A
+
+// Verify and enable as needed (currently commented = automatic left-to-right):
+// "de_train"    "AB"   // W target02, E target01
+// "de_vertigo"  "AB"   // W -460, E 64
+// "de_chateau"  "AB"   // W pot, E glass
+// "de_airstrip" "AB"   // W 140, E 2308
+// de_nuke: both sites share the same world X (vertical map) - cannot be ordered
+//          by X; left as automatic.

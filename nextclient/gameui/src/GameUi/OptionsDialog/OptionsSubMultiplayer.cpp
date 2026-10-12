@@ -35,6 +35,7 @@
 #ifdef _WIN32
 #include <io.h>
 #endif
+#include <goldsrc/client_api.h>
 
 #include "ImageLib/LoadBMP.h"
 
@@ -92,6 +93,9 @@ COptionsSubMultiplayer::COptionsSubMultiplayer(vgui2::Panel *parent) : vgui2::Pr
     vgui2::Button *crosshair = new vgui2::Button(this, "CrosshairSettings", "#GameUI_CrosshairSettingsBtn");
     crosshair->SetCommand("CrosshairSettings");
 
+    vgui2::Button* hud_radar = new vgui2::Button(this, "HudRadar", "#GameUI_HudRadarSettings");
+    hud_radar->SetCommand("HudRadar");
+
     LoadControlSettings("Resource\\OptionsSubMultiplayer.res");
 }
 
@@ -118,6 +122,10 @@ void COptionsSubMultiplayer::OnCommand(const char *command)
 
         m_hMultiplayerAdvancedDialog->Activate();
         m_hMultiplayerAdvancedDialog->SetPos(100, 100);
+    }
+    else if (!stricmp(command, "HudRadar"))
+    {
+        GameUI().OpenHudRadarDialog();
     }
 
     BaseClass::OnCommand(command);

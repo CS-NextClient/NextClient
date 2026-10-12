@@ -31,6 +31,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include <SDL.h>
 #include <hlsdk.h>
+#include <goldsrc/client_api.h>
+#include <goldsrc/types.h>
 
 #include "gl_local.h"
 #include "glw_win.h"
@@ -3158,7 +3160,7 @@ void QGL_Shutdown(void)
 ** might be.
 **
 */
-qboolean QGL_Init()
+goldsrc::qboolean QGL_Init()
 {
     glw_state.hinstOpenGL = (HINSTANCE)1;
 
@@ -3534,7 +3536,7 @@ qboolean QGL_Init()
     return true;
 }
 
-void GLimp_EnableLogging(qboolean enable)
+void GLimp_EnableLogging(goldsrc::qboolean enable)
 {
     if(enable)
     {

@@ -2,7 +2,9 @@
 #include <strtools.h>
 #include <cstdio>
 #ifdef _WIN32
-    #include <Windows.h>
+// winnt.h replaces the ARRAYSIZE macro from tier0.
+#undef ARRAYSIZE
+#include <Windows.h>
 #endif
 #include <format>
 #include <nitro_utils/string_utils.h>

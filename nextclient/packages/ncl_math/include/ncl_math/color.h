@@ -112,7 +112,7 @@ namespace ncl_math
         }
     }
 
-    // Inverse of HsvToRgb over the color's rgb; alpha is ignored. A grey color has no hue,
+    // Inverse of HsvToRgb over the color's rgb; alpha is ignored. A gray color has no hue,
     // and h is then left as passed in.
     inline void RgbToHsv(const ColorF& rgb, float& h, float& s, float& v)
     {

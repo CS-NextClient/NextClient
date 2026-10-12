@@ -1,6 +1,7 @@
 #include "DiscordPresence.h"
 
 #include "engine.h"
+#include "common/net_ws.h"
 #include "console/console.h"
 #include "DiscordHostname.h"
 #include "DiscordUrlScheme.h"
@@ -19,9 +20,9 @@ namespace
 {
     constexpr const char* kDiscordAppId = "1538460768503070771";
 
-    cvar_t* g_DiscordRpcCvar = nullptr;
-    cvar_t* g_DiscordRpcServerCvar = nullptr;
-    cvar_t* g_DiscordRpcJoinCvar = nullptr;
+    goldsrc::cvar_t* g_DiscordRpcCvar = nullptr;
+    goldsrc::cvar_t* g_DiscordRpcServerCvar = nullptr;
+    goldsrc::cvar_t* g_DiscordRpcJoinCvar = nullptr;
 
     DiscordWorker g_DiscordWorker(kDiscordAppId);
     std::string g_LastActivity;
@@ -94,7 +95,7 @@ namespace
 
         tao::json::value activity = {{"details", "Counter-Strike 1.6"}, {"assets", assets}, {"timestamps", {{"start", g_StartTime}}}};
 
-        if (cls->state == ca_disconnected)
+        if (cls->state == goldsrc::ca_disconnected)
         {
             activity["state"] = Localized("#NextClient_Discord_MainMenu", "In main menu");
             activity["buttons"] = buttons;
@@ -103,14 +104,14 @@ namespace
 
         if (!cls->demoplayback)
         {
-            if (cls->state == ca_connecting || cls->state == ca_connected || cls->state == ca_uninitialized)
+            if (cls->state == goldsrc::ca_connecting || cls->state == goldsrc::ca_connected || cls->state == goldsrc::ca_uninitialized)
             {
                 activity["state"] = Localized("#NextClient_Discord_Connecting", "Connecting...");
                 activity["buttons"] = buttons;
                 return activity;
             }
 
-            if (cls->state == ca_active)
+            if (cls->state == goldsrc::ca_active)
             {
                 bool is_local = strcmp(cls->servername, "local") == 0;
 
@@ -134,7 +135,7 @@ namespace
 
                     activity["state"] = Localized("#NextClient_Discord_Multiplayer", "Multiplayer");
 
-                    const netadr_t& remote = cls->netchan.remote_address;
+                    const netadr_t remote = NET_ToTier1(cls->netchan.remote_address);
                     bool can_join = g_DiscordRpcServerCvar->value != 0 && g_DiscordRpcJoinCvar->value != 0 && remote.GetType() == NA_IP &&
                                     !remote.IsReservedAdr();
 
@@ -180,9 +181,9 @@ void DiscordPresence_Init()
     DiscordUrlScheme_Register(kDiscordAppId);
 
     g_StartTime = static_cast<int64_t>(time(nullptr));
-    g_DiscordRpcCvar = gEngfuncs.pfnRegisterVariable(cvars::kDiscordRpc.name, cvars::kDiscordRpc.value, FCVAR_ARCHIVE);
-    g_DiscordRpcServerCvar = gEngfuncs.pfnRegisterVariable(cvars::kDiscordRpcServer.name, cvars::kDiscordRpcServer.value, FCVAR_ARCHIVE);
-    g_DiscordRpcJoinCvar = gEngfuncs.pfnRegisterVariable(cvars::kDiscordRpcJoin.name, cvars::kDiscordRpcJoin.value, FCVAR_ARCHIVE);
+    g_DiscordRpcCvar = gEngfuncs.pfnRegisterVariable(cvars::kDiscordRpc.name, cvars::kDiscordRpc.value, goldsrc::FCVAR_ARCHIVE);
+    g_DiscordRpcServerCvar = gEngfuncs.pfnRegisterVariable(cvars::kDiscordRpcServer.name, cvars::kDiscordRpcServer.value, goldsrc::FCVAR_ARCHIVE);
+    g_DiscordRpcJoinCvar = gEngfuncs.pfnRegisterVariable(cvars::kDiscordRpcJoin.name, cvars::kDiscordRpcJoin.value, goldsrc::FCVAR_ARCHIVE);
 }
 
 void DiscordPresence_Shutdown()

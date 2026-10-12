@@ -6,6 +6,7 @@
 #include "main.h"
 #include "IGameConsole.h"
 #include <next_gameui/IGameConsoleNext.h>
+#include <goldsrc/client_api.h>
 
 #ifdef _WIN32
 const char* kChatPrintConsolePatternWin32 = "FF 15 ? ? ? ? 83 C4 ? 66 89 1D +1";

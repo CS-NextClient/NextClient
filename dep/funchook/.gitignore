@@ -1,0 +1,8 @@
+*.disasm
+*.dll
+*.lib
+*.o
+*.so
+*~
+/build*
+

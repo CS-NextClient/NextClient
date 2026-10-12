@@ -19,9 +19,15 @@ files and localized strings form one feature; resources are shipped under `asset
 
 ## Live settings and in-game panels
 
+- `CHudRadarDialog` in `src/GameUi/OptionsDialog/HudRadarDialog.cpp` is a live-preview dialog.
+  Preserve its snapshot, Apply/OK and discard behavior when extending it. Add each new setting to
+  both control synchronization and snapshot restoration.
 - Engine commands sent by `pfnClientCmd` are queued. Writing a cvar and immediately reading it back
   can read the previous value. Defaults and programmatic previews must keep control state coherent
   until the engine executes the command.
+- Radar cvar names and defaults come from
+  `nextclient/client_mini/include/next_client_mini/radar_cvars.h`. Keep the dialog table consistent
+  with that definition instead of copying defaults into UI code.
 - Every close path must release modal input and restore the underlying in-game panel state,
   including spectator UI. Review Esc, close, Apply/OK and discard paths together; mouse capture and
   keyboard focus are part of the behavior, not just panel visibility.

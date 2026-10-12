@@ -1,13 +1,13 @@
 #pragma once
 
 #include <tier0/basetypes.h>
-#include <const.h>
+#include <goldsrc/types.h>
 
 struct viewmodel_overrides_t
 {
     int rendermode;
     int renderamt;
-    color24 color;
+    goldsrc::color24 color;
     int renderfx;
     short skin;
     int body;

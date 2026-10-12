@@ -5,6 +5,9 @@
 #include "sprite_color.h"
 #include "hud_sprite_state.h"
 #include <array>
+#include <cstdint>
+
+#include <goldsrc/client_api.h>
 
 class HudSprite
 {
@@ -12,7 +15,7 @@ private:
     using StateTimes = std::array<float, static_cast<size_t>(HudSpriteState::MAX_STATES)>;
 
     bool isFullScreen_{};
-    HSPRITE_t sprite_{};
+    goldsrc::HSPRITE_t sprite_{};
     SpriteRect spriteRect_{};
     SpriteColor spriteColor_{};
     HudSpriteState spriteState_{};
@@ -50,7 +53,7 @@ public:
 
     bool isFullScreen() const;
 
-    const HSPRITE_t& getSprite() const;
+    const goldsrc::HSPRITE_t& getSprite() const;
 
     const SpriteRect& getSpriteRect() const;
 
@@ -116,9 +119,9 @@ public:
 
     HudSprite* setSpriteRect(int left, int top, int right, int bottom);
 
-    HudSprite* setSpriteColor(byte red, byte green, byte blue);
+    HudSprite* setSpriteColor(uint8_t red, uint8_t green, uint8_t blue);
 
-    HudSprite* setAlpha(byte alpha);
+    HudSprite* setAlpha(uint8_t alpha);
 
     HudSprite* setScale(float scaleX, float scaleY);
 
@@ -136,5 +139,5 @@ public:
 
     int getRenderMode() const;
 
-    static float normalizeColor(byte color);
+    static float normalizeColor(uint8_t color);
 };

@@ -1,5 +1,9 @@
 #include "HudDamageDirection.h"
 
+#include <goldsrc/client_api.h>
+#include <goldsrc/cstrike/game.h>
+#include <goldsrc/cstrike/hud_elements.h>
+
 constexpr float EPSILON = 0.4f;
 constexpr auto PAIN_NAME = "sprites/%d_pain.spr";
 
@@ -32,7 +36,7 @@ void HudDamageDirection::VidInit() {
 }
 
 void HudDamageDirection::Draw(float flTime) {
-	if (m_iHideHUDDisplay & HIDEHUD_HEALTH || cl_enginefunc()->IsSpectateOnly())
+	if (m_iHideHUDDisplay & goldsrc::cstrike::HIDEHUD_HEALTH || cl_enginefunc()->IsSpectateOnly())
 		return;
 		
 	if (attack_indicators_[ATK_FRONT] == 0 && attack_indicators_[ATK_RIGHT] == 0

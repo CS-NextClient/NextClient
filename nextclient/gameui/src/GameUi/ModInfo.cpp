@@ -11,6 +11,7 @@
 #include <KeyValues.h>
 #include <vgui_controls/Controls.h>
 #include <FileSystem.h>
+#include <goldsrc/client_api.h>
 #include "GameUi.h"
 
 //-----------------------------------------------------------------------------

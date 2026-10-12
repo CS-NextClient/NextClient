@@ -1,37 +1,41 @@
 #include "GameUi.h"
 
+#include <filesystem>
+#include <format>
+
 #include <sys/types.h>
 #ifdef _WIN32
 #include <direct.h>
+#include <Windows.h>
+#include <shellapi.h>
 #else
 #include <sys/stat.h>
 #endif
-#include <filesystem>
-
 #include <tier1/tier1.h>
 #include <tier2/tier2.h>
-
-#include "vgui_controls/Controls.h"
-#include "vgui_controls/MessageBox.h"
-
 #include <IEngineVGui.h>
 #include <IBaseUI.h>
 #include <IBaseSystem.h>
 #include <FileSystem.h>
-#include "../IServerBrowserEx.h"
-
 #include <vgui/ILocalize.h>
 #include <vgui/ISchemeNext.h>
 #include <vgui/ISurfaceNext.h>
 #include <vgui/IVGui.h>
 #include <vgui/ISystem.h>
-#include <format>
+#include <vgui_controls/AnimationController.h>
+#include <utils/TaskRun.h>
+#include <utils/TaskRunImpl.h>
+#include <goldsrc/client_api.h>
 
+#include "vgui_controls/Controls.h"
+#include "vgui_controls/MessageBox.h"
+#include "IServerBrowserEx.h"
 #include "BasePanel.h"
 #include "ModInfo.h"
 #include "GameConsole.h"
 #include "LoadingDialog.h"
 #include "DemoPlayerDialog.h"
+#include "OptionsDialog/HudRadarDialog.h"
 #include "OptionsSubMiscellaneous.h"
 #include "IClientVGUI.h"
 
@@ -43,13 +47,6 @@
 #include "Browser/ExtensionGameUiApi.h"
 #endif
 
-#include <utils/TaskRun.h>
-#include <utils/TaskRunImpl.h>
-
-#ifdef _WIN32
-#include <shellapi.h>
-#endif
-
 namespace fs = std::filesystem;
 
 static IServerBrowserEx *g_pServerBrowser = nullptr;
@@ -58,14 +55,55 @@ static IGameClientExports* g_pGameClientExports = nullptr;
 static EngineMiniInterface* g_pEngineMini = nullptr;
 static ScenePreviewInterface* g_pScenePreview;
 static vgui2::DHANDLE<CDemoPlayerDialog> g_hDemoPlayerDialog;
+static vgui2::DHANDLE<CHudRadarDialog> g_hHudRadarDialog;
 vgui2::DHANDLE<CLoadingDialog> g_hLoadingDialog;
+
+void CGameUI::OpenHudRadarDialog()
+{
+    if (!g_hHudRadarDialog.Get())
+    {
+        g_hHudRadarDialog = new CHudRadarDialog(BasePanel());
+    }
+
+    // In a level the dialog floats over the running game; from the menu it stays a
+    // normal GameUI dialog.
+    bool over_game = BeginPanelOverGame(g_hHudRadarDialog.Get());
+    if (!over_game)
+    {
+        g_hHudRadarDialog->SetParent(BasePanel()->GetVPanel());
+    }
+
+    g_hHudRadarDialog->Activate();
+
+    if (over_game)
+    {
+        g_hHudRadarDialog->SetVisible(true);
+        g_hHudRadarDialog->MoveToFront();
+        g_hHudRadarDialog->RequestFocus();
+    }
+}
+
+void CGameUI::CloseHudRadarDialog()
+{
+    CHudRadarDialog* dialog = g_hHudRadarDialog.Get();
+    if (!dialog)
+    {
+        return;
+    }
+
+    g_hHudRadarDialog = nullptr;
+    // Loading and disconnect must release the root-parented dialog without waiting for its fade.
+    dialog->DisableFadeEffect();
+    dialog->OnCommand("Close");
+}
+
 static CGameUI g_GameUI;
 #ifdef _WIN32
 static HWND g_MainWindow = nullptr;
 static WNDPROC g_MainWindowProc = nullptr;
 #endif
 
-cl_enginefunc_t* engine = nullptr;
+goldsrc::cl_enginefunc_t* engine = nullptr;
 
 CGameUI &GameUI() { return g_GameUI; }
 IBaseSystem* SystemWrapper() { return g_pBaseSystem; }
@@ -227,7 +265,7 @@ void CGameUI::Initialize(CreateInterfaceFn *factories, int count)
     vgui2::surface()->SetAllowHTMLJavaScript(true);
 }
 
-void CGameUI::Start(cl_enginefuncs_s *engineFuncs, int interfaceVersion, void *system)
+void CGameUI::Start(goldsrc::cl_enginefunc_t* engineFuncs, int interfaceVersion, void* system)
 {
     engine = engineFuncs;
     g_pBaseSystem = (IBaseSystem*)system;
@@ -278,6 +316,17 @@ void CGameUI::Shutdown(void)
 
 int CGameUI::ActivateGameUI(void)
 {
+    // While a panel floats over the running game (e.g. the radar-settings frame), Esc
+    // must close only that panel. The engine routes Esc here via
+    // VGuiWrap2_GameUIKeyPressed because the GameUI panel stays hidden (so the HUD keeps
+    // drawing, i.e. HasExclusiveInput is false); without this guard it would open the
+    // main menu on top. The panel ends the over-game state on close, so the next Esc
+    // opens the menu normally.
+    if (IsInLevel() && m_hPanelOverGame.Get())
+    {
+        return 1;
+    }
+
     if (!m_bLoadlingLevel && g_hLoadingDialog.Get() && IsInLevel())
     {
         g_hLoadingDialog->Close();
@@ -324,6 +373,9 @@ void CGameUI::RunFrame(void)
     vgui2::surface()->GetScreenSize(wide, tall);
     BasePanel()->SetSize(wide, tall);
 
+    // Dialogs over the game still animate while the main menu is hidden.
+    vgui2::GetAnimationController()->UpdateAnimations(engine->GetAbsoluteTime());
+
     if (BasePanel()->IsVisible())
         BasePanel()->RunFrame();
 
@@ -352,6 +404,8 @@ void CGameUI::ConnectToServer(const char *game, int IP, int port)
 
 void CGameUI::DisconnectFromServer(void)
 {
+    CloseHudRadarDialog();
+
     if (g_pServerBrowser)
         g_pServerBrowser->DisconnectFromGame();
 
@@ -385,6 +439,38 @@ void CGameUI::HideGameUI()
 #endif
 }
 
+bool CGameUI::BeginPanelOverGame(vgui2::Panel* panel)
+{
+    if (!IsInLevel())
+    {
+        return false;
+    }
+
+    // Reparent to the client VGUI panel (which the engine paints while the GameUI menu
+    // is hidden) and hide the GameUI so the engine resumes drawing the HUD/radar;
+    // enable the mouse cursor for the panel.
+    panel->SetParent(g_pEngineVGui->GetPanel(PANEL_ROOT));
+    g_pBaseUI->HideGameUI();
+    engine->pfnSetMouseEnable(1);
+    m_hPanelOverGame = panel;
+    return true;
+}
+
+void CGameUI::EndPanelOverGame()
+{
+    if (!m_hPanelOverGame.Get())
+    {
+        return;
+    }
+    m_hPanelOverGame = nullptr;
+
+    engine->pfnSetMouseEnable(0);
+    // Engine-side game-ui hide: releases mouse/input the way the second Esc does, which
+    // is what makes the client redraw its spectator UI. Our CGameUI::HideGameUI early-
+    // returns here (menu is not active), so this engine call is the part that matters.
+    g_pBaseUI->HideGameUI();
+}
+
 bool CGameUI::IsGameUIActive(void)
 {
     return BasePanel()->IsVisible();
@@ -392,6 +478,7 @@ bool CGameUI::IsGameUIActive(void)
 
 void CGameUI::LoadingStarted(const char *resourceType, const char *resourceName)
 {
+    CloseHudRadarDialog();
     m_bLoadlingLevel = true;
 
     GameConsole().Hide();
@@ -556,4 +643,5 @@ void CGameUI::NeedApplyMultiplayerGameSettings()
 void CGameUI::OnDisconnectFromServer(int eSteamLoginFailure, const char *username)
 {
     m_bNeedApplyMultiplayerGameSettings = false;
+    CloseHudRadarDialog();
 }

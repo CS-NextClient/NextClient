@@ -1,8 +1,11 @@
 #include "invert_mouse.h"
 #include "main.h"
 #include <algorithm>
-#include <mathlib/mathlib.h>
-#include <parsemsg.h>
+#include <ncl_math/vec3.h>
+#include <data_types/MessageReader.h>
+#include <goldsrc/client_api.h>
+#include <goldsrc/cvar.h>
+#include <goldsrc/usercmd.h>
 
 namespace
 {
@@ -17,15 +20,15 @@ namespace
     float g_LastOriginalYaw;
     float g_LastInvertedYaw;
 
-    cvar_t* cl_pitchup;
-    cvar_t* cl_pitchdown;
+    goldsrc::cvar_t* cl_pitchup;
+    goldsrc::cvar_t* cl_pitchdown;
 
     int MsgFunc_InvertMouse(const char* name, int size, void* data)
     {
-        BEGIN_READ(data, size);
+        MessageReader reader(data, size);
 
-        int flags = READ_BYTE();
-        if (!READ_OK())
+        int flags = reader.ReadByte();
+        if (reader.is_overflowed())
         {
             return 1;
         }
@@ -59,7 +62,7 @@ void ResetInvertMouse()
     g_LastInvertedYaw = 0.0f;
 }
 
-void CL_CreateMove_InvertMousePre(float frametime, usercmd_s* cmd, int active)
+void CL_CreateMove_InvertMousePre(float frametime, goldsrc::usercmd_t* cmd, int active)
 {
     if (!active)
     {
@@ -99,7 +102,7 @@ void CL_CreateMove_InvertMousePre(float frametime, usercmd_s* cmd, int active)
     gEngfuncs.SetViewAngles(angles);
 }
 
-void CL_CreateMove_InvertMousePost(float frametime, usercmd_s* cmd, int active)
+void CL_CreateMove_InvertMousePost(float frametime, goldsrc::usercmd_t* cmd, int active)
 {
     if (!active)
     {
@@ -133,7 +136,7 @@ void CL_CreateMove_InvertMousePost(float frametime, usercmd_s* cmd, int active)
         float delta_yaw = current_angles[1] - g_LastOriginalYaw;
         g_LastOriginalYaw = current_angles[1];
 
-        float inverted_yaw = AngleNormalize(g_LastInvertedYaw - delta_yaw);
+        float inverted_yaw = ncl_math::AngleNormalize(g_LastInvertedYaw - delta_yaw);
         g_LastInvertedYaw = inverted_yaw;
 
         current_angles[1] = inverted_yaw;

@@ -1,4 +1,6 @@
 #pragma once
 
+#include <goldsrc/entity.h>
+
 int StudioDrawModel(int flags);
-int StudioDrawPlayer(int flags, struct entity_state_s* pplayer);
+int StudioDrawPlayer(int flags, goldsrc::entity_state_t* pplayer);

@@ -1,6 +1,7 @@
 #include "ExtensionCommon.h"
 #include <GameUi.h>
 #include <TaskRun.h>
+#include <goldsrc/client_api.h>
 
 #include "AcceptedDomains.h"
 
@@ -22,7 +23,7 @@ bool CExtensionCommonHandler::Execute(
 	return false;
 }
 
-void RegisterCommonJsApi(cl_enginefunc_t* engine) {
+void RegisterCommonJsApi(goldsrc::cl_enginefunc_t* engine) {
 	CefString code = 
 		"function makeAsEventTarget(object) {"
 		"	object.__defineGetter__('eventTarget', function() {"

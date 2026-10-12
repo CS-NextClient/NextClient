@@ -16,6 +16,7 @@ CMakeCache.txt
 CMakeFiles
 CMakeScripts
 Testing
+!/docs/testing/
 Makefile
 cmake_install.cmake
 install_manifest.txt
@@ -29,6 +30,10 @@ CMakeUserPresets.json
 # External projects
 *-prefix/
 
+# Python
+__pycache__/
+*.pyc
+
 # AI
 .claude/
 .codex/
@@ -36,3 +41,6 @@ CMakeUserPresets.json
 .cursor/
 .windsurf/
 .junie/
+
+# Local documentation drafts and run records
+/.superpowers/

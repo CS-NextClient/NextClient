@@ -1,0 +1,245 @@
+0 matches.
+
+Match #1:
+
+C:\fixture\dep\NclNitroApi\dep\ncl-hl1-source-sdk\common\thing.h(2,26): note: "decl" binds here
+    2 | typedef struct thing_s { int x; } thing_t;
+      |                          ^~~~~
+Binding for "decl":
+FieldDecl 0x2b3ab4e0270 <C:\fixture\dep\NclNitroApi\dep\ncl-hl1-source-sdk\common\thing.h:2:26, col:30> col:30 referenced x 'int'
+
+C:\fixture\nextclient\client_mini\src\after.cpp(4,69): note: "ref" binds here
+    4 | void use(thing_t* t, extra_t* e, nitroapi::viddef_s* v, own_t* o) { t->x = e->y + v->width; }
+      |                                                                     ^~~~
+Binding for "ref":
+MemberExpr 0x2b3ab4e2ec0 <C:\fixture\nextclient\client_mini\src\after.cpp:4:69, col:72> 'int' lvalue ->x 0x2b3ab4e0270
+`-DeclRefExpr 0x2b3ab4e2e88 <col:69> 'thing_t *' lvalue ParmVar 0x2b3ab4e2ab8 't' 'thing_t *'
+
+
+Match #2:
+
+C:\fixture\dep\NclNitroApi\dep\ncl-hl1-source-sdk\common\thing.h(3,18): note: "decl" binds here
+    3 | struct extra_t { int y; };
+      |                  ^~~~~
+Binding for "decl":
+FieldDecl 0x2b3ab4e05d8 <C:\fixture\dep\NclNitroApi\dep\ncl-hl1-source-sdk\common\thing.h:3:18, col:22> col:22 referenced y 'int'
+
+C:\fixture\nextclient\client_mini\src\after.cpp(4,76): note: "ref" binds here
+    4 | void use(thing_t* t, extra_t* e, nitroapi::viddef_s* v, own_t* o) { t->x = e->y + v->width; }
+      |                                                                            ^~~~
+Binding for "ref":
+MemberExpr 0x2b3ab4e2f28 <C:\fixture\nextclient\client_mini\src\after.cpp:4:76, col:79> 'int' lvalue ->y 0x2b3ab4e05d8
+`-DeclRefExpr 0x2b3ab4e2ef0 <col:76> 'extra_t *' lvalue ParmVar 0x2b3ab4e2b50 'e' 'extra_t *'
+
+
+Match #3:
+
+C:\fixture\dep\NclNitroApi\include\nitroapi/modules/engine/structs.h(4,23): note: "decl" binds here
+    4 |     struct viddef_s { int width; };
+      |                       ^~~~~~~~~
+Binding for "decl":
+FieldDecl 0x2b3ab4e08f0 <C:\fixture\dep\NclNitroApi\include\nitroapi/modules/engine/structs.h:4:23, col:27> col:27 referenced width 'int'
+
+C:\fixture\nextclient\client_mini\src\after.cpp(4,83): note: "ref" binds here
+    4 | void use(thing_t* t, extra_t* e, nitroapi::viddef_s* v, own_t* o) { t->x = e->y + v->width; }
+      |                                                                                   ^~~~~~~~
+Binding for "ref":
+MemberExpr 0x2b3ab4e2f90 <C:\fixture\nextclient\client_mini\src\after.cpp:4:83, col:86> 'int' lvalue ->width 0x2b3ab4e08f0
+`-DeclRefExpr 0x2b3ab4e2f58 <col:83> 'nitroapi::viddef_s *' lvalue ParmVar 0x2b3ab4e2c10 'v' 'nitroapi::viddef_s *'
+
+3 matches.
+
+Match #1:
+
+C:\fixture\dep\NclNitroApi\include\nitroapi/modules/engine/structs.h(4,5): note: "decl" binds here
+    4 |     struct viddef_s { int width; };
+      |     ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Binding for "decl":
+CXXRecordDecl 0x2b3ab4e0710 <C:\fixture\dep\NclNitroApi\include\nitroapi/modules/engine/structs.h:4:5, col:34> col:12 referenced struct viddef_s definition
+|-DefinitionData pass_in_registers aggregate standard_layout trivially_copyable pod trivial literal has_constexpr_non_copy_move_ctor
+| |-DefaultConstructor exists trivial constexpr needs_implicit defaulted_is_constexpr
+| |-CopyConstructor simple trivial has_const_param needs_implicit implicit_has_const_param
+| |-MoveConstructor exists simple trivial needs_implicit
+| |-CopyAssignment simple trivial has_const_param needs_implicit implicit_has_const_param
+| |-MoveAssignment exists simple trivial needs_implicit
+| `-Destructor simple irrelevant trivial constexpr needs_implicit
+`-FieldDecl 0x2b3ab4e08f0 <col:23, col:27> col:27 referenced width 'int'
+
+C:\fixture\dep\NclNitroApi\include\nitroapi/modules/engine/structs.h(5,13): note: "ref" binds here
+    5 |     typedef viddef_s viddef_t;
+      |             ^~~~~~~~
+Binding for "ref":
+RecordTypeLoc <C:\fixture\dep\NclNitroApi\include\nitroapi/modules/engine/structs.h:5:13> 'viddef_s'
+`-CXXRecord 0x2b3ab4e0710 'viddef_s'
+
+
+Match #2:
+
+C:\fixture\dep\NclNitroApi\dep\ncl-hl1-source-sdk\common\thing.h(2,9): note: "decl" binds here
+    2 | typedef struct thing_s { int x; } thing_t;
+      |         ^~~~~~~~~~~~~~~~~~~~~~~~~
+Binding for "decl":
+CXXRecordDecl 0x2b3ab4e0090 <C:\fixture\dep\NclNitroApi\dep\ncl-hl1-source-sdk\common\thing.h:2:9, col:33> col:16 struct thing_s definition
+|-DefinitionData pass_in_registers aggregate standard_layout trivially_copyable pod trivial literal has_constexpr_non_copy_move_ctor
+| |-DefaultConstructor exists trivial constexpr needs_implicit defaulted_is_constexpr
+| |-CopyConstructor simple trivial has_const_param needs_implicit implicit_has_const_param
+| |-MoveConstructor exists simple trivial needs_implicit
+| |-CopyAssignment simple trivial has_const_param needs_implicit implicit_has_const_param
+| |-MoveAssignment exists simple trivial needs_implicit
+| `-Destructor simple irrelevant trivial constexpr needs_implicit
+`-FieldDecl 0x2b3ab4e0270 <col:26, col:30> col:30 referenced x 'int'
+
+C:\fixture\nextclient\client_mini\src\fwd.h(2,16): note: "ref" binds here
+    2 | typedef struct thing_s thing_t;
+      |                ^~~~~~~
+Binding for "ref":
+RecordTypeLoc <C:\fixture\nextclient\client_mini\src\fwd.h:2:9, col:16> 'struct thing_s' struct
+`-CXXRecord 0x2b3ab4e0090 'thing_s'
+
+2 matches.
+
+Match #1:
+
+C:\fixture\nextclient\client_mini\src\fwd.h(2,1): note: "redecl" binds here
+    2 | typedef struct thing_s thing_t;
+      | ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Binding for "redecl":
+TypedefDecl 0x2b3ab4e0ac0 prev 0x2b3ab4e0380 <C:\fixture\nextclient\client_mini\src\fwd.h:2:1, col:24> col:24 referenced thing_t 'struct thing_s'
+`-RecordType 0x2b3ab4e0a70 'struct thing_s' struct
+  `-CXXRecord 0x2b3ab4e0090 'thing_s'
+
+C:\fixture\nextclient\client_mini\src\fwd.h(6,10): note: "ref" binds here
+    6 | void use(thing_t* t, extra_t* e, nitroapi::viddef_s* v, own_t* o);
+      |          ^~~~~~~
+Binding for "ref":
+TypedefTypeLoc <C:\fixture\nextclient\client_mini\src\fwd.h:6:10> 'thing_t'
+`-Typedef 0x2b3ab4e0ac0 'thing_t'
+
+
+Match #2:
+
+C:\fixture\nextclient\client_mini\src\fwd.h(3,1): note: "redecl" binds here
+    3 | struct extra_t;
+      | ^~~~~~~~~~~~~~
+Binding for "redecl":
+CXXRecordDecl 0x2b3ab4e0b38 prev 0x2b3ab4e03f8 <C:\fixture\nextclient\client_mini\src\fwd.h:3:1, col:8> col:8 referenced struct extra_t
+
+C:\fixture\nextclient\client_mini\src\fwd.h(6,22): note: "ref" binds here
+    6 | void use(thing_t* t, extra_t* e, nitroapi::viddef_s* v, own_t* o);
+      |                      ^~~~~~~
+Binding for "ref":
+RecordTypeLoc <C:\fixture\nextclient\client_mini\src\fwd.h:6:22> 'extra_t'
+`-CXXRecord 0x2b3ab4e0b38 'extra_t'
+
+
+Match #3:
+
+C:\fixture\nextclient\client_mini\src\fwd.h(4,22): note: "redecl_nitroapi" binds here
+    4 | namespace nitroapi { struct viddef_s; }
+      |                      ^~~~~~~~~~~~~~~
+Binding for "redecl_nitroapi":
+CXXRecordDecl 0x2b3ab4e0c48 prev 0x2b3ab4e0710 <C:\fixture\nextclient\client_mini\src\fwd.h:4:22, col:29> col:29 referenced struct viddef_s
+
+C:\fixture\nextclient\client_mini\src\fwd.h(6,44): note: "ref" binds here
+    6 | void use(thing_t* t, extra_t* e, nitroapi::viddef_s* v, own_t* o);
+      |                                            ^~~~~~~~
+Binding for "ref":
+RecordTypeLoc <C:\fixture\nextclient\client_mini\src\fwd.h:6:34, col:44> 'nitroapi::viddef_s'
+|-NestedNameSpecifier Namespace 0x2b3ab4e0bd0 'nitroapi'
+`-CXXRecord 0x2b3ab4e0c48 'viddef_s'
+
+
+Match #4:
+
+C:\fixture\nextclient\client_mini\src\fwd.h(5,1): note: "redecl" binds here
+    5 | struct own_t;
+      | ^~~~~~~~~~~~
+Binding for "redecl":
+CXXRecordDecl 0x2b3ab4e0ce0 <C:\fixture\nextclient\client_mini\src\fwd.h:5:1, col:8> col:8 referenced struct own_t
+
+C:\fixture\nextclient\client_mini\src\fwd.h(6,57): note: "ref" binds here
+    6 | void use(thing_t* t, extra_t* e, nitroapi::viddef_s* v, own_t* o);
+      |                                                         ^~~~~
+Binding for "ref":
+RecordTypeLoc <C:\fixture\nextclient\client_mini\src\fwd.h:6:57> 'own_t'
+`-CXXRecord 0x2b3ab4e0ce0 'own_t'
+
+
+Match #5:
+
+C:\fixture\nextclient\client_mini\src\fwd.h(2,1): note: "redecl" binds here
+    2 | typedef struct thing_s thing_t;
+      | ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Binding for "redecl":
+TypedefDecl 0x2b3ab4e0ac0 prev 0x2b3ab4e0380 <C:\fixture\nextclient\client_mini\src\fwd.h:2:1, col:24> col:24 referenced thing_t 'struct thing_s'
+`-RecordType 0x2b3ab4e0a70 'struct thing_s' struct
+  `-CXXRecord 0x2b3ab4e0090 'thing_s'
+
+C:\fixture\nextclient\client_mini\src\after.cpp(4,10): note: "ref" binds here
+    4 | void use(thing_t* t, extra_t* e, nitroapi::viddef_s* v, own_t* o) { t->x = e->y + v->width; }
+      |          ^~~~~~~
+Binding for "ref":
+TypedefTypeLoc <C:\fixture\nextclient\client_mini\src\after.cpp:4:10> 'thing_t'
+`-Typedef 0x2b3ab4e0ac0 'thing_t'
+
+
+Match #6:
+
+C:\fixture\nextclient\client_mini\src\fwd.h(3,1): note: "redecl" binds here
+    3 | struct extra_t;
+      | ^~~~~~~~~~~~~~
+Binding for "redecl":
+CXXRecordDecl 0x2b3ab4e0b38 prev 0x2b3ab4e03f8 <C:\fixture\nextclient\client_mini\src\fwd.h:3:1, col:8> col:8 referenced struct extra_t
+
+C:\fixture\nextclient\client_mini\src\after.cpp(4,22): note: "ref" binds here
+    4 | void use(thing_t* t, extra_t* e, nitroapi::viddef_s* v, own_t* o) { t->x = e->y + v->width; }
+      |                      ^~~~~~~
+Binding for "ref":
+RecordTypeLoc <C:\fixture\nextclient\client_mini\src\after.cpp:4:22> 'extra_t'
+`-CXXRecord 0x2b3ab4e0b38 'extra_t'
+
+
+Match #7:
+
+C:\fixture\nextclient\client_mini\src\fwd.h(4,22): note: "redecl_nitroapi" binds here
+    4 | namespace nitroapi { struct viddef_s; }
+      |                      ^~~~~~~~~~~~~~~
+Binding for "redecl_nitroapi":
+CXXRecordDecl 0x2b3ab4e0c48 prev 0x2b3ab4e0710 <C:\fixture\nextclient\client_mini\src\fwd.h:4:22, col:29> col:29 referenced struct viddef_s
+
+C:\fixture\nextclient\client_mini\src\after.cpp(4,44): note: "ref" binds here
+    4 | void use(thing_t* t, extra_t* e, nitroapi::viddef_s* v, own_t* o) { t->x = e->y + v->width; }
+      |                                            ^~~~~~~~
+Binding for "ref":
+RecordTypeLoc <C:\fixture\nextclient\client_mini\src\after.cpp:4:34, col:44> 'nitroapi::viddef_s'
+|-NestedNameSpecifier Namespace 0x2b3ab4e0bd0 'nitroapi'
+`-CXXRecord 0x2b3ab4e0c48 'viddef_s'
+
+
+Match #8:
+
+C:\fixture\nextclient\client_mini\src\fwd.h(5,1): note: "redecl" binds here
+    5 | struct own_t;
+      | ^~~~~~~~~~~~
+Binding for "redecl":
+CXXRecordDecl 0x2b3ab4e0ce0 <C:\fixture\nextclient\client_mini\src\fwd.h:5:1, col:8> col:8 referenced struct own_t
+
+C:\fixture\nextclient\client_mini\src\after.cpp(4,57): note: "ref" binds here
+    4 | void use(thing_t* t, extra_t* e, nitroapi::viddef_s* v, own_t* o) { t->x = e->y + v->width; }
+      |                                                         ^~~~~
+Binding for "ref":
+RecordTypeLoc <C:\fixture\nextclient\client_mini\src\after.cpp:4:57> 'own_t'
+`-CXXRecord 0x2b3ab4e0ce0 'own_t'
+
+8 matches.
+
+Match #1:
+
+C:\fixture\nextclient\client_mini\src\fwd.h(7,1): note: "shadow" binds here
+    7 | const int THING_LIMIT = 4;
+      | ^~~~~~~~~~~~~~~~~~~~~~~~~
+Binding for "shadow":
+VarDecl 0x2b3ab4e2988 <C:\fixture\nextclient\client_mini\src\fwd.h:7:1, col:25> col:11 THING_LIMIT 'const int' cinit
+`-IntegerLiteral 0x2b3ab4e29f0 <col:25> 'int' 4
+
+1 match.

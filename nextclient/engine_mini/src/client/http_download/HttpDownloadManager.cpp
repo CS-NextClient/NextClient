@@ -7,6 +7,8 @@
 #include <format>
 #include <fstream>
 #include <utility>
+#include <goldsrc/client_api.h>
+#include <goldsrc/cvar.h>
 
 using namespace std::chrono;
 using namespace nitro_utils;
@@ -20,8 +22,8 @@ HttpDownloadManager::HttpDownloadManager(IGameUI* game_ui,
     download_logger_(download_logger),
     config_provider_(config_provider)
 {
-    cvar_max_active_requests = gEngfuncs.pfnRegisterVariable("http_max_active_requests", "5", FCVAR_ARCHIVE);
-    cvar_max_requests_retries = gEngfuncs.pfnRegisterVariable("http_max_requests_retries", "3", FCVAR_ARCHIVE);
+    cvar_max_active_requests = gEngfuncs.pfnRegisterVariable("http_max_active_requests", "5", goldsrc::FCVAR_ARCHIVE);
+    cvar_max_requests_retries = gEngfuncs.pfnRegisterVariable("http_max_requests_retries", "3", goldsrc::FCVAR_ARCHIVE);
 
     requests_.reserve(MAX_POSSIBLE_ACTIVE_REQUESTS);
 }

@@ -1,4 +1,5 @@
 #include <easylogging++.h>
+#include <goldsrc/cvar.h>
 #include "console/console.h"
 
 INITIALIZE_EASYLOGGINGPP

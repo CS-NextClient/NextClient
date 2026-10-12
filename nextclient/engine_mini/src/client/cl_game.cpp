@@ -1,14 +1,16 @@
 #include "../engine.h"
 #include <optick.h>
+#include <goldsrc/client_api.h>
+#include <goldsrc/types.h>
 #include "spriteapi.h"
 
-HSPRITE_t ghCrosshair;
-wrect_t gCrosshairRc;
+goldsrc::HSPRITE_t ghCrosshair;
+goldsrc::wrect_t gCrosshairRc;
 int gCrosshairR;
 int gCrosshairG;
 int gCrosshairB;
 
-void SetCrosshair(HSPRITE_t hspr, wrect_t rc, int r, int g, int b)
+void SetCrosshair(goldsrc::HSPRITE_t hspr, goldsrc::wrect_t rc, int r, int g, int b)
 {
     OPTICK_EVENT();
 

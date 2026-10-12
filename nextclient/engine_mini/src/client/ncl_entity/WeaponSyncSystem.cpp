@@ -2,6 +2,7 @@
 #include "WeaponSyncSystem.h"
 
 #include <format>
+#include <goldsrc/engine/sound.h>
 
 #include "PlayerSyncSystem.h"
 #include "cl_ncl_entity_sync.h"
@@ -18,9 +19,9 @@ namespace
         {FIELD_SOUND_OVERRIDES, ncl_entity::FieldType::ARRAY_STRING_ID_PAIRS_DELTA},
     };
 
-    sfx_t* PrecacheReplacement(const char* name)
+    goldsrc::sfx_t* PrecacheReplacement(const char* name)
     {
-        sfx_t* sfx = eng()->S_PrecacheSound(const_cast<char*>(name));
+        goldsrc::sfx_t* sfx = eng()->S_PrecacheSound(const_cast<char*>(name));
         if (!sfx)
         {
             Con_DPrintf(ConLogType::Warning, "WeaponSoundOverride: failed to precache replacement sound \"%s\"\n", name);
@@ -140,9 +141,9 @@ void WeaponSyncSystem::CollectDebugInfo(std::vector<std::string>& out_lines)
     }
 }
 
-const ankerl::unordered_dense::map<sfx_t*, sfx_t*>& WeaponSyncSystem::GetOverrides(uint32_t weapon_id) const
+const ankerl::unordered_dense::map<goldsrc::sfx_t*, goldsrc::sfx_t*>& WeaponSyncSystem::GetOverrides(uint32_t weapon_id) const
 {
-    static ankerl::unordered_dense::map<sfx_t*, sfx_t*> empty;
+    static ankerl::unordered_dense::map<goldsrc::sfx_t*, goldsrc::sfx_t*> empty;
 
     auto it = weapon_id_to_entity_id_.find(weapon_id);
     if (it == weapon_id_to_entity_id_.end())
@@ -159,7 +160,8 @@ const ankerl::unordered_dense::map<sfx_t*, sfx_t*>& WeaponSyncSystem::GetOverrid
     return entity_it->second.sound_overrides;
 }
 
-void WeaponSyncSystem::ApplyDelta(const ncl_entity::ArrayStringIdPairsDelta& delta, ankerl::unordered_dense::map<sfx_t*, sfx_t*>& overrides)
+void WeaponSyncSystem::ApplyDelta(const ncl_entity::ArrayStringIdPairsDelta& delta,
+                                  ankerl::unordered_dense::map<goldsrc::sfx_t*, goldsrc::sfx_t*>& overrides)
 {
     if (delta.clear)
     {
@@ -175,7 +177,7 @@ void WeaponSyncSystem::ApplyDelta(const ncl_entity::ArrayStringIdPairsDelta& del
             continue;
         }
 
-        sfx_t* original_sfx = eng()->S_FindName(original_path, nullptr);
+        goldsrc::sfx_t* original_sfx = eng()->S_FindName(original_path, nullptr);
         if (original_sfx)
         {
             overrides.erase(original_sfx);
@@ -192,14 +194,14 @@ void WeaponSyncSystem::ApplyDelta(const ncl_entity::ArrayStringIdPairsDelta& del
             continue;
         }
 
-        sfx_t* original_sfx = eng()->S_FindName(original_path, nullptr);
+        goldsrc::sfx_t* original_sfx = eng()->S_FindName(original_path, nullptr);
         if (!original_sfx)
         {
             Con_DPrintf(ConLogType::Warning, "WeaponSoundOverride: unknown original sound \"%s\"\n", original_path);
             continue;
         }
 
-        sfx_t* replacement_sfx = PrecacheReplacement(replacement_path);
+        goldsrc::sfx_t* replacement_sfx = PrecacheReplacement(replacement_path);
         if (!replacement_sfx)
         {
             Con_DPrintf(ConLogType::Warning, "Can't precache replacement sound: \"%s\"\n", replacement_path);

@@ -5,6 +5,7 @@
 #include "tier1/KeyValues.h"
 #include <vgui/IVGui.h>
 #include <vgui_controls/PropertyPage.h>
+#include <goldsrc/client_api.h>
 
 #define CVARSLIDER_SCALE_FACTOR 100.0f
 
@@ -126,7 +127,8 @@ bool CCvarSlider::ResetToDefaultValue()
 
 void CCvarSlider::OnMousePressed(vgui2::MouseCode code)
 {
-    if (code == vgui2::MOUSE_RIGHT && CvarContextMenu_Show(this, m_pContextMenu, m_szCvarName, m_bHasDefaultValue))
+    if (code == vgui2::MOUSE_RIGHT && IsEnabled() &&
+        CvarContextMenu_Show(this, m_pContextMenu, m_szCvarName, m_bHasDefaultValue))
     {
         return;
     }

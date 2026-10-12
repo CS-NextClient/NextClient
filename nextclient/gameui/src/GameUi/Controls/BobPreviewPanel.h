@@ -4,7 +4,7 @@
 
 #include <array>
 
-#include <cvardef.h>
+#include <goldsrc/cvar.h>
 #include <ncl_math/color.h>
 #include <next_engine_mini/ScenePreviewInterface.h>
 #include <view/view_bob.h>
@@ -146,9 +146,9 @@ private:
 
     // Resolved once: reading a cvar by name walks the engine's list and parses the value
     // out of its string.
-    cvar_t* righthand_cvar_{};
-    cvar_t* fov_angle_{};
-    cvar_t* fov_horplus_{};
+    goldsrc::cvar_t* righthand_cvar_{};
+    goldsrc::cvar_t* fov_angle_{};
+    goldsrc::cvar_t* fov_horplus_{};
 
 public:
     CBobPreviewPanel(vgui2::Panel* parent, const char* panel_name);

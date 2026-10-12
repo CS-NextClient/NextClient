@@ -6,8 +6,7 @@
 #endif
 
 #include <vgui_controls/PropertyPage.h>
-
-typedef struct IVoiceTweak_s IVoiceTweak;
+#include <goldsrc/fwd.h>
 
 class CCvarSlider;
 class CCvarToggleCheckButton;
@@ -44,7 +43,7 @@ private:
     void ResetVoiceParameters(void);
 
 private:
-    IVoiceTweak *m_pVoiceTweak;
+    goldsrc::IVoiceTweak* m_pVoiceTweak;
     vgui2::CheckButton *m_pMicBoost;
 
     vgui2::ImagePanel *m_pMicMeter;

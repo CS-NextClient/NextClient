@@ -1,12 +1,18 @@
-#include "../../main.h"
-#include "../../hlsdk.h"
+#include "main.h"
+#include "hlsdk.h"
+
 #include "hud_sprite.h"
-#include "triangleapi.h"
+#include <cstdint>
+
+#include <goldsrc/client_api.h>
+#include <goldsrc/engine/model.h>
+#include <goldsrc/entity.h>
+#include <goldsrc/triangle_api.h>
 
 void HudSprite::Draw() const
 {
-    SCREENINFO screen;
-    screen.iSize = sizeof(SCREENINFO);
+    goldsrc::SCREENINFO screen;
+    screen.iSize = sizeof(goldsrc::SCREENINFO);
     gEngfuncs.pfnGetScreenInfo(&screen);
 
     auto screenWidth = static_cast<float>(screen.iWidth);
@@ -16,12 +22,12 @@ void HudSprite::Draw() const
     if(sprite == nullptr) return;
 
     const auto ta = gEngfuncs.pTriAPI;
-    ta->SpriteTexture(const_cast<model_s*>(sprite), getFrameInt());
+    ta->SpriteTexture(const_cast<goldsrc::model_t*>(sprite), getFrameInt());
     ta->RenderMode(getRenderMode());
-    ta->Color4f(getColor().red, getColor().green, getColor().blue, getCurrentAlpha());
-    ta->CullFace(TRI_NONE);
+    ta->Color4f(getColor().r, getColor().g, getColor().b, getCurrentAlpha());
+    ta->CullFace(goldsrc::TRI_NONE);
     if (isFullScreen()) {
-        ta->Begin(TRI_QUADS);
+        ta->Begin(goldsrc::TRI_QUADS);
         ta->TexCoord2f(0, 0);
         ta->Vertex3f(0, 0, 0);
         ta->TexCoord2f(0, 1);
@@ -45,7 +51,7 @@ void HudSprite::Draw() const
         const auto right = getSpriteRect().right / fullSpriteWidth * getScaleX();
         const auto bottom = getSpriteRect().bottom / fullSpriteHeight * getScaleY();
 
-        ta->Begin(TRI_QUADS);
+        ta->Begin(goldsrc::TRI_QUADS);
         ta->TexCoord2f(left, top);
         ta->Vertex3f(x, y, 0);
         ta->TexCoord2f(left, bottom);
@@ -56,7 +62,7 @@ void HudSprite::Draw() const
         ta->Vertex3f(x + spriteWidth, y, 0);
         ta->End();
     }
-    ta->RenderMode(kRenderNormal);
+    ta->RenderMode(goldsrc::kRenderNormal);
 }
 
 void HudSprite::Update(float time)
@@ -67,7 +73,7 @@ void HudSprite::Update(float time)
 
 void HudSprite::UpdateState(float time)
 {
-    const auto alpha = getColor().alpha;
+    const auto alpha = getColor().a;
     switch (getSpriteState()) {
         case HudSpriteState::In: {
             const auto newAlpha = (getStateEndTime(HudSpriteState::In) - time) / getInTime();
@@ -165,7 +171,7 @@ bool HudSprite::isFullScreen() const
     return isFullScreen_;
 }
 
-const HSPRITE_t& HudSprite::getSprite() const
+const goldsrc::HSPRITE_t& HudSprite::getSprite() const
 {
     return sprite_;
 }
@@ -345,17 +351,17 @@ HudSprite* HudSprite::setSpriteRect(int left, int top, int right, int bottom)
     return this;
 }
 
-HudSprite* HudSprite::setSpriteColor(byte red, byte green, byte blue)
+HudSprite* HudSprite::setSpriteColor(uint8_t red, uint8_t green, uint8_t blue)
 {
-    spriteColor_.red = normalizeColor(red);
-    spriteColor_.green = normalizeColor(green);
-    spriteColor_.blue = normalizeColor(blue);
+    spriteColor_.r = normalizeColor(red);
+    spriteColor_.g = normalizeColor(green);
+    spriteColor_.b = normalizeColor(blue);
     return this;
 }
 
-HudSprite* HudSprite::setAlpha(byte alpha)
+HudSprite* HudSprite::setAlpha(uint8_t alpha)
 {
-    spriteColor_.alpha = normalizeColor(alpha);
+    spriteColor_.a = normalizeColor(alpha);
     return this;
 }
 
@@ -429,7 +435,7 @@ int HudSprite::getRenderMode() const
     return renderMode_;
 }
 
-float HudSprite::normalizeColor(byte color)
+float HudSprite::normalizeColor(uint8_t color)
 {
     return static_cast<float>(color) / 255.f;
 }
