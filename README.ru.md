@@ -11,13 +11,17 @@ NextClient это модификация для Counter-Strike 1.6, нацеле
 *Некоторые антивирусы ругаются на файлы NextClient. Это ложные эвристические срабатывания, вызванные перехватом функций движка во время работы. Официальные сборки собираются из исходного кода этого репозитория через GitHub Actions и имеют подписанную аттестацию происхождения сборки. Подробности и отправка репортов о ложных срабатываниях: [docs/reporting-av-false-positives.md](docs/reporting-av-false-positives.md).*
 
 ### Основные возможности:
+
+ - Поддержка Windows и Linux (x86)
  - Протектор - защищает клиент от вредоносных команд с сервера
  - Смена мастер сервера (по умолчанию установлен [tsarvar.com](https://tsarvar.com))
  - Расширенные настройки видео - фикс FOV на разрешениях 16:9, возможность регулировать FOV и отдельно регулировать FOV для модели от первого лица
  - Расширенный killfeed - поддержка расширенного killfeed [regamedll](https://github.com/s1lentq/ReGameDLL_CS/pull/858), отображение иконок убийств: через стену, через дым, без прицела, в прыжке, с доминированием, etc.
  - Расширенные настройки прицела - добавлены новые виды прицела: точка, T-образный, окружность
+ - Расширенный радар - генерация карты с автоматическим выбором слоя, ники игроков, здоровье союзников при передаче данных сервером, трейлы перемещения, маркеры целей и показ полной карты
+ - Интеграция с Discord: отображение текущего сервера, подключения и воспроизведения демо, подключение друзей к серверу через Discord, в том числе с запуском игры
  - 2 схемы GUI с возможностью их смены через настройки, и возможность добавлять свои схемы не удаляя старые
- - Поддержка HTML-интерфейсов в GameUI на базе CEF (Chromium Embedded Framework) с JS API для взаимодействия с клиентом
+ - Поддержка HTML-интерфейсов в GameUI на базе CEF (Chromium Embedded Framework) с JS API для взаимодействия с клиентом (только Windows)
  - Отображение более 255hp при использовании [серверного модуля](https://github.com/CS-NextClient/NextClientServerApi)
  - Отображение количества и размера оставшихся файлов, общего размера файлов и скорости загрузки при подключении на сервер
  - Цветной чат в консоли
@@ -38,6 +42,7 @@ NextClient это модификация для Counter-Strike 1.6, нацеле
  - Замена звуков оружия
  - Инверсия мыши
  - Верификация клиента и получение идентификатора игрока на основе железа (HWID)
+ - Получение платформы клиента (Windows или Linux) через серверный API NextClient
  - Раздельный прекэш для обычного клиента cs 1.6 и NextClient
  - Прекэш hud.txt и других стандартных ресурсов
 
@@ -75,16 +80,89 @@ NextClient это модификация для Counter-Strike 1.6, нацеле
 | cl_discordrpc | 1             | No                          | Show what you're playing in Discord. |
 | cl_discordrpc_server | 1             | No                          | Show the server name in Discord. When 0, friends can't join you either. |
 | cl_discordrpc_join | 1             | No                          | Let Discord friends join your server. |
+| hud_radar_mode | 1 | No | Режим радара: 0 - классический, 1 - расширенный. |
+| hud_radar_scale | 1.15 | No | Размер радара. Мин.: 0.5<br/>Макс.: 3.0 |
+| hud_radar_map_scale | 0.8 | No | Масштаб карты. Мин.: 0.25<br/>Макс.: 3.0 |
+| hud_radar_map_shift | 0 | No | Смещать карту у её краёв, чтобы маркер игрока оставался внутри радара. |
+| hud_radar_opacity | 100 | No | Непрозрачность карты и фона от 0 до 100 процентов. |
+| hud_radar_round | 1 | No | Форма радара: 0 - квадратная, 1 - круглая. |
+| hud_radar_fullmap | 1 | No | Показывать полную карту при открытой таблице счёта. |
+| hud_radar_shift_scoreboard | 1 | No | Сдвигать таблицу счёта, чтобы освободить место для радара. |
+| hud_radar_rotate | 1 | No | Вращать карту в зависимости от направления взгляда. |
+| hud_radar_names | 0 | No | Показывать ники игроков. |
+| hud_radar_health | 0 | No | Показывать полосы здоровья союзников при передаче сервером данных HealthInfo. |
+| hud_radar_tracks | 0 | No | Показывать трейлы перемещения союзников. |
+| hud_radar_map_mode | 5 | No | Источник карты: 1 - overview, 5 - сгенерированные текстурированные слои, 6 - сгенерированные плоские слои. |
+| hud_radar_map_mask | 1 | No | Обрезать карту overview по форме радара. |
+| hud_radar_map_smoothing | 0 | No | Сглаживать края геометрии сгенерированной карты. |
+| hud_radar_bg | 0 | No | Фон радара: 0 - чёрный, 1 - размытое изображение игры. |
+| hud_radar_health_size | 1.0 | No | Размер полос здоровья. Мин.: 0.3<br/>Макс.: 4.0 |
+| hud_radar_name_size | 0.8 | No | Размер ников игроков. Мин.: 0.6<br/>Макс.: 2.0 |
+| hud_radar_allies | 1 | No | 1 - показывать союзников, раскрытых сервером, 0 - дополнительно проверять прямую видимость. |
 
 *Может ли сервер изменять значение квара, используя функцию песочницы кваров.
 </details>
 
+### Консольные команды
+
+| Команда | Назначение |
+| --- | --- |
+| `toggle <command> <value1> <value2> [value3...]` | Последовательно применяет указанные значения к команде; после последнего возвращается к первому. |
+| `+toggle <command> [<held> <released>]` | Применяет одно значение при удержании клавиши и другое при отпускании. Без значений используются 1 и 0 соответственно. |
+| `bindlist` | Выводит все назначения клавиш в консоль. |
+| `lookat` | Запускает осмотр оружия; по умолчанию назначена на `V`. |
+| `next_version` | Выводит версию сборки NextClient и версии модулей. |
+
+Примеры:
+
+```text
+bind "F6" "toggle hud_radar_mode 0 1"
+bind "F7" "+toggle hud_radar_names"
+bindlist
+```
+
 ## Установка
+
+### Windows
 
 1. NextClient работает только с версией движка 8684, убедитесь, что вы находитесь на бета-ветви "steam_legacy - Pre-25th Anniversary Build" в Steam (⚠️ вам нужны файлы официальной игры из Steam! Вы не можете установить NextClient на пиратские клиенты!)
 2. Скопируйте всю папку Counter-Strike 1.6 (Half-Life) в отдельную папку вне папки Steam
 3. Скопируйте все файлы NextClient в папку куда вы копировали все файлы CS 1.6
-4. Запускайте игру через cstrike.exe
+4. Запустите Steam.
+5. Запускайте игру через cstrike.exe
+
+### Linux
+
+Требования для готовых архивов GitHub Actions:
+
+- Linux на x86_64 с поддержкой запуска 32-битных x86-программ и 32-битной glibc 2.43 или новее.
+- 32-битные библиотеки среды выполнения C++: в Ubuntu это пакеты `libstdc++6:i386` (`libstdc++.so.6` с `GLIBCXX_3.4.32` или новее) и `libgcc-s1:i386` (`libgcc_s.so.1`).
+- Установленный и запущенный Steam, его Steam Runtime и нативные Linux-файлы игры с ветви `steam_legacy`.
+- 32-битные SDL2 и OpenGL-библиотеки драйвера. Для расширенного радара нужны OpenGL 2.1 и поддержка framebuffer objects (`GL_ARB_framebuffer_object` или OpenGL 3.0 и новее).
+
+Установка 32-битных библиотек C++ в Ubuntu:
+
+```bash
+sudo dpkg --add-architecture i386
+sudo apt update
+sudo apt install libstdc++6:i386 libgcc-s1:i386
+```
+
+Порядок установки:
+
+1. В Steam выберите бета-ветвь "steam_legacy - Pre-25th Anniversary Build" и установите нативную Linux-версию игры.
+2. Скопируйте всю папку Counter-Strike 1.6 (Half-Life) в отдельную папку вне папки Steam.
+3. Распакуйте архив в папку куда вы копировали все файлы CS 1.6 с заменой файлов. В корне этой папки должны находиться `hw.so`, `cstrike.exe` и `nextclient.sh`.
+4. Запустите Steam.
+5. В терминале перейдите в папку скопированной игры, задайте права на запуск и запустите скрипт:
+
+```bash
+cd "/path/to/Half-Life-NextClient"
+chmod +x nextclient.sh cstrike.exe
+./nextclient.sh
+```
+
+`nextclient.sh` запускает нативный Linux-клиент через Steam Runtime. Скрипт находит runtime обычной установки Steam и установки через Snap. Аргументы передаются игре, например `./nextclient.sh -windowed`.
 
 ### ⚠️ Внимание! Никогда не помещайте файлы NextClient прямо в папку установки игры в Steam! Это приведет к VAC бану! ⚠️
 
@@ -116,6 +194,9 @@ NextClient это модификация для Counter-Strike 1.6, нацеле
 ```
 
 ## Сборка
+
+### Windows
+
 Требования:
  - Последняя версия MSVC 2022 или новее
  - CMake 3.21 или выше
@@ -185,10 +266,31 @@ cmake --preset vs2022-local
 cmake --build --preset vs2022-local-release --target BUILD_ALL
 ```
 
+### Linux
+
+Требования для сборки из исходников:
+
+- GCC 15 или новее с поддержкой 32-битной сборки (`gcc-multilib` и `g++-multilib` в Ubuntu).
+- CMake 3.21 или новее, Ninja, Git LFS, `pkg-config`, Python 3, `curl`, `zip`, `unzip` и `tar`.
+- 32-битные заголовки и библиотеки разработки OpenGL и X11. Список пакетов используемого окружения указан в [.github/workflows/build.yml](.github/workflows/build.yml).
+
+Клонирование и сборка:
+
+```bash
+git lfs install
+git clone --recurse-submodules https://github.com/CS-NextClient/NextClient.git
+cd NextClient
+./vcpkg/bootstrap-vcpkg.sh -disableMetrics
+cmake --preset linux -DNEXTCLIENT_INSTALL_DIR="/path/to/Half-Life-NextClient"
+cmake --build --preset linux-release --target BUILD_ALL
+```
+
+Пресет `linux` собирает 32-битные модули через Ninja Multi-Config. Цель `BUILD_ALL` копирует библиотеки, ресурсы и `nextclient.sh` в `NEXTCLIENT_INSTALL_DIR`; эта папка должна содержать отдельную копию Linux-файлов игры.
+
 ## Работа в IDE
 
 ### CLion
- - Toolchain по умолчанию должен быть Visual Studio с платформой x86
+ - На Windows toolchain должен быть Visual Studio с платформой x86; на Linux используется GCC и пресет `linux`
  - В настройках CMake (Settings -> Build -> CMake) включить нужные пресеты, например `vs2022 - vs2022-debug` и `vs2022 - vs2022-release`
  - Собирать цель `BUILD_ALL`
 
@@ -199,11 +301,13 @@ cmake --build --preset vs2022-local-release --target BUILD_ALL
 
 ### VS Code
  - Установить расширение `ms-vscode.cmake-tools`
- - Выбрать configure-пресет `vs2022`, `vs2026` или `ninja` и соответствующую build-конфигурацию
+ - Выбрать configure-пресет `vs2022`, `vs2026`, `ninja` или `linux` и соответствующую build-конфигурацию
  - Собирать цель `BUILD_ALL`
  - Для пресета `ninja` VS Code необходимо запускать из "x86 Native Tools Command Prompt for VS"
 
 ## Благодарности
+
+- [KotyaraKryt](https://github.com/KotyaraKryt) - за перенос на Linux, интеграцию с Discord, консольные команды, повторное использование HTTP-соединений в FastDL и исправления
 - [Nordic Warrior](https://github.com/Nord1cWarr1or) - за огромное количество фидбека и багрепортов
 - [fl0werD](https://github.com/fl0werD) - за разработку Sprite API
 - [Mikko Kokko](https://github.com/mikkokko) - за проект [csldr](https://github.com/mikkokko/csldr), фичи из которого мы проинтегрировали в NextClient
