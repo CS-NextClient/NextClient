@@ -37,6 +37,7 @@
 #include "DemoPlayerDialog.h"
 #include "OptionsDialog/HudRadarDialog.h"
 #include "OptionsSubMiscellaneous.h"
+#include "SettingsShare.h"
 #include "IClientVGUI.h"
 
 #ifdef _WIN32
@@ -269,6 +270,8 @@ void CGameUI::Start(goldsrc::cl_enginefunc_t* engineFuncs, int interfaceVersion,
 {
     engine = engineFuncs;
     g_pBaseSystem = (IBaseSystem*)system;
+
+    settings_share::RegisterCommands();
 
     ModInfo().LoadCurrentGameInfo();
 
