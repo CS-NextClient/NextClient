@@ -14,6 +14,8 @@ namespace
     constexpr float kSpectatorMarginFrac = 0.16f;
 
     constexpr float kFullmapSizeScale = 1.20f;
+    constexpr float kFullmapNarrowSizeScale = 1.10f;
+    constexpr float kFullmapNarrowAspect = 4.0f / 3.0f;
     constexpr float kFullmapMarkerScale = 0.85f;
 
     constexpr float kRefResolutionH = 1080.0f;
@@ -91,7 +93,8 @@ RadarBox RadarView_ComputeBox(float screen_w, float screen_h, float scale, bool 
     // stays engine-free.
     float margin_y = spectating ? screen_h * kSpectatorMarginFrac : screen_h * kRadarMarginFrac;
 
-    float box_scale = scale * (fullmap ? kFullmapSizeScale : 1.0f);
+    float fullmap_scale = screen_w <= screen_h * kFullmapNarrowAspect ? kFullmapNarrowSizeScale : kFullmapSizeScale;
+    float box_scale = scale * (fullmap ? fullmap_scale : 1.0f);
 
     RadarBox box;
     box.size = screen_h * kRadarHeightFrac * box_scale;

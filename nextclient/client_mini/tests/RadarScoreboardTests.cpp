@@ -3,6 +3,7 @@
 #include <gtest/gtest.h>
 
 #include "hud/radar/integration/RadarScoreboard.h"
+#include "hud/radar/render/RadarView.h"
 
 namespace
 {
@@ -15,6 +16,29 @@ TEST(RadarScoreboard, FourByThreeMovesBelowRadarWithoutResizingOrClipping)
 {
     RadarScoreboard placement;
     EXPECT_EQ(placement.Update(1, kTable, kScreen, &kRadar), (ncl_math::Vector2{120.0f, 274.0f}));
+}
+
+TEST(RadarScoreboard, DefaultFullmapFitsAboveTheTableOnFourByThreeScreens)
+{
+    for (float height : {480.0f, 600.0f, 768.0f, 960.0f, 1080.0f, 1200.0f})
+    {
+        SCOPED_TRACE(height);
+        ncl_math::Vector2 screen{height * 4.0f / 3.0f, height};
+        float resolution_scale = height / kScreen.y;
+        ncl_math::Aabb2 table{kTable.min * resolution_scale, kTable.max * resolution_scale};
+        RadarBox box = RadarView_ComputeBox(screen.x, screen.y, 1.15f, false, true);
+        ncl_math::Aabb2 radar{{box.x, box.y}, {box.x + box.size, box.y + box.size}};
+        RadarScoreboard placement;
+
+        ncl_math::Vector2 pos = placement.Update(1, table, screen, &radar);
+        ncl_math::Aabb2 placed{pos, pos + table.Size()};
+
+        EXPECT_GT(pos.y, table.min.y);
+        EXPECT_FALSE(radar.Overlaps(placed));
+        EXPECT_LE(placed.max.x, screen.x);
+        EXPECT_LE(placed.max.y, screen.y);
+        EXPECT_EQ(placement.Update(1, placed, screen, nullptr), table.min);
+    }
 }
 
 TEST(RadarScoreboard, MovesRightWhenThereIsEnoughHorizontalSpace)

@@ -74,6 +74,26 @@ TEST(RadarViewComputeBox, AnchorsToScreenHeight)
     EXPECT_FLOAT_EQ(fullmap.y, 21.6f);
 }
 
+TEST(RadarViewComputeBox, NarrowFullmapUsesTenPercentEnlargement)
+{
+    for (ncl_math::Vector2 screen : {ncl_math::Vector2{1280.0f, 960.0f}, ncl_math::Vector2{1280.0f, 1024.0f}})
+    {
+        for (float scale : {0.5f, 1.15f, 3.0f})
+        {
+            for (bool spectating : {false, true})
+            {
+                RadarBox normal = RadarView_ComputeBox(screen.x, screen.y, scale, spectating);
+                RadarBox fullmap = RadarView_ComputeBox(screen.x, screen.y, scale, spectating, true);
+
+                EXPECT_FLOAT_EQ(fullmap.size, normal.size * 1.1f);
+                EXPECT_FLOAT_EQ(fullmap.marker_px, normal.marker_px * 0.85f);
+                EXPECT_FLOAT_EQ(fullmap.x, normal.x);
+                EXPECT_FLOAT_EQ(fullmap.y, normal.y);
+            }
+        }
+    }
+}
+
 TEST(RadarViewComputeBox, SpectatorMarginAndHiResDamping)
 {
     RadarBox spec = RadarView_ComputeBox(1920.0f, 1080.0f, 1.0f, true);
