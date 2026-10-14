@@ -3,6 +3,9 @@ project(client_mini)
 set(OUTPUT_NAME "client_mini")
 
 find_package(optic REQUIRED)
+if (NEXTCLIENT_WITH_PLUGINS)
+    find_package(taocpp-json CONFIG REQUIRED)
+endif ()
 find_package(CMakeRC REQUIRED)
 
 set(CMAKE_POLICY_DEFAULT_CMP0077 NEW)
@@ -224,6 +227,7 @@ if (MSVC)
 endif ()
 
 target_compile_definitions(${PROJECT_NAME} PRIVATE
+        NEXTCLIENT_WITH_PLUGINS=$<BOOL:${NEXTCLIENT_WITH_PLUGINS}>
         LOG_TAG="game"
         USE_OPTICK=$<BOOL:${USE_PROFILER}>
         _HAS_STATIC_RTTI=0 #disable rtti things in stl
@@ -258,6 +262,26 @@ add_library(NextClient::client_mini ALIAS client_mini_export)
 target_include_directories(client_mini_export INTERFACE
         include
 )
+
+if (NEXTCLIENT_WITH_PLUGINS)
+    target_sources(${PROJECT_NAME} PRIVATE src/plugin_bridge.cpp src/plugin_game_state.cpp src/plugin_snapshot.cpp)
+    target_link_libraries(${PROJECT_NAME} PRIVATE next_plugins taocpp::json)
+endif ()
+
+if (NEXTCLIENT_BUILD_TESTS AND NEXTCLIENT_WITH_PLUGINS)
+    find_package(GTest CONFIG REQUIRED)
+    include(GoogleTest)
+    add_executable(plugin-bridge-tests tests/plugin_bridge_tests.cpp src/plugin_bridge.cpp src/plugin_game_state.cpp src/plugin_snapshot.cpp
+        src/color_chat_in_console.cpp)
+    target_include_directories(plugin-bridge-tests PRIVATE include src)
+    target_compile_features(plugin-bridge-tests PRIVATE cxx_std_23)
+    target_compile_definitions(plugin-bridge-tests PRIVATE NOMINMAX WIN32_LEAN_AND_MEAN
+        PLUGIN_GAME_PATH="$<TARGET_FILE:plugin-game-api>" PLUGIN_MESSAGE_PATH="$<TARGET_FILE:plugin-game-api-message>")
+    target_link_libraries(plugin-bridge-tests PRIVATE next_plugins taocpp::json nitro_api::nitro_api
+        NextClient::gameui crosshair::crosshair ncl_math::ncl_math ncl_gl::ncl_gl TaskCoro::TaskCoro GTest::gtest_main ws2_32)
+    add_dependencies(plugin-bridge-tests plugin-game-api plugin-game-api-message)
+    gtest_discover_tests(plugin-bridge-tests)
+endif ()
 
 if (NEXTCLIENT_BUILD_TESTS)
     add_subdirectory(tests)

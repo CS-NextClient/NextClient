@@ -1,4 +1,7 @@
 #include "GameHud.h"
+#if NEXTCLIENT_WITH_PLUGINS
+#include <nextclient/runtime.h>
+#endif
 #include <goldsrc/client_api.h>
 
 #include "hud/radar/integration/RadarConfig.h"
@@ -57,22 +60,45 @@ void GameHud::Draw(float time)
         {
             continue; // drawn separately via DrawRadar
         }
+#if NEXTCLIENT_WITH_PLUGINS
+        if ((item == health_ && nc_runtime_ui_hidden(NC_UI_HEALTH)) ||
+            (item == radar_ && nc_runtime_ui_hidden(NC_UI_RADAR)) ||
+            (item == death_notice_ && nc_runtime_ui_hidden(NC_UI_DEATH_NOTICES)))
+        {
+            continue;
+        }
+#endif
         item->Draw(time);
     }
 }
 
 void GameHud::PrepareRadar()
 {
+#if NEXTCLIENT_WITH_PLUGINS
+    if (nc_runtime_ui_hidden(NC_UI_RADAR))
+    {
+        return;
+    }
+#endif
     radar_advanced_->PrepareHudTextZone();
 }
 
 void GameHud::UpdateRadarScoreboard(bool hud_visible)
 {
+#if NEXTCLIENT_WITH_PLUGINS
+    hud_visible = hud_visible && !nc_runtime_ui_hidden(NC_UI_RADAR);
+#endif
     radar_advanced_->UpdateScoreboard(hud_visible);
 }
 
 void GameHud::DrawRadar(float time)
 {
+#if NEXTCLIENT_WITH_PLUGINS
+    if (nc_runtime_ui_hidden(NC_UI_RADAR))
+    {
+        return;
+    }
+#endif
     radar_advanced_->Draw(time);
 }
 

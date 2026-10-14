@@ -17,6 +17,11 @@ endforeach ()
 
 project(NextClient VERSION 2.6.0)
 
+option(NEXTCLIENT_WITH_PLUGINS "Build the Windows native plugin runtime and UI" ${WIN32})
+if (NEXTCLIENT_WITH_PLUGINS AND NOT WIN32)
+    message(FATAL_ERROR "Native plugins currently require Windows. Configure with -DNEXTCLIENT_WITH_PLUGINS=OFF.")
+endif ()
+
 set(NEXTCLIENT_ROOT ${CMAKE_CURRENT_SOURCE_DIR})
 
 # TODO do fetch curl and zlib via vcpkg, make a custom port if necessary
@@ -123,6 +128,11 @@ add_subdirectory(nextclient/nitro_api)
 unset(CMAKE_CXX_STANDARD)
 
 add_subdirectory(nextclient/packages)
+if (NEXTCLIENT_WITH_PLUGINS)
+    add_subdirectory(sdk/examples/rust-life-stats)
+    add_subdirectory(sdk/examples/cpp-life-stats EXCLUDE_FROM_ALL)
+    add_subdirectory(nextclient/plugins)
+endif ()
 add_subdirectory(nextclient/engine_mini)
 add_subdirectory(nextclient/gameui)
 add_subdirectory(nextclient/client_mini)
@@ -144,6 +154,11 @@ if (MSVC)
             vgui2)
         target_link_libraries(${_tgt} PRIVATE "${YY_THUNKS_WIN7_OBJ}")
     endforeach ()
+    if (NEXTCLIENT_WITH_PLUGINS)
+        foreach (_tgt next_plugins plugin_life_stats_cpp)
+            target_link_libraries(${_tgt} PRIVATE "${YY_THUNKS_WIN7_OBJ}")
+        endforeach ()
+    endif ()
 endif ()
 
 # Install directory: cache variable with env fallback
@@ -167,6 +182,17 @@ if (NOT NEXTCLIENT_BUILD_TESTS)
             nitro_api
             vgui2
     )
+
+    if (NEXTCLIENT_WITH_PLUGINS)
+        add_dependencies(BUILD_ALL next_plugins plugin_life_stats)
+        if (NEXTCLIENT_INSTALL_DIR)
+            add_custom_command(TARGET BUILD_ALL POST_BUILD
+                    COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:next_plugins> ${NEXTCLIENT_INSTALL_DIR}/next_plugins.dll
+                    COMMAND ${CMAKE_COMMAND} -E make_directory ${NEXTCLIENT_INSTALL_DIR}/plugins
+                    COMMAND ${CMAKE_COMMAND} -E copy "${NEXTCLIENT_LIFE_STATS_DLL}" ${NEXTCLIENT_INSTALL_DIR}/plugins/life_stats.dll
+            )
+        endif ()
+    endif ()
 
     if (WIN32 AND NEXTCLIENT_INSTALL_DIR)
         add_custom_command(TARGET BUILD_ALL POST_BUILD

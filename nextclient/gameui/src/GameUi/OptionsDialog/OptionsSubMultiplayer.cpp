@@ -39,6 +39,8 @@
 
 #include "ImageLib/LoadBMP.h"
 
+#undef PostMessage
+
 struct ColorItem_t
 {
     const char *name;
@@ -107,10 +109,14 @@ void COptionsSubMultiplayer::OnCommand(const char *command)
 {
     if (!stricmp(command, "CrosshairSettings"))
     {
-        COptionsDialog *options = dynamic_cast<COptionsDialog *>(GetParent()->GetParent());
-
-        if (options)
-            options->OpenCrosshairSettings();
+        for (auto* parent = GetParent(); parent; parent = parent->GetParent())
+        {
+            if (auto* options = dynamic_cast<COptionsDialog*>(parent))
+            {
+                options->OpenCrosshairSettings();
+                break;
+            }
+        }
 
         return;
     }

@@ -42,6 +42,15 @@ the generated model. The generator overwrites its output and does not merge thes
 additions. Compare generated output with the tracked files and preserve each
 reviewed addition explicitly. Model validation alone does not check such additions.
 
+The plugin bridge also needs maintained `net_api_t` and `net_status_t` declarations
+in `engine/net.h` (Windows x86 only), and `IN_JUMP` in `usercmd.h`. Preserve these
+when regenerating. Their compiler-measured facts and extraction procedure are in
+[`plugin_facts_windows.json`](../nextclient/goldsrc_abi/tools/plugin_facts_windows.json),
+with the standalone probe in `tools/plugin_abi_probe.cpp`. The probe reads the pinned
+SDK identified by those facts; the production build does not depend on that checkout.
+`tests/plugin_layout.cpp` checks the Windows layouts and consumed callback types
+as part of `goldsrc_abi_golden`.
+
 ## Declaration rules
 
 - `goldsrc` contains stock engine facts; `goldsrc::cstrike` contains stock

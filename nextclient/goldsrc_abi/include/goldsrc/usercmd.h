@@ -7,6 +7,8 @@
 
 namespace goldsrc
 {
+    inline constexpr int IN_JUMP = 2;
+
     struct kbutton_t
     {
         int down[2];

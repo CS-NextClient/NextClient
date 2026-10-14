@@ -150,4 +150,33 @@ namespace goldsrc
         int tempbuffersize;
         flow_t flow[2];
     };
+#if defined(_WIN32)
+    struct net_response_t;
+
+    struct net_status_t
+    {
+        int connected;
+        netadr_t local_address;
+        netadr_t remote_address;
+        int packet_loss;
+        double latency;
+        double connection_time;
+        double rate;
+    };
+
+    struct net_api_t
+    {
+        void (*InitNetworking)();
+        void (*Status)(net_status_t*);
+        void (*SendRequest)(int, int, int, double, netadr_t*, void (*)(net_response_t*));
+        void (*CancelRequest)(int);
+        void (*CancelAllRequests)();
+        char* (*AdrToString)(netadr_t*);
+        int (*CompareAdr)(netadr_t*, netadr_t*);
+        int (*StringToAdr)(const char*, netadr_t*);
+        const char* (*ValueForKey)(const char*, const char*);
+        void (*RemoveKey)(char*, const char*);
+        void (*SetValueForKey)(char*, const char*, const char*, int);
+    };
+#endif
 } // namespace goldsrc
