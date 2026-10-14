@@ -51,6 +51,7 @@ IncludeIsMainRegex: '([-_](test|unittest))?$'
 IndentCaseBlocks: true
 IndentCaseLabels: true
 IndentWidth: 4
+InsertBraces: true
 InsertNewlineAtEOF: true
 MacroBlockBegin: ''
 MacroBlockEnd: ''

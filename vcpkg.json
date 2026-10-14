@@ -34,8 +34,7 @@
     "platform": "windows"
   }, {
     "name" : "cmakerc",
-    "version>=" : "2023-07-24",
-    "platform": "windows"
+    "version>=" : "2023-07-24"
   }, {
     "name" : "taocpp-json"
   }, {

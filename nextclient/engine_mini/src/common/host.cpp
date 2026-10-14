@@ -1,8 +1,13 @@
 #include "host.h"
 
+#include <goldsrc/cvar.h>
+#include <goldsrc/engine/client_state.h>
+#include <goldsrc/engine/server_state.h>
+#include <goldsrc/types.h>
+
 double oldrealtime;
 
-qboolean Host_IsSinglePlayerGame()
+goldsrc::qboolean Host_IsSinglePlayerGame()
 {
 	if (g_psv->active)
 		return g_psvs->maxclients == 1;
@@ -10,7 +15,7 @@ qboolean Host_IsSinglePlayerGame()
 	return cl->maxclients == 1;
 }
 
-qboolean Host_IsServerActive()
+goldsrc::qboolean Host_IsServerActive()
 {
     return g_psv->active;
 }
@@ -23,7 +28,7 @@ int Host_GetMaxClients()
     return cl->maxclients;
 }
 
-qboolean Host_FilterTime(float time)
+goldsrc::qboolean Host_FilterTime(float time)
 {
 	float fps;
 	static int command_line_ticrate = -1;
@@ -58,7 +63,7 @@ qboolean Host_FilterTime(float time)
 	else
 	{
 		fps = 100.0f;
-		if (g_psv->active || cls->state == ca_disconnected || cls->state == ca_active)
+		if (g_psv->active || cls->state == goldsrc::ca_disconnected || cls->state == goldsrc::ca_active)
 		{
 			fps = 0.5f;
 			if (fps_max->value >= 0.5f)
@@ -100,7 +105,7 @@ void Host_WriteConfiguration()
 	eng()->Host_WriteConfiguration.InvokeChained();
 }
 
-void Host_ShutdownServer(qboolean crash)
+void Host_ShutdownServer(goldsrc::qboolean crash)
 {
     eng()->Host_ShutdownServer.InvokeChained(crash);    
 }

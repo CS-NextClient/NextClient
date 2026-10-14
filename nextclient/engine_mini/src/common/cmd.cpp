@@ -1,3 +1,6 @@
+#include <goldsrc/client_api.h>
+#include <goldsrc/engine/cmd.h>
+
 #include "../engine.h"
 
 int* p_cmd_argc;
@@ -8,7 +11,7 @@ void Cbuf_InsertText(const char* text)
     eng()->Cbuf_InsertText.InvokeChained(text);
 }
 
-void Cmd_AddCommand(const char* cmd_name, xcommand_t function)
+void Cmd_AddCommand(const char* cmd_name, goldsrc::xcommand_t function)
 {
     eng()->Cmd_AddCommand.InvokeChained(cmd_name, function);
 }

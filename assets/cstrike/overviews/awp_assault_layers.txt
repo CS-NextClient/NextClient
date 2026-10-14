@@ -1,0 +1,4 @@
+radar_layers
+{
+    layer { name "Main" min_z "-4096" max_z "4096" }
+}

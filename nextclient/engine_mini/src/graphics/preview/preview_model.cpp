@@ -4,7 +4,7 @@
 
 #include <string>
 
-#include <studio.h>
+#include <goldsrc/format/studio.h>
 #include <ncl_math/vec3.h>
 #include <next_engine_mini/ScenePreviewInterface.h>
 
@@ -13,35 +13,24 @@
 #include "graphics/ViewmodelFrustumCalculator.h"
 #include "graphics/preview/preview_view.h"
 
-// The out parameter of the studio api's light query, laid out as com_model.h has it: that
-// header cannot stand beside the engine's model.h this file already reaches.
-// The tag is the studio api's own: its function pointer is declared over it.
-typedef struct alight_s
-{
-    int ambientlight;
-    int shadelight;
-    vec3_t color;
-    float* plightvec;
-} alight_t;
-
 namespace
 {
-    cl_entity_t g_PreviewEntity;
+    goldsrc::cl_entity_t g_PreviewEntity;
 
     int g_AmbientLight;
     int g_ShadeLight;
     float g_LightColor[3];
     float g_LightDirection[3];
 
-    void (*g_EngineDynamicLight)(cl_entity_t* ent, alight_t* plight);
+    void (*g_EngineDynamicLight)(goldsrc::cl_entity_t* ent, goldsrc::alight_t* plight);
     int (*g_EngineCheckBBox)();
 
-    engine_studio_api_t* g_PatchedApi;
+    goldsrc::engine_studio_api_t* g_PatchedApi;
 
-    model_t* g_Model;
+    goldsrc::model_t* g_Model;
     std::string g_ModelPath;
 
-    void PreviewDynamicLight(cl_entity_t* ent, alight_t* plight)
+    void PreviewDynamicLight(goldsrc::cl_entity_t* ent, goldsrc::alight_t* plight)
     {
         if (ent != &g_PreviewEntity)
         {
@@ -68,17 +57,17 @@ namespace
         return g_EngineCheckBBox();
     }
 
-    mstudioseqdesc_t* GetSequence(studiohdr_t* header, int sequence)
+    goldsrc::mstudioseqdesc_t* GetSequence(goldsrc::studiohdr_t* header, int sequence)
     {
         if (sequence < 0 || sequence >= header->numseq)
         {
             return nullptr;
         }
 
-        return reinterpret_cast<mstudioseqdesc_t*>(reinterpret_cast<byte*>(header) + header->seqindex) + sequence;
+        return reinterpret_cast<goldsrc::mstudioseqdesc_t*>(reinterpret_cast<uint8_t*>(header) + header->seqindex) + sequence;
     }
 
-    void SetupEntity(model_t* model, int sequence, float frame, float time, const float* origin, const float* angles)
+    void SetupEntity(goldsrc::model_t* model, int sequence, float frame, float time, const float* origin, const float* angles)
     {
         // Never the view entity's index: with cl_righthand on, the engine takes an entity
         // holding it for its own flipped view model and turns culling and lighting over.
@@ -86,14 +75,14 @@ namespace
         g_PreviewEntity.player = 0;
         g_PreviewEntity.model = model;
 
-        entity_state_t& state = g_PreviewEntity.curstate;
+        goldsrc::entity_state_t& state = g_PreviewEntity.curstate;
 
         ncl_math::VectorCopy(origin, g_PreviewEntity.origin);
         ncl_math::VectorCopy(angles, g_PreviewEntity.angles);
         ncl_math::VectorCopy(origin, state.origin);
         ncl_math::VectorCopy(angles, state.angles);
 
-        state.movetype = MOVETYPE_NONE;
+        state.movetype = goldsrc::MOVETYPE_NONE;
         state.sequence = sequence;
 
         // the engine advances the frame from animtime by framerate, so zero holds the pose
@@ -102,7 +91,7 @@ namespace
         state.framerate = 0.0f;
 
         state.scale = 1.0f;
-        state.rendermode = kRenderNormal;
+        state.rendermode = goldsrc::kRenderNormal;
         state.renderamt = 255;
         state.body = 0;
         state.skin = 0;
@@ -127,7 +116,7 @@ namespace
     }
 } // namespace
 
-void PreviewModel_PatchStudioApi(engine_studio_api_t* api)
+void PreviewModel_PatchStudioApi(goldsrc::engine_studio_api_t* api)
 {
     // The table is the engine's own global and outlives one query of it, so a second patch
     // would take the wrappers below for the engine's functions and recurse for ever.
@@ -180,13 +169,13 @@ int PreviewModel_Draw(const PreviewModel& model, const PreviewLight& light, cons
         g_ModelPath = model.path;
     }
 
-    if (g_Model == nullptr || g_Model->type != mod_studio)
+    if (g_Model == nullptr || g_Model->type != goldsrc::mod_studio)
     {
         return -1;
     }
 
     // every draw: the cache can drop the model's data, and Mod_Extradata loads it again
-    studiohdr_t* header = static_cast<studiohdr_t*>(Mod_Extradata(g_Model));
+    goldsrc::studiohdr_t* header = static_cast<goldsrc::studiohdr_t*>(Mod_Extradata(g_Model));
     if (header == nullptr)
     {
         return -1;
@@ -238,10 +227,10 @@ int PreviewModel_Draw(const PreviewModel& model, const PreviewLight& light, cons
     float saved_blend = *p_r_blend;
     *p_r_blend = 1.0f;
 
-    cl_entity_t* saved_current = *p_currententity;
+    goldsrc::cl_entity_t* saved_current = *p_currententity;
     *p_currententity = &g_PreviewEntity;
 
-    int drawn = pStudioAPI->StudioDrawModel(STUDIO_RENDER);
+    int drawn = pStudioAPI->StudioDrawModel(goldsrc::STUDIO_RENDER);
 
     *p_currententity = saved_current;
     *p_r_blend = saved_blend;

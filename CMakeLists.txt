@@ -15,7 +15,7 @@ foreach (NEXTCLIENT_LFS_FILE
     endif ()
 endforeach ()
 
-project(NextClient VERSION 2.5.4)
+project(NextClient VERSION 2.6.0)
 
 option(NEXTCLIENT_WITH_PLUGINS "Build the Windows native plugin runtime and UI" ${WIN32})
 if (NEXTCLIENT_WITH_PLUGINS AND NOT WIN32)
@@ -32,6 +32,8 @@ set(CMAKE_MODULE_PATH
 
 if (NEXTCLIENT_BUILD_TESTS)
     set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/out/bin)
+    set(CMAKE_GTEST_DISCOVER_TESTS_DISCOVERY_MODE PRE_TEST CACHE STRING
+            "When Google Test executables are queried for test discovery")
     enable_testing()
 else ()
     set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/out/bin)
@@ -87,9 +89,45 @@ if (MSVC)
     )
 endif ()
 
+# external dependencies (needed by engine_mini as well as the launcher)
+add_subdirectory(dep/cpr)
+add_subdirectory(dep/easyloggingpp)
+add_subdirectory(dep/bzip2)
+add_subdirectory(dep/glad)
+add_subdirectory(dep/stb)
+
+# Settings of the SDK fork, nitro_utils, funchook, goldsrc_abi and nitro_api. The standard is set
+# here rather than at the top of the file, and unset again below the last of them, so that the
+# directories added outside this span keep the standard they choose: cpr picks C++17 for itself
+# whenever the parent leaves it unset, and data_encoding picks nothing at all. A cache entry from
+# the command line outlives the unset and reaches all of them.
+set(CMAKE_POLICY_DEFAULT_CMP0077 NEW)
+set(CMAKE_CXX_STANDARD 23)
+
+if (UNIX)
+    add_compile_options(-m32 -march=pentium4 -Wno-narrowing)
+    add_link_options(-m32 -static-libstdc++ -static-libgcc)
+    set(CMAKE_LIBRARY_ARCHITECTURE i386-linux-gnu)
+endif ()
+
+# funchook options. Its cmake_minimum_required is 3.11, which leaves CMP0077 unset, so the policy
+# default above is what keeps its option() calls from overwriting these.
+set(FUNCHOOK_BUILD_SHARED OFF)
+set(FUNCHOOK_BUILD_TESTS OFF)
+set(FUNCHOOK_INSTALL OFF)
+set(FUNCHOOK_CPU "x86")
+
+add_subdirectory(dep/ncl-hl1-source-sdk)
+add_subdirectory(dep/nitro_utils)
+add_subdirectory(dep/funchook) # while funchook is not in vcpkg, add it as add_subdirectory (PS do NOT make it a sub-module).
+
 # NextClient sub-projects
+add_subdirectory(nextclient/goldsrc_abi)
+add_subdirectory(nextclient/nitro_api)
+
+unset(CMAKE_CXX_STANDARD)
+
 add_subdirectory(nextclient/packages)
-add_subdirectory(dep/NclNitroApi)
 if (NEXTCLIENT_WITH_PLUGINS)
     add_subdirectory(sdk/examples/rust-life-stats)
     add_subdirectory(sdk/examples/cpp-life-stats EXCLUDE_FROM_ALL)
@@ -99,15 +137,7 @@ add_subdirectory(nextclient/engine_mini)
 add_subdirectory(nextclient/gameui)
 add_subdirectory(nextclient/client_mini)
 add_subdirectory(nextclient/steam_api_proxy)
-
-# external dependencies (needed by engine_mini as well as the launcher)
-add_subdirectory(dep/cpr)
-add_subdirectory(dep/easyloggingpp)
-add_subdirectory(dep/bzip2)
-add_subdirectory(dep/glad)
-add_subdirectory(dep/stb)
 add_subdirectory(nextclient/filesystem_proxy)
-
 add_subdirectory(nextclient/launcher)
 
 # Windows 7 compatibility

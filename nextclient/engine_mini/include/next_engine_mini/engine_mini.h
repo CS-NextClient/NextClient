@@ -6,6 +6,7 @@
 #include "HttpDownloadManagerInterface.h"
 #include "NclmVerificatorInterface.h"
 #include "NextClientVersion.h"
+#include "TextRenderInterface.h"
 
 #ifdef NITRO_API_INCLUDED
 #include <nitroapi/NitroApiInterface.h>
@@ -34,7 +35,10 @@ public:
 
     virtual MatchmakingServersInterface* GetSteamMatchmakingServers() = 0;
     virtual void SetNclmVerificator(NclmVerificatorInterface* handler) = 0;
+
+    // Returns nullptr when the platform uses the stock text renderer.
+    virtual TextRenderInterface* GetTextRender() = 0;
 };
 
-#define ENGINE_MINI_INTERFACE_VERSION "EngineMini008"
+#define ENGINE_MINI_INTERFACE_VERSION "EngineMini013"
 

@@ -278,7 +278,24 @@
 		"textAlignment"		"west"
 		"textinsetx"		"6"
 		"command"		"CrosshairSettings"
-	}	"NameLabel"
+	}
+	"HudRadar"
+	{
+		"ControlName"		"Button"
+		"fieldName"		"HudRadar"
+		"xpos"		"283"
+		"ypos"		"150"
+		"wide"		"192"
+		"tall"		"24"
+		"visible"		"1"
+		"enabled"		"1"
+		"tabPosition"		"10"
+		"labelText"		"#GameUI_HudRadarSettings"
+		"textAlignment"		"west"
+		"textinsetx"		"6"
+		"command"		"HudRadar"
+	}
+	"NameLabel"
 	{
 		"ControlName"		"Label"
 		"fieldName"		"NameLabel"

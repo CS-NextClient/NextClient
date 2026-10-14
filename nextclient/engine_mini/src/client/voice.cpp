@@ -133,9 +133,9 @@
 //         Con_Printf("Voice - %d incoming samples added to channel %d\n", nDecompressed);
 // }
 //
-// void CL_AddVoiceToDatagram(qboolean bFinal)
+// void CL_AddVoiceToDatagram(goldsrc::qboolean bFinal)
 // {
-//     if (cls->state != ca_active || !Voice_IsRecording())
+//     if (cls->state != goldsrc::ca_active || !Voice_IsRecording())
 //         return;
 //
 //     char uchVoiceData[2048];

@@ -2,7 +2,15 @@
 
 #include <optick.h>
 #include <common/filesystem.h>
-#include <md5.h>
+#include <cstdint>
+
+#include <goldsrc/cvar.h>
+#include <goldsrc/engine/client_state.h>
+#include <goldsrc/engine/model.h>
+#include <goldsrc/engine/net.h>
+#include <goldsrc/engine/resource.h>
+#include <goldsrc/entity.h>
+#include <goldsrc/types.h>
 
 #include "download.h"
 #include "cl_spectator.h"
@@ -21,7 +29,7 @@
 #include "common/model.h"
 #include "graphics/gl_local.h"
 
-void CL_SendConsistencyInfo(sizebuf_t *msg)
+void CL_SendConsistencyInfo(goldsrc::sizebuf_t* msg)
 {
     OPTICK_EVENT();
     
@@ -70,11 +78,11 @@ void CL_PrecacheBSPModels(char* pfilename)
 
     ContinueLoadingProgressBar("ClientConnect", 9, 0.0);
 
-    for (resource_t* pResource = cl->resourcesonhand.pNext, * pNext; pResource != &cl->resourcesonhand; pResource = pNext)
+    for (goldsrc::resource_t *pResource = cl->resourcesonhand.pNext, *pNext; pResource != &cl->resourcesonhand; pResource = pNext)
     {
         pNext = pResource->pNext;
 
-        if (pResource->type != t_model || pResource->szFileName[0] != '*')
+        if (pResource->type != goldsrc::t_model || pResource->szFileName[0] != '*')
             continue;
 
         cl->model_precache[pResource->nIndex] = Mod_ForName(pResource->szFileName, false, false);
@@ -83,7 +91,7 @@ void CL_PrecacheBSPModels(char* pfilename)
         {
             Con_Printf("Model %s not model_found\n", pResource->szFileName);
 
-            if (FBitSet(pResource->ucFlags, RES_FATALIFMISSING))
+            if (FBitSet(pResource->ucFlags, goldsrc::RES_FATALIFMISSING))
             {
                 COM_ExplainDisconnection(true, "Cannot continue without model %s, disconnecting.", pfilename);
                 CL_Disconnect();
@@ -92,13 +100,13 @@ void CL_PrecacheBSPModels(char* pfilename)
     }
 }
 
-void CL_RegisterResources(sizebuf_t *msg)
+void CL_RegisterResources(goldsrc::sizebuf_t* msg)
 {
     OPTICK_EVENT();
     
     int mungebuffer[4];
 
-    if (cls->dl.custom || (cls->signon == 2 && cls->state == ca_active))
+    if (cls->dl.custom || (cls->signon == 2 && cls->state == goldsrc::ca_active))
     {
         cls->dl.custom = false;
         return;
@@ -122,7 +130,7 @@ void CL_RegisterResources(sizebuf_t *msg)
 
         CL_PrecacheBSPModels(cl->model_precache[1]->name);
 
-        if (cls->state != ca_disconnected)
+        if (cls->state != goldsrc::ca_disconnected)
         {
             Con_DPrintf(ConLogType::Info, "Setting up renderer...\n");
             R_NewMap();
@@ -132,7 +140,7 @@ void CL_RegisterResources(sizebuf_t *msg)
             if (cls->passive == false)
             {
                 mungebuffer[0] = cl->mapCRC;
-                MSG_WriteByte(msg, clc_stringcmd);
+                MSG_WriteByte(msg, goldsrc::clc_stringcmd);
                 COM_Munge2((uint8_t*) mungebuffer, 4, (uint8_t) (-1 - cl->servercount));
                 MSG_WriteString(msg, va("spawn %i %i", cl->servercount, mungebuffer[0]));
             }
@@ -151,7 +159,7 @@ void CL_RegisterResources(sizebuf_t *msg)
     }
 }
 
-void CL_ParseServerMessage(qboolean normal_message)
+void CL_ParseServerMessage(goldsrc::qboolean normal_message)
 {
     OPTICK_EVENT();
     
@@ -166,7 +174,7 @@ int CL_EstimateNeededResources()
 
     client_stateex.resourcesNeeded.clear();
 
-    for (resource_t* pResource = cl->resourcesneeded.pNext, * pNext; pResource != &cl->resourcesneeded; pResource = pNext)
+    for (goldsrc::resource_t *pResource = cl->resourcesneeded.pNext, *pNext; pResource != &cl->resourcesneeded; pResource = pNext)
     {
         pNext = pResource->pNext;
 
@@ -174,41 +182,41 @@ int CL_EstimateNeededResources()
 
         switch (pResource->type)
         {
-            case t_sound:
+            case goldsrc::t_sound:
                 if (pResource->szFileName[0] != '*' && resource_descriptor.NeedToDownload())
                 {
-                    SetBits(pResource->ucFlags, RES_WASMISSING);
+                    SetBits(pResource->ucFlags, goldsrc::RES_WASMISSING);
                     nTotalSize += pResource->nDownloadSize;
                     client_stateex.resourcesNeeded[pResource->szFileName] = *pResource;
                 }
                 break;
-            case t_model:
+            case goldsrc::t_model:
                 if (pResource->szFileName[0] != '*' && resource_descriptor.NeedToDownload())
                 {
-                    SetBits(pResource->ucFlags, RES_WASMISSING);
+                    SetBits(pResource->ucFlags, goldsrc::RES_WASMISSING);
                     nTotalSize += pResource->nDownloadSize;
                     client_stateex.resourcesNeeded[pResource->szFileName] = *pResource;
                 }
                 break;
-            case t_skin:
-            case t_generic:
-            case t_eventscript:
+            case goldsrc::t_skin:
+            case goldsrc::t_generic:
+            case goldsrc::t_eventscript:
                 if (resource_descriptor.NeedToDownload())
                 {
-                    SetBits(pResource->ucFlags, RES_WASMISSING);
+                    SetBits(pResource->ucFlags, goldsrc::RES_WASMISSING);
                     nTotalSize += pResource->nDownloadSize;
                     client_stateex.resourcesNeeded[pResource->szFileName] = *pResource;
                 }
                 break;
-            case t_decal:
-                if (FBitSet(pResource->ucFlags, RES_CUSTOM))
+            case goldsrc::t_decal:
+                if (FBitSet(pResource->ucFlags, goldsrc::RES_CUSTOM))
                 {
-                    SetBits(pResource->ucFlags, RES_WASMISSING);
+                    SetBits(pResource->ucFlags, goldsrc::RES_WASMISSING);
                     nTotalSize += pResource->nDownloadSize;
                     client_stateex.resourcesNeeded[pResource->szFileName] = *pResource;
                 }
                 break;
-            case t_world:
+            case goldsrc::t_world:
                 ASSERT(0);
                 break;
             default: ;
@@ -218,20 +226,20 @@ int CL_EstimateNeededResources()
     return nTotalSize;
 }
 
-qboolean CL_RequestMissingResources()
+goldsrc::qboolean CL_RequestMissingResources()
 {
     OPTICK_EVENT();
     
-    if (!cls->dl.doneregistering && (cls->dl.custom || cls->state == ca_uninitialized))
+    if (!cls->dl.doneregistering && (cls->dl.custom || cls->state == goldsrc::ca_uninitialized))
     {
-        resource_t* pResource = cl->resourcesneeded.pNext;
+        goldsrc::resource_t* pResource = cl->resourcesneeded.pNext;
 
         if (pResource == &cl->resourcesneeded)
         {
             cls->dl.doneregistering = true;
             cls->dl.custom = false;
         }
-        else if (!FBitSet(pResource->ucFlags, RES_WASMISSING))
+        else if (!FBitSet(pResource->ucFlags, goldsrc::RES_WASMISSING))
         {
             CL_MoveToOnHandList(cl->resourcesneeded.pNext);
             return true;
@@ -240,12 +248,12 @@ qboolean CL_RequestMissingResources()
     return false;
 }
 
-void CL_RegisterCustomization(resource_t* resource)
+void CL_RegisterCustomization(goldsrc::resource_t* resource)
 {
     OPTICK_EVENT();
     
-    qboolean bFound = false;
-    customization_t* pList;
+    goldsrc::qboolean bFound = false;
+    goldsrc::customization_t* pList;
 
     for (pList = cl->players[resource->playernum].customdata.pNext; pList; pList = pList->pNext)
     {
@@ -258,9 +266,9 @@ void CL_RegisterCustomization(resource_t* resource)
 
     if (!bFound)
     {
-        player_info_t* player = &cl->players[resource->playernum];
+        goldsrc::player_info_t* player = &cl->players[resource->playernum];
 
-        if (!COM_CreateCustomization(&player->customdata, resource, resource->playernum, FCUST_FROMHPAK, NULL, NULL))
+        if (!COM_CreateCustomization(&player->customdata, resource, resource->playernum, goldsrc::FCUST_FROMHPAK, NULL, NULL))
             Con_Printf("Unable to create custom decal for player %i\n", resource->playernum);
     }
     else
@@ -269,11 +277,11 @@ void CL_RegisterCustomization(resource_t* resource)
     }
 }
 
-void CL_ProcessFile_0(qboolean successfully_received, const char* filename)
+void CL_ProcessFile_0(goldsrc::qboolean successfully_received, const char* filename)
 {
     OPTICK_EVENT();
     
-    resource_t* pResource;
+    goldsrc::resource_t* pResource;
 
     if (successfully_received)
     {
@@ -299,7 +307,7 @@ void CL_ProcessFile_0(qboolean successfully_received, const char* filename)
             continue;
         }
 
-        if (pResource->type == t_generic)
+        if (pResource->type == goldsrc::t_generic)
         {
             if (!Q_stricmp(pResource->szFileName, filename))
                 break;
@@ -319,7 +327,7 @@ void CL_ProcessFile_0(qboolean successfully_received, const char* filename)
     if (pResource != &cl->resourcesneeded)
     {
         if (successfully_received)
-            ClearBits(pResource->ucFlags, RES_WASMISSING);
+            ClearBits(pResource->ucFlags, goldsrc::RES_WASMISSING);
 
         if (filename[0] == '!')
         {
@@ -327,9 +335,9 @@ void CL_ProcessFile_0(qboolean successfully_received, const char* filename)
             {
                 if (pResource->nDownloadSize == cls->netchan.tempbuffersize)
                 {
-                    if (pResource->ucFlags & RES_CUSTOM)
+                    if (pResource->ucFlags & goldsrc::RES_CUSTOM)
                     {
-                        HPAK_AddLump(true, CUSTOM_RES_PATH, pResource, (byte*) cls->netchan.tempbuffer, NULL);
+                        HPAK_AddLump(true, CUSTOM_RES_PATH, pResource, (uint8_t*)cls->netchan.tempbuffer, NULL);
                         CL_RegisterCustomization(pResource);
                     }
                 }
@@ -351,12 +359,12 @@ void CL_ProcessFile_0(qboolean successfully_received, const char* filename)
         CL_MoveToOnHandList(pResource);
     }
 
-    if (cls->state != ca_disconnected)
+    if (cls->state != goldsrc::ca_disconnected)
     {
         if (cl->resourcesneeded.pNext == &cl->resourcesneeded)
         {
-            byte msg_buf[MAX_INIT_MSG];
-            sizebuf_t msg;
+            uint8_t msg_buf[MAX_INIT_MSG];
+            goldsrc::sizebuf_t msg;
 
             MSG_Init(&msg, "Resource Registration", msg_buf, sizeof(msg_buf));
 
@@ -389,7 +397,7 @@ void CL_ReadPackets()
 
     int packets_count = 0;
 
-    if (cls->state == ca_dedicated)
+    if (cls->state == goldsrc::ca_dedicated)
         return;
 
     cl->oldtime = cl->time;
@@ -414,14 +422,14 @@ void CL_ReadPackets()
             if (!cls->demoplayback && !NET_CompareAdr(*net_from, cls->netchan.remote_address))
                 continue;
 
-            if (cls->state == ca_disconnected || cls->state == ca_connecting)
+            if (cls->state == goldsrc::ca_disconnected || cls->state == goldsrc::ca_connecting)
                 continue;
         }
-        else if (cls->state == ca_connecting)
+        else if (cls->state == goldsrc::ca_connecting)
         {
-            cls->state = ca_connected;
+            cls->state = goldsrc::ca_connected;
         }
-        else if (cls->state == ca_disconnected)
+        else if (cls->state == goldsrc::ca_disconnected)
         {
             continue;
         }
@@ -448,7 +456,7 @@ void CL_ReadPackets()
 
     CL_SetSolidEntities();
 
-    if (cls->state != ca_dedicated && cls->state != ca_disconnected && Netchan_IncomingReady(&cls->netchan))
+    if (cls->state != goldsrc::ca_dedicated && cls->state != goldsrc::ca_disconnected && Netchan_IncomingReady(&cls->netchan))
     {
         if (Netchan_CopyNormalFragments(&cls->netchan))
         {
@@ -490,7 +498,7 @@ void CL_ReadPackets()
         }
     }
 
-    if (cls->state < ca_connected || cls->demoplayback || *realtime - cls->netchan.last_received <= cl_timeout->value)
+    if (cls->state < goldsrc::ca_connected || cls->demoplayback || *realtime - cls->netchan.last_received <= cl_timeout->value)
     {
         if (cl_shownet->value != 0.0)
             Con_Printf("\n");
@@ -531,7 +539,7 @@ void CL_ReadPackets()
  * \param dlfile_resources is used to prevent a file from being re-added to a download via a dlfile
  * \return true if file exists, and false if not.
  */
-bool CL_CheckFile(sizebuf_t *msg, const ResourceDescriptor& res_descriptor, std::unordered_set<std::string>& dlfile_resources)
+bool CL_CheckFile(goldsrc::sizebuf_t* msg, const ResourceDescriptor& res_descriptor, std::unordered_set<std::string>& dlfile_resources)
 {
     OPTICK_EVENT();
     
@@ -541,7 +549,7 @@ bool CL_CheckFile(sizebuf_t *msg, const ResourceDescriptor& res_descriptor, std:
         return true;
     }
 
-    if (cls->state != ca_active || GetCvarFloat("cl_download_ingame") != 0.0)
+    if (cls->state != goldsrc::ca_active || GetCvarFloat("cl_download_ingame") != 0.0)
     {
         if (!res_descriptor.NeedToDownload())
             return true;
@@ -562,7 +570,7 @@ bool CL_CheckFile(sizebuf_t *msg, const ResourceDescriptor& res_descriptor, std:
             {
                 dlfile_resources.emplace(res_descriptor.get_download_path());
 
-                MSG_WriteByte(msg, clc_stringcmd);
+                MSG_WriteByte(msg, goldsrc::clc_stringcmd);
                 MSG_WriteString(msg, va("dlfile %s", res_descriptor.get_download_path().c_str()));
             }
         }
@@ -578,26 +586,26 @@ void CL_BatchResourceRequest()
 {
     OPTICK_EVENT();
     
-    byte data[65536];
+    uint8_t data[65536];
     char filename[256];
     std::unordered_set<std::string> dlfile_resources;
 
     CL_HTTPStop_f();
 
-    sizebuf_t msg;
+    goldsrc::sizebuf_t msg;
     MSG_Init(&msg, "Resource Batch", data, sizeof(data));
 
-    for (resource_t* pResource = cl->resourcesneeded.pNext, * pNext; pResource != &cl->resourcesneeded; pResource = pNext)
+    for (goldsrc::resource_t *pResource = cl->resourcesneeded.pNext, *pNext; pResource != &cl->resourcesneeded; pResource = pNext)
     {
         pNext = pResource->pNext;
 
-        if (!FBitSet(pResource->ucFlags, RES_WASMISSING))
+        if (!FBitSet(pResource->ucFlags, goldsrc::RES_WASMISSING))
         {
             CL_MoveToOnHandList(pResource);
             continue;
         }
 
-        if (cls->state == ca_active && !cl_download_ingame->value)
+        if (cls->state == goldsrc::ca_active && !cl_download_ingame->value)
         {
             Con_Printf("skipping in game download of %s\n", pResource->szFileName);
             CL_MoveToOnHandList(pResource);
@@ -616,30 +624,30 @@ void CL_BatchResourceRequest()
 
         switch (pResource->type)
         {
-            case t_sound:
+            case goldsrc::t_sound:
                 if (pResource->szFileName[0] == '*' || CL_CheckFile(&msg, resource_descriptor, dlfile_resources))
                     CL_MoveToOnHandList(pResource);
                 break;
 
-            case t_skin:
+            case goldsrc::t_skin:
                 CL_MoveToOnHandList(pResource);
                 break;
 
-            case t_model:
+            case goldsrc::t_model:
                 if (pResource->szFileName[0] == '*' || CL_CheckFile(&msg, resource_descriptor, dlfile_resources))
                     CL_MoveToOnHandList(pResource);
                 break;
 
-            case t_decal:
+            case goldsrc::t_decal:
                 if (!HPAK_GetDataPointer("custom.hpk", pResource, nullptr, nullptr))
                 {
-                    if (!FBitSet(pResource->ucFlags, RES_REQUESTED))
+                    if (!FBitSet(pResource->ucFlags, goldsrc::RES_REQUESTED))
                     {
                         Q_snprintf(filename, sizeof(filename), "!MD5%s", COM_BinPrintf(pResource->rgucMD5_hash, sizeof(pResource->rgucMD5_hash)));
-                        MSG_WriteByte(&msg, clc_stringcmd);
+                        MSG_WriteByte(&msg, goldsrc::clc_stringcmd);
                         MSG_WriteString(&msg, va("dlfile %s", filename));
 
-                        SetBits(pResource->ucFlags, RES_REQUESTED);
+                        SetBits(pResource->ucFlags, goldsrc::RES_REQUESTED);
                     }
                     break;
                 }
@@ -647,7 +655,7 @@ void CL_BatchResourceRequest()
                 CL_MoveToOnHandList(pResource);
                 break;
 
-            case t_generic:
+            case goldsrc::t_generic:
                 if (!IsSafeFileToDownload(pResource->szFileName))
                 {
                     CL_RemoveFromResourceList(pResource);
@@ -659,12 +667,12 @@ void CL_BatchResourceRequest()
                     CL_MoveToOnHandList(pResource);
                 break;
 
-            case t_eventscript:
+            case goldsrc::t_eventscript:
                 if (CL_CheckFile(&msg, resource_descriptor, dlfile_resources))
                     CL_MoveToOnHandList(pResource);
                 break;
 
-            case t_world:
+            case goldsrc::t_world:
                 ASSERT(0);
                 break;
         }
@@ -680,7 +688,7 @@ void CL_BatchResourceRequest()
         SetLoadingProgressBarStatusText("#GameUI_VerifyingAndDownloading");
     }
 
-    if (cls->state != ca_disconnected)
+    if (cls->state != goldsrc::ca_disconnected)
     {
         if (!msg.cursize && CL_PrecacheResources())
         {
@@ -699,7 +707,7 @@ void CL_StartResourceDownloading(const char *pszMessage, bool bCustom)
 {
     OPTICK_EVENT();
     
-    resourceinfo_t ri;
+    goldsrc::resourceinfo_t ri;
 
     if (fs_startup_timings->value != 0.0)
         AddStartupTiming("begin CL_StartResourceDownloading()");
@@ -719,7 +727,7 @@ void CL_StartResourceDownloading(const char *pszMessage, bool bCustom)
     }
     else
     {
-        cls->state = ca_uninitialized;
+        cls->state = goldsrc::ca_uninitialized;
         cls->dl.custom = 0;
         *gfExtendedError = 0;
     }
@@ -753,7 +761,7 @@ void CL_ClearResourceLists()
     
     cl->downloadUrl[0] = '\0';
 
-    for (resource_t *pResource = cl->resourcesneeded.pNext, * pNext; pResource != &cl->resourcesneeded; pResource = pNext)
+    for (goldsrc::resource_t *pResource = cl->resourcesneeded.pNext, *pNext; pResource != &cl->resourcesneeded; pResource = pNext)
     {
         pNext = pResource->pNext;
 
@@ -764,7 +772,7 @@ void CL_ClearResourceLists()
     cl->resourcesneeded.pNext = &cl->resourcesneeded;
     cl->resourcesneeded.pPrev = &cl->resourcesneeded;
 
-    for (resource_t *pResource = cl->resourcesonhand.pNext, * pNext; pResource != &cl->resourcesonhand; pResource = pNext)
+    for (goldsrc::resource_t *pResource = cl->resourcesonhand.pNext, *pNext; pResource != &cl->resourcesonhand; pResource = pNext)
     {
         pNext = pResource->pNext;
 
@@ -780,7 +788,7 @@ void CL_CreateResourceList()
 {
     OPTICK_EVENT();
     
-    if (cls->state != ca_dedicated)
+    if (cls->state != goldsrc::ca_dedicated)
     {
         HPAK_FlushHostQueue();
 
@@ -801,18 +809,18 @@ void CL_CreateResourceList()
 
             if (uiSize)
             {
-                if (cl->num_resources > (MAX_RESOURCE_LIST - 1))
+                if (cl->num_resources > (goldsrc::MAX_RESOURCE_LIST - 1))
                     Sys_Error("Too many resources on client.");
 
-                resource_t* pResource = &cl->resourcelist[cl->num_resources];
+                goldsrc::resource_t* pResource = &cl->resourcelist[cl->num_resources];
 
                 ++cl->num_resources;
 
                 Q_strncpy(pResource->szFileName, szFileName, sizeof(pResource->szFileName));
-                pResource->type = t_decal;
+                pResource->type = goldsrc::t_decal;
                 pResource->nDownloadSize = uiSize;
                 pResource->nIndex = 0;
-                pResource->ucFlags |= RES_CUSTOM;
+                pResource->ucFlags |= goldsrc::RES_CUSTOM;
 
                 Q_memcpy(pResource->rgucMD5_hash, rgucMD5_hash, sizeof(rgucMD5_hash));
 

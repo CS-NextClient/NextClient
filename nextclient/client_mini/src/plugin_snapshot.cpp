@@ -24,7 +24,7 @@ json_t PluginSnapshot_Vector(const float* values, size_t count)
     }
     return result;
 }
-json_t PluginSnapshot_Entity(const entity_state_t& state)
+json_t PluginSnapshot_Entity(const goldsrc::entity_state_t& state)
 {
     json_t result = tao::json::empty_object;
     result["entityType"] = state.entityType;
@@ -92,7 +92,7 @@ json_t PluginSnapshot_Entity(const entity_state_t& state)
     result["blending"] = json_t::array({state.blending[0], state.blending[1], state.blending[2], state.blending[3]});
     return result;
 }
-json_t PluginSnapshot_Client(const clientdata_t& state)
+json_t PluginSnapshot_Client(const goldsrc::clientdata_t& state)
 {
     json_t result = tao::json::empty_object;
     result["viewmodel"] = state.viewmodel;
@@ -138,7 +138,7 @@ json_t PluginSnapshot_Client(const clientdata_t& state)
     result["physinfo"] = ArrayText(state.physinfo);
     return result;
 }
-json_t PluginSnapshot_Movement(const playermove_t& movement)
+json_t PluginSnapshot_Movement(const goldsrc::playermove_t& movement)
 {
     json_t result = tao::json::empty_object;
     result["player_index"] = movement.player_index;

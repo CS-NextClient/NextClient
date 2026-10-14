@@ -1,0 +1,21 @@
+#pragma once
+
+#include <memory>
+#include <string>
+
+class RadarGlContext
+{
+private:
+    struct Implementation;
+
+    std::unique_ptr<Implementation> implementation_;
+
+public:
+    RadarGlContext();
+    ~RadarGlContext();
+
+    RadarGlContext(const RadarGlContext&) = delete;
+    RadarGlContext& operator=(const RadarGlContext&) = delete;
+
+    bool Initialize(std::string& error);
+};

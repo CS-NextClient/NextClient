@@ -2,6 +2,9 @@
 
 #include <EASTL/fixed_string.h>
 #include <next_engine_mini/cl_private_resources.h>
+#include <goldsrc/client_api.h>
+#include <goldsrc/engine/net.h>
+#include <goldsrc/hltv.h>
 
 #include "CmdChecker.h"
 #include "CmdLoggerAggregator.h"
@@ -39,7 +42,7 @@ namespace
         return g_FilteredCmd.empty() ? nullptr : g_FilteredCmd.c_str();
     }
 
-    char* Cbuf_AddTextHandler(const char* text, sizebuf_t* buf, nitroapi::NextHandlerInterface<char*, const char*, sizebuf_t*>* next)
+    char* Cbuf_AddTextHandler(const char* text, goldsrc::sizebuf_t* buf, nitroapi::NextHandlerInterface<char*, const char*, goldsrc::sizebuf_t*>* next)
     {
         const char* filtered = FilterAddedText(text);
         return filtered ? next->Invoke(filtered, buf) : kEmpty;
@@ -107,7 +110,7 @@ namespace
         int direct_type = MSG_ReadByte();
         const char* cmd = MSG_ReadString();
 
-        if (direct_type == DRC_CMD_BANNER) // block spectator banner left-upper corner
+        if (direct_type == goldsrc::DRC_CMD_BANNER) // block spectator banner left-upper corner
         {
             g_CmdLogger->LogCommand("[NOT COMMAND] Show DRC_CMD_BANNER", "", LogCommandType::BlockedBanner);
             return;
@@ -115,7 +118,7 @@ namespace
 
         *pMsg_readcount = read_count;
 
-        if (direct_type == DRC_CMD_STUFFTEXT)
+        if (direct_type == goldsrc::DRC_CMD_STUFFTEXT)
         {
             g_Cbuf_AddText_called = false;
 

@@ -6,6 +6,7 @@
 #include <optick.h>
 #include <nitro_utils/string_utils.h>
 #include <steam/steam_api.h>
+#include <goldsrc/client_api.h>
 
 #include "HttpMasterClient.h"
 #include "FileMasterClient.h"

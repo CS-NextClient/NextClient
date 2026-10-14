@@ -6,14 +6,6 @@
 
 #include "scalar.h"
 
-// Vector / Euler-angle helpers with no dependency on the Valve SDK mathlib.
-//
-// Two styles coexist on purpose:
-//   - Vector2 / Vector3 value types with operators.
-//   - Free functions over raw float* (float[3] storage such as vec3_t),
-//     operating on it in place without a copy.
-// Both value types are standard-layout and size-compatible with float[N], so
-// Vector3::Ref aliases such storage directly.
 namespace ncl_math
 {
     inline constexpr float kPi = 3.14159265358979323846f;
@@ -41,17 +33,14 @@ namespace ncl_math
         float LengthSqr() const { return Dot(*this); }
         float Length() const { return std::sqrt(LengthSqr()); }
 
-        // Unit vector in the same direction; a zero vector yields a zero vector.
         Vector2 Normalized() const
         {
             float len = Length();
             return len > 0.0f ? Vector2{x / len, y / len} : Vector2{};
         }
 
-        // Rotated +90 degrees (CCW): (x, y) -> (-y, x).
         Vector2 Perp() const { return {-y, x}; }
 
-        // Rotated by the given angle (radians, CCW).
         Vector2 Rotated(float radians) const
         {
             float c = std::cos(radians);
@@ -62,6 +51,21 @@ namespace ncl_math
         static Vector2& Ref(float* p) { return *reinterpret_cast<Vector2*>(p); }
         static const Vector2& Ref(const float* p) { return *reinterpret_cast<const Vector2*>(p); }
     };
+
+    // Unlike Normalized(), reports a degenerate vector instead of substituting a zero vector.
+    inline bool TryNormalize(const Vector2& v, Vector2* dir, float min_length = kNearZero)
+    {
+        float len = v.Length();
+
+        if (len <= min_length)
+        {
+            return false;
+        }
+
+        *dir = v / len;
+
+        return true;
+    }
     static_assert(sizeof(Vector2) == sizeof(float[2]));
     static_assert(std::is_standard_layout_v<Vector2>);
 
@@ -87,8 +91,6 @@ namespace ncl_math
         float LengthSqr() const { return Dot(*this); }
         float Length() const { return std::sqrt(LengthSqr()); }
 
-        // Normalizes in place and returns the previous length; a zero vector is
-        // left untouched.
         float Normalize()
         {
             float len = Length();
@@ -102,7 +104,6 @@ namespace ncl_math
             return len;
         }
 
-        // Unit vector in the same direction; a zero vector yields a zero vector.
         Vector3 Normalized() const
         {
             float len = Length();
@@ -115,10 +116,6 @@ namespace ncl_math
     static_assert(sizeof(Vector3) == sizeof(float[3]));
     static_assert(std::is_standard_layout_v<Vector3>);
 
-    // 2D affine transform: maps a point p to origin + basis_x*p.x + basis_y*p.y.
-    // basis_x/basis_y are the images of the x/y axes (the two columns of the 2x2
-    // linear part); origin is the translation. ApplyVector omits the translation,
-    // for transforming directions rather than points.
     struct Transform2
     {
         Vector2 basis_x{}, basis_y{}, origin{};
@@ -127,7 +124,6 @@ namespace ncl_math
         Vector2 ApplyVector(Vector2 v) const { return basis_x * v.x + basis_y * v.y; }
     };
 
-    // Unit vector at the given angle (radians), CCW from +X.
     inline Vector2 FromAngle(float radians) { return {std::cos(radians), std::sin(radians)}; }
 
     inline Vector2 Lerp(Vector2 a, Vector2 b, float t) { return a + (b - a) * t; }
@@ -183,7 +179,6 @@ namespace ncl_math
         v[2] = -v[2];
     }
 
-    // out = start + scale * direction
     inline void VectorMA(const float* start, float scale, const float* direction, float* out)
     {
         out[0] = start[0] + direction[0] * scale;
@@ -191,7 +186,6 @@ namespace ncl_math
         out[2] = start[2] + direction[2] * scale;
     }
 
-    // dst += scale * direction
     inline void VectorMA(const float* direction, float scale, float* dst)
     {
         dst[0] += direction[0] * scale;
@@ -199,8 +193,7 @@ namespace ncl_math
         dst[2] += direction[2] * scale;
     }
 
-    // dst.xy += scale * direction.xy, dst.z -= scale * direction.z, mirroring
-    // the SDK mathlib's VectorMA_2.
+    // Mirrors the engine's VectorMA_2: Z is subtracted, not added.
     inline void VectorMA_2(const float* direction, float scale, float* dst)
     {
         dst[0] += direction[0] * scale;
@@ -208,16 +201,24 @@ namespace ncl_math
         dst[2] -= direction[2] * scale;
     }
 
-    inline float SegPointDistSq(const float* a, const float* b, const float* p)
+    inline Vector3 ClosestPointOnSegment(const Vector3& a, const Vector3& b, const Vector3& point)
     {
-        ncl_math::Vector3 va = ncl_math::Vector3::Ref(a);
-        ncl_math::Vector3 ab = ncl_math::Vector3::Ref(b) - va;
-        ncl_math::Vector3 ap = ncl_math::Vector3::Ref(p) - va;
+        Vector3 ab = b - a;
+        Vector3 ap = point - a;
         float ab2 = ab.LengthSqr();
         float t = ab2 > 0.0f ? ap.Dot(ab) / ab2 : 0.0f;
-        t = std::clamp(t, 0.0f, 1.0f);
-        ncl_math::Vector3 closest = va + ab * t;
-        return (ncl_math::Vector3::Ref(p) - closest).LengthSqr();
+        t = Saturate(t);
+        return a + ab * t;
+    }
+
+    inline float SegPointDistSq(const Vector3& a, const Vector3& b, const Vector3& point)
+    {
+        return (point - ClosestPointOnSegment(a, b, point)).LengthSqr();
+    }
+
+    inline float SegPointDistSq(const float* a, const float* b, const float* point)
+    {
+        return SegPointDistSq(Vector3::Ref(a), Vector3::Ref(b), Vector3::Ref(point));
     }
 
     inline float DotProduct(const float* a, const float* b)
@@ -240,8 +241,6 @@ namespace ncl_math
         return std::sqrt(v[0] * v[0] + v[1] * v[1]);
     }
 
-    // Normalizes in place and returns the previous length; leaves a zero vector
-    // untouched.
     inline float VectorNormalize(float* v)
     {
         float len = VectorLength(v);
@@ -255,8 +254,7 @@ namespace ncl_math
         return len;
     }
 
-    // Euler angles (pitch, yaw, roll in degrees) -> basis vectors. Any output may
-    // be null. Right-handed forward/right/up, matching the engine convention.
+    // angles = pitch, yaw, roll in degrees (engine convention).
     inline void AngleVectors(const float* angles, float* forward, float* right, float* up)
     {
         float sp = std::sin(angles[0] * kDeg2Rad);
@@ -286,7 +284,6 @@ namespace ncl_math
         }
     }
 
-    // Wraps an angle into [-180, 180].
     inline float AngleNormalize(float angle)
     {
         angle = std::fmod(angle, 360.0f);
@@ -301,7 +298,6 @@ namespace ncl_math
         return angle;
     }
 
-    // Per-component shortest-path interpolation between two Euler angles.
     inline void AngleLerp(const float* a, const float* b, float t, float* out)
     {
         for (int i = 0; i < 3; i++)

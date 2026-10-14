@@ -1,12 +1,13 @@
 #include "engine.h"
 
 #include <optick.h>
-#include <model.h>
+#include <goldsrc/engine/model.h>
+#include <goldsrc/format/sprite.h>
 
 #include "console/console.h"
 #include "graphics/gl_local.h"
 
-mspriteframe_t* R_GetSpriteFrame(msprite_t* pSprite, int frame)
+goldsrc::mspriteframe_t* R_GetSpriteFrame(goldsrc::msprite_t* pSprite, int frame)
 {
     OPTICK_EVENT();
 
@@ -25,7 +26,7 @@ mspriteframe_t* R_GetSpriteFrame(msprite_t* pSprite, int frame)
     if (frame >= pSprite->numframes || frame < 0)
         Con_DPrintf(ConLogType::Info, "Sprite: no such frame %d\n", frame);
 
-    if (pSprite->frames[frame].type == SPR_SINGLE)
+    if (pSprite->frames[frame].type == goldsrc::SPR_SINGLE)
         return pSprite->frames[frame].frameptr;
 
     return nullptr;

@@ -3,12 +3,15 @@
 
 #include <vector>
 #include <string>
+#include <goldsrc/client_api.h>
+#include <goldsrc/cvar.h>
+#include <goldsrc/engine/client_state.h>
 
 #include "cl_ncl_entity_sync.h"
 
 namespace
 {
-    cvar_t* g_cvar_debug_entity_sync = nullptr;
+    goldsrc::cvar_t* g_cvar_debug_entity_sync = nullptr;
     std::vector<std::shared_ptr<nitroapi::Unsubscriber>> g_unsubs;
 
     constexpr int OVERLAY_X = 120;
@@ -22,7 +25,7 @@ namespace
             return;
         }
 
-        if (cls == nullptr || cls->state != ca_active)
+        if (cls == nullptr || cls->state != goldsrc::ca_active)
         {
             return;
         }
@@ -63,7 +66,7 @@ void CL_NclEntitySyncOverlayInit()
     return;
 #endif
 
-    g_cvar_debug_entity_sync = gEngfuncs.pfnRegisterVariable("ncl_debug_entity_sync", "0", FCVAR_ARCHIVE);
+    g_cvar_debug_entity_sync = gEngfuncs.pfnRegisterVariable("ncl_debug_entity_sync", "0", goldsrc::FCVAR_ARCHIVE);
     g_unsubs.emplace_back(client()->HUD_Redraw |= HUD_RedrawHook);
 }
 

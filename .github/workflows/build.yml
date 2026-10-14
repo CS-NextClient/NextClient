@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   build:
-    name: Build (vs2022, Release, x86)
+    name: Build (ninja, Release, x86)
     runs-on: windows-2022
 
     env:
@@ -41,17 +41,47 @@ jobs:
 
       - name: Set up Rust x86 target
         run: rustup target add i686-pc-windows-msvc
+      - name: Set up MSVC x86
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: amd64_x86
+          vsversion: '2022'
+
+      - name: Request the CMake file API codemodel
+        shell: pwsh
+        run: New-Item -ItemType File -Force -Path "build/ninja/.cmake/api/v1/query/codemodel-v2" | Out-Null
 
       - name: Configure
-        run: cmake --preset vs2022 "-DNEXTCLIENT_INSTALL_DIR=${{ github.workspace }}\install"
+        run: cmake --preset ninja "-DNEXTCLIENT_INSTALL_DIR=${{ github.workspace }}\install"
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Test goldsrc_abi tools
+        run: python -m unittest discover -s nextclient/goldsrc_abi/tools -t nextclient/goldsrc_abi/tools -p "test_*.py"
 
       - name: Build
-        run: cmake --build --preset vs2022-release --target BUILD_ALL
+        run: cmake --build --preset ninja-release --target BUILD_ALL --parallel
+
+      # After the build: the gate resolves the includes of every compiled source, and the cmrc
+      # sources of client_mini_rc and gui_app_core_rc are copied into place by a build rule.
+      - name: Provenance gate
+        run: python nextclient/goldsrc_abi/tools/provenance.py --build-dir build/ninja --config Release --allowlist .github/provenance-allowlist.json --report build/provenance-report.json
+
+      - name: Upload provenance report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: provenance-report-${{ github.sha }}
+          path: build/provenance-report.json
+          if-no-files-found: ignore
 
       - name: Check bundled Rust Life Stats
         shell: pwsh
         run: |
-          $rustDll = "build/vs2022/rust-life-stats/i686-pc-windows-msvc/release/life_stats.dll"
+          $rustDll = "build/ninja/rust-life-stats/i686-pc-windows-msvc/release/life_stats.dll"
           $bundledDll = "install/plugins/life_stats.dll"
           if ((Get-FileHash $rustDll).Hash -ne (Get-FileHash $bundledDll).Hash) {
             throw "The bundle must contain the Rust Life Stats DLL"
@@ -76,7 +106,7 @@ jobs:
 
       # after the uploads: a test build writes its PDBs into out/pdb as well
       - name: Configure tests
-        run: cmake --preset vs2022 -B build/vs2022-tests -DNEXTCLIENT_BUILD_TESTS=ON
+        run: cmake --preset ninja -B build/ninja-tests -DNEXTCLIENT_BUILD_TESTS=ON
 
       - name: Build and test Rust SDK
         shell: pwsh
@@ -94,10 +124,39 @@ jobs:
           "NEXTCLIENT_RUST_EVENTS_DLL=$((Get-Location).Path)/sdk/examples/rust-events/target/i686-pc-windows-msvc/release/nextclient_rust_events.dll" >> $env:GITHUB_ENV
 
       - name: Build tests
-        run: cmake --build build/vs2022-tests --config Release --target engine_mini-tests gameui-tests plugin-tests plugin-bridge-tests view-tests crosshair-tests
+        run: cmake --build build/ninja-tests --config Release --parallel
+
+      - name: Set up Mesa software OpenGL
+        shell: pwsh
+        run: |
+          $mesa_version = '26.2.4'
+          $archive_name = "mesa3d-$mesa_version-release-msvc.7z"
+          $mesa_archive = Join-Path $env:RUNNER_TEMP $archive_name
+          $mesa_dir = Join-Path $env:RUNNER_TEMP "mesa3d-$mesa_version"
+          $download_url = "https://github.com/pal1000/mesa-dist-win/releases/download/$mesa_version/$archive_name"
+          $expected_hash = '351fc8c8b695878ffb3eaa044b3ead08672a48b1a045e3c3e3975811df0f6695'
+
+          Invoke-WebRequest -Uri $download_url -OutFile $mesa_archive
+          $archive_hash = (Get-FileHash -LiteralPath $mesa_archive -Algorithm SHA256).Hash
+          if ($archive_hash -ne $expected_hash) {
+            throw 'Mesa archive SHA-256 mismatch.'
+          }
+
+          7z x $mesa_archive "-o$mesa_dir" 'x86/opengl32.dll' 'x86/libgallium_wgl.dll' -y
+          if ($LASTEXITCODE -ne 0) {
+            throw "Cannot extract Mesa archive (exit code $LASTEXITCODE)."
+          }
+
+          $mesa_dlls = @(
+            (Join-Path $mesa_dir 'x86/opengl32.dll')
+            (Join-Path $mesa_dir 'x86/libgallium_wgl.dll')
+          )
+          Copy-Item -LiteralPath $mesa_dlls -Destination 'build/ninja-tests/out/bin/Release'
 
       - name: Run tests
-        run: ctest --test-dir build/vs2022-tests -C Release --output-on-failure
+        env:
+          GALLIUM_DRIVER: llvmpipe
+        run: ctest --test-dir build/ninja-tests -C Release --output-on-failure
 
   build-linux:
     name: Build (linux, Release, x86)
@@ -115,7 +174,7 @@ jobs:
           apt-get install -y --no-install-recommends \
             git git-lfs ca-certificates curl zip unzip tar cmake ninja-build pkg-config python3 \
             build-essential gcc-multilib g++-multilib \
-            libgl-dev:i386 libx11-dev:i386 libxext-dev:i386 libxcursor-dev:i386 \
+            libgl-dev:i386 libegl1:i386 libx11-dev:i386 libxext-dev:i386 libxcursor-dev:i386 \
             libxi-dev:i386 libxrandr-dev:i386 libxss-dev:i386 libxfixes-dev:i386 libxrender-dev:i386
 
       - name: Checkout (with submodules)
@@ -141,8 +200,17 @@ jobs:
       - name: Bootstrap vcpkg
         run: ./vcpkg/bootstrap-vcpkg.sh -disableMetrics
 
+      - name: Check GoldSrc ABI models
+        run: python3 nextclient/goldsrc_abi/tools/library.py check
+
+      - name: Test portable platform tools
+        run: python3 -m unittest discover -s nextclient/goldsrc_abi/tools -t nextclient/goldsrc_abi/tools -p "test_platforms.py"
+
       - name: Configure
         run: cmake --preset linux -DNEXTCLIENT_WITH_PLUGINS=OFF "-DNEXTCLIENT_INSTALL_DIR=$GITHUB_WORKSPACE/install"
+
+      - name: Check Linux x86 ABI layouts
+        run: cmake --build --preset linux-release --target goldsrc_abi_golden
 
       - name: Build
         run: cmake --build --preset linux-release --target BUILD_ALL
@@ -174,7 +242,7 @@ jobs:
         run: cmake --preset linux -B build/linux-tests -DNEXTCLIENT_BUILD_TESTS=ON -DNEXTCLIENT_WITH_PLUGINS=OFF
 
       - name: Build tests
-        run: cmake --build build/linux-tests --config Release --target engine_mini-tests gameui-tests view-tests crosshair-tests
+        run: cmake --build build/linux-tests --config Release
 
       - name: Run tests
         run: ctest --test-dir build/linux-tests -C Release --output-on-failure

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <memory>
+#include <goldsrc/cvar.h>
 
 #include "HudAmmo.h"
 #include "HudHealth.h"
@@ -8,6 +9,7 @@
 #include "HudDamageIcons.h"
 #include "HudDamageDirection.h"
 #include "HudRadar.h"
+#include "HudRadarAdvanced.h"
 #include "HudDeathNotice.h"
 #include "hud_sprite/hud_sprite_store.h"
 
@@ -19,6 +21,7 @@ class GameHud
     std::shared_ptr<HudDamageIcons> damage_icons_;
     std::shared_ptr<HudDamageDirection> damage_direction_;
     std::shared_ptr<HudRadar> radar_;
+    std::shared_ptr<HudRadarAdvanced> radar_advanced_;
     std::shared_ptr<HudDeathNotice> death_notice_;
     std::shared_ptr<HudAmmo> ammo_;
 
@@ -30,6 +33,9 @@ public:
     void Init();
     void VidInit();
     void Draw(float time);
+    void DrawRadar(float time);
+    void PrepareRadar();
+    void UpdateRadarScoreboard(bool hud_visible);
     void Think(float time);
     void Reset();
     void InitHUDData();		// called every time a server is connected to
@@ -41,5 +47,5 @@ private:
     void FetchCvars();
 
 public:
-    cvar_t* cl_righthand;
+    goldsrc::cvar_t* cl_righthand;
 };

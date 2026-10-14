@@ -1,4 +1,5 @@
 #pragma once
+#include <cstdint>
 #include <variant>
 #include <steam/steam_api.h>
 #include <next_engine_mini/MatchmakingServersInterface.h>

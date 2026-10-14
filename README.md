@@ -11,13 +11,17 @@ NextClient has integrated some features from [csldr](https://github.com/mikkokko
 *Some antivirus engines flag NextClient binaries. These are heuristic false positives caused by runtime detouring of engine functions. Official builds are produced from the source code of this repository by GitHub Actions and carry a signed build provenance attestation. Details and false positive reporting: [docs/reporting-av-false-positives.md](docs/reporting-av-false-positives.md).*
 
 ### Main features:
+
+ - Windows and Linux support (x86)
  - Protector - protects the client from malicious commands from the server
  - Ability to change the master server (the default ms is [tsarvar.com](https://tsarvar.com))
  - Advanced video settings - FOV fix on 16:9 resolutions, ability to adjust FOV and separately adjust FOV for first person model
  - Advanced killfeed - support for advanced killfeed [regamedll](https://github.com/s1lentq/ReGameDLL_CS/pull/858), displaying kill icons: through the wall, through smoke, without aiming, jumping, dominating, etc.
  - Advanced crosshair settings - added new crosshair types: dot, T-shaped, circle
+ - Advanced radar - generated maps with automatic layer selection, player names, teammate health when provided by the server, movement trails, objective markers and a full-map view
+ - Discord integration: current server, connecting and demo playback in the activity, and joining friends through Discord, including launching the game
  - 2 GUI schemes with the ability to change them through the settings, and the ability to add your own schemes without deleting the old ones
- - HTML interface support in GameUI based on CEF (Chromium Embedded Framework) with a JS API for interacting with the client
+ - HTML interface support in GameUI based on CEF (Chromium Embedded Framework) with a JS API for interacting with the client (Windows only)
  - Native Windows plugins with a [Rust and C++ SDK](sdk/README.md) to extend the client, managed through an in-game Plugins menu with permission approval and configurable load order
  - Display more than 255hp when using [server module](https://github.com/CS-NextClient/NextClientServerApi)
  - Display number and size of remaining files, total file size and upload speed when connected to the server
@@ -39,6 +43,7 @@ NextClient has integrated some features from [csldr](https://github.com/mikkokko
  - Weapon sound replacement
  - Mouse inversion
  - Client verification and hardware ID (HWID) request
+ - Client platform reporting (Windows or Linux) through the NextClient server API
  - Separate precache for regular cs 1.6 client and NextClient
  - Precache of hud.txt and other standard resources
 
@@ -76,16 +81,89 @@ NextClient has integrated some features from [csldr](https://github.com/mikkokko
 | cl_discordrpc | 1             | No                          | Show what you're playing in Discord. |
 | cl_discordrpc_server | 1             | No                          | Show the server name in Discord. When 0, friends can't join you either. |
 | cl_discordrpc_join | 1             | No                          | Let Discord friends join your server. |
+| hud_radar_mode | 1 | No | Radar mode: 0 - classic, 1 - advanced. |
+| hud_radar_scale | 1.15 | No | Radar size. Min: 0.5<br/>Max: 3.0 |
+| hud_radar_map_scale | 0.8 | No | Map zoom. Min: 0.25<br/>Max: 3.0 |
+| hud_radar_map_shift | 0 | No | Shift the map near its edges to keep the player marker inside the radar. |
+| hud_radar_opacity | 100 | No | Map and background opacity, from 0 to 100 percent. |
+| hud_radar_round | 1 | No | Radar shape: 0 - square, 1 - round. |
+| hud_radar_fullmap | 1 | No | Show the full map while the scoreboard is open. |
+| hud_radar_shift_scoreboard | 1 | No | Shift the scoreboard to make room for the radar. |
+| hud_radar_rotate | 1 | No | Rotate the map with the view direction. |
+| hud_radar_names | 0 | No | Show player names. |
+| hud_radar_health | 0 | No | Show teammate health bars when the server provides HealthInfo data. |
+| hud_radar_tracks | 0 | No | Show teammate movement trails. |
+| hud_radar_map_mode | 5 | No | Map source: 1 - overview, 5 - generated textured layers, 6 - generated flat layers. |
+| hud_radar_map_mask | 1 | No | Clip the overview map to the radar shape. |
+| hud_radar_map_smoothing | 0 | No | Smooth the edges of generated map geometry. |
+| hud_radar_bg | 0 | No | Radar background: 0 - black, 1 - blurred game image. |
+| hud_radar_health_size | 1.0 | No | Health bar size. Min: 0.3<br/>Max: 4.0 |
+| hud_radar_name_size | 0.8 | No | Player name size. Min: 0.6<br/>Max: 2.0 |
+| hud_radar_allies | 1 | No | 1 - show teammates revealed by the server, 0 - also require line of sight. |
 
 *Can the server change the value of a cvar using the cvars sandbox feature.
 </details>
 
+### Console commands
+
+| Command | Purpose |
+| --- | --- |
+| `toggle <command> <value1> <value2> [value3...]` | Applies the specified values to a command in sequence, returning to the first after the last. |
+| `+toggle <command> [<held> <released>]` | Applies one value while a key is held and another when released. The values default to 1 and 0 respectively. |
+| `bindlist` | Prints all key bindings to the console. |
+| `lookat` | Inspects the weapon; bound to `V` by default. |
+| `next_version` | Prints the NextClient build version and module versions. |
+
+Examples:
+
+```text
+bind "F6" "toggle hud_radar_mode 0 1"
+bind "F7" "+toggle hud_radar_names"
+bindlist
+```
+
 ## Installation
+
+### Windows
 
 1. NextClient only works with engine version 8684, make sure you are on the beta branch "steam_legacy - Pre-25th Anniversary Build" in Steam (⚠️ Note: you need the official game files from Steam! You cannot install NextClient on pirate clients!)
 2. Copy the entire Counter-Strike 1.6 (Half-Life) folder to a separate folder outside of the Steam folder
 3. Copy all NextClient files to the folder where you copied all the CS 1.6 files
-4. Run the game via cstrike.exe
+4. Start Steam.
+5. Run the game via cstrike.exe
+
+### Linux
+
+Requirements for GitHub Actions archives:
+
+- x86_64 Linux with 32-bit x86 execution support and 32-bit glibc 2.43 or later.
+- 32-bit C++ runtime libraries: on Ubuntu, the packages are `libstdc++6:i386` (`libstdc++.so.6` with `GLIBCXX_3.4.32` or later) and `libgcc-s1:i386` (`libgcc_s.so.1`).
+- Installed and running Steam, its Steam Runtime, and native Linux game files from the `steam_legacy` branch.
+- 32-bit SDL2 and OpenGL driver libraries. The advanced radar requires OpenGL 2.1 and framebuffer object support (`GL_ARB_framebuffer_object` or OpenGL 3.0 or later).
+
+Install the 32-bit C++ runtime libraries on Ubuntu:
+
+```bash
+sudo dpkg --add-architecture i386
+sudo apt update
+sudo apt install libstdc++6:i386 libgcc-s1:i386
+```
+
+Installation:
+
+1. Select the "steam_legacy - Pre-25th Anniversary Build" beta branch in Steam and install the native Linux version of the game.
+2. Copy the entire Counter-Strike 1.6 (Half-Life) folder to a separate folder outside of the Steam folder.
+3. Extract the archive into the folder where you copied all the CS 1.6 files, replacing files. The root of that folder must contain `hw.so`, `cstrike.exe` and `nextclient.sh`.
+4. Start Steam.
+5. In a terminal, enter the copied game folder, set executable permissions and run the script:
+
+```bash
+cd "/path/to/Half-Life-NextClient"
+chmod +x nextclient.sh cstrike.exe
+./nextclient.sh
+```
+
+`nextclient.sh` runs the native Linux client through the Steam Runtime. It finds the runtime in regular and Snap Steam installations. Arguments are passed to the game, for example `./nextclient.sh -windowed`.
 
 ### ⚠️ Warning! Never put NextClient files directly into the game installation folder in Steam! This will lead to VAC ban! ⚠️
 
@@ -127,6 +205,9 @@ The bundled [**Life Stats** plugin](sdk/examples/rust-life-stats/README.md), wri
 Use `-noplugins` for recovery.
 
 ## Building
+
+### Windows
+
 Requirements:
  - The latest version of MSVC 2022 or later
  - CMake 3.21 or higher
@@ -197,10 +278,31 @@ cmake --preset vs2022-local
 cmake --build --preset vs2022-local-release --target BUILD_ALL
 ```
 
+### Linux
+
+Requirements for building from source:
+
+- GCC 15 or later with 32-bit build support (`gcc-multilib` and `g++-multilib` on Ubuntu).
+- CMake 3.21 or later, Ninja, Git LFS, `pkg-config`, Python 3, `curl`, `zip`, `unzip` and `tar`.
+- 32-bit OpenGL and X11 development headers and libraries. The build environment package list is in [.github/workflows/build.yml](.github/workflows/build.yml).
+
+Clone and build:
+
+```bash
+git lfs install
+git clone --recurse-submodules https://github.com/CS-NextClient/NextClient.git
+cd NextClient
+./vcpkg/bootstrap-vcpkg.sh -disableMetrics
+cmake --preset linux -DNEXTCLIENT_INSTALL_DIR="/path/to/Half-Life-NextClient"
+cmake --build --preset linux-release --target BUILD_ALL
+```
+
+The `linux` preset builds 32-bit modules with Ninja Multi-Config. `BUILD_ALL` copies libraries, assets and `nextclient.sh` into `NEXTCLIENT_INSTALL_DIR`; that folder must contain a separate copy of the native Linux game files.
+
 ## Working in IDE
 
 ### CLion
- - The default toolchain must be Visual Studio x86
+ - On Windows, use the Visual Studio x86 toolchain; on Linux, use GCC and the `linux` preset
  - Enable the required presets in CMake settings (Settings -> Build -> CMake), e.g. `vs2022 - vs2022-debug` and `vs2022 - vs2022-release`
  - Build the `BUILD_ALL` target
 
@@ -211,11 +313,13 @@ cmake --build --preset vs2022-local-release --target BUILD_ALL
 
 ### VS Code
  - Install the `ms-vscode.cmake-tools` extension
- - Select the `vs2022`, `vs2026`, or `ninja` configure preset and the corresponding build configuration
+ - Select the `vs2022`, `vs2026`, `ninja`, or `linux` configure preset and the corresponding build configuration
  - Build the `BUILD_ALL` target
  - For the `ninja` preset, VS Code must be launched from "x86 Native Tools Command Prompt for VS"
 
 ## Thanks
+
+- [KotyaraKryt](https://github.com/KotyaraKryt) - for the Linux port, Discord integration, console commands, FastDL HTTP connection reuse and fixes
 - [Nordic Warrior](https://github.com/Nord1cWarr1or) - for the huge amount of feedback and bug reports
 - [fl0werD](https://github.com/fl0werD) - for development of Sprite API
 - [Mikko Kokko](https://github.com/mikkokko) - for the project [csldr](https://github.com/mikkokko/csldr), which features we have integrated into NextClient

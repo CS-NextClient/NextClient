@@ -19,9 +19,19 @@ Coroutine lifetime rules are in [task_coro/AGENTS.md](task_coro/AGENTS.md).
 - Keep `ncl_math` free of engine and rendering dependencies. A helper does not become generic
   merely by moving a feature-specific constant into this directory.
 
+## Protocol and GL helpers
+
+- `MessageReader` reads non-owned data. Keep the input alive and inspect overflow when
+  decoding a message; a sentinel return value alone can also be a valid protocol value. Preserve
+  stock byte order, string termination and truncation behavior when changing the reader or writer.
+- `ncl_gl` helpers require a live GL context and an initialized function table. Keep ownership of
+  returned programs and textures explicit in the caller. Uniform names and stored locations must
+  keep the same order; an optimized-out uniform may legitimately have location `-1`.
+
 ## Verification
 
 Build affected consumers, not just the static archive. Public headers can expose new dependencies
-or compile errors only when another DLL includes them. Shared gameplay logic has `view-tests` and
-`crosshair-tests`. Select checks for the changed contract instead of assuming every package has a
-standalone test target.
+or compile errors only when another DLL includes them. Protocol changes have `data_types-tests`;
+math changes are also exercised by the engine-free client tests. Shared gameplay logic has
+`view-tests` and `crosshair-tests`. Select checks for the changed
+contract instead of assuming every package has a standalone test target.

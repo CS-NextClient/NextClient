@@ -1,3 +1,5 @@
+#include <goldsrc/client_api.h>
+
 #include "../../main.h"
 #include "hud_sprite_store.h"
 #include "hud_sprite_parser.h"

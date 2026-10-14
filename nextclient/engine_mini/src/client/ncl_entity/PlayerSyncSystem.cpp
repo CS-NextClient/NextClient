@@ -3,7 +3,7 @@
 #include <format>
 
 #include <tier0/basetypes.h>
-#include <const.h>
+#include <goldsrc/limits.h>
 
 #include "cl_ncl_entity_sync.h"
 
@@ -33,7 +33,7 @@ void PlayerSyncSystem::OnCreate(uint16_t entity_id, const NclEntityFields& field
         uint8_t player_id = std::get<uint8_t>(player_it->second.value);
         uint32_t active_weapon_id = std::get<uint32_t>(weapon_it->second.value);
 
-        if (player_id >= 1 && player_id <= (uint8_t)MAX_CLIENTS)
+        if (player_id >= 1 && player_id <= (uint8_t)goldsrc::MAX_CLIENTS)
         {
             auto existing = entity_to_player_.find(entity_id);
             if (existing != entity_to_player_.end())
@@ -66,7 +66,7 @@ void PlayerSyncSystem::OnUpdate(uint16_t entity_id, uint16_t field_mask, const N
         {
             uint8_t new_player_id = std::get<uint8_t>(it->second.value);
 
-            if (new_player_id >= 1 && new_player_id <= (uint8_t)MAX_CLIENTS)
+            if (new_player_id >= 1 && new_player_id <= (uint8_t)goldsrc::MAX_CLIENTS)
             {
                 auto old_rev = player_id_to_entity_id_.find(entity_it->second.player_id);
                 if (old_rev != player_id_to_entity_id_.end() && old_rev->second == entity_id)
@@ -128,7 +128,7 @@ void PlayerSyncSystem::CollectDebugInfo(std::vector<std::string>& out_lines)
 
 int PlayerSyncSystem::GetPlayerActiveWeapon(int player_id)
 {
-    if (player_id < 1 || player_id > MAX_CLIENTS)
+    if (player_id < 1 || player_id > goldsrc::MAX_CLIENTS)
     {
         return 0;
     }

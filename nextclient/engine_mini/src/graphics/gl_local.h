@@ -1,5 +1,9 @@
 #pragma once
-#include <model.h>
+#include <goldsrc/cvar.h>
+#include <goldsrc/engine/model.h>
+#include <goldsrc/entity.h>
+#include <goldsrc/format/wad.h>
+#include <goldsrc/types.h>
 #include "qgl.hpp"
 
 enum class TextureFormat
@@ -40,38 +44,12 @@ inline bool IsTextureAlpha(TextureFormat type)
     return type == TextureFormat::Alpha || type == TextureFormat::AlphaGradient || type == TextureFormat::RGBA;
 }
 
-typedef struct
-{
-    int width;
-    int height;
-    uint8_t data[4];
-} qpic_t;
-
 struct glpic_t
 {
-    qpic_t pic;
+    goldsrc::qpic_t pic;
     int texnum;
     float sl, tl, sh, th;
 };
-
-struct lumpinfo_s
-{
-    int filepos;
-    int disksize;
-    int size;
-    char type;
-    char compression;
-    char pad1;
-    char pad2;
-    char name[16];
-};
-
-typedef struct
-{
-    char identification[4];
-    int numlumps;
-    int infotableofs;
-} wadinfo_t;
 
 
 extern uint8_t texgammatable[256];
@@ -85,20 +63,20 @@ extern GLenum oldtarget;
 // gl_vidnt.cpp
 //
 
-extern cvar_t* r_lightmap;
-extern cvar_t* gl_clear;
-extern cvar_t* r_novis;
-extern cvar_t* r_fullbright;
-extern cvar_t* gl_monolights;
-extern cvar_t* gl_wireframe;
-extern cvar_t* r_dynamic;
-extern cvar_t* gl_alphamin;
-extern cvar_t* gl_polyoffset;
+extern goldsrc::cvar_t* r_lightmap;
+extern goldsrc::cvar_t* gl_clear;
+extern goldsrc::cvar_t* r_novis;
+extern goldsrc::cvar_t* r_fullbright;
+extern goldsrc::cvar_t* gl_monolights;
+extern goldsrc::cvar_t* gl_wireframe;
+extern goldsrc::cvar_t* r_dynamic;
+extern goldsrc::cvar_t* gl_alphamin;
+extern goldsrc::cvar_t* gl_polyoffset;
 
 extern int TEXTURE0_SGIS;
 extern int TEXTURE1_SGIS;
 extern int TEXTURE2_SGIS;
-extern qboolean bSupportsNPOTTextures;
+extern goldsrc::qboolean bSupportsNPOTTextures;
 extern int gl_mtexable;
 
 void GL_SetMode_Subscriber(void* mainwindow, HDC* pmaindc, HGLRC* pbaseRC, const char* pszDriver, const char* pszCmdLine, bool result);
@@ -142,7 +120,7 @@ int GL_LoadTexture2(
     int width,
     int height,
     uint8_t* data,
-    qboolean mipmap,
+    goldsrc::qboolean mipmap,
     int iType,
     uint8_t* pPal,
     int filter
@@ -150,25 +128,25 @@ int GL_LoadTexture2(
 
 void GL_DisableMultitexture();
 void Draw_DecalSetName(int decal, const char* name);
-void Draw_SpriteFrame(mspriteframe_t* pFrame, unsigned short* pPalette, int x, int y, const wrect_t* prcSubRect);
-void Draw_SpriteFrameAdditive(mspriteframe_t* pFrame, unsigned short* pPalette, int x, int y, const wrect_t* prcSubRect);
-void Draw_SpriteFrameHoles(mspriteframe_t* pFrame, unsigned short* pPalette, int x, int y, const wrect_t* prcSubRect);
+void Draw_SpriteFrame(goldsrc::mspriteframe_t* pFrame, unsigned short* pPalette, int x, int y, const goldsrc::wrect_t* prcSubRect);
+void Draw_SpriteFrameAdditive(goldsrc::mspriteframe_t* pFrame, unsigned short* pPalette, int x, int y, const goldsrc::wrect_t* prcSubRect);
+void Draw_SpriteFrameHoles(goldsrc::mspriteframe_t* pFrame, unsigned short* pPalette, int x, int y, const goldsrc::wrect_t* prcSubRect);
 void Draw_SpriteFrameGeneric(
-    mspriteframe_t* pFrame,
+    goldsrc::mspriteframe_t* pFrame,
     unsigned short* pPalette,
     int x,
     int y,
-    const wrect_t* prcSubRect,
+    const goldsrc::wrect_t* prcSubRect,
     int src,
     int dest,
     int width,
     int height
 );
 
-void Draw_Frame(mspriteframe_t* pFrame, int ix, int iy, const wrect_t* prcSubRect);
+void Draw_Frame(goldsrc::mspriteframe_t* pFrame, int ix, int iy, const goldsrc::wrect_t* prcSubRect);
 void Draw_Shutdown();
 void Draw_Init();
-qpic_t* Draw_PicFromWad(const char* name);
+goldsrc::qpic_t* Draw_PicFromWad(const char* name);
 
 void V_UpdatePalette();
 bool V_CheckGamma();
@@ -182,16 +160,16 @@ void DisableScissorTest();
 //
 void R_NewMap();
 void R_RenderView();
-void R_ForceCVars(qboolean mp);
+void R_ForceCVars(goldsrc::qboolean mp);
 void R_DestroyObjects();
-void AppendTEntity_Subscriber(cl_entity_t* ent);
+void AppendTEntity_Subscriber(goldsrc::cl_entity_t* ent);
 
 //
 // gl_sprite.cpp
 //
-mspriteframe_t* R_GetSpriteFrame(msprite_t* pSprite, int frame);
+goldsrc::mspriteframe_t* R_GetSpriteFrame(goldsrc::msprite_t* pSprite, int frame);
 
 //
 // gl_studio.cpp
 //
-int* R_StudioReloadSkin(model_t* pModel, int index, skin_t* pskin);
+int* R_StudioReloadSkin(goldsrc::model_t* pModel, int index, goldsrc::skin_t* pskin);

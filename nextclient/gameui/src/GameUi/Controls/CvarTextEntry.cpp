@@ -10,6 +10,7 @@
 #include <vgui/IVGui.h>
 #include "IGameUIFuncs.h"
 #include <KeyValues.h>
+#include <goldsrc/client_api.h>
 
 // memdbgon must be the last include file in a .cpp file!!!
 #include <tier0/memdbgon.h>

@@ -2,6 +2,10 @@
 #include <nextclient/runtime.h>
 #include <tao/json.hpp>
 #include <filesystem>
+#include <Windows.h>
+#include <goldsrc/cstrike/hud_elements.h>
+#include <goldsrc/engine/client_state.h>
+#include <goldsrc/engine/model.h>
 #include <cstdarg>
 #include <limits>
 #include <map>
@@ -12,12 +16,12 @@
 
 // Exercise the real bridge and runtime with the partial HUD exposed by Nitro.
 // GameApi's exported host calls the same SDK entry points as a loaded plugin.
-cl_enginefunc_t gEngfuncs{};
+goldsrc::cl_enginefunc_t gEngfuncs{};
 nitroapi::NitroApiInterface* g_NitroApi{};
-local_state_t g_LastPlayerState{};
-client_data_t g_LastClientData{};
-gamehud_t* gHUD{};
-playermove_t* pmove{};
+goldsrc::local_state_t g_LastPlayerState{};
+goldsrc::client_data_t g_LastClientData{};
+nitroapi::gamehud_t* gHUD{};
+goldsrc::playermove_t* pmove{};
 IGameConsole* g_GameConsole{};
 IGameConsoleNext* g_GameConsoleNext{};
 
@@ -32,35 +36,37 @@ nitroapi::ClientData* client()
     return &data;
 }
 // The stock client supplies these methods in-game. This fixture only reads HUD data.
-int CHudHealth::Init()
+int goldsrc::cstrike::CHudBase::Init()
 {
     return 0;
 }
-int CHudHealth::VidInit()
+int goldsrc::cstrike::CHudBase::VidInit()
 {
     return 0;
 }
-int CHudHealth::Draw(float)
+int goldsrc::cstrike::CHudBase::Draw(float)
 {
     return 0;
 }
-void CHudHealth::Reset() {}
+void goldsrc::cstrike::CHudBase::Reset() {}
+void goldsrc::cstrike::CHudBase::Think() {}
+void goldsrc::cstrike::CHudBase::InitHUDData() {}
 
 namespace
 {
-    client_static_t connection{};
-    cl_entity_t local{};
-    model_t model{};
-    playermove_t movement{};
-    gamehud_t hud{};
-    CHudHealth health{};
+    goldsrc::client_static_t connection{};
+    goldsrc::cl_entity_t local{};
+    goldsrc::model_t model{};
+    goldsrc::playermove_t movement{};
+    nitroapi::gamehud_t hud{};
+    goldsrc::cstrike::CHudHealth health{};
     int weapons = 1 << 7;
     std::vector<std::string> printed;
     std::vector<char> chat_packet;
-    std::map<std::string, pfnUserMsgHook> message_hooks;
+    std::map<std::string, goldsrc::pfnUserMsgHook> message_hooks;
     int hud_message_calls{};
     int registration_calls{};
-    int HookMessage(const char* name, pfnUserMsgHook handler)
+    int HookMessage(const char* name, goldsrc::pfnUserMsgHook handler)
     {
         ++registration_calls;
         const auto existing = message_hooks.find(name);
@@ -97,8 +103,9 @@ namespace
 class PluginBridge : public ::testing::Test
 {
 protected:
-    cl_enginefunc_t engine_table{};
-    cl_enginefunc_t stock_client_table{};
+    goldsrc::cl_enginefunc_t engine_table{};
+    goldsrc::cl_enginefunc_t stock_client_table{};
+    goldsrc::net_api_t network_api{};
     std::filesystem::path dir;
     const NcHost* host{};
     virtual const char* fixture()
@@ -113,12 +120,12 @@ protected:
         std::filesystem::create_directories(dir / L"plugins");
         std::filesystem::copy_file(fixture(), dir / L"plugins/game-api.dll");
         eng()->client_static = &connection;
-        connection.state = ca_active;
+        connection.state = goldsrc::ca_active;
         local.index = 1;
         local.model = &model;
         gEngfuncs.GetLocalPlayer = [] { return &local; };
         gEngfuncs.GetViewAngles = [](float* angles) { angles[0] = angles[1] = angles[2] = 0; };
-        gEngfuncs.pfnGetScreenInfo = [](SCREENINFO*) { return 1; };
+        gEngfuncs.pfnGetScreenInfo = [](goldsrc::SCREENINFO*) { return 1; };
         gEngfuncs.GetMaxClients = [] { return 0; };
         gEngfuncs.GetClientTime = [] { return 10.0f; };
         gEngfuncs.pfnGetLevelName = [] { return "test"; };
@@ -153,6 +160,7 @@ protected:
 
     void TearDown() override
     {
+        gEngfuncs.pNetAPI = nullptr;
         nc_runtime_stop();
         PluginBridge_Shutdown();
         eng()->cl_enginefunc = nullptr;
@@ -397,10 +405,42 @@ TEST_F(PluginBridge, StockRegistrationsBeforeLocalTableKeepRoundTransitions)
     EXPECT_EQ(hud_message_calls, 3);
 }
 
+TEST_F(PluginBridge, ConnectionSnapshotUsesStockNetworkApi)
+{
+    network_api.Status = [](goldsrc::net_status_t* status) {
+        *status = {};
+        status->connected = 1;
+        status->packet_loss = 3;
+        status->latency = 0.125;
+        status->connection_time = 42.5;
+        status->remote_address.type = goldsrc::NA_IP;
+        status->remote_address.ip[0] = 127;
+        status->remote_address.ip[3] = 1;
+    };
+    network_api.AdrToString = [](goldsrc::netadr_t* address) -> char* {
+        EXPECT_EQ(address->type, goldsrc::NA_IP);
+        EXPECT_EQ(address->ip[0], 127);
+        EXPECT_EQ(address->ip[3], 1);
+        static char text[] = "127.0.0.1:27015";
+        return text;
+    };
+    gEngfuncs.pNetAPI = &network_api;
+
+    char json[4096]{};
+    const uint32_t size = host->game_data(host->context, "connection", 0, json, sizeof(json));
+    ASSERT_GT(size, 0u);
+    ASSERT_LE(size, sizeof(json));
+    const auto snapshot = tao::json::from_string(json);
+    EXPECT_EQ(snapshot.at("packet_loss"), 3);
+    EXPECT_EQ(snapshot.at("latency"), 0.125);
+    EXPECT_EQ(snapshot.at("connection_time"), 42.5);
+    EXPECT_EQ(snapshot.at("remote_address"), "127.0.0.1:27015");
+}
+
 TEST_F(PluginBridge, OptionalScoreboardMessagesRequireObservedConsumers)
 {
     gEngfuncs.GetMaxClients = [] { return 2; };
-    gEngfuncs.pfnGetPlayerInfo = [](int, hud_player_info_t* info) {
+    gEngfuncs.pfnGetPlayerInfo = [](int, goldsrc::hud_player_info_t* info) {
         *info = {};
         static char name[] = "Alice";
         info->name = name;
@@ -444,7 +484,7 @@ TEST_F(PluginBridge, OptionalScoreboardMessagesRequireObservedConsumers)
 
 TEST(PluginOutput, LocalChatSuppressesEveryConsoleEchoAndRestoresEngineFunctions)
 {
-    cl_enginefunc_t engine{};
+    goldsrc::cl_enginefunc_t engine{};
     engine.pfnConsolePrint = ConsolePrint;
     engine.Con_Printf = engine.Con_DPrintf = ConsolePrintf;
     client()->gEngfuncs = &engine;
@@ -473,12 +513,12 @@ TEST(PluginOutput, ConsoleFallbackStripsColorBytesAndPrintsFormatCharactersLiter
 TEST(PluginMovement, PredictionFlagsShareJumpEligibilityWithoutChoosingActivation)
 {
     EXPECT_EQ(PluginMovementFlags(nullptr), 0u);
-    playermove_t value{};
-    value.movetype = MOVETYPE_WALK;
+    goldsrc::playermove_t value{};
+    value.movetype = goldsrc::MOVETYPE_WALK;
     value.onground = -1;
     EXPECT_EQ(PluginMovementFlags(&value), NC_PLAYER_VALID | NC_PLAYER_CAN_JUMP);
     value.onground = 0;
-    value.oldbuttons = IN_JUMP;
+    value.oldbuttons = goldsrc::IN_JUMP;
     const auto base = NC_PLAYER_VALID | NC_PLAYER_GROUNDED | NC_PLAYER_JUMP_HELD;
     EXPECT_EQ(PluginMovementFlags(&value), base | NC_PLAYER_CAN_JUMP);
     const auto walking = value;
@@ -500,7 +540,7 @@ TEST(PluginMovement, PredictionFlagsShareJumpEligibilityWithoutChoosingActivatio
                 value.iuser1 = 1;
                 break;
             case 4:
-                value.movetype = MOVETYPE_NOCLIP;
+                value.movetype = goldsrc::MOVETYPE_NOCLIP;
                 break;
             case 5:
                 value.waterlevel = 2;
@@ -509,10 +549,10 @@ TEST(PluginMovement, PredictionFlagsShareJumpEligibilityWithoutChoosingActivatio
                 value.waterjumptime = 1;
                 break;
             case 7:
-                value.flags = FL_WATERJUMP;
+                value.flags = goldsrc::FL_WATERJUMP;
                 break;
             case 8:
-                value.flags = FL_FROZEN;
+                value.flags = goldsrc::FL_FROZEN;
                 break;
         }
         EXPECT_EQ(PluginMovementFlags(&value), base) << condition;

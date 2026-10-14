@@ -3,20 +3,25 @@
 #include "nitroapi/NitroApiInterface.h"
 #include "nitroapi/NitroApiHelper.h"
 #include "HudBase.h"
+#include <ncl_math/color.h>
+#include <goldsrc/client_api.h>
+#include <goldsrc/cvar.h>
 
 class HudCrosshair : public HudBase, public nitroapi::NitroApiHelper
 {
     std::vector<std::shared_ptr<nitroapi::Unsubscriber>> unsubscribers_;
 
-    SCREENINFO_s screeninfo_;
+    goldsrc::SCREENINFO screeninfo_;
 
-    cvar_t* cl_crosshair_type_;
-    cvar_t* cl_dynamiccrosshair_;
-    cvar_t* cl_crosshair_color_;
-    cvar_t* cl_crosshair_size_;
-    cvar_t* cl_crosshair_translucent_;
+    goldsrc::cvar_t* cl_crosshair_type_;
+    goldsrc::cvar_t* cl_dynamiccrosshair_;
+    goldsrc::cvar_t* cl_crosshair_color_;
+    goldsrc::cvar_t* cl_crosshair_size_;
+    goldsrc::cvar_t* cl_crosshair_translucent_;
 
-    int m_R{}, m_G{}, m_B{};
+    ncl_math::Color m_color{};
+    // Raw (unclamped) parsed cvar channels, kept as the change-detection key: a
+    // Color would truncate out-of-range channels mod 256 and miss real changes.
     int m_cvarR{}, m_cvarG{}, m_cvarB{};
     int m_bAdditive{};
     char m_szLastCrosshairColor[16]{};
@@ -40,5 +45,5 @@ private:
     void CalculateCrosshairColor();
     void CalculateCrosshairDrawMode();
 
-    void DrawCrosshairEx(int iBarSize, float flCrosshairDistance, bool bAdditive, int r, int g, int b, int a);
+    void DrawCrosshairEx(int iBarSize, float flCrosshairDistance, bool bAdditive, ncl_math::Color color);
 };

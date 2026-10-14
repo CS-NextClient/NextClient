@@ -1,7 +1,7 @@
 # Client module
 
 `src/main.cpp` connects the stock client callbacks to `GameHud`, the view code and weapon
-behavior. The radar wrapper lives in `src/hud/HudRadar.cpp`.
+behavior. The radar has additional [local rules](src/hud/radar/AGENTS.md).
 
 ## Ownership and callback order
 
@@ -26,16 +26,20 @@ behavior. The radar wrapper lives in `src/hud/HudRadar.cpp`.
 - Determine observer mode and observed player from the live client state. A local player's
   state, an observed entity and a server broadcast can describe different players or moments;
   do not substitute one for another without checking the recipient and update rules.
-- Use existing SDK constants and NitroApi declarations for engine facts. Use `ncl_math` types inside
+- Use `goldsrc` constants and NitroApi declarations for engine facts. Use `ncl_math` types inside
   owned calculations; convert raw engine vectors at the boundary. Keep `main.h` ahead of legacy
   SDK headers that depend on its declarations.
 
 ## Verification
 
-Build `client_mini`. Shared gameplay logic has `view-tests` and `crosshair-tests`; run the affected
-cases when changing those packages. This module has no dedicated test target. Keep geometry,
-policy and buffering decisions independent of the engine so they can be tested. Engine callback
+Build `client_mini` and run the affected cases in `client_mini-tests`, `view-tests` and
+`crosshair-tests`. Keep geometry, policy and buffering decisions independent of the engine so those
+tests can exercise them. Engine callback
 fakes verify arguments, return values and ordering; they do not verify the actual GL output.
 
-For public header or callback changes, also build the affected consumers. Changes to shared
-gameplay definitions can affect both `client_mini` and `gameui`.
+For radar shader changes, also build and run `radar-gl-tests`. It checks production shader pixels
+with an offscreen GL context; context requirements and commands are in
+[the verification procedure](../../docs/testing/radar-layers.md).
+
+For public header or callback changes, also build their consumers, particularly `gameui` for
+the shared radar cvar table in `include/next_client_mini/radar_cvars.h`.

@@ -13,13 +13,7 @@
 #include <string>
 
 #include <basetypes.h>
-#include <mathlib/mathlib.h>
-#include <common.h>
-#include <cvardef.h>
-#include <pm_defs.h>
-#include <kbutton.h>
-#include <r_efx.h>
-#include <r_studioint.h>
+#include <goldsrc/hltv.h>
 
 #include "DemoEditDialog.h"
 
@@ -64,7 +58,7 @@ CDemoEditDialog::CDemoEditDialog(vgui2::Panel *parent, const char *name, IEngine
 
     m_TypeBox = new CLabeledCommandComboBox( this, "TypeBox" );
 
-    for ( i = 0; i < DRC_CMD_LAST; i++)
+    for (i = 0; i < goldsrc::DRC_CMD_LAST; i++)
     {
         m_TypeBox->AddItem( DirectorCmd::m_CMD_Name[i], DirectorCmd::m_CMD_Name[i] );
     }
@@ -203,7 +197,7 @@ void CDemoEditDialog::OnGetView()
     if ( !m_Engine )
         return;
 
-    if ( m_DrcCmd.GetType() != DRC_CMD_CAMERA )
+    if (m_DrcCmd.GetType() != goldsrc::DRC_CMD_CAMERA)
         return;
 
     vec3_t	origin, angles;
@@ -247,28 +241,33 @@ void CDemoEditDialog::UpdateDrcCmd()
 
     switch ( m_DrcCmd.GetType() )
     {
-        case DRC_CMD_EVENT		:	i1 = GetDataFieldi( 0 );	// Target 1
+        case goldsrc::DRC_CMD_EVENT:
+            i1 = GetDataFieldi(0); // Target 1
             i2 = GetDataFieldi( 1 );	// Target 2"
             i3 = GetDataFieldi( 2 );	// Flags
             m_DrcCmd.SetEventData( i1, i2, i3 );
             break;
 
-        case DRC_CMD_MODE		:	i1 = GetDataFieldi( 0 ); // View Mode
+        case goldsrc::DRC_CMD_MODE:
+            i1 = GetDataFieldi(0); // View Mode
             m_DrcCmd.SetModeData( i1 );
             break;
 
-        case DRC_CMD_CAMERA		:	GetDataField3f( 0, &v1[0], &v1[1], &v1[2] );	// Position
+        case goldsrc::DRC_CMD_CAMERA:
+            GetDataField3f(0, &v1[0], &v1[1], &v1[2]); // Position
             GetDataField3f( 1, &v2[0], &v2[1], &v2[2] );	// View Angle
             f1 = GetDataFieldf( 2 ); // FOV
             i1 = GetDataFieldi( 3 ); // Flags
             m_DrcCmd.SetCameraData( v1 ,v2, f1, i1);
             break;
 
-        case DRC_CMD_TIMESCALE	:	f1 = GetDataFieldf( 0 );	//  Time Scale
+        case goldsrc::DRC_CMD_TIMESCALE:
+            f1 = GetDataFieldf(0); //  Time Scale
             m_DrcCmd.SetTimeScaleData( f1 );
             break;
 
-        case DRC_CMD_MESSAGE	:	i1 = GetDataFieldi( 0 ); // Effect
+        case goldsrc::DRC_CMD_MESSAGE:
+            i1 = GetDataFieldi(0); // Effect
             i2 = GetDataFieldx( 1 ); // Color
             GetDataField2f( 2, &v1[0], & v1[1] ); // Position
             f1 = GetDataFieldf( 3 ); // Fade In
@@ -279,19 +278,23 @@ void CDemoEditDialog::UpdateDrcCmd()
             m_DrcCmd.SetMessageData( i1, i2, v1, f1, f2, f3, f4, t );
             break;
 
-        case DRC_CMD_SOUND		:	t = GetDataFields( 0 ); // Name
+        case goldsrc::DRC_CMD_SOUND:
+            t = GetDataFields(0); // Name
             f1 = GetDataFieldf( 1 ); // Volume
             m_DrcCmd.SetSoundData( t, f1);
             break;
 
-        case DRC_CMD_STATUS		:	m_DrcCmd.SetStatusData( 0, 0, 0 );
+        case goldsrc::DRC_CMD_STATUS:
+            m_DrcCmd.SetStatusData(0, 0, 0);
             break;
 
-        case DRC_CMD_BANNER		:	t = GetDataFields( 0 ); // File
+        case goldsrc::DRC_CMD_BANNER:
+            t = GetDataFields(0); // File
             m_DrcCmd.SetBannerData( t );
             break;
 
-        case DRC_CMD_STUFFTEXT	:	t = GetDataFields( 0 ); // Command
+        case goldsrc::DRC_CMD_STUFFTEXT:
+            t = GetDataFields(0); // Command
             m_DrcCmd.SetStuffTextData( t );
             break;
     }
@@ -319,7 +322,7 @@ void CDemoEditDialog::OnUpdate()
     float	time = m_DrcCmd.GetTime();
 
 
-    if ( type  <= DRC_CMD_NONE || type > DRC_CMD_LAST )
+    if (type <= goldsrc::DRC_CMD_NONE || type > goldsrc::DRC_CMD_LAST)
     {
         m_ChangingData = false;
         return;
@@ -333,17 +336,20 @@ void CDemoEditDialog::OnUpdate()
 
     switch ( type )
     {
-        case DRC_CMD_EVENT		:	m_DrcCmd.GetEventData( i1, i2, i3 );
+        case goldsrc::DRC_CMD_EVENT:
+            m_DrcCmd.GetEventData(i1, i2, i3);
             SetDataField( 0, "Target 1", COM_VarArgs("%i",i1) );
             SetDataField( 1, "Target 2", COM_VarArgs("%i",i2) );
             SetDataField( 2, "Flags",    COM_VarArgs("%i",i3) );
             break;
 
-        case DRC_CMD_MODE		:	m_DrcCmd.GetModeData( i1 );
+        case goldsrc::DRC_CMD_MODE:
+            m_DrcCmd.GetModeData(i1);
             SetDataField( 0, "View Mode", COM_VarArgs("%i",i1) );
             break;
 
-        case DRC_CMD_CAMERA		:	m_DrcCmd.GetCameraData( v1 ,v2, f1, i1);
+        case goldsrc::DRC_CMD_CAMERA:
+            m_DrcCmd.GetCameraData(v1, v2, f1, i1);
             SetDataField( 0, "Position", COM_VarArgs("%.1f %.1f %.1f", v1[0], v1[1], v1[2] ) );
             SetDataField( 1, "View Angle", COM_VarArgs("%.1f %.1f %.1f",v2[0], v2[1], v2[2] ) );
             SetDataField( 2, "FOV",    COM_VarArgs("%.1f",f1) );
@@ -351,11 +357,13 @@ void CDemoEditDialog::OnUpdate()
             m_GetViewButton->SetVisible( true );
             break;
 
-        case DRC_CMD_TIMESCALE	:	m_DrcCmd.GetTimeScaleData( f1 );
+        case goldsrc::DRC_CMD_TIMESCALE:
+            m_DrcCmd.GetTimeScaleData(f1);
             SetDataField( 0, "Time Scale", COM_VarArgs("%.2f", f1) );
             break;
 
-        case DRC_CMD_MESSAGE	:	m_DrcCmd.GetMessageData( i1, i2, v1, f1, f2, f3, f4, t);
+        case goldsrc::DRC_CMD_MESSAGE:
+            m_DrcCmd.GetMessageData(i1, i2, v1, f1, f2, f3, f4, t);
             SetDataField( 0, "Effect", COM_VarArgs("%i", i1) );
             SetDataField( 1, "Color", COM_VarArgs("%x", i2) );
             SetDataField( 2, "Position", COM_VarArgs("%.2f %.2f", v1[0], v1[1]) );
@@ -366,19 +374,23 @@ void CDemoEditDialog::OnUpdate()
             SetDataField( 7, "Text", t );
             break;
 
-        case DRC_CMD_SOUND		:	m_DrcCmd.GetSoundData( t, f1);
+        case goldsrc::DRC_CMD_SOUND:
+            m_DrcCmd.GetSoundData(t, f1);
             SetDataField( 0, "Name", t );
             SetDataField( 1, "Volume", COM_VarArgs("%.2f", f1) );
             break;
 
-        case DRC_CMD_STATUS		:	m_DrcCmd.GetStatusData( i1, i2, i3 );
+        case goldsrc::DRC_CMD_STATUS:
+            m_DrcCmd.GetStatusData(i1, i2, i3);
             break;
 
-        case DRC_CMD_BANNER		:	m_DrcCmd.GetBannerData( t );
+        case goldsrc::DRC_CMD_BANNER:
+            m_DrcCmd.GetBannerData(t);
             SetDataField( 0, "File", t );
             break;
 
-        case DRC_CMD_STUFFTEXT	:	m_DrcCmd.GetStuffTextData( t );
+        case goldsrc::DRC_CMD_STUFFTEXT:
+            m_DrcCmd.GetStuffTextData(t);
             SetDataField( 0, "Command", t );
             break;
     }
@@ -442,7 +454,7 @@ void CDemoEditDialog::OnTypeChanged()
     char type[256];
     m_TypeBox->GetText( type, 256);
 
-    for (int i=0; i < DRC_CMD_LAST; i++)
+    for (int i = 0; i < goldsrc::DRC_CMD_LAST; i++)
     {
         if ( !strcmp(type, DirectorCmd::m_CMD_Name[i] ) )
         {
@@ -453,34 +465,47 @@ void CDemoEditDialog::OnTypeChanged()
 
     switch ( m_DrcCmd.m_Type )
     {
-        case DRC_CMD_EVENT		:	m_DrcCmd.SetEventData( 1, 0, 0 );
+        case goldsrc::DRC_CMD_EVENT:
+            m_DrcCmd.SetEventData(1, 0, 0);
             break;
 
-        case DRC_CMD_MODE		:	m_DrcCmd.SetModeData( 0 );
+        case goldsrc::DRC_CMD_MODE:
+            m_DrcCmd.SetModeData(0);
             break;
 
-        case DRC_CMD_CAMERA		:	v[0] = 0.0f; v[1] = 0.0f; v[2] = 0.0f;
+        case goldsrc::DRC_CMD_CAMERA:
+            v[0] = 0.0f;
+            v[1] = 0.0f;
+            v[2] = 0.0f;
 
             m_DrcCmd.SetCameraData( v ,v, 90, 0 );
             break;
 
-        case DRC_CMD_TIMESCALE	:	m_DrcCmd.SetTimeScaleData( 1.0f );
+        case goldsrc::DRC_CMD_TIMESCALE:
+            m_DrcCmd.SetTimeScaleData(1.0f);
             break;
 
-        case DRC_CMD_MESSAGE	:	v[0] = 0.5f; v[1] = 0.9f; v[2] = 0.0f;
+        case goldsrc::DRC_CMD_MESSAGE:
+            v[0] = 0.5f;
+            v[1] = 0.9f;
+            v[2] = 0.0f;
             m_DrcCmd.SetMessageData( 0, 0x0000ff, v, 1.0, 1.0, 5.0, 0.0, "Add your message here");
             break;
 
-        case DRC_CMD_SOUND		:	m_DrcCmd.SetSoundData( "barney/heybuddy.wav", 1.0f );
+        case goldsrc::DRC_CMD_SOUND:
+            m_DrcCmd.SetSoundData("barney/heybuddy.wav", 1.0f);
             break;
 
-        case DRC_CMD_STATUS		:	m_DrcCmd.SetStatusData( 0, 0, 0 );
+        case goldsrc::DRC_CMD_STATUS:
+            m_DrcCmd.SetStatusData(0, 0, 0);
             break;
 
-        case DRC_CMD_BANNER		:	m_DrcCmd.SetBannerData( "gfx/temp/file.tga" );
+        case goldsrc::DRC_CMD_BANNER:
+            m_DrcCmd.SetBannerData("gfx/temp/file.tga");
             break;
 
-        case DRC_CMD_STUFFTEXT	:	m_DrcCmd.SetStuffTextData( "echo Enter command here");
+        case goldsrc::DRC_CMD_STUFFTEXT:
+            m_DrcCmd.SetStuffTextData("echo Enter command here");
             break;
     }
 

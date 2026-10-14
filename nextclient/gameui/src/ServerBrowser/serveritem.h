@@ -5,6 +5,8 @@
 #pragma once
 #endif
 
+#include <cstdint>
+
 #include <steam/steam_api.h>
 #include <next_engine_mini/ServerDetailsNext.h>
 

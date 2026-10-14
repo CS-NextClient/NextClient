@@ -1,3 +1,5 @@
 #pragma once
 
-int ModelFrameCount(model_t *model);
+#include <goldsrc/engine/model.h>
+
+int ModelFrameCount(goldsrc::model_t* model);

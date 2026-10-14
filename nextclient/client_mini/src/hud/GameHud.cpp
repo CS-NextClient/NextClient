@@ -2,8 +2,12 @@
 #if NEXTCLIENT_WITH_PLUGINS
 #include <nextclient/runtime.h>
 #endif
+#include <goldsrc/client_api.h>
 
-extern cl_enginefunc_t gEngfuncs;
+#include "hud/radar/integration/RadarConfig.h"
+#include "hud/radar/integration/RadarDebug.h"
+
+extern goldsrc::cl_enginefunc_t gEngfuncs;
 
 GameHud::GameHud(nitroapi::NitroApiInterface* nitro_api)
 {
@@ -24,6 +28,9 @@ GameHud::GameHud(nitroapi::NitroApiInterface* nitro_api)
 
     radar_ = std::make_shared<HudRadar>(nitro_api);
     all_hud_.push_back(radar_);
+
+    radar_advanced_ = std::make_shared<HudRadarAdvanced>(nitro_api);
+    all_hud_.push_back(radar_advanced_);
 
     death_notice_ = std::make_shared<HudDeathNotice>(nitro_api);
     all_hud_.push_back(death_notice_);
@@ -48,16 +55,51 @@ void GameHud::VidInit()
 
 void GameHud::Draw(float time)
 {
-    for (auto& item : all_hud_)
-    {
+    for (auto& item : all_hud_) {
+        if (item == radar_advanced_)
+        {
+            continue; // drawn separately via DrawRadar
+        }
 #if NEXTCLIENT_WITH_PLUGINS
         if ((item == health_ && nc_runtime_ui_hidden(NC_UI_HEALTH)) ||
             (item == radar_ && nc_runtime_ui_hidden(NC_UI_RADAR)) ||
             (item == death_notice_ && nc_runtime_ui_hidden(NC_UI_DEATH_NOTICES)))
+        {
             continue;
+        }
 #endif
         item->Draw(time);
     }
+}
+
+void GameHud::PrepareRadar()
+{
+#if NEXTCLIENT_WITH_PLUGINS
+    if (nc_runtime_ui_hidden(NC_UI_RADAR))
+    {
+        return;
+    }
+#endif
+    radar_advanced_->PrepareHudTextZone();
+}
+
+void GameHud::UpdateRadarScoreboard(bool hud_visible)
+{
+#if NEXTCLIENT_WITH_PLUGINS
+    hud_visible = hud_visible && !nc_runtime_ui_hidden(NC_UI_RADAR);
+#endif
+    radar_advanced_->UpdateScoreboard(hud_visible);
+}
+
+void GameHud::DrawRadar(float time)
+{
+#if NEXTCLIENT_WITH_PLUGINS
+    if (nc_runtime_ui_hidden(NC_UI_RADAR))
+    {
+        return;
+    }
+#endif
+    radar_advanced_->Draw(time);
 }
 
 void GameHud::Think(float time)
@@ -81,4 +123,7 @@ void GameHud::InitHUDData()
 void GameHud::FetchCvars()
 {
     cl_righthand = gEngfuncs.pfnGetCvarPointer("cl_righthand");
+
+    RadarConfig_Init();
+    RadarDebug_Init();
 }

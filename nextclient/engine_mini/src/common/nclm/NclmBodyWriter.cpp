@@ -1,12 +1,14 @@
 #include "NclmBodyWriter.h"
-#include <common.h>
+#include <goldsrc/engine/net.h>
 
-NclmBodyWriter::NclmBodyWriter(sizebuf_t* output_buf, int maxsize) :
+#include "engine.h"
+
+NclmBodyWriter::NclmBodyWriter(goldsrc::sizebuf_t* output_buf, int maxsize) :
     output_buf_(output_buf)
 {
     temp_buf_data_.resize(maxsize);
 
-    temp_buf_.flags = SIZEBUF_ALLOW_OVERFLOW;
+    temp_buf_.flags = goldsrc::SIZEBUF_ALLOW_OVERFLOW;
     temp_buf_.data = temp_buf_data_.data();
     temp_buf_.maxsize = maxsize;
     temp_buf_.cursize = 0;
@@ -81,12 +83,12 @@ void NclmBodyWriter::ReplaceTempBufWithSlice(std::vector<uint8_t>& slice)
     temp_buf_.cursize = slice.size();
 }
 
-sizebuf_t* NclmBodyWriter::GetTempSizeBuf()
+goldsrc::sizebuf_t* NclmBodyWriter::GetTempSizeBuf()
 {
     return &temp_buf_;
 }
 
-sizebuf_t* NclmBodyWriter::GetOutputSizeBuf() const
+goldsrc::sizebuf_t* NclmBodyWriter::GetOutputSizeBuf() const
 {
     return output_buf_;
 }

@@ -1,16 +1,19 @@
 #include "main.h"
 #include "hlsdk.h"
 #include "fov.h"
-#include "parsemsg.h"
+#include <data_types/MessageReader.h>
+#include <goldsrc/client_api.h>
+#include <goldsrc/cvar.h>
+#include <mathlib/mathlib.h>
 
 #include <view/view_fov.h>
 
 static int MsgFunc_SetFOVEx(const char *pszName, int iSize, void *pbuf);
 
-cvar_t* fov_horplus;
-cvar_t* fov_lerp;
-cvar_t* fov_angle;
-cvar_t* vm_fov_scale;
+goldsrc::cvar_t* fov_horplus;
+goldsrc::cvar_t* fov_lerp;
+goldsrc::cvar_t* fov_angle;
+goldsrc::cvar_t* vm_fov_scale;
 
 float fovDifference = 1;
 
@@ -23,9 +26,9 @@ float fovLerp;
 static float CalcCurrentFov()
 {
     float w, h;
-    SCREENINFO scr;
+    goldsrc::SCREENINFO scr;
 
-    scr.iSize = sizeof(SCREENINFO);
+    scr.iSize = sizeof(goldsrc::SCREENINFO);
     gEngfuncs.pfnGetScreenInfo(&scr);
 
     w = (float)scr.iWidth;
@@ -56,9 +59,9 @@ static float FovInterp(float a, float b, float f)
 
 void FovInit()
 {
-    fov_horplus = gEngfuncs.pfnRegisterVariable("fov_horplus", "0", FCVAR_ARCHIVE);
-    fov_lerp = gEngfuncs.pfnRegisterVariable("fov_lerp", "0", FCVAR_ARCHIVE);
-    fov_angle = gEngfuncs.pfnRegisterVariable("fov_angle", "90", FCVAR_ARCHIVE);
+    fov_horplus = gEngfuncs.pfnRegisterVariable("fov_horplus", "0", goldsrc::FCVAR_ARCHIVE);
+    fov_lerp = gEngfuncs.pfnRegisterVariable("fov_lerp", "0", goldsrc::FCVAR_ARCHIVE);
+    fov_angle = gEngfuncs.pfnRegisterVariable("fov_angle", "90", goldsrc::FCVAR_ARCHIVE);
     vm_fov_scale = gEngfuncs.pfnRegisterVariable("_vm_fov_scale", "1", 0);
 
     gEngfuncs.pfnHookUserMsg("SetFOVEx", MsgFunc_SetFOVEx);
@@ -110,9 +113,9 @@ static void SetLerpFov(int fov, float lerp)
 
 static int MsgFunc_SetFOVEx(const char *pszName, int iSize, void *pbuf)
 {
-    BEGIN_READ(pbuf, iSize);
-    int fov = READ_BYTE();
-    float lerp = READ_FLOAT();
+    MessageReader reader(pbuf, iSize);
+    int fov = reader.ReadByte();
+    float lerp = reader.ReadFloat();
 
     if (fov < 1 || fov > 180)
         fov = view_fov::kDefault;
@@ -124,8 +127,8 @@ static int MsgFunc_SetFOVEx(const char *pszName, int iSize, void *pbuf)
 
 int FovMsgFunc_SetFOV(const char *pszName, int iSize, void *pbuf, UserMsg_SetFOVNext next)
 {
-    BEGIN_READ(pbuf, iSize);
-    int fov = READ_BYTE();
+    MessageReader reader(pbuf, iSize);
+    int fov = reader.ReadByte();
 
     if (fov < 1 || fov > 180)
         fov = view_fov::kDefault;
@@ -135,7 +138,7 @@ int FovMsgFunc_SetFOV(const char *pszName, int iSize, void *pbuf, UserMsg_SetFOV
     return next->Invoke(pszName, iSize, pbuf);
 }
 
-void FovHUD_UpdateClientData(client_data_t *cdata, float flTime, int result)
+void FovHUD_UpdateClientData(goldsrc::client_data_t* cdata, float flTime, int result)
 {
     cdata->fov = CalcCurrentFov();
 

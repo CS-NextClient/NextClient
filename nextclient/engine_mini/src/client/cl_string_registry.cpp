@@ -1,8 +1,9 @@
 #include "engine.h"
 #include "console/console.h"
+#include "client/cl_main.h"
 
-#include <common.h>
-#include <parsemsg.h>
+#include <goldsrc/client_api.h>
+#include <data_types/MessageReader.h>
 #include <unordered_map>
 
 namespace
@@ -31,21 +32,21 @@ namespace
 
     int MsgFunc_NclStrReg(const char* msg_name, int size, void* buf)
     {
-        BEGIN_READ(buf, size);
+        MessageReader reader(buf, size);
 
-        uint16_t string_id = static_cast<uint16_t>(READ_SHORT());
-        if (!READ_OK())
+        uint16_t string_id = static_cast<uint16_t>(reader.ReadShort());
+        if (reader.is_overflowed())
         {
             return 1;
         }
 
-        const char* value = READ_STRING();
-        if (!READ_OK())
+        std::string value = reader.ReadString();
+        if (reader.is_overflowed())
         {
             return 1;
         }
 
-        RegisterString(string_id, value ? std::string(value) : std::string());
+        RegisterString(string_id, value);
         return 1;
     }
 

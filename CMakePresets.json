@@ -29,6 +29,14 @@
     },
 
     {
+      "name": "vs2022-tests",
+      "inherits": "vs2022",
+      "cacheVariables": {
+        "NEXTCLIENT_BUILD_TESTS": "ON"
+      }
+    },
+
+    {
       "name": "vs2026",
       "inherits": "base",
       "generator": "Visual Studio 18 2026",
@@ -71,6 +79,12 @@
       "name": "vs2022-debug",
       "configurePreset": "vs2022",
       "configuration": "Debug"
+    },
+
+    {
+      "name": "vs2022-tests-release",
+      "configurePreset": "vs2022-tests",
+      "configuration": "Release"
     },
 
     {

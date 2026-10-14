@@ -3,11 +3,9 @@
 #include <cstddef>
 #include <tao/json.hpp>
 
-struct entity_state_s;
-struct clientdata_s;
-struct playermove_s;
+#include <goldsrc/fwd.h>
 
 tao::json::value PluginSnapshot_Vector(const float* values, size_t count = 3);
-tao::json::value PluginSnapshot_Entity(const entity_state_s& state);
-tao::json::value PluginSnapshot_Client(const clientdata_s& state);
-tao::json::value PluginSnapshot_Movement(const playermove_s& movement);
+tao::json::value PluginSnapshot_Entity(const goldsrc::entity_state_t& state);
+tao::json::value PluginSnapshot_Client(const goldsrc::clientdata_t& state);
+tao::json::value PluginSnapshot_Movement(const goldsrc::playermove_t& movement);

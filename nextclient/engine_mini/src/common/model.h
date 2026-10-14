@@ -1,6 +1,9 @@
 #pragma once
 
-// values for model_t's needload
+#include <goldsrc/engine/model.h>
+#include <goldsrc/types.h>
+
+// values for goldsrc::model_t's needload
 enum
 {
     NL_PRESENT = 0,
@@ -10,21 +13,21 @@ enum
 };
 
 extern char loadname[32];
-extern model_t mod_known[MAX_KNOWN_MODELS];
+extern goldsrc::model_t mod_known[goldsrc::MAX_KNOWN_MODELS];
 extern int mod_numknown;
 
-extern qboolean gSpriteMipMap;
+extern goldsrc::qboolean gSpriteMipMap;
 
-void* Mod_Extradata(model_t *mod);
-model_t* Mod_FindName(qboolean trackCRC, const char* name);
-qboolean Mod_ValidateCRC(const char* name, CRC32_t crc);
-void Mod_NeedCRC(const char* name, qboolean needCRC);
-model_t* Mod_LoadModel(model_t* mod, qboolean crash, qboolean trackCRC);
-model_t* Mod_ForName(const char* name, qboolean crash, qboolean trackCRC);
+void* Mod_Extradata(goldsrc::model_t* mod);
+goldsrc::model_t* Mod_FindName(goldsrc::qboolean trackCRC, const char* name);
+goldsrc::qboolean Mod_ValidateCRC(const char* name, goldsrc::CRC32_t crc);
+void Mod_NeedCRC(const char* name, goldsrc::qboolean needCRC);
+goldsrc::model_t* Mod_LoadModel(goldsrc::model_t* mod, goldsrc::qboolean crash, goldsrc::qboolean trackCRC);
+goldsrc::model_t* Mod_ForName(const char* name, goldsrc::qboolean crash, goldsrc::qboolean trackCRC);
 void Mod_Print();
-void Mod_UnloadSpriteTextures(model_t* pModel);
-void Mod_UnloadFiltered(const std::function<bool(model_t*)>& filter);
+void Mod_UnloadSpriteTextures(goldsrc::model_t* pModel);
+void Mod_UnloadFiltered(const std::function<bool(goldsrc::model_t*)>& filter);
 void Mod_ClearAll();
 void Mod_ResetState();
 
-int* R_StudioReloadSkin(model_t* pModel, int index, skin_t* pskin);
+int* R_StudioReloadSkin(goldsrc::model_t* pModel, int index, goldsrc::skin_t* pskin);

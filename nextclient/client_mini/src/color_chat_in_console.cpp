@@ -8,6 +8,7 @@
 #include "main.h"
 #include "IGameConsole.h"
 #include <next_gameui/IGameConsoleNext.h>
+#include <goldsrc/client_api.h>
 
 #ifdef _WIN32
 const char* kChatPrintConsolePatternWin32 = "FF 15 ? ? ? ? 83 C4 ? 66 89 1D +1";
@@ -69,9 +70,9 @@ int PrintLocalChat(int (*handler)(const char*, int, void*), const char* text)
     struct RestoreEcho
     {
         bool previous = std::exchange(suppressLocalChatEcho, true);
-        cl_enginefunc_t* engine = client()->gEngfuncs;
-        pfnEngSrc_pfnConsolePrint_t print{};
-        pfnEngSrc_Con_Printf_t printf{}, dprintf{};
+        goldsrc::cl_enginefunc_t* engine = client()->gEngfuncs;
+        goldsrc::pfnEngSrc_pfnConsolePrint_t print{};
+        goldsrc::pfnEngSrc_Con_Printf_t printf{}, dprintf{};
         RestoreEcho()
         {
             // SayText has both plain and colored console paths. Suppress the

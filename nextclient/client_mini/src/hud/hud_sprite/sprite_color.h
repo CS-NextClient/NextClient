@@ -1,9 +1,5 @@
 #pragma once
 
-struct SpriteColor
-{
-    float red{};
-    float green{};
-    float blue{};
-    float alpha{};
-};
+#include <ncl_math/color.h>
+
+using SpriteColor = ncl_math::ColorF;

@@ -13,6 +13,7 @@
 #include <vgui/ILocalize.h>
 #include "FileSystem.h"
 #include "GameUi.h"
+#include <goldsrc/client_api.h>
 
 #include "ModInfo.h"
 //#include "Random.h"

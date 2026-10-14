@@ -1,6 +1,9 @@
 #include "ExtensionConnectionApi.h"
 #include <steam/steam_api.h>
 #include <taskcoro/TaskCoro.h>
+#include <goldsrc/client_api.h>
+#include <goldsrc/cstrike/hud.h>
+#include <goldsrc/engine/client_state.h>
 
 using namespace taskcoro;
 
@@ -62,7 +65,7 @@ struct GetConnectedHostData
 {
 	std::string address{};
 	bool is_putinserver{};
-	std::vector<hud_player_info_t> players{};
+	std::vector<goldsrc::hud_player_info_t> players{};
 };
 
 ContainerExtensionConnectionApi::ContainerExtensionConnectionApi(nitroapi::NitroApiInterface* nitro_api)
@@ -104,15 +107,15 @@ ContainerExtensionConnectionApi::ContainerExtensionConnectionApi(nitroapi::Nitro
 						GetConnectedHostData result{};
 
 						auto address = cls()->servername;
-						if (!address[0] || cls()->state == ca_disconnected)
+						if (!address[0] || cls()->state == goldsrc::ca_disconnected)
 							return result;
 
 						result.address = address;
-						result.is_putinserver = cls()->state == ca_active || cls()->signon == 1;
+						result.is_putinserver = cls()->state == goldsrc::ca_active || cls()->signon == 1;
 
-						for (int i = 1; i < MAX_PLAYERS; i++)
+						for (int i = 1; i < goldsrc::cstrike::MAX_PLAYERS; i++)
 						{
-							hud_player_info_t pl {};
+							goldsrc::hud_player_info_t pl{};
 							cl_enginefunc()->pfnGetPlayerInfo(i, &pl);
 							if (!pl.name)
 								continue;

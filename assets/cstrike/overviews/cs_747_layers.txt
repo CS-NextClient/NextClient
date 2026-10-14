@@ -1,0 +1,4 @@
+radar_layers
+{
+    layer { name "Terminal roof" min_z "383" max_z "385" }
+}

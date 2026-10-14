@@ -11,6 +11,7 @@
 #include <thread>
 
 #ifndef _WIN32
+    #include <cstdlib>
     #include <fcntl.h>
     #include <sys/file.h>
     #include <unistd.h>
@@ -312,12 +313,15 @@ ClientLauncher::EngineSessionResult ClientLauncher::RunEngine()
         }
     );
 
-    // steamclient.so sets LC_ALL=C in SteamAPI_Init and the engine's font code then picks it
-    // up, after which hw.so's VGUI2_DrawString drops every non-ASCII char as unprintable.
-    // Only the character classes come back: LC_NUMERIC has to stay C for the engine's atof.
+    // steamclient.so puts LC_ALL=C into the environment before Sys_InitGame, so everything that
+    // later calls setlocale(..., "") ends up in C, and Sys_InitGame then shows a blocking warning
+    // unless the locale is exactly en_US.UTF-8. Put back what hl_linux sets: it keeps UTF-8
+    // character classes for non-ASCII text and parses numbers like C.
     unsubscribers.emplace_back(
-        nitro_api->GetEngineData()->Sys_InitGame += [](char* lpOrgCmdLine, char* pBaseDir, void* pwnd, int bIsDedicated, bool ret) {
-            setlocale(LC_CTYPE, "C.UTF-8");
+        nitro_api->GetEngineData()->Sys_InitGame |= [](char* lpOrgCmdLine, char* pBaseDir, void* pwnd, int bIsDedicated, const auto& next) {
+            setenv("LC_ALL", "en_US.UTF-8", 1);
+            setlocale(LC_ALL, "en_US.UTF-8");
+            return next->Invoke(lpOrgCmdLine, pBaseDir, pwnd, bIsDedicated);
         }
     );
 #endif

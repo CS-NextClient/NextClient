@@ -14,8 +14,12 @@
 #include <nextclient/runtime.h>
 
 #include "main.h"
-#include <net_api.h>
-#include <triangleapi.h>
+#include <goldsrc/cstrike/hud_elements.h>
+#include <goldsrc/cvar.h>
+#include <goldsrc/engine/client_state.h>
+#include <goldsrc/engine/model.h>
+#include <goldsrc/engine/net.h>
+#include <goldsrc/triangle_api.h>
 
 #include "color_chat_in_console.h"
 #include "plugin_game_state.h"
@@ -28,7 +32,7 @@ namespace
     bool g_BridgeReady{};
     PluginGameState g_GameState;
     decltype(gEngfuncs.pfnHookUserMsg) g_RegisterMessage{};
-    std::map<std::string, pfnUserMsgHook> g_MessageHandlers;
+    std::map<std::string, goldsrc::pfnUserMsgHook> g_MessageHandlers;
     std::shared_ptr<nitroapi::Unsubscriber> g_CvarHook, g_StateHook, g_DisconnectHook;
     std::map<std::string, std::string> g_CvarStorage;
     std::string g_ConnectionIdentity, g_CurrentMap;
@@ -50,7 +54,7 @@ namespace
     {
         const auto* state = eng()->client_state;
         const auto* cls = eng()->client_static;
-        const int epoch = cls && cls->state >= ca_connected && state ? state->servercount : -1;
+        const int epoch = cls && cls->state >= goldsrc::ca_connected && state ? state->servercount : -1;
         if (epoch != g_ServerEpoch)
         {
             ClearGameState();
@@ -101,7 +105,7 @@ namespace
                    ? 1
                    : handler->second(name, action == 1 ? static_cast<int>(replacement_size) : size, action == 1 ? replacement : bytes);
     }
-    int RegisterMessage(const char* name, pfnUserMsgHook handler)
+    int RegisterMessage(const char* name, goldsrc::pfnUserMsgHook handler)
     {
         if (!name || handler == DispatchMessage)
         {
@@ -120,7 +124,7 @@ namespace
     }
     void InstallMessageWrappers()
     {
-        for (cl_enginefunc_t* table : {client()->gEngfuncs, &gEngfuncs})
+        for (goldsrc::cl_enginefunc_t* table : {client()->gEngfuncs, &gEngfuncs})
         {
             if (!table || !table->pfnHookUserMsg || table->pfnHookUserMsg == RegisterMessage)
             {
@@ -166,7 +170,7 @@ namespace
     bool InGame()
     {
         auto* local = gEngfuncs.GetLocalPlayer();
-        return eng()->client_static && eng()->client_static->state == ca_active && g_PredictionReady && local && local->model && pmove;
+        return eng()->client_static && eng()->client_static->state == goldsrc::ca_active && g_PredictionReady && local && local->model && pmove;
     }
     void CopyVector(float (&target)[3], const float* source)
     {
@@ -280,18 +284,18 @@ namespace
             if (!_stricmp(name, gEngfuncs.GetCmdFunctionName(handle)))
                 return 0;
         const auto it = g_CvarStorage.try_emplace(name, initial).first;
-        return gEngfuncs.pfnRegisterVariable(it->first.c_str(), it->second.c_str(), archive ? FCVAR_ARCHIVE : 0) != nullptr;
+        return gEngfuncs.pfnRegisterVariable(it->first.c_str(), it->second.c_str(), archive ? goldsrc::FCVAR_ARCHIVE : 0) != nullptr;
     }
     int32_t SendChat(const char* text, int32_t team)
     {
-        if (!eng()->client_static || eng()->client_static->state != ca_active || eng()->client_static->demoplayback)
+        if (!eng()->client_static || eng()->client_static->state != goldsrc::ca_active || eng()->client_static->demoplayback)
             return 0;
         const auto command = std::string(team ? "say_team \"" : "say \"") + text + "\"\n";
         return gEngfuncs.pfnServerCmd(command.c_str()) != 0;
     }
     int32_t ChatPrint(const char* text)
     {
-        if (!g_BridgeReady || !eng()->client_static || eng()->client_static->state != ca_active)
+        if (!g_BridgeReady || !eng()->client_static || eng()->client_static->state != goldsrc::ca_active)
         {
             return 0;
         }
@@ -323,13 +327,13 @@ namespace
     {
         *value = {};
         value->size = sizeof(*value);
-        SCREENINFO screen{sizeof(SCREENINFO)};
+        goldsrc::SCREENINFO screen{sizeof(goldsrc::SCREENINFO)};
         gEngfuncs.pfnGetScreenInfo(&screen);
         value->width = screen.iWidth;
         value->height = screen.iHeight;
         value->frame_time = g_FrameTime;
         const auto* client = eng()->client_static;
-        if (client && client->state >= ca_connected)
+        if (client && client->state >= goldsrc::ca_connected)
         {
             value->flags |= NC_SESSION_CONNECTED;
             value->max_clients = gEngfuncs.GetMaxClients();
@@ -346,7 +350,7 @@ namespace
         value->size = sizeof(*value);
         if (!InGame() || index < 1 || index > gEngfuncs.GetMaxClients())
             return 0;
-        hud_player_info_t info{};
+        goldsrc::hud_player_info_t info{};
         gEngfuncs.pfnGetPlayerInfo(index, &info);
         if (!info.name || !*info.name)
             return 0;
@@ -366,7 +370,7 @@ namespace
         float point[3]{world[0], world[1], world[2]}, projected[3]{};
         if (gEngfuncs.pTriAPI->WorldToScreen(point, projected))
             return 0;
-        SCREENINFO info{sizeof(SCREENINFO)};
+        goldsrc::SCREENINFO info{sizeof(goldsrc::SCREENINFO)};
         if (!gEngfuncs.pfnGetScreenInfo(&info) || info.iWidth <= 0 || info.iHeight <= 0)
             return 0;
         screen[0] = (1 + projected[0]) * info.iWidth * 0.5f;
@@ -456,15 +460,15 @@ namespace
     json_t ConnectionData()
     {
         auto* cls = eng()->client_static;
-        const int state = cls ? cls->state : ca_disconnected;
+        const int state = cls ? cls->state : goldsrc::ca_disconnected;
         constexpr const char* states[]{"dedicated", "disconnected", "connecting", "connected", "uninitialized", "active"};
-        const bool connected = state >= ca_connected;
+        const bool connected = state >= goldsrc::ca_connected;
         const char* hostname = connected ? gEngfuncs.ServerInfo_ValueForKey("hostname") : nullptr;
         json_t result{
             {"state", state >= 0 && state < 6 ? states[state] : "unknown"},
             {"connected", connected},
             {"in_game", InGame()},
-            {"address", cls && state >= ca_connecting ? ArrayText(cls->servername) : ""},
+            {"address", cls && state >= goldsrc::ca_connecting ? ArrayText(cls->servername) : ""},
             {"map", connected && gEngfuncs.pfnGetLevelName() ? gEngfuncs.pfnGetLevelName() : ""},
             {"max_clients", connected ? gEngfuncs.GetMaxClients() : 0},
             {"demo_playback", cls && cls->demoplayback != 0},
@@ -476,7 +480,7 @@ namespace
         };
         if (connected && gEngfuncs.pNetAPI)
         {
-            net_status_t status{};
+            goldsrc::net_status_t status{};
             gEngfuncs.pNetAPI->Status(&status);
             result["latency"] = status.latency;
             result["packet_loss"] = status.packet_loss;
@@ -490,7 +494,7 @@ namespace
     {
         if (index < 1 || index > std::min(gEngfuncs.GetMaxClients(), 32))
             return tao::json::null;
-        hud_player_info_t info{};
+        goldsrc::hud_player_info_t info{};
         gEngfuncs.pfnGetPlayerInfo(index, &info);
         if (!info.name || !*info.name)
             return tao::json::null;
@@ -526,11 +530,11 @@ namespace
     }
     void SyncPlayers()
     {
-        if (!eng()->client_static || eng()->client_static->state < ca_connected || !eng()->client_state)
+        if (!eng()->client_static || eng()->client_static->state < goldsrc::ca_connected || !eng()->client_state)
             return;
         for (int i = 1; i <= 32; ++i)
         {
-            hud_player_info_t info{};
+            goldsrc::hud_player_info_t info{};
             if (i <= gEngfuncs.GetMaxClients())
                 gEngfuncs.pfnGetPlayerInfo(i, &info);
             const int id = info.name && *info.name ? eng()->client_state->players[i - 1].userid : 0;
@@ -731,7 +735,7 @@ void PluginBridge_Shutdown()
         {
             g_RegisterMessage(name.c_str(), handler);
         }
-        for (cl_enginefunc_t* table : {client()->gEngfuncs, &gEngfuncs})
+        for (goldsrc::cl_enginefunc_t* table : {client()->gEngfuncs, &gEngfuncs})
         {
             if (table && table->pfnHookUserMsg == RegisterMessage)
             {
@@ -758,7 +762,7 @@ void PluginBridge_Draw(float time, int intermission)
 {
     if (!InGame())
         return;
-    SCREENINFO screen{sizeof(SCREENINFO)};
+    goldsrc::SCREENINFO screen{sizeof(goldsrc::SCREENINFO)};
     gEngfuncs.pfnGetScreenInfo(&screen);
     const NcDrawContext context{sizeof(NcDrawContext), screen.iWidth, screen.iHeight, intermission, time};
     nc_runtime_draw(&context);
@@ -781,7 +785,7 @@ void PluginBridge_Prepare()
     InstallMessageWrappers();
     if (!g_CvarHook)
     {
-        g_CvarHook = eng()->Cvar_DirectSet |= [](cvar_t* var, const char* value, const auto& next) {
+        g_CvarHook = eng()->Cvar_DirectSet |= [](goldsrc::cvar_t* var, const char* value, const auto& next) {
             const std::string name = var && var->name ? var->name : "";
             const std::string before = var && var->string ? var->string : "";
             next->Invoke(var, value);

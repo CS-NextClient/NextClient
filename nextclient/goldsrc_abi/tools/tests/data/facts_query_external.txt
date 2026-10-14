@@ -1,0 +1,62 @@
+0 matches.
+0 matches.
+0 matches.
+
+Match #1:
+
+Binding for "root":
+TypedefDecl 0x1117355ed90 <C:\fixture\dep/NclNitroApi/dep/ncl-hl1-source-sdk/public/tier1/netadr.h:3:1, line:8:3> col:3 referenced probe_kind_t 'enum probe_kind_t'
+`-EnumType 0x1117355ed40 'enum probe_kind_t' owns_tag enum
+  `-Enum 0x1117355ea90 <line:3:9, line:8:1>
+
+
+Match #2:
+
+Binding for "root":
+CXXRecordDecl 0x1117355efa8 <C:\fixture\dep/NclNitroApi/dep/ncl-hl1-source-sdk/public/tier1/netadr.h:15:9, line:19:1> line:15:16 struct probe_addr_s definition
+|-DefinitionData pass_in_registers aggregate standard_layout trivially_copyable pod trivial literal has_constexpr_non_copy_move_ctor
+| |-DefaultConstructor exists trivial constexpr needs_implicit defaulted_is_constexpr
+| |-CopyConstructor simple trivial has_const_param needs_implicit implicit_has_const_param
+| |-MoveConstructor exists simple trivial needs_implicit
+| |-CopyAssignment simple trivial has_const_param needs_implicit implicit_has_const_param
+| |-MoveAssignment exists simple trivial needs_implicit
+| `-Destructor simple irrelevant trivial constexpr needs_implicit
+|-CXXRecordDecl 0x1117355f0c0 <col:9, col:16> col:16 implicit struct probe_addr_s
+|-FieldDecl 0x1117355f1c0 <line:17:2, col:15> col:15 kind 'probe_kind_t':'enum probe_kind_t'
+`-FieldDecl 0x1117355f238 <line:18:2, col:17> col:17 referenced port 'unsigned short'
+
+
+Match #3:
+
+Binding for "root":
+TypedefDecl 0x1117355f340 <C:\fixture\dep/NclNitroApi/dep/ncl-hl1-source-sdk/public/tier1/netadr.h:15:1, line:19:3> col:3 referenced probe_addr_t 'struct probe_addr_s'
+`-RecordType 0x1117355f2f0 'struct probe_addr_s' owns_tag struct
+  `-CXXRecord 0x1117355efa8 'probe_addr_s'
+
+3 matches.
+
+Match #1:
+
+Binding for "root":
+EnumDecl 0x1117355ea90 <C:\fixture\dep/NclNitroApi/dep/ncl-hl1-source-sdk/public/tier1/netadr.h:3:9, line:8:1> line:3:9
+|-EnumConstantDecl 0x1117355eba0 <line:5:2, col:20> col:2 PROBE_KIND_NONE 'probe_kind_t'
+| `-ConstantExpr 0x1117355eb78 <col:20> 'int'
+|   |-value: Int 0
+|   `-IntegerLiteral 0x1117355eb50 <col:20> 'int' 0
+|-EnumConstantDecl 0x1117355ec00 <line:6:2> col:2 PROBE_KIND_LOCAL 'probe_kind_t'
+`-EnumConstantDecl 0x1117355eca8 <line:7:2, col:22> col:2 PROBE_KIND_REMOTE 'probe_kind_t'
+  `-ConstantExpr 0x1117355ec80 <col:22> 'int'
+    |-value: Int 7
+    `-IntegerLiteral 0x1117355ec58 <col:22> 'int' 7
+
+
+Match #2:
+
+Binding for "root":
+EnumDecl 0x1117355ee08 <C:\fixture\dep/NclNitroApi/dep/ncl-hl1-source-sdk/public/tier1/netadr.h:10:1, line:13:1> line:10:6 probe_unlisted_e
+`-EnumConstantDecl 0x1117355ef18 <line:12:2, col:23> col:2 PROBE_UNLISTED_ONE 'probe_unlisted_e'
+  `-ConstantExpr 0x1117355eef0 <col:23> 'int'
+    |-value: Int 1
+    `-IntegerLiteral 0x1117355eec8 <col:23> 'int' 1
+
+2 matches.
