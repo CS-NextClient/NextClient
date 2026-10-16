@@ -52,6 +52,11 @@ add_library(${PROJECT_NAME} SHARED
         src/hlsdk/sys_dll.h
         src/color_chat_in_console.cpp
         src/color_chat_in_console.h
+        src/say_text_line.h
+        src/say_text_wrap.cpp
+        src/say_text_wrap.h
+        src/chat_wrap.cpp
+        src/chat_wrap.h
         src/inspect.cpp
         src/inspect.h
         src/commands.cpp
