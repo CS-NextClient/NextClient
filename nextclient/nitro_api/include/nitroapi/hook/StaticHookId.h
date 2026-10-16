@@ -339,6 +339,11 @@ namespace nitroapi
         UserMsg_ResetHUD,
         UserMsg_Radar,
 
+        CHudSayText__EnsureTextFitsInOneLineAndWrapIfHaveTo,
+        SayTextLine__Colorize,
+        ScrollTextUp,
+        CHudVGUI2Print__GetStringSize,
+
         // SDL2.dll
         SDL_DestroyWindow = 1500,
         SDL_CreateWindow,

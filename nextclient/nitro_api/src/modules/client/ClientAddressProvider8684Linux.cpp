@@ -63,7 +63,12 @@ namespace nitroapi
         { StaticHookId::UserMsg_HostagePos,         SearchConfig("_Z20__MsgFunc_HostagePosPKciPv", SearchType::ExportFunc) },
         { StaticHookId::UserMsg_HostageK,           SearchConfig("_Z18__MsgFunc_HostageKPKciPv", SearchType::ExportFunc) },
         { StaticHookId::UserMsg_ResetHUD,           SearchConfig("_Z18__MsgFunc_ResetHUDPKciPv", SearchType::ExportFunc) },
-        { StaticHookId::UserMsg_Radar,              SearchConfig("_Z15__MsgFunc_RadarPKciPv", SearchType::ExportFunc) }
+        { StaticHookId::UserMsg_Radar,              SearchConfig("_Z15__MsgFunc_RadarPKciPv", SearchType::ExportFunc) },
+
+        { StaticHookId::CHudSayText__EnsureTextFitsInOneLineAndWrapIfHaveTo,SearchConfig("_ZN11CHudSayText38EnsureTextFitsInOneLineAndWrapIfHaveToEi", SearchType::ExportFunc) },
+        { StaticHookId::SayTextLine__Colorize,      SearchConfig("_ZN11SayTextLine8ColorizeEv", SearchType::ExportFunc) },
+        { StaticHookId::ScrollTextUp,               SearchConfig("_Z12ScrollTextUpv", SearchType::ExportFunc) },
+        { StaticHookId::CHudVGUI2Print__GetStringSize,SearchConfig("_ZN14CHudVGUI2Print13GetStringSizeEPKwPiS2_", SearchType::ExportFunc) }
 
     };
 
@@ -72,6 +77,8 @@ namespace nitroapi
         { "gHUD",                                   SearchConfig("gHUD", SearchType::ExportFunc) },
         { "g_iShotsFired",                          SearchConfig("g_iShotsFired", SearchType::ExportFunc) },
         { "g_PlayerExtraInfo",                      SearchConfig("g_PlayerExtraInfo", SearchType::ExportFunc) },
-        { "gEngfuncs",                              SearchConfig("gEngfuncs", SearchType::ExportFunc) }
+        { "gEngfuncs",                              SearchConfig("gEngfuncs", SearchType::ExportFunc) },
+        { "g_sayTextLine",                          SearchConfig("_ZL13g_sayTextLine", SearchType::Symbol) },
+        { "line_height",                            SearchConfig("_ZL11line_height", SearchType::Symbol) }
     };
 }

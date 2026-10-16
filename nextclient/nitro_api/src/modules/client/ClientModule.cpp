@@ -41,6 +41,8 @@ namespace nitroapi
         RegisterVar(&client_data_->g_iShotsFired, "g_iShotsFired");
         RegisterVar(&client_data_->g_PlayerExtraInfo, "g_PlayerExtraInfo");
         RegisterVar(&client_data_->gEngfuncs, "gEngfuncs");
+        RegisterVar(&client_data_->g_sayTextLine, "g_sayTextLine");
+        RegisterVar(&client_data_->line_height, "line_height");
 
         RegisterFuncCdecl<StaticHookId::UserMsg_MOTD>(&client_data_->UserMsg_MOTD);
         RegisterFuncCdecl<StaticHookId::UserMsg_AmmoX>(&client_data_->UserMsg_AmmoX);
@@ -55,6 +57,7 @@ namespace nitroapi
         RegisterFuncCdecl<StaticHookId::UserMsg_HostageK>(&client_data_->UserMsg_HostageK);
         RegisterFuncCdecl<StaticHookId::UserMsg_ResetHUD>(&client_data_->UserMsg_ResetHUD);
         RegisterFuncCdecl<StaticHookId::UserMsg_Radar>(&client_data_->UserMsg_Radar);
+        RegisterFuncCdecl<StaticHookId::ScrollTextUp>(&client_data_->ScrollTextUp);
 
         RegisterFuncCdecl<StaticHookId::CLDLL_Initialize>(&client_data_->CLDLL_Initialize);
         RegisterFuncCdecl<StaticHookId::HUD_Init>(&client_data_->HUD_Init);
@@ -103,6 +106,9 @@ namespace nitroapi
             RegisterFuncThiscall<StaticHookId::CHudHealth__DrawRadar>(&client_data_->CHudHealth__DrawRadar);
             RegisterFuncThiscall<StaticHookId::CHudHealth__GetAllPlayersInfo>(&client_data_->CHudHealth__GetAllPlayersInfo);
             RegisterFuncThiscall<StaticHookId::CHudDeathNotice__Draw>(&client_data_->CHudDeathNotice__Draw);
+            RegisterFuncThiscall<StaticHookId::CHudSayText__EnsureTextFitsInOneLineAndWrapIfHaveTo>(&client_data_->CHudSayText__EnsureTextFitsInOneLineAndWrapIfHaveTo);
+            RegisterFuncThiscall<StaticHookId::SayTextLine__Colorize>(&client_data_->SayTextLine__Colorize);
+            RegisterFuncThiscall<StaticHookId::CHudVGUI2Print__GetStringSize>(&client_data_->CHudVGUI2Print__GetStringSize);
         }
         else {
             RegisterFuncCdecl<StaticHookId::CHudAmmo__DrawCrosshair>(&client_data_->CHudAmmo__DrawCrosshair);
@@ -110,6 +116,9 @@ namespace nitroapi
             RegisterFuncCdecl<StaticHookId::CHudHealth__DrawRadar>(&client_data_->CHudHealth__DrawRadar);
             RegisterFuncCdecl<StaticHookId::CHudHealth__GetAllPlayersInfo>(&client_data_->CHudHealth__GetAllPlayersInfo);
             RegisterFuncCdecl<StaticHookId::CHudDeathNotice__Draw>(&client_data_->CHudDeathNotice__Draw);
+            RegisterFuncCdecl<StaticHookId::CHudSayText__EnsureTextFitsInOneLineAndWrapIfHaveTo>(&client_data_->CHudSayText__EnsureTextFitsInOneLineAndWrapIfHaveTo);
+            RegisterFuncCdecl<StaticHookId::SayTextLine__Colorize>(&client_data_->SayTextLine__Colorize);
+            RegisterFuncCdecl<StaticHookId::CHudVGUI2Print__GetStringSize>(&client_data_->CHudVGUI2Print__GetStringSize);
         }
     }
 
@@ -186,7 +195,7 @@ namespace nitroapi
 //        client_data_->gHUD->m_careerTaskTimer = (goldsrc::cstrike::CHudCareerTaskTimer*)(hud + 0x400C);
 //        client_data_->gHUD->m_scenarioStatus = (goldsrc::cstrike::CHudScenarioStatus*)(hud + 0x4068);
 //        client_data_->gHUD->m_sniperScope = (goldsrc::cstrike::CHudSniperScope*)(hud + 0x40DC);
-//        client_data_->gHUD->m_VGUI2Print = (goldsrc::cstrike::CHudVGUI2Print*)(hud + 0x4104);
+        client_data_->gHUD->m_VGUI2Print = (goldsrc::cstrike::CHudVGUI2Print*)(hud + HudOffset(0x4104, 0x60FC));
 //        client_data_->gHUD->m_scrinfo = (goldsrc::SCREENINFO*)(hud + 0x6930); // UNVERIFIED
     }
 
