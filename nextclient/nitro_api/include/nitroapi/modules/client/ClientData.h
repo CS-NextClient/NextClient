@@ -165,5 +165,19 @@ namespace nitroapi
         goldsrc::cl_enginefunc_t* gEngfuncs = nullptr;
 
         NitroFunction<int, const char*, int, void*> UserMsg_Radar;
+
+        // SayTextLine g_sayTextLine[6], the stock chat lines; the layout depends on sizeof(wchar_t)
+        void* g_sayTextLine = nullptr;
+        // int line_height, the stock chat's line spacing
+        int* line_height = nullptr;
+
+        // void CHudSayText::EnsureTextFitsInOneLineAndWrapIfHaveTo(goldsrc::cstrike::CHudSayText *const this, int line)
+        NitroFunctionVoid<goldsrc::cstrike::CHudSayText* const, int> CHudSayText__EnsureTextFitsInOneLineAndWrapIfHaveTo;
+        // void SayTextLine::Colorize(SayTextLine *const this)
+        NitroFunctionVoid<void* const> SayTextLine__Colorize;
+        // int ScrollTextUp(), returns how many lines it removed
+        NitroFunction<int> ScrollTextUp;
+        // void CHudVGUI2Print::GetStringSize(goldsrc::cstrike::CHudVGUI2Print *const this, const wchar_t *text, int *width, int *height)
+        NitroFunctionVoid<goldsrc::cstrike::CHudVGUI2Print* const, const wchar_t*, int*, int*> CHudVGUI2Print__GetStringSize;
     };
 }

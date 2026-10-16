@@ -23,6 +23,7 @@
 #include "view.h"
 #include "fov.h"
 #include "color_chat_in_console.h"
+#include "say_text_wrap.h"
 #include "inspect.h"
 #include "commands.h"
 #include "invert_mouse.h"
@@ -348,6 +349,7 @@ public:
         g_Unsub.emplace_back(client_data->UserMsg_InitHUD += UserMsg_InitHUDPost);
         g_Unsub.emplace_back(client_data->UserMsg_TextMsg |= UserMsg_TextMsgHandler);
         RadarHooks_Subscribe(nitro_api, g_Unsub);
+        SayTextWrap_Subscribe(nitro_api, g_Unsub);
         g_Unsub.emplace_back(client_data->UserMsg_ResetHUD |= UserMsg_ResetHUDHandler);
         g_Unsub.emplace_back(client_data->CL_CreateMove |= CL_CreateMoveHandler);
 

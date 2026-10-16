@@ -4,6 +4,7 @@
 #include <tier1/utlvector.h>
 #include <Color.h>
 #include "main.h"
+#include "say_text_line.h"
 #include "IGameConsole.h"
 #include <next_gameui/IGameConsoleNext.h>
 #include <goldsrc/client_api.h>
@@ -21,9 +22,6 @@ const int kScrollTextUpConsolePrintCall = 0x1E6; // second byte of FF 15: call *
 const int kCGameConsoleDialogCompColorPad = 292;
 #endif
 
-#define MAX_LINES 5
-#define MAX_CHARS_PER_LINE 256
-
 #define F2B(f) ((f) >= 1.0f ? 255 : (int)((f)*256.f))
 
 struct CGameConsoleDialogComp
@@ -39,25 +37,10 @@ struct CGameConsoleComp
     CGameConsoleDialogComp* m_pConsole;
 };
 
-struct TextRange
-{
-    int start;
-    int end;
-    float *color;
-};
-
-struct SayTextLine
-{
-    wchar_t m_line[MAX_CHARS_PER_LINE];
-    CUtlVector<TextRange> m_textRanges;
-    int m_clientIndex;
-    float *m_teamColor;
-};
-
 static void ColorChatConsolePrint(char string[512]);
 
 #define g_sayTextLine (*pg_sayTextLine)
-static SayTextLine g_sayTextLine[MAX_LINES + 1];
+static SayTextLine g_sayTextLine[kSayTextMaxLines + 1];
 
 void ColorChatInConsolePatch()
 {
