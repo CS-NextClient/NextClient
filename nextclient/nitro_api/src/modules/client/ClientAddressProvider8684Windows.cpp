@@ -63,7 +63,12 @@ namespace nitroapi
         { StaticHookId::UserMsg_HostagePos,         SearchConfig(0x4E090) },
         { StaticHookId::UserMsg_HostageK,           SearchConfig(0x4E0C0) },
         { StaticHookId::UserMsg_ResetHUD,           SearchConfig(0x4DF80) },
-        { StaticHookId::UserMsg_Radar,              SearchConfig(0x4AF00) }
+        { StaticHookId::UserMsg_Radar,              SearchConfig(0x4AF00) },
+
+        { StaticHookId::CHudSayText__EnsureTextFitsInOneLineAndWrapIfHaveTo,SearchConfig(0x647D0) },
+        { StaticHookId::SayTextLine__Colorize,      SearchConfig(0x634E0) },
+        { StaticHookId::ScrollTextUp,               SearchConfig(0x63C70) },
+        { StaticHookId::CHudVGUI2Print__GetStringSize,SearchConfig(0x57190) }
     };
 
     const std::unordered_map<std::string, SearchConfig> ClientAddressProvider8684Windows::addresses_str_
@@ -71,6 +76,8 @@ namespace nitroapi
         { "gHUD",                                   SearchConfig(0x121530) },
         { "g_iShotsFired",                          SearchConfig(0x1213A4) },
         { "g_PlayerExtraInfo",                      SearchConfig(0x12F420) },
-        { "gEngfuncs",                              SearchConfig(0x125CC0) }
+        { "gEngfuncs",                              SearchConfig(0x125CC0) },
+        { "g_sayTextLine",                          SearchConfig(0x136E20) },
+        { "line_height",                            SearchConfig(0x1386D0) }
     };
 }

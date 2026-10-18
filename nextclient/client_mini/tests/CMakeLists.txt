@@ -64,6 +64,8 @@ add_executable(${TARGET_NAME}
         ObjectiveSourceTests.cpp
         HudTextZoneTests.cpp
         HudTextBufferTests.cpp
+        ChatWrapTests.cpp
+        ../src/chat_wrap.cpp
         ../src/hud/radar/render/RadarView.cpp
         ../src/hud/radar/integration/RadarScoreboard.cpp
         ../src/hud/radar/layers/players/PlayerTracks.cpp
