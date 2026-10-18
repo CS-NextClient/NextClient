@@ -4,3 +4,4 @@
 add_subdirectory(cvars)
 add_subdirectory(view)
 add_subdirectory(crosshair)
+add_subdirectory(settings_code)
