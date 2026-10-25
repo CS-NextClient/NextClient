@@ -36,6 +36,8 @@ add_library(${PROJECT_NAME} SHARED
         src/fov.h
         src/invert_mouse.cpp
         src/invert_mouse.h
+        src/multi_button_binds.cpp
+        src/multi_button_binds.h
         src/hud/hud_sprite/sprite_rect.h
         src/hud/hud_sprite/sprite_color.h
         src/hud/hud_sprite/hud_sprite_state.h
@@ -211,6 +213,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
         view::view
         cvars::cvars
         crosshair::crosshair
+        key_binding::key_binding
         TaskCoro::TaskCoro
 )
 

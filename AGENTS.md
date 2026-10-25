@@ -59,7 +59,7 @@ cmake --build --preset vs2022-tests-release --target client_mini-tests
 ```
 
 Test targets are `client_mini-tests`, `engine_mini-tests`, `gameui-tests`, `data_types-tests`,
-`view-tests`, `crosshair-tests`, `radar-gl-tests` and `updater-test`. The updater tests additionally require Windows
+`view-tests`, `crosshair-tests`, `key-binding-tests`, `radar-gl-tests` and `updater-test`. The updater tests additionally require Windows
 and `NEXT_LAUNCHER_ENABLE_UPDATER=ON`. They exist only where
 `NEXTCLIENT_BUILD_TESTS` is on, which among the tracked presets means `vs2022-tests`; a Ninja test
 build comes from a local preset or `-D NEXTCLIENT_BUILD_TESTS=ON`. They cover what runs without the

@@ -27,6 +27,7 @@
 #include "inspect.h"
 #include "commands.h"
 #include "invert_mouse.h"
+#include "multi_button_binds.h"
 #include "hud/radar/integration/RadarHooks.h"
 #include "hud/radar/render/text/HudTextZone.h"
 
@@ -352,6 +353,7 @@ public:
         SayTextWrap_Subscribe(nitro_api, g_Unsub);
         g_Unsub.emplace_back(client_data->UserMsg_ResetHUD |= UserMsg_ResetHUDHandler);
         g_Unsub.emplace_back(client_data->CL_CreateMove |= CL_CreateMoveHandler);
+        g_Unsub.emplace_back(client_data->HUD_Key_Event |= MultiButtonBinds_KeyEvent);
 
         task_runtime_ = std::make_shared<taskcoro::TaskCoroImpl>(std::this_thread::get_id(), false);
         taskcoro::TaskCoro::Initialize(task_runtime_);

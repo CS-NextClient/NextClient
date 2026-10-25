@@ -27,6 +27,7 @@ using HUD_VidInitNext = nitroapi::NextHandlerInterface<int>*;
 using UserMsg_TextMsgNext = nitroapi::NextHandlerInterface<int, const char*, int, void*>*;
 using UserMsg_RadarMsgNext = nitroapi::NextHandlerInterface<int, const char*, int, void*>*;
 using CL_CreateMoveNext = nitroapi::NextHandlerInterface<void, float, goldsrc::usercmd_t*, int>*;
+using HUD_Key_EventNext = nitroapi::NextHandlerInterface<int, int, int, const char*>*;
 
 extern nitroapi::NitroApiInterface* g_NitroApi;
 nitroapi::EngineData* eng();
