@@ -1,6 +1,6 @@
 # Radar manual test cases
 
-[Russian version](manual-testing-scenarios.ru.md) | [Operator guide](manual-testing.md) | [Server tool reference](../../tools/test_server/README.md)
+[Russian version](manual-testing-scenarios.ru.md) | [Operator guide](manual-testing.md) | [Server tool reference](../tools/test-server.md)
 
 These cases define acceptance criteria for a connected NextClient client. A case describes what to test; a run records one execution and its observed result. The expected results below are not evidence that testing has been completed.
 
@@ -609,4 +609,4 @@ Check the independent statuses, manual note, expected and actual values, and any
 
 After reset, the compact `nct_status` output exposes the saved ID as `last_run`; loading a map clears it. Without an active run, `nct_result` applies to the last saved run. Once a new run starts, it applies to that new run. Always preserve IDs before transitions and regenerate a run's report after changing its result.
 
-For sharing, copy the selected run directories with `report.json`, `report.html`, and sanitized logs. For a collection, also include `index.html` and retain the relative report subdirectories. Follow the [server tool's sharing guidance](../../tools/test_server/README.md). Do not copy the entire reports directory: it also holds raw logs and secret files. Exclude `*.secret`, `server.raw.log`, `testlab-session.cfg`, and `users.ini`.
+For sharing, copy the selected run directories with `report.json`, `report.html`, and sanitized logs. For a collection, also include `index.html` and retain the relative report subdirectories. Follow the [server tool's sharing guidance](../tools/test-server.md). Do not copy the entire reports directory: it also holds raw logs and secret files. Exclude `*.secret`, `server.raw.log`, `testlab-session.cfg`, and `users.ini`.

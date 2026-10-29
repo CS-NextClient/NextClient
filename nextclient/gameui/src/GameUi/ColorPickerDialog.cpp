@@ -488,6 +488,11 @@ void CColorPickerDialog::UpdateField()
 
 void CColorPickerDialog::Publish()
 {
+    if (m_Closed)
+    {
+        return;
+    }
+
     ncl_math::ColorF color = CurrentColor();
 
     m_pListener->OnColorPicked(m_Param.c_str(), color.data());
@@ -581,6 +586,13 @@ void CColorPickerDialog::Activate()
 
 void CColorPickerDialog::OnClose()
 {
+    if (m_Closed)
+    {
+        return;
+    }
+
+    m_Closed = true;
+    m_pListener->OnColorPickEnded(m_Param.c_str(), m_Original.data(), m_Accepted);
     input()->ReleaseAppModalSurface();
 
     if (m_PreviousModal != 0)
@@ -604,15 +616,13 @@ void CColorPickerDialog::OnCommand(const char* command)
     if (V_stricmp(command, "ok") == 0)
     {
         Publish();
+        m_Accepted = true;
         Close();
         return;
     }
 
     if (V_stricmp(command, "cancel") == 0)
     {
-        // Put back what was there: the model has been following the cursor all along, so
-        // cancelling has to undo it rather than merely stop.
-        m_pListener->OnColorPicked(m_Param.c_str(), m_Original.data());
         Close();
         return;
     }

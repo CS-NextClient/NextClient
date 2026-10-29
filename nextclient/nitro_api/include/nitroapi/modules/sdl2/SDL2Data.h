@@ -17,5 +17,13 @@ namespace nitroapi
         NitroFunction<const char*>                                       SDL_GetErrorFunc;
         // void* SDL_GL_GetProcAddress(const char* proc);
         NitroFunction<void*, const char*>                                SDL_GL_GetProcAddress;
+        NitroFunctionVoid<void*> SDL_GL_SwapWindow;
+        NitroFunctionVoid<void*, int*, int*> SDL_GL_GetDrawableSize;
+        NitroFunction<void*> SDL_GL_GetCurrentWindow;
+        NitroFunctionVoid<void*, int*, int*> SDL_GetWindowSize;
+        NitroFunctionVoid<void*> SDL_GetVersion;
+        NitroFunction<void*, void*> SDL_GL_CreateContext;
+        NitroFunctionVoid<void*> SDL_GL_DeleteContext;
+        NitroFunction<void*> SDL_GL_GetCurrentContext;
     };
 }

@@ -136,6 +136,11 @@ float MessageReader::ReadHiResAngle()
     return static_cast<float>(ReadShort()) * kHiResAngleScale;
 }
 
+size_t MessageReader::get_remaining_size() const
+{
+    return size_ - position_;
+}
+
 bool MessageReader::is_overflowed() const
 {
     return overflowed_;

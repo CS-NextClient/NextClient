@@ -13,7 +13,7 @@
     #define WSAEADDRNOTAVAIL    EADDRNOTAVAIL
     #define WSAENOBUFS          ENOBUFS
 #endif
-#include <optick.h>
+#include <ncl_perf/profiler.h>
 
 #include "engine.h"
 #include "console/console.h"
@@ -52,7 +52,7 @@ goldsrc::qboolean NET_CompareAdr(goldsrc::netadr_t a, goldsrc::netadr_t b)
 
 void NET_SendPacket(goldsrc::netsrc_t sock, int length, void* data, goldsrc::netadr_t to)
 {
-    OPTICK_EVENT();
+    NCL_PROFILE_SCOPE();
 
     const goldsrc::netadrtype_t addr_type = to.type;
 

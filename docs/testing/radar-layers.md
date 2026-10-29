@@ -1,6 +1,6 @@
 # Radar layers verification procedure
 
-[Russian version](radar-layers.ru.md) | [Reference](../../assets/cstrike/overviews/radar_layers.md) | [Acceptance cases](radar-layer-cases.md)
+[Russian version](radar-layers.ru.md) | [Reference](../radar-layers.md) | [Acceptance cases](radar-layer-cases.md)
 
 ## Automated checks
 
@@ -46,7 +46,7 @@ $env:NEXTCLIENT_RADAR_BSP = '<absolute path to scp_foundation_bw40.bsp>'
 
 An unset/empty variable explicitly skips the case and does not satisfy acceptance. The test-only BSP30 loader validates bounded reads/references and supplies owned polygons through the production adapter. Deterministic fixture UVs verify geometry, not live materials/lightmaps. Keep map data outside Git. Set `NEXTCLIENT_RADAR_MESH_EXPORT` to an output JSON path to export original polygons and per-layer meshes for offline coverage comparisons; the parent directory is created automatically. The export preserves geometry and both UV sets, without textures or live GL state.
 
-Set `NEXTCLIENT_RADAR_CORRECTIONS` to a correction file to apply it before both deterministic builds. The offline reader accepts whitespace-separated tokens and quoted values; use the shown format without comments. For `cs_assault`, use `assets/cstrike/overviews/cs_assault_layers.txt` and `NEXTCLIENT_RADAR_EXPECTED_LAYERS=1`. Compare the exported warehouse interior and retained exterior coverage. Unset correction variables before testing other maps.
+Set `NEXTCLIENT_RADAR_CORRECTIONS` to a correction file to apply it before both deterministic builds. The offline reader accepts whitespace-separated tokens and quoted values; use the format in the [reference](../radar-layers.md) without comments. For `cs_assault`, use `assets/cstrike/overviews/cs_assault_layers.txt` and `NEXTCLIENT_RADAR_EXPECTED_LAYERS=1`. Compare the exported warehouse interior and retained exterior coverage. Unset correction variables before testing other maps.
 
 Retain group bounds/heights/areas/reasons, input/mesh counts, analysis duration, memory lower bound, and Below/Nearest/Intersect/volume-style timings. The case verifies finite bounds, positive areas, nonempty meshes, independent stacked supports when multiple layers are present, and exact repeated-build mesh/sample equality. Run it for de_dust2, adv_clocktower, adv_university, and scp_foundation_bw40. Record `capture_ms` separately from worker `analysis_ms` in runtime dumps. During analysis, exercise a map/video reset, switching between modes 5 and 6, leaving layered modes, and client shutdown. de_dust2 should produce one automatic layer; the other maps must retain their substantial stacked areas. Record overlap_area_threshold, largest_overlap_area, and significant_overlap_regions to explain the grouping. Compare performance in the same configuration, with Release results recorded separately. Memory lower bounds exclude index/container overhead; process peaks include two simultaneous map owners in this test.
 

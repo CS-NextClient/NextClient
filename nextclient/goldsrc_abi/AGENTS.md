@@ -1,7 +1,6 @@
 # Stock engine ABI declarations
 
-This is the clean-room header library for stock interoperability facts. Start with the
-[maintenance reference](../../docs/goldsrc-abi.md) for generation, verification and frozen inputs.
+This is the clean-room header library for stock interoperability facts. Start with the [maintenance reference](../../docs/goldsrc-abi.md) for generation, verification and frozen inputs.
 
 ## Source of truth
 
@@ -23,26 +22,15 @@ This is the clean-room header library for stock interoperability facts. Start wi
 
 ## Generation and checks
 
-Run these from the repository root using an available Python 3 interpreter. The examples use
-`python`; substitute the interpreter command or executable path for the current environment
-(such as `python3` or `py -3`).
+Run these from the repository root using an available Python 3 interpreter. The examples use `python`; substitute the interpreter command or executable path for the current environment (such as `python3` or `py -3`).
 
 ```text
 python nextclient/goldsrc_abi/tools/library.py check
 python -m unittest discover -s nextclient/goldsrc_abi/tools -t nextclient/goldsrc_abi/tools -p "test_*.py"
 ```
 
-`library.py headers --out <directory>` and `library.py tests --out <directory>` generate headers
-and `golden_layout.cpp`. Use a comparison directory inside the repository so clang-format finds
-the same configuration. Inspect the diff before replacing tracked output. The `goldsrc_abi_golden`
-object target compiles the layout assertions; it is not a runtime test executable.
+`library.py headers --out <directory>` and `library.py tests --out <directory>` generate headers and `golden_layout.cpp`. Use a comparison directory inside the repository so clang-format finds the same configuration. Inspect the diff before replacing tracked output. The `goldsrc_abi_golden` object target compiles the layout assertions; it is not a runtime test executable.
 
-For provenance checks, request CMake's `codemodel-v2` before configuring and run the gate after
-building, when generated resource sources exist. The exact pipeline and allowlist are in
-[the build workflow](../../.github/workflows/build.yml). Do not expand the allowlist just to make
-a newly introduced dependency pass.
+For provenance checks, request CMake's `codemodel-v2` before configuring and run the gate after building, when generated resource sources exist. The exact pipeline and allowlist are in [the build workflow](../../.github/workflows/build.yml). Do not expand the allowlist just to make a newly introduced dependency pass.
 
-After source deletion or build-graph changes, configure again before claiming the tree builds.
-Dependency comparisons must use objects in the current target graph, not stale entries from Ninja's
-log. A new verification script needs a failing control case; an empty selection or a table of fixed
-success values is not evidence that the checked property holds.
+After source deletion or build-graph changes, configure again before claiming the tree builds. Dependency comparisons must use objects in the current target graph, not stale entries from Ninja's log. A new verification script needs a failing control case; an empty selection or a table of fixed success values is not evidence that the checked property holds.

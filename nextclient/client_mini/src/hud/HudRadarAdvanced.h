@@ -12,7 +12,7 @@
 #include "hud/radar/render/RadarView.h"
 #include "hud/radar/RadarFrame.h"
 #include "hud/radar/map/layers/RadarLayerContext.h"
-#include "hud/radar/map/layers/RadarLayerAnalysisJob.h"
+#include "hud/radar/integration/LayerAnalysis.h"
 #include "hud/radar/map/MapBspGeometry.h"
 #include "hud/radar/integration/RadarScoreboard.h"
 #include "hud/radar/layers/BackdropLayer.h"
@@ -22,6 +22,13 @@
 class HudRadarAdvanced : public HudBase, public HudBaseHelper
 {
 private:
+    radar::integration::Performance& performance_;
+    RadarDrawContext draw_;
+    nitroapi::SDL2Data* sdl_{};
+    bool has_current_context_{};
+    bool has_current_window_{};
+    std::vector<std::shared_ptr<nitroapi::Unsubscriber>> graphics_subscriptions_;
+    bool shutdown_{};
     FrameContext ctx_{};
     RadarScoreboard scoreboard_;
 
@@ -30,15 +37,15 @@ private:
     SmokeRegistry smoke_;
     RadarBroadcast broadcast_;
     RadarMapLayers map_layers_;
-    RadarLayerAnalysisJob layer_analysis_job_;
+    radar::integration::LayerAnalysis layer_analysis_;
     RadarLayerContext layer_context_;
     RadarLayerLifecycle layer_lifecycle_;
-    RadarVisibility visibility_{smoke_};
+    RadarVisibility visibility_;
     RadarPolicy policy_;
     RadarText text_;
-    BackdropLayer backdrop_{smoke_};
-    PlayersLayer players_{visibility_, policy_, broadcast_, text_};
-    ObjectivesLayer objectives_{visibility_, policy_, broadcast_, text_};
+    BackdropLayer backdrop_;
+    PlayersLayer players_;
+    ObjectivesLayer objectives_;
 
     // Serverinfo changes only on a server "serverinfo" command, so hints are re-read on
     // this cadence rather than every frame.
@@ -57,7 +64,17 @@ private:
     static constexpr float kHintInterval = 1.0f;
 
 public:
-    explicit HudRadarAdvanced(nitroapi::NitroApiInterface* nitro_api);
+    HudRadarAdvanced(
+        nitroapi::NitroApiInterface* nitro_api,
+        radar::integration::Performance& performance,
+        taskcoro::TaskCoroImplInterface& scheduler
+    );
+    void Shutdown();
+    void ResetGraphics();
+    RadarDrawContext& get_draw_context()
+    {
+        return draw_;
+    }
     ~HudRadarAdvanced() override;
 
     void VidInit() override;
@@ -68,6 +85,10 @@ public:
     void UpdateScoreboard(bool hud_visible);
 
 private:
+    bool PrepareGraphics();
+    void StopGraphicsCallbacks();
+    void* CurrentContext() const;
+    void* CurrentWindow() const;
     RadarBox ComputeBox(bool spectating);
     RadarTransform ComputeTransform(const RadarBox& box, const RadarShape& shape, bool scoreboard);
     bool ShouldDraw();

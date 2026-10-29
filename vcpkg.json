@@ -69,6 +69,14 @@
     "name": "curl",
     "platform": "!windows"
   }],
+  "features": {
+    "profiler": {
+      "description": "Shared Tracy client for diagnostic builds.",
+      "dependencies": [
+        { "name": "tracy", "default-features": false, "features": ["on-demand"] }
+      ]
+    }
+  },
   "overrides": [ {
     "name": "taocpp-json",
     "version": "1.0.0-beta.14"

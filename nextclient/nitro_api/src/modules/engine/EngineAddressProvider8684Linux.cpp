@@ -337,6 +337,7 @@ namespace nitroapi
         { "maxTransObjs",                           SearchConfig("maxTransObjs", SearchType::Symbol) },
         { "gLoadSky",                               SearchConfig("gLoadSky", SearchType::ExportFunc) },
         { "lightmap_textures",                      SearchConfig("lightmap_textures", SearchType::ExportFunc) },
+        { "cl_elights",                             SearchConfig("cl_elights", SearchType::ExportFunc) },
         { "vgui2_surface",                          SearchConfig() },
         { "ip_sockets",                             SearchConfig("ip_sockets", SearchType::ExportFunc) },
         { "ipx_sockets",                            SearchConfig() },

@@ -11,6 +11,7 @@
 #include <strtools.h>
 #include "shared_util.h"
 
+
 #include <crosshair/crosshair.h>
 #include <cvars/cvar_defaults.h>
 
@@ -51,6 +52,11 @@ void HudCrosshair::VidInit()
     m_iCrosshairScaleBase = 0;
     m_szLastCrosshairColor[0] = '\0';
     m_szLastCrosshairSize[0] = '\0';
+}
+
+int HudCrosshair::get_center_x() const
+{
+    return screeninfo_.iWidth / 2;
 }
 
 void HudCrosshair::DrawCrosshair(float flTime, int weaponid)
@@ -392,27 +398,27 @@ void HudCrosshair::DrawCrosshairEx(int iBarSize, float flCrosshairDistance, bool
         {
             int size = sqrt((radius * radius) - (float)(i * i));
 
-            pfnFillRGBA((screeninfo_.iWidth / 2) + i, (screeninfo_.iHeight / 2) + size, 1, 1, r, g, b, a);
-            pfnFillRGBA((screeninfo_.iWidth / 2) + i, (screeninfo_.iHeight / 2) - size, 1, 1, r, g, b, a);
-            pfnFillRGBA((screeninfo_.iWidth / 2) - i, (screeninfo_.iHeight / 2) + size, 1, 1, r, g, b, a);
-            pfnFillRGBA((screeninfo_.iWidth / 2) - i, (screeninfo_.iHeight / 2) - size, 1, 1, r, g, b, a);
-            pfnFillRGBA((screeninfo_.iWidth / 2) + size, (screeninfo_.iHeight / 2) + i, 1, 1, r, g, b, a);
-            pfnFillRGBA((screeninfo_.iWidth / 2) + size, (screeninfo_.iHeight / 2) - i, 1, 1, r, g, b, a);
-            pfnFillRGBA((screeninfo_.iWidth / 2) - size, (screeninfo_.iHeight / 2) + i, 1, 1, r, g, b, a);
-            pfnFillRGBA((screeninfo_.iWidth / 2) - size, (screeninfo_.iHeight / 2) - i, 1, 1, r, g, b, a);
+            pfnFillRGBA(get_center_x() + i, (screeninfo_.iHeight / 2) + size, 1, 1, r, g, b, a);
+            pfnFillRGBA(get_center_x() + i, (screeninfo_.iHeight / 2) - size, 1, 1, r, g, b, a);
+            pfnFillRGBA(get_center_x() - i, (screeninfo_.iHeight / 2) + size, 1, 1, r, g, b, a);
+            pfnFillRGBA(get_center_x() - i, (screeninfo_.iHeight / 2) - size, 1, 1, r, g, b, a);
+            pfnFillRGBA(get_center_x() + size, (screeninfo_.iHeight / 2) + i, 1, 1, r, g, b, a);
+            pfnFillRGBA(get_center_x() + size, (screeninfo_.iHeight / 2) - i, 1, 1, r, g, b, a);
+            pfnFillRGBA(get_center_x() - size, (screeninfo_.iHeight / 2) + i, 1, 1, r, g, b, a);
+            pfnFillRGBA(get_center_x() - size, (screeninfo_.iHeight / 2) - i, 1, 1, r, g, b, a);
         }
     }
     else if (type == crosshair::kTypeCross || type == crosshair::kTypeT)
     {
-        pfnFillRGBA((screeninfo_.iWidth / 2) + (int)flCrosshairDistance, screeninfo_.iHeight / 2, iBarSize, 1, r, g, b, a);
-        pfnFillRGBA((screeninfo_.iWidth / 2) - (int)flCrosshairDistance - iBarSize + 1, screeninfo_.iHeight / 2, iBarSize, 1, r, g, b, a);
-        pfnFillRGBA(screeninfo_.iWidth / 2, (screeninfo_.iHeight / 2) + (int)flCrosshairDistance, 1, iBarSize, r, g, b, a);
+        pfnFillRGBA(get_center_x() + (int)flCrosshairDistance, screeninfo_.iHeight / 2, iBarSize, 1, r, g, b, a);
+        pfnFillRGBA(get_center_x() - (int)flCrosshairDistance - iBarSize + 1, screeninfo_.iHeight / 2, iBarSize, 1, r, g, b, a);
+        pfnFillRGBA(get_center_x(), (screeninfo_.iHeight / 2) + (int)flCrosshairDistance, 1, iBarSize, r, g, b, a);
         if (type != crosshair::kTypeT)
-            pfnFillRGBA(screeninfo_.iWidth / 2, (screeninfo_.iHeight / 2) - (int)flCrosshairDistance - iBarSize + 1, 1, iBarSize, r, g, b, a);
+            pfnFillRGBA(get_center_x(), (screeninfo_.iHeight / 2) - (int)flCrosshairDistance - iBarSize + 1, 1, iBarSize, r, g, b, a);
 
     }
     else if (type == crosshair::kTypeDot)
     {
-        pfnFillRGBA((screeninfo_.iWidth / 2) - 1, (screeninfo_.iHeight / 2) - 1, 3, 3, r, g, b, a);
+        pfnFillRGBA(get_center_x() - 1, (screeninfo_.iHeight / 2) - 1, 3, 3, r, g, b, a);
     }
 }

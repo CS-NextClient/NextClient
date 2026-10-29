@@ -10,17 +10,16 @@
 #include <easylogging++.h>
 
 #include "nitroapi/handler_helper/Handler.h"
+#include "FrameLifecycle.h"
 #include "modules/windows/WindowsModule.h"
 #include "modules/engine/EngineAddressProvider8684Windows.h"
 #include "modules/engine/EngineAddressProvider8684Linux.h"
 #include "modules/client/ClientAddressProvider8684Windows.h"
 #include "modules/client/ClientAddressProvider8684Linux.h"
 #include "modules/sdl2/SDL2AddressProvider.h"
+#include "modules/sdl2/loaded_sdl_module.h"
 
-#ifdef NITROAPI_USE_PROFILER
-#include "profiler.h"
-bool g_ProfilerInsideFrame = false;
-#endif
+#include <ncl_perf/profiler.h>
 
 #ifndef NITRO_API_STATIC
 INITIALIZE_EASYLOGGINGPP
@@ -35,6 +34,11 @@ namespace nitroapi
 
 #ifndef NITRO_API_STATIC
     EXPOSE_SINGLE_INTERFACE_GLOBALVAR(NitroApi, NitroApiInterface, NITROAPI_INTERFACE_VERSION, g_NitroApi);
+    static IBaseInterface* CreateFrameLifecycleInterface()
+    {
+        return reinterpret_cast<IBaseInterface*>(nitroapi::FrameLifecycle_GetInterface());
+    }
+    EXPOSE_INTERFACE_FN(CreateFrameLifecycleInterface, FrameLifecycleInterface, NITRO_FRAME_LIFECYCLE_INTERFACE_VERSION);
 #endif
 
     NitroApi::~NitroApi()
@@ -98,18 +102,40 @@ namespace nitroapi
             LOG(INFO) << "Can't get client address provider, client hooks will not work";
         }
 
-        if (IsWindows())
+        for (auto& [path, module]: modules_)
+        {
+            InvokeLibraryLoaded(path, module);
+        }
+
+        nitro_utils::SysModule engine_handle = nullptr;
+        for (const auto& [path, module] : modules_)
+        {
+            if (path == "hw.dll" || path == "hw.so")
+            {
+                engine_handle = module.module_handle;
+                break;
+            }
+        }
+
+        nitro_utils::SysModule sdl_handle = nitroapi::sdl2::FindLoadedModule(engine_handle);
+        if (sdl_handle)
         {
             auto sdl2_module = std::make_unique<SDL2Module>(hook_storage_, std::make_shared<SDL2AddressProvider>());
             sdl2_data_ = sdl2_module->GetSDL2Data();
-            modules_.emplace_back("sdl2.dll", std::move(sdl2_module));
+            sdl2_module->OnLibraryLoaded(sdl_handle);
+            modules_.emplace_back("<loaded SDL2>", std::move(sdl2_module));
+            ModuleHookData& module = std::get<1>(modules_.back());
+            module.module_handle = sdl_handle;
+            module.borrowed = true;
         }
 
-        for (auto& [path, module]: modules_)
-            InvokeLibraryLoaded(path, module);
-
-#ifdef NITROAPI_USE_PROFILER
-        SetupProfiler();
+#if USE_PROFILER
+        engine_data_->Host_FilterTime += [](float delta, int result) {
+            if (result)
+            {
+                NCL_PROFILE_VALUE("Simulation delta ms", double(delta) * 1000.0);
+            }
+        };
 #endif
 
         LOG(INFO) << "---------- Initialize | End ----------";
@@ -124,6 +150,8 @@ namespace nitroapi
             return true;
 
         is_initialized_ = false;
+
+        nitroapi::FrameLifecycle_ClearObservers();
 
         LOG(INFO) << "---------- UnInitialize | Begin ----------";
 
@@ -167,7 +195,7 @@ namespace nitroapi
 
         module_hook_data.module->OnLibraryUnload();
 
-        if (module_path != "<exe>")
+        if (module_path != "<exe>" && !module_hook_data.borrowed)
             nitro_utils::UnloadSysModule(module_hook_data.module_handle);
 
         module_hook_data.module_handle = nullptr;
@@ -181,36 +209,6 @@ namespace nitroapi
             V_strncpy(buffer, NITROAPI_INTERFACE_VERSION ", " __DATE__ " " __TIME__, size);
     }
 
-#ifdef NITROAPI_USE_PROFILER
-    void NitroApi::SetupProfiler()
-    {
-        static bool filter_result;
-
-        engine_data_->Host_FilterTime += [](float delta, int result) {
-            filter_result = result;
-
-            if (!filter_result)
-                return;
-
-            g_ProfilerInsideFrame = true;
-
-            OPTICK_FRAME("Frame");
-            OPTICK_TAG("Delta", std::to_string(delta * 1000).c_str());
-
-            OPTICK_EVENT("Host_FrameInternal");
-        };
-
-        engine_data_->Host_FrameInternal += [](float delta) {
-            if (!filter_result)
-                return;
-
-            g_ProfilerInsideFrame = false;
-
-            ::Optick::EndFrame();
-			::Optick::Update();
-        };
-    }
-#endif
 
     void NitroApi::RetrieveEngineBuildVersion()
     {

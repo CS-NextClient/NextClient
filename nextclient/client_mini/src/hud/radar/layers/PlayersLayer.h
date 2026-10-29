@@ -1,5 +1,8 @@
 #pragma once
 
+#include "hud/radar/render/RadarDraw.h"
+#include "hud/radar/integration/Performance.h"
+
 #include <array>
 #include <span>
 
@@ -36,6 +39,9 @@ public:
     };
 
 private:
+    RadarDrawContext& draw_;
+    radar::integration::Performance& performance_;
+
     struct PlayerJob
     {
         ncl_math::Vector2 pos;
@@ -106,7 +112,14 @@ private:
     float reset_time_{};
 
 public:
-    explicit PlayersLayer(RadarVisibility& visibility, const RadarPolicy& policy, const RadarBroadcast& broadcast, RadarText& text);
+    explicit PlayersLayer(
+        RadarDrawContext& draw,
+        radar::integration::Performance& performance,
+        RadarVisibility& visibility,
+        const RadarPolicy& policy,
+        const RadarBroadcast& broadcast,
+        RadarText& text
+    );
 
     void BeginFrame(float time);
     void Draw(const RadarFrame& frame);

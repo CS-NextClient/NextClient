@@ -17,5 +17,9 @@ public:
     RadarGlContext(const RadarGlContext&) = delete;
     RadarGlContext& operator=(const RadarGlContext&) = delete;
 
-    bool Initialize(std::string& error);
+    bool Initialize(std::string& error, bool double_buffer = false, int samples = 0, int width = 1, int height = 1);
+    bool MakeCurrent();
+    bool ClearCurrent();
+    void* native_context() const;
+    static void* Current();
 };

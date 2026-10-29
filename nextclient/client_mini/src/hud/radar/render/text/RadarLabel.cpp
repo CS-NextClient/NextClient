@@ -20,7 +20,7 @@ float RadarLabel_ComputeFlashFade(int flash_alpha)
     return 1.0f - ncl_math::SmoothStep(kFlashFadeStart, kFlashFadeEnd, (float)flash_alpha);
 }
 
-void RadarLabel_Draw(const char* text, int x, int y, ncl_math::Color color, int flash_alpha)
+void RadarLabel_Draw(RadarDrawContext& draw, const char* text, int x, int y, ncl_math::Color color, int flash_alpha)
 {
     // A hard cut, not a ramp: this font's drop shadow is baked black into the glyph and
     // cannot be faded. Not the additive shadow-free engine font instead, which is a much
@@ -30,7 +30,7 @@ void RadarLabel_Draw(const char* text, int x, int y, ncl_math::Color color, int 
         return;
     }
 
-    ncl_math::ColorF faded = RadarDraw_ApplyFade(color).ToFloat();
+    ncl_math::ColorF faded = draw.ApplyFade(color).ToFloat();
     gEngfuncs.pfnDrawSetTextColor(faded.r * faded.a, faded.g * faded.a, faded.b * faded.a);
     gEngfuncs.pfnDrawConsoleString(x, y, const_cast<char*>(text));
 }

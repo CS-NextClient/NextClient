@@ -336,7 +336,8 @@ class CommittedInputTest(unittest.TestCase):
                    for filename in filenames}
 
         modelled = {entry["path"] for entry in built["headers"]} | {built["fwd"]["path"]}
-        self.assertEqual(modelled, on_disk)
+        maintained = {"goldsrc/efx_api.h"}
+        self.assertEqual(modelled | maintained, on_disk)
 
 
 class ClangFormatTest(unittest.TestCase):

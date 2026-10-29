@@ -30,6 +30,14 @@ public:
         // Sent while the color is being chosen as well as when it is accepted, so the
         // model in front of the author changes under the cursor rather than after an OK.
         virtual void OnColorPicked(const char* param, const float rgba[4]) = 0;
+
+        virtual void OnColorPickEnded(const char* param, const float original[4], bool accepted)
+        {
+            if (!accepted)
+            {
+                OnColorPicked(param, original);
+            }
+        }
     };
 
 private:
@@ -71,6 +79,8 @@ private:
     // Set while the color is being read out of the field: writing the field back would
     // put the caret at its start after every keystroke.
     bool m_EditingField;
+    bool m_Accepted{};
+    bool m_Closed{};
 
     // What was modal before this window took over. Restored on every close, including the
     // title bar's button and Escape, neither of which passes through the buttons below.

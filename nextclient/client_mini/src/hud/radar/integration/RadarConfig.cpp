@@ -16,8 +16,8 @@ namespace
     // startup, instead of silently registering a wrong default.
     goldsrc::cvar_t* RegisterCvar(const char* name)
     {
-        RadarCvarDef def = RadarCvarDef_Get(name);
-        return gEngfuncs.pfnRegisterVariable(const_cast<char*>(def.name), const_cast<char*>(def.default_value), goldsrc::FCVAR_ARCHIVE);
+        cvars::CvarDefinition def = radar::FindCvar(name);
+        return gEngfuncs.pfnRegisterVariable(const_cast<char*>(def.name), const_cast<char*>(def.default_value), def.flags);
     }
 } // namespace
 
@@ -50,7 +50,7 @@ bool RadarConfig_IsAdvancedSelected()
     return g_RadarCfg.mode != nullptr && g_RadarCfg.mode->value >= 1.0f;
 }
 
-bool RadarConfig_CheckAdvancedActive()
+bool RadarConfig_CheckAdvancedActive(RadarDrawContext& draw)
 {
-    return RadarConfig_IsAdvancedSelected() && RadarDraw_CheckPrimsAvailable();
+    return RadarConfig_IsAdvancedSelected() && draw.CheckPrimsAvailable();
 }

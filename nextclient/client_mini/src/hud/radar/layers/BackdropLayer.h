@@ -1,5 +1,8 @@
 #pragma once
 
+#include "hud/radar/render/RadarDraw.h"
+#include "hud/radar/integration/Performance.h"
+
 #include <ncl_math/vec3.h>
 #include <goldsrc/engine/model.h>
 
@@ -29,7 +32,7 @@ class BackdropLayer
     goldsrc::model_t* clamped_sprite_{};
 
 public:
-    explicit BackdropLayer(SmokeRegistry& smoke);
+    explicit BackdropLayer(RadarDrawContext& draw, radar::integration::Performance& performance, SmokeRegistry& smoke);
 
     RadarMapStatus EnsureMap(RadarMapMode mode, const RadarMapLayers* layers, bool prepare_only = false);
     RadarMapStatus EnsureLayerImage(const RadarMapLayers& layers, int layer, uint64_t frame);
@@ -37,7 +40,7 @@ public:
     void ResetLayerImages();
     void Draw(const RadarFrame& frame);
 
-    void OnVidInit();
+    void OnVidInit(bool release = true);
 
     const RadarOverview& get_overview() const
     {
@@ -45,6 +48,9 @@ public:
     }
 
 private:
+    RadarDrawContext& draw_;
+    radar::integration::Performance& performance_;
+
     void DrawBackground(const RadarFrame& frame);
     void DrawRuntimeMap(const RadarFrame& frame);
     void DrawOverviewTiles(const RadarFrame& frame);

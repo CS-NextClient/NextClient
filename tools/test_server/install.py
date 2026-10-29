@@ -167,27 +167,31 @@ def Install_BuildPlugin(config, lock):
         Json_Write(root / ".nextclient-build.json", result["details"]["build"])
         profiles = root / "cstrike/addons/amxmodx/configs/nextclient_testlab/maps"
         profiles.mkdir(parents=True, exist_ok=True)
-        for profile in (kRepoRoot / "plugins/nextclient_testlab/maps").glob("*.ini"):
+        for profile in (kRepoRoot / "test_support/plugins/nextclient_testlab/maps").glob("*.ini"):
             Profiles_Install(profile, profiles / profile.name)
     return result
 
 
-def Install_RunCompiler(config, lock, scripting, destination):
+def Install_RunCompiler(config, lock, scripting, destination, source=None, extra_includes=()):
     compiler = scripting / ("amxxpc.exe" if os.name == "nt" else "amxxpc")
-    source = kRepoRoot / "plugins/nextclient_testlab/nextclient_testlab.sma"
+    source = source or kRepoRoot / "test_support/plugins/nextclient_testlab/nextclient_testlab.sma"
     includes = scripting / "include"
-    if not compiler.is_file() or not (includes / "reapi.inc").is_file():
+    required = "reapi.inc" if source.stem == "nextclient_testlab" else "fakemeta.inc"
+    if not compiler.is_file() or not (includes / required).is_file():
         return Result_Make(False, "compiler_missing", path=str(compiler))
     with tempfile.TemporaryDirectory(prefix="nct-compile-") as directory:
         stage = Path(directory)
         shutil.copytree(source.parent, stage / "source")
         shutil.copytree(includes, stage / "include")
-        temporary = stage / "nextclient_testlab.amxx"
+        for include in extra_includes:
+            shutil.copytree(include, stage / "include", dirs_exist_ok=True)
+        temporary = stage / (source.stem + ".amxx")
         result = Install_Compile([str(compiler), str(stage / "source" / source.name), f"-i{stage / 'include'}",
                                 f"-i{stage / 'source'}", f"-o{temporary}"],
                                  temporary, destination,
                                config["timeouts"]["compile_seconds"],
-                               Path_Resolve(config["paths"]["reports"]) / "install" / kPlatform / "compile.log")
+                               Path_Resolve(config["paths"]["reports"]) / "install" / kPlatform /
+                               ("compile.log" if source.stem == "nextclient_testlab" else source.stem + ".log"))
         if result["ok"]:
             sources = {path.name: hashlib.sha256(path.read_bytes()).hexdigest() for path in sorted(source.parent.iterdir())
                        if path.suffix in (".sma", ".inc")}
@@ -259,9 +263,12 @@ def Install_Configs(config):
     text = re.sub(r'^gamedll\s+.*$', 'gamedll "addons/metamod/metamod.dll"', text, flags=re.M)
     text = re.sub(r'^gamedll_linux\s+.*$', 'gamedll_linux "addons/metamod/metamod_i386.so"', text, flags=re.M)
     liblist.write_text(text, encoding="ascii")
+    from all_plugins import Plugins_EnableMaterials, kMaterialsMarker
+    if (root / kMaterialsMarker).is_file():
+        Plugins_EnableMaterials(root)
 
 
-def Install_Ensure(config, lock, repair_base=False):
+def Install_CheckRoot(config):
     root = Path_Resolve(config["server"]["root"])
     if root == kRepoRoot or root == Path(root.anchor) or root.is_relative_to(kRepoRoot / "assets"):
         return Result_Make(False, "unsafe_server_root", root=str(root))
@@ -275,6 +282,15 @@ def Install_Ensure(config, lock, repair_base=False):
         status = Runtime_Status(config)
         if not status["ok"] or status["details"].get("running"):
             return Result_Make(False, "server_running")
+    return None
+
+
+def Install_Ensure(config, lock, repair_base=False):
+    error = Install_CheckRoot(config)
+    if error:
+        return error
+    root = Path_Resolve(config["server"]["root"])
+    marker = root / ".nextclient-test-server.json"
     parts = [part for part in lock["components"] if part["platform"] == kPlatform]
     archives = [(part, Install_Download(part, Path_Resolve(config["paths"]["cache"]))) for part in parts]
     root.mkdir(parents=True, exist_ok=True)
@@ -305,6 +321,17 @@ def Install_Ensure(config, lock, repair_base=False):
     return result
 
 
+def Install_IsX86(path):
+    with Path(path).open("rb") as stream:
+        header = stream.read(64)
+        if os.name == "nt":
+            if len(header) != 64 or header[:2] != b"MZ":
+                return False
+            stream.seek(int.from_bytes(header[60:64], "little"))
+            return stream.read(6) == b"PE\x00\x00\x4c\x01"
+        return header[:5] == b"\x7fELF\x01" and header[18:20] == b"\x03\x00"
+
+
 def Install_Doctor(config, lock):
     root = Path_Resolve(config["server"]["root"])
     missing = Install_BaseMissing(root)
@@ -316,22 +343,19 @@ def Install_Doctor(config, lock):
     suffix = ".dll" if os.name == "nt" else "_i386.so"
     binaries.extend("cstrike/addons/amxmodx/modules/" + name + "_amxx" + suffix for name in ["cstrike", "fakemeta", "hamsandwich", "reapi", "json"])
     binaries.extend(["cstrike/addons/amxmodx/scripting/amxxpc.exe", "cstrike/addons/amxmodx/dlls/amxmodx_mm.dll"] if os.name == "nt" else ["cstrike/addons/amxmodx/scripting/amxxpc", "cstrike/addons/amxmodx/dlls/amxmodx_mm_i386.so"])
+    from all_plugins import kMaterialsMarker, kMaterialsPlugin
+    if (root / kMaterialsMarker).is_file():
+        binaries.append("cstrike/addons/amxmodx/modules/nextclientapi_amxx" + suffix)
+        missing.extend(name for name in ["cstrike/addons/amxmodx/plugins/" + kMaterialsPlugin,
+                       "cstrike/addons/amxmodx/scripting/include/next_client_api.inc",
+                       "cstrike/materials/test_nextclient/material_effects.mat",
+                       "cstrike/materials/test_nextclient/effects/dissolve.png"] if not (root / name).is_file())
     missing.extend(name for name in binaries if not (root / name).is_file())
     wrong_architecture = []
     for name in binaries:
         path = root / name
-        if path.is_file():
-            with path.open("rb") as stream:
-                header = stream.read(64)
-                if os.name == "nt":
-                    valid = header[:2] == b"MZ"
-                    if valid:
-                        stream.seek(int.from_bytes(header[60:64], "little"))
-                        valid = stream.read(6) == b"PE\x00\x00\x4c\x01"
-                else:
-                    valid = header[:5] == b"\x7fELF\x01" and header[18:20] == b"\x03\x00"
-                if not valid:
-                    wrong_architecture.append(name)
+        if path.is_file() and not Install_IsX86(path):
+            wrong_architecture.append(name)
     if os.name != "nt":
         environment = os.environ.copy()
         environment["LD_LIBRARY_PATH"] = str(root) + ":" + str(root / "cstrike/addons/amxmodx/scripting")

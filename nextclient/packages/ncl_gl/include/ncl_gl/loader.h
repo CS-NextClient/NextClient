@@ -10,4 +10,7 @@ namespace ncl_gl
     bool EnsureLoaded();
 
     bool IsLoaded();
+
+    // Requires a current GL context and resolves its entry points again.
+    bool Reload();
 }

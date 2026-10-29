@@ -1,6 +1,6 @@
 # Radar layers acceptance cases
 
-[Russian version](radar-layer-cases.ru.md) | [Procedure](radar-layers.md) | [Reference](../../assets/cstrike/overviews/radar_layers.md)
+[Russian version](radar-layer-cases.ru.md) | [Procedure](radar-layers.md) | [Reference](../radar-layers.md)
 
 ## Automated results
 

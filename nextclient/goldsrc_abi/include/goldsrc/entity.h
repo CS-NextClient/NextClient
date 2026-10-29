@@ -7,6 +7,7 @@
 
 namespace goldsrc
 {
+    inline constexpr int ET_NORMAL = 0;
     inline constexpr int EF_BRIGHTFIELD = 0x00000001;
     inline constexpr int EF_MUZZLEFLASH = 0x00000002;
     inline constexpr int EF_BRIGHTLIGHT = 0x00000004;

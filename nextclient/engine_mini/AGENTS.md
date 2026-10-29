@@ -1,7 +1,6 @@
 # Engine module
 
-`src/engine.cpp` owns initialization, engine hook subscriptions and shutdown. Stock engine state
-is reached through NitroApi; local wrappers must keep its ABI and callback ordering intact.
+`src/engine.cpp` owns initialization, engine hook subscriptions and shutdown. Stock engine state is reached through NitroApi; local wrappers must keep its ABI and callback ordering intact.
 
 ## Lifetime and hooks
 
@@ -21,9 +20,9 @@ is reached through NitroApi; local wrappers must keep its ABI and callback order
 
 ## Rendering and DLL boundaries
 
-- Release GL objects explicitly while the context is live. On Windows, `Draw_Shutdown` uninstalls
-  the text surface adapter and releases the text renderer before shutting down drawing. Static
-  destruction after engine teardown is too late for GL calls or access to engine-owned objects.
+The studio shader renderer has [local rules](src/graphics/render/AGENTS.md) and an [architecture reference](../../docs/renderer-architecture.md). Start with the [system flowcharts](../../docs/shader-rendering.md) for scene order, ownership and lifetime.
+
+- `RendererLifecycle` composes map, disconnect, client-state, context, normal shutdown, and fatal phases. It selects live release only when the tracked native context matches and GL entry points are initialized; loss forgets names without GL calls. Terminal shutdown stops copied studio/preview callbacks before nested disconnect and releases resources before engine services and hooks disappear. Standalone `Draw_Shutdown` releases resources and retains callbacks needed by later context creation. On Windows, terminal cleanup restores the text surface adapter; both live release and loss invalidate its atlas cells while preserving CPU fonts. Static destruction must not call GL or access expired engine objects.
 - Save and restore the GL state actually touched by a draw path, including active texture unit,
   bindings, current color and blend state. The stock renderer continues drawing afterward.
 - Framebuffer capture must account for the engine's bound draw framebuffer. Do not assume the
@@ -32,8 +31,12 @@ is reached through NitroApi; local wrappers must keep its ABI and callback order
   shared surface rather than introducing a second surface or font store in a consumer DLL.
   The text renderer has [additional rules](src/graphics/text/AGENTS.md).
 
+The new material-authoring records and interface, and the shader capability interface, belong to `render`. Qualify these types in external consumers and forward declarations. Preserve their field and virtual-method order and the allocated `EngineMini014` and `ShaderRenderer001` factory identifiers.
+
 ## Verification
 
-Build `engine_mini` and run the affected `engine_mini-tests`. ABI changes also require checking
-NitroApi and affected consumers. Keep tests for parsing and state transitions engine-free;
-record GL and live-engine behavior as unverified when only those tests have run.
+Build `engine_mini` in a non-test configuration when verifying the shipping DLL; with `NEXTCLIENT_BUILD_TESTS=ON`, that target is a static library for tests. Select affected cases from `engine_mini-tests` and the specialized renderer or lifecycle targets listed in the root rules. ABI changes also require checking NitroApi and affected consumers. Keep tests for parsing and state transitions engine-free; record GL and live-engine behavior as unverified when only those tests have run.
+
+## Monitoring ownership
+
+The `performance` subsystem owns frame collection, monitoring data and scopes, snapshot publication, presentation and trace integration. Its [local rules](src/performance/AGENTS.md) define owner-thread use and deferred frame-observer detachment. Package accounting and profiling helpers belong to [`ncl_perf`](../packages/ncl_perf/AGENTS.md).

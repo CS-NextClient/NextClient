@@ -11,9 +11,9 @@
 #include <vgui/IScheme.h>
 #include <strtools.h>
 #include <ncl_math/aabb.h>
-#include <ncl_utils/scoped_ms_counter.h>
 
 #include "hud/radar/render/RadarDraw.h"
+#include "hud/radar/integration/Performance.h"
 
 namespace
 {
@@ -271,7 +271,7 @@ RadarText::Layout& RadarText::ResolveLayout(int slot, const char* utf8, int devi
 
 bool RadarText::CheckAvailable(int device_px)
 {
-    return RadarDraw_CheckPrimsAvailable() && ResolveFont(device_px) != kInvalidTextFont;
+    return draw_.CheckPrimsAvailable() && ResolveFont(device_px) != kInvalidTextFont;
 }
 
 int RadarText::ResolveStandardPx() const
@@ -283,7 +283,7 @@ int RadarText::ResolveStandardPx() const
 
 void RadarText::DrawCentered(int slot, const char* utf8, ncl_math::Vector2 pos, int device_px, ncl_math::Color color)
 {
-    ncl_utils::ScopedMsCounter counter{ms_};
+    performance::PerformanceCpuScope scope(performance_.get_monitor(), performance::PerfStage::RadarText);
     const Layout& layout = ResolveLayout(slot, utf8, device_px);
 
     if (layout.count == 0)
@@ -302,7 +302,7 @@ void RadarText::DrawCentered(int slot, const char* utf8, ncl_math::Vector2 pos, 
             {origin_x + laid.rect.min.x, origin_y + laid.rect.min.y},
             {origin_x + laid.rect.max.x, origin_y + laid.rect.max.y}
         };
-        RadarDraw_DrawGlyph(laid.texture, rect, laid.uv, color);
+        draw_.DrawGlyph(laid.texture, rect, laid.uv, color);
     }
 }
 

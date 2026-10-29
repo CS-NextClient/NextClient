@@ -130,7 +130,7 @@ void BombMarker::DrawMarker(const RadarFrame& frame, ncl_math::Vector3 world, in
     ncl_math::Vector2 s = placement.marker;
     float f = ncl_math::Saturate(fade) * style.opacity;
 
-    RadarDraw_BeginPrims();
+    frame.draw.BeginPrims();
 
     int a = 255;
 
@@ -154,7 +154,7 @@ void BombMarker::DrawMarker(const RadarFrame& frame, ncl_math::Vector3 world, in
 
             if (ra > 0)
             {
-                RadarDraw_DrawRing(s, rr, rr - 2.5f, RadarPalette::kGold.WithAlpha(ra));
+                frame.draw.DrawRing(s, rr, rr - 2.5f, RadarPalette::kGold.WithAlpha(ra));
             }
         }
 
@@ -164,10 +164,10 @@ void BombMarker::DrawMarker(const RadarFrame& frame, ncl_math::Vector3 world, in
 
     a = (int)(a * f);
 
-    RadarDraw_DrawBomb(s, half_extent, RadarPalette::kGold.WithAlpha(a));
-    RadarDraw_DrawLayerIndicator(placement.indicator, style.vertical, size, RadarPalette::kGold.WithAlpha(a));
+    frame.draw.DrawBomb(s, half_extent, RadarPalette::kGold.WithAlpha(a));
+    frame.draw.DrawLayerIndicator(placement.indicator, style.vertical, size, RadarPalette::kGold.WithAlpha(a));
 
-    RadarDraw_EndPrims();
+    frame.draw.EndPrims();
 }
 
 void BombMarker::DrawFromBroadcast(const RadarFrame& frame, const ObjectiveEntities& entities, int size, float interp_lag)
@@ -301,10 +301,10 @@ void BombMarker::DrawServerMarker(const RadarFrame& frame, int size)
     RadarLayerPlacement placement =
         RadarLayerMarker_Place(frame.shape, frame.t.WorldToScreen({marker_pos_.x, marker_pos_.y}), extent, style, size);
     ncl_math::Color color = RadarPalette::kServerMarker.WithAlpha((int)(255 * style.opacity));
-    RadarDraw_BeginPrims();
-    ServerMarker_DrawShape(placement.marker, size, color);
-    RadarDraw_DrawLayerIndicator(placement.indicator, style.vertical, size, color);
-    RadarDraw_EndPrims();
+    frame.draw.BeginPrims();
+    ServerMarker_DrawShape(frame.draw, placement.marker, size, color);
+    frame.draw.DrawLayerIndicator(placement.indicator, style.vertical, size, color);
+    frame.draw.EndPrims();
 }
 
 void BombMarker::Draw(const RadarFrame& frame, const ObjectiveEntities& entities, int size)

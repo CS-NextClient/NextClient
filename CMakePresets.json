@@ -57,6 +57,30 @@
     },
 
     {
+      "name": "ninja-tests",
+      "inherits": "ninja",
+      "cacheVariables": {
+        "NEXTCLIENT_BUILD_TESTS": "ON"
+      }
+    },
+
+    {
+      "name": "ninja-profiler",
+      "inherits": "ninja",
+      "cacheVariables": {
+        "USE_PROFILER": "ON"
+      }
+    },
+
+    {
+      "name": "ninja-profiler-tests",
+      "inherits": "ninja-tests",
+      "cacheVariables": {
+        "USE_PROFILER": "ON"
+      }
+    },
+
+    {
       "name": "linux",
       "inherits": "base",
       "generator": "Ninja Multi-Config",
@@ -109,6 +133,24 @@
       "name": "ninja-debug",
       "configurePreset": "ninja",
       "configuration": "Debug"
+    },
+
+    {
+      "name": "ninja-tests-release",
+      "configurePreset": "ninja-tests",
+      "configuration": "Release"
+    },
+
+    {
+      "name": "ninja-profiler-release",
+      "configurePreset": "ninja-profiler",
+      "configuration": "Release"
+    },
+
+    {
+      "name": "ninja-profiler-tests-release",
+      "configurePreset": "ninja-profiler-tests",
+      "configuration": "Release"
     },
 
     {

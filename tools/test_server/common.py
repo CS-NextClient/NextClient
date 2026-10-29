@@ -15,7 +15,8 @@ kDefaults = {
     "schema": 1,
     "server": {"root": f"build/test-server/{kPlatform}", "bind": "127.0.0.1", "port": 27020,
                "maxplayers": 8, "map": "cs_office", "lan": True},
-    "paths": {"cache": "build/test-server/cache", "reports": "out/manual-tests"},
+    "paths": {"cache": "build/test-server/cache", "reports": "out/manual-tests",
+              "server_api": "auto", "server_api_module": "auto"},
     "timeouts": {"ready_seconds": 60, "steamcmd_seconds": 3600, "compile_seconds": 120},
 }
 

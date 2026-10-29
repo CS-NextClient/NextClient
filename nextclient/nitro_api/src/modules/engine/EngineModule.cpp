@@ -102,6 +102,7 @@ namespace nitroapi
         RegisterVar(&engine_data_->maxTransObjs, "maxTransObjs");
         RegisterVar(&engine_data_->gLoadSky, "gLoadSky");
         RegisterVar(&engine_data_->lightmap_textures, "lightmap_textures");
+        RegisterVar(&engine_data_->cl_elights, "cl_elights");
         RegisterVar(&engine_data_->vgui2_surface, "vgui2_surface");
         RegisterVar(&engine_data_->ip_sockets, "ip_sockets");
         RegisterVar(&engine_data_->ipx_sockets, "ipx_sockets");

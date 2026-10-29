@@ -32,6 +32,7 @@ namespace text_render
 
         // Must run while the GL context is still current.
         void ReleaseGl();
+        void ForgetGl();
 
     private:
         struct Page

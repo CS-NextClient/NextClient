@@ -1,5 +1,7 @@
 #pragma once
 
+class RadarDrawContext;
+
 #include <ncl_math/color.h>
 
 // Above this flash strength the radar is washed bright enough that a label reads as a
@@ -22,4 +24,4 @@ inline float RadarLabel_ComputeFlashFadeFor(bool batched, int flash_alpha)
 }
 
 // flash_alpha is 0 when there is no flash.
-void RadarLabel_Draw(const char* text, int x, int y, ncl_math::Color color, int flash_alpha);
+void RadarLabel_Draw(RadarDrawContext& draw, const char* text, int x, int y, ncl_math::Color color, int flash_alpha);

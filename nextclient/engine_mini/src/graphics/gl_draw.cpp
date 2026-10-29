@@ -1,8 +1,10 @@
 #include "engine.h"
 
+#include <algorithm>
+
 #include <SDL_video.h>
 #include <glad/glad.h>
-#include <optick.h>
+#include <ncl_perf/profiler.h>
 #include <goldsrc/cvar.h>
 #include <goldsrc/engine/client_state.h>
 #include <goldsrc/engine/model.h>
@@ -10,6 +12,7 @@
 #include <goldsrc/format/wad.h>
 #include <goldsrc/types.h>
 
+#include "graphics/TextureBindingState.h"
 #include "common/host.h"
 #include "common/cmd.h"
 #include "common/cvar.h"
@@ -24,9 +27,19 @@
 
 #include "view.h"
 #include "gl_local.h"
+#include "graphics/render/material/material_edit.h"
+#include "graphics/render/render_capture.h"
+#include "graphics/render/material/ServerMaterials.h"
+#include "graphics/render/RenderConfig.h"
+#include "graphics/render/shader_manager.h"
+#include "graphics/render/StudioDraw.h"
+#include "graphics/render/RendererLifecycle.h"
+#include "graphics/render/StudioDump.h"
+#include "graphics/render/StudioIntercept.h"
 #include "text/text_render.h"
 #include "qgl.hpp"
 #include "vgui2.h"
+#include "performance/performance_integration.h"
 
 using namespace tex;
 
@@ -158,6 +171,8 @@ void BuildGammaTable(float g)
         lightgammatable[i] = value;
     }
 
+    render::Studio_OnGammaChanged();
+
     // fill lineargammatable and screengammatable
 
     for (int i = 0; i < 1024; ++i)
@@ -284,7 +299,7 @@ static void AdjustSubRect(
     const goldsrc::wrect_t* prcSubRect
 )
 {
-    OPTICK_EVENT();
+    NCL_PROFILE_SCOPE();
 
     if (!prcSubRect)
         return;
@@ -313,7 +328,7 @@ static void AdjustSubRect(
 
 void GL_Bind(int texnum)
 {
-    OPTICK_EVENT();
+    NCL_PROFILE_SCOPE();
 
     if (*p_currenttexture == texnum)
     {
@@ -351,16 +366,41 @@ void GL_Bind(int texnum)
 
 GLuint GL_GenTexture()
 {
-    OPTICK_EVENT();
+    NCL_PROFILE_SCOPE();
 
     GLuint tex;
     qglGenTextures(1, &tex);
     return tex;
 }
 
+TextureBindingCacheState GL_CaptureTextureCache()
+{
+    TextureBindingCacheState state{};
+
+    if (p_currenttexture != nullptr)
+    {
+        state.target = oldtarget;
+        state.current = *p_currenttexture;
+        std::copy(std::begin(cnttextures), std::end(cnttextures), state.bindings.begin());
+        state.initialized = true;
+    }
+
+    return state;
+}
+
+void GL_RestoreTextureCache(const TextureBindingCacheState& state)
+{
+    if (state.initialized)
+    {
+        oldtarget = state.target;
+        *p_currenttexture = state.current;
+        std::copy(state.bindings.begin(), state.bindings.end(), cnttextures);
+    }
+}
+
 void GL_SelectTexture(GLenum target)
 {
-    OPTICK_EVENT();
+    NCL_PROFILE_SCOPE();
 
     if (!gl_mtexable)
     {
@@ -381,14 +421,14 @@ void GL_SelectTexture(GLenum target)
 
 void GL_UnloadTextures()
 {
-    OPTICK_EVENT();
+    NCL_PROFILE_SCOPE();
 
     g_TextureManagerGlob.ClearSession();
 }
 
 void GL_UnloadTexture(const char* identifier)
 {
-    OPTICK_EVENT();
+    NCL_PROFILE_SCOPE();
 
     char identifier_new[TexIdentifierStr::kMaxSize + 1];
     V_sprintf_safe(identifier_new, "%s-", identifier);
@@ -416,7 +456,7 @@ int GL_LoadTexture2(
     int filter
 )
 {
-    OPTICK_EVENT();
+    NCL_PROFILE_SCOPE();
 
     TextureLifetime lifetime = TextureLifetime::Persistent;
 
@@ -461,14 +501,14 @@ int GL_LoadTexture(
     uint8_t* pPal
 )
 {
-    OPTICK_EVENT();
+    NCL_PROFILE_SCOPE();
 
     return GL_LoadTexture2(identifier, textureType, width, height, data, mipmap, iType, pPal, gl_filter_max);
 }
 
 void GL_DisableMultitexture()
 {
-    OPTICK_EVENT();
+    NCL_PROFILE_SCOPE();
 
     if (*p_mtexenabled)
     {
@@ -480,7 +520,7 @@ void GL_DisableMultitexture()
 
 static void DrawQuad(float x_left, float y_top, float x_right, float y_bottom, float uv_left, float uv_top, float uv_right, float uv_bottom)
 {
-    OPTICK_EVENT();
+    NCL_PROFILE_SCOPE();
 
     qglBegin(GL_QUADS);
 
@@ -501,7 +541,7 @@ static void DrawQuad(float x_left, float y_top, float x_right, float y_bottom, f
 
 static void SetAlphaColor(goldsrc::colorVec* color, float alpha)
 {
-    OPTICK_EVENT();
+    NCL_PROFILE_SCOPE();
 
     float final_alpha = alpha / 255.0f;
 
@@ -520,7 +560,7 @@ static void SetAlphaColor(goldsrc::colorVec* color, float alpha)
 
 static void FillTranslatedPixels(unsigned int* trans, int width, int height)
 {
-    OPTICK_EVENT();
+    NCL_PROFILE_SCOPE();
 
     const int tile_size = 64;
     const unsigned int transparent_color = 0xFF0000FF;
@@ -541,7 +581,7 @@ static void FillTranslatedPixels(unsigned int* trans, int width, int height)
 
 void Draw_TransPicTranslate(int x, int y, goldsrc::qpic_t* pic)
 {
-    OPTICK_EVENT();
+    NCL_PROFILE_SCOPE();
 
     if (!pic)
     {
@@ -579,7 +619,7 @@ void Draw_TransPicTranslate(int x, int y, goldsrc::qpic_t* pic)
 
 void Draw_AlphaPic(int x, int y, goldsrc::qpic_t* pic, goldsrc::colorVec* pc, int alpha)
 {
-    OPTICK_EVENT();
+    NCL_PROFILE_SCOPE();
 
     if (!pic)
     {
@@ -614,7 +654,7 @@ void Draw_AlphaPic(int x, int y, goldsrc::qpic_t* pic, goldsrc::colorVec* pc, in
 
 void Draw_AlphaAddPic(int x, int y, goldsrc::qpic_t* pic, goldsrc::colorVec* color, int alpha)
 {
-    OPTICK_EVENT();
+    NCL_PROFILE_SCOPE();
 
     if (!pic)
     {
@@ -665,7 +705,7 @@ void Draw_AlphaSubPic(int x_dest,
                       goldsrc::colorVec* color,
                       int alpha)
 {
-    OPTICK_EVENT();
+    NCL_PROFILE_SCOPE();
 
     const GLfloat inv_255 = 1.0f / 255.0f;
 
@@ -705,7 +745,7 @@ void Draw_AlphaSubPic(int x_dest,
 
 void Draw_Pic2(int x, int y, int w, int h, goldsrc::qpic_t* pic)
 {
-    OPTICK_EVENT();
+    NCL_PROFILE_SCOPE();
 
     if (!pic)
     {
@@ -737,7 +777,7 @@ void Draw_Pic2(int x, int y, int w, int h, goldsrc::qpic_t* pic)
 
 void Draw_Pic(int x, int y, goldsrc::qpic_t* pic)
 {
-    OPTICK_EVENT();
+    NCL_PROFILE_SCOPE();
 
     if (!pic)
     {
@@ -770,21 +810,21 @@ void Draw_Pic(int x, int y, goldsrc::qpic_t* pic)
 
 void Draw_DecalSetName(int decal, const char* name)
 {
-    OPTICK_EVENT();
+    NCL_PROFILE_SCOPE();
 
     eng()->Draw_DecalSetName(decal, name);
 }
 
 void Draw_SpriteFrame(goldsrc::mspriteframe_t* pFrame, unsigned short* pPalette, int x, int y, const goldsrc::wrect_t* prcSubRect)
 {
-    OPTICK_EVENT();
+    NCL_PROFILE_SCOPE();
 
     Draw_Frame(pFrame, x, y, prcSubRect);
 }
 
 void Draw_SpriteFrameAdditive(goldsrc::mspriteframe_t* pFrame, unsigned short* pPalette, int x, int y, const goldsrc::wrect_t* prcSubRect)
 {
-    OPTICK_EVENT();
+    NCL_PROFILE_SCOPE();
 
     qglEnable(GL_BLEND);
     qglBlendFunc(GL_ONE, GL_ONE);
@@ -794,7 +834,7 @@ void Draw_SpriteFrameAdditive(goldsrc::mspriteframe_t* pFrame, unsigned short* p
 
 void Draw_SpriteFrameHoles(goldsrc::mspriteframe_t* pFrame, unsigned short* pPalette, int x, int y, const goldsrc::wrect_t* prcSubRect)
 {
-    OPTICK_EVENT();
+    NCL_PROFILE_SCOPE();
 
     qglEnable(GL_ALPHA_TEST);
     if (gl_spriteblend->value != 0.0)
@@ -819,7 +859,7 @@ void Draw_SpriteFrameGeneric(
     int height
 )
 {
-    OPTICK_EVENT();
+    NCL_PROFILE_SCOPE();
 
     int old_width = pFrame->width;
     pFrame->width = width;
@@ -838,7 +878,7 @@ void Draw_SpriteFrameGeneric(
 
 void Draw_Frame(goldsrc::mspriteframe_t* pFrame, int ix, int iy, const goldsrc::wrect_t* prcSubRect)
 {
-    OPTICK_EVENT();
+    NCL_PROFILE_SCOPE();
 
     float left = 0.0;
     float right = 1.0;
@@ -924,7 +964,7 @@ void DisableScissorTest()
 
 goldsrc::qpic_t* LoadTransPic(const char* pszName, goldsrc::qpic_t* ppic)
 {
-    OPTICK_EVENT();
+    NCL_PROFILE_SCOPE();
 
     if (!ppic)
     {
@@ -963,7 +1003,7 @@ goldsrc::qpic_t* LoadTransPic(const char* pszName, goldsrc::qpic_t* ppic)
 
 void Draw_CacheWadInitFromFile(FileHandle_t hFile, int len, const char* name, int cacheMax, goldsrc::cachewad_t* wad)
 {
-    OPTICK_EVENT();
+    NCL_PROFILE_SCOPE();
 
     goldsrc::wadinfo_t header;
 
@@ -997,7 +1037,7 @@ void Draw_CacheWadInitFromFile(FileHandle_t hFile, int len, const char* name, in
 
 void Draw_CacheWadInit(const char* name, int cacheMax, goldsrc::cachewad_t* wad)
 {
-    OPTICK_EVENT();
+    NCL_PROFILE_SCOPE();
 
     FileHandle_t file = FS_Open(name, "rb");
     if (!file)
@@ -1012,7 +1052,7 @@ void Draw_CacheWadInit(const char* name, int cacheMax, goldsrc::cachewad_t* wad)
 
 void Draw_FreeWad(goldsrc::cachewad_t* pWad)
 {
-    OPTICK_EVENT();
+    NCL_PROFILE_SCOPE();
 
     if (!pWad)
     {
@@ -1093,7 +1133,7 @@ void GL_Texels_f()
 
 goldsrc::qpic_t* LoadTransBMP(const char* name)
 {
-    OPTICK_EVENT();
+    NCL_PROFILE_SCOPE();
 
     goldsrc::qpic_t* lump_name = (goldsrc::qpic_t*)W_GetLumpName(0, name);
     return LoadTransPic(name, lump_name);
@@ -1101,7 +1141,7 @@ goldsrc::qpic_t* LoadTransBMP(const char* name)
 
 int GL_LoadPicTexture(goldsrc::qpic_t* pic, const char* pszName)
 {
-    OPTICK_EVENT();
+    NCL_PROFILE_SCOPE();
 
     return GL_LoadTexture2(
         pszName,
@@ -1118,7 +1158,7 @@ int GL_LoadPicTexture(goldsrc::qpic_t* pic, const char* pszName)
 
 goldsrc::qpic_t* Draw_PicFromWad(const char* name)
 {
-    OPTICK_EVENT();
+    NCL_PROFILE_SCOPE();
 
     goldsrc::qpic_t* p;
     glpic_t* gl;
@@ -1137,7 +1177,7 @@ goldsrc::qpic_t* Draw_PicFromWad(const char* name)
 
 void gl_texturemode_hook_callback(goldsrc::cvar_t* cvar)
 {
-    OPTICK_EVENT();
+    NCL_PROFILE_SCOPE();
 
     if (!cvar)
     {
@@ -1182,9 +1222,16 @@ void Draw_Init()
     VGUI2_InstallTextSurface();
 
     Cmd_AddCommand("gl_texels", GL_Texels_f);
+    performance::runtime::RegisterControls();
 #ifdef _WIN32
     TextRender_RegisterDiagnostics();
 #endif
+    render::Config_Init();
+    render::Studio_RegisterCommands();
+    render::Capture_RegisterCommands();
+    render::Dump_RegisterCommands();
+    render::ServerMaterials_RegisterCommands();
+    render::MaterialEdit_RegisterCommands();
     Cvar_RegisterVariable(&gl_max_size);
     Cvar_RegisterVariable(&gl_round_down);
     Cvar_RegisterVariable(&gl_picmip);
@@ -1230,6 +1277,9 @@ void Draw_Init()
 
 void Draw_Shutdown()
 {
+    render::GetLifecycle().OnDisconnectBegin();
+    render::GetLifecycle().ReleaseLiveContext();
+
     if (!g_DrawInitialized)
     {
         return;

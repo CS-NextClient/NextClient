@@ -5,7 +5,7 @@
 #include <Windows.h>
 #include <glad/glad.h>
 #include <interface.h>
-#include <optick.h>
+#include <ncl_perf/profiler.h>
 #include <vgui/IPanel.h>
 
 #include "text_render.h"
@@ -412,7 +412,7 @@ namespace
 
         void DrawPrintText(const wchar_t* text, int text_len)
         {
-            OPTICK_EVENT();
+            NCL_PROFILE_SCOPE();
             g_Stats.print_calls++;
 
             if (!text)

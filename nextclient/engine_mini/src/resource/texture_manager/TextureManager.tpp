@@ -38,7 +38,7 @@ namespace tex
         int filter
     )
     {
-        OPTICK_EVENT();
+        NCL_PROFILE_SCOPE();
 
         auto it = identifier_to_index_.find(identifier);
         if (it != identifier_to_index_.end())
@@ -111,7 +111,7 @@ namespace tex
     template <uint32_t PersistentCapacity, uint32_t SessionCapacity>
     Texture* TextureManager<PersistentCapacity, SessionCapacity>::Get(TextureHandle handle)
     {
-        OPTICK_EVENT();
+        NCL_PROFILE_SCOPE();
 
         if (handle.index >= slots_.size())
         {
@@ -136,7 +136,7 @@ namespace tex
     template <uint32_t PersistentCapacity, uint32_t SessionCapacity>
     Texture* TextureManager<PersistentCapacity, SessionCapacity>::GetByGLId(int texnum)
     {
-        OPTICK_EVENT();
+        NCL_PROFILE_SCOPE();
 
         auto it = gl_id_to_index_.find(texnum);
         if (it == gl_id_to_index_.end())
@@ -190,7 +190,7 @@ namespace tex
     template <uint32_t PersistentCapacity, uint32_t SessionCapacity>
     void TextureManager<PersistentCapacity, SessionCapacity>::Destroy(TextureHandle handle)
     {
-        OPTICK_EVENT();
+        NCL_PROFILE_SCOPE();
 
         if (handle.index >= slots_.size())
         {
@@ -228,7 +228,7 @@ namespace tex
     template <uint32_t PersistentCapacity, uint32_t SessionCapacity>
     void TextureManager<PersistentCapacity, SessionCapacity>::ClearSession()
     {
-        OPTICK_EVENT();
+        NCL_PROFILE_SCOPE();
 
         int32_t node = lru_head_;
 
@@ -249,7 +249,7 @@ namespace tex
     template <uint32_t PersistentCapacity, uint32_t SessionCapacity>
     uint32_t TextureManager<PersistentCapacity, SessionCapacity>::AllocateSlot(TextureLifetime lifetime)
     {
-        OPTICK_EVENT();
+        NCL_PROFILE_SCOPE();
 
         int32_t* free_head = (lifetime == TextureLifetime::Persistent) ? &persistent_free_head_ : &session_free_head_;
 
@@ -275,7 +275,7 @@ namespace tex
     template <uint32_t PersistentCapacity, uint32_t SessionCapacity>
     void TextureManager<PersistentCapacity, SessionCapacity>::FreeSlot(uint32_t index)
     {
-        OPTICK_EVENT();
+        NCL_PROFILE_SCOPE();
 
         TextureSlot& slot = slots_[index];
 
@@ -288,7 +288,7 @@ namespace tex
     template <uint32_t PersistentCapacity, uint32_t SessionCapacity>
     void TextureManager<PersistentCapacity, SessionCapacity>::EvictOne()
     {
-        OPTICK_EVENT();
+        NCL_PROFILE_SCOPE();
 
         int32_t node = lru_head_;
 
@@ -323,7 +323,7 @@ namespace tex
     template <uint32_t PersistentCapacity, uint32_t SessionCapacity>
     void TextureManager<PersistentCapacity, SessionCapacity>::LruPushBack(uint32_t index)
     {
-        OPTICK_EVENT();
+        NCL_PROFILE_SCOPE();
 
         TextureSlot& slot = slots_[index];
 
@@ -346,7 +346,7 @@ namespace tex
     template <uint32_t PersistentCapacity, uint32_t SessionCapacity>
     void TextureManager<PersistentCapacity, SessionCapacity>::LruRemove(uint32_t index)
     {
-        OPTICK_EVENT();
+        NCL_PROFILE_SCOPE();
 
         TextureSlot& slot = slots_[index];
 

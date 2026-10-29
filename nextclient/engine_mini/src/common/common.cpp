@@ -6,7 +6,7 @@
 #include <goldsrc/engine/resource.h>
 #include <goldsrc/limits.h>
 #include <goldsrc/types.h>
-#include <optick.h>
+#include <ncl_perf/profiler.h>
 #include "../console/console.h"
 #include "../common/filesystem.h"
 #include "../common/sys_dll.h"
@@ -57,7 +57,7 @@ void COM_ClearCustomizationList(goldsrc::customization_t* pHead, goldsrc::qboole
 
 int COM_SizeofResourceList(goldsrc::resource_t* pList, goldsrc::resourceinfo_t* ri)
 {
-    OPTICK_EVENT();
+    NCL_PROFILE_SCOPE();
 
     int nSize = 0;
     goldsrc::resource_t* p;
@@ -78,7 +78,7 @@ int COM_SizeofResourceList(goldsrc::resource_t* pList, goldsrc::resourceinfo_t* 
 
 char* COM_BinPrintf(unsigned char* buf, int length)
 {
-    OPTICK_EVENT();
+    NCL_PROFILE_SCOPE();
 
     char szChunk[10];
     static char szReturn[4096];
@@ -95,7 +95,7 @@ char* COM_BinPrintf(unsigned char* buf, int length)
 
 void COM_ExplainDisconnection(goldsrc::qboolean bPrint, const char* fmt, ...)
 {
-    OPTICK_EVENT();
+    NCL_PROFILE_SCOPE();
 
     static char buffer[1024];
 
@@ -127,7 +127,7 @@ int COM_CheckString(const char* string)
 // notice this function works only if we are running as dedicated server
 int COM_CheckParm(const char *parm)
 {
-    OPTICK_EVENT();
+    NCL_PROFILE_SCOPE();
 
     int i;
 
@@ -149,7 +149,7 @@ int COM_CheckParm(const char *parm)
 
 void COM_InitArgv(int argc, char *argv[])
 {
-    OPTICK_EVENT();
+    NCL_PROFILE_SCOPE();
 
     goldsrc::qboolean safe = 0;
 
@@ -211,7 +211,7 @@ void COM_InitArgv(int argc, char *argv[])
 
 const char *COM_FileBase_s(const char *in, char *out, int size)
 {
-    OPTICK_EVENT();
+    NCL_PROFILE_SCOPE();
 
     if (!in || !in[0])
     {
@@ -266,14 +266,14 @@ const char *COM_FileBase_s(const char *in, char *out, int size)
 
 void COM_FileBase(const char *in, char *out)
 {
-    OPTICK_EVENT();
+    NCL_PROFILE_SCOPE();
 
     COM_FileBase_s(in, out, -1);
 }
 
 unsigned char *COM_LoadStackFile(const char *path, void *buffer, int bufsize, int *length)
 {
-    OPTICK_EVENT();
+    NCL_PROFILE_SCOPE();
 
     *p_loadbuf = (uint8_t*)buffer;
     *p_loadsize = bufsize;
@@ -283,7 +283,7 @@ unsigned char *COM_LoadStackFile(const char *path, void *buffer, int bufsize, in
 
 unsigned char* COM_LoadFile(const char *path, int usehunk, int *pLength)
 {
-    OPTICK_EVENT();
+    NCL_PROFILE_SCOPE();
 
     if (!path || !path[0])
         return nullptr;
@@ -346,14 +346,14 @@ unsigned char* COM_LoadFile(const char *path, int usehunk, int *pLength)
 
 unsigned char* COM_LoadFileForMe(const char* filename, int* pLength)
 {
-    OPTICK_EVENT();
+    NCL_PROFILE_SCOPE();
 
     return COM_LoadFile(filename, 5, pLength);
 }
 
 unsigned char* COM_LoadFileLimit(const char* path, int pos, int cbmax, int* pcbread, FileHandle_t* phFile)
 {
-    OPTICK_EVENT();
+    NCL_PROFILE_SCOPE();
 
     FileHandle_t hFile;
     unsigned char* buf;

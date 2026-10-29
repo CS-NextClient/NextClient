@@ -1,7 +1,6 @@
 # NitroApi
 
-This subtree owns build-specific addresses, stock function signatures and hook registration.
-The engine and client modules consume those facts through `EngineData` and `ClientData`.
+This subtree owns build-specific addresses, stock function signatures and hook registration. The engine and client modules consume those facts through `EngineData` and `ClientData`.
 
 ## Extending engine access
 
@@ -35,9 +34,16 @@ The engine and client modules consume those facts through `EngineData` and `Clie
   check other worktrees and refs that still use it. See the
   [maintenance reference](../../docs/goldsrc-abi.md#frozen-extraction-paths) for the frozen extraction paths.
 
+Private borrowed SDL discovery belongs to `nitroapi::sdl2`; hook profiling names belong to `nitroapi::profiling`. Keep helpers and their consumers inside those boundaries without repeating a subsystem prefix in function names.
+
+## Frame lifecycle
+
+`NITRO_FRAME_LIFECYCLE_001` exposes independent numeric subscriptions on the host thread. Subscribers own their IDs and must unsubscribe before destroying observers. Invocation snapshots contain IDs and per-recipient entry/acceptance state; validity is checked before every callback. Entry and acceptance follow registration order; exit follows reverse order after the ordinary hook chain. `FrameLifecycle_ClearObservers()` invalidates all IDs before NitroApi unloads modules, without resetting the ID sequence. Keep `FrameLifecycleInvocation` around the outer `Host_Frame`, with body-depth markers around `Host_FrameInternal`, so engine nonlocal aborts still reach the outer exit.
+
+Each private `FrameLifecycleService` owns its registration IDs, current invocation chain and retained recipient frames. `FrameLifecycleInvocation` receives its service explicitly. Static hook installation binds the stable default service once; factory and shutdown adapters use that same owner. Frame leases survive all reverse-exit callbacks, including reentry after current-invocation restoration. `Clear()` preserves leased storage and the monotonic ID sequence. See [lifecycle ownership](../../docs/frame-lifecycle.md) for the storage and verification boundaries.
+
+The lifecycle interfaces, subscription IDs, invocation owner and helpers belong to `nitroapi`. A subscriber that needs the current outer Host exit must keep its observer alive until that callback completes. The monitor implements this through [deferred detachment](../engine_mini/src/performance/AGENTS.md); the numeric subscription and invalidation rules remain owned here.
+
 ## Verification
 
-Build `nitro_api` and the affected consumers after a public API change. `goldsrc_abi_golden` checks
-32-bit layouts during the build; it does not verify address-provider matches or live hook order.
-For a change to public ABI or DLL boundaries, compare the relevant exports and layouts as well as
-compilation results, and state which runtime behavior remains unverified.
+Build `nitro_api` and the affected consumers after a public API change. `goldsrc_abi_golden` checks 32-bit layouts during the build; it does not verify address-provider matches or live hook order. For a change to public ABI or DLL boundaries, compare the relevant exports and layouts as well as compilation results, and state which runtime behavior remains unverified.

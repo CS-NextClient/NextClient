@@ -3,7 +3,7 @@ project(engine_mini)
 set(OUTPUT_NAME "next_engine_mini")
 
 find_package(concurrencpp CONFIG REQUIRED)
-find_package(optic REQUIRED)
+find_package(CMakeRC REQUIRED)
 find_package(SDL2 REQUIRED)
 find_package(imageinfo CONFIG REQUIRED)
 find_package(EASTL CONFIG REQUIRED)
@@ -43,6 +43,36 @@ add_library(${PROJECT_NAME} ${LIBRARY_BUILD_TYPE}
         ${ENGINE_MINI_SOURCES}
 )
 
+cmrc_add_resource_library(
+        ${PROJECT_NAME}_rc
+        ALIAS ${PROJECT_NAME}::rc
+
+        assets/shaders/preview_pick.vert
+        assets/shaders/preview_pick.frag
+        assets/shaders/preview_outline.vert
+        assets/shaders/preview_outline.frag
+        assets/shaders/test_quad.vert
+        assets/shaders/test_quad.frag
+        assets/shaders/studio.vert
+        assets/shaders/studio.frag
+        assets/shaders/studio_legacy.frag
+        assets/shaders/studio.json
+        assets/shaders/material_coverage.glsl
+        assets/shaders/material_effect_clock.glsl
+        assets/shaders/material_glitch.glsl
+        assets/shaders/material_glitch_surface.glsl
+        assets/shaders/studio_transform.glsl
+        assets/shaders/studio_fog.glsl
+        assets/shaders/material_occlusion.glsl
+        assets/shaders/studio_effect_mask.frag
+        assets/shaders/studio_effect_seed.frag
+        assets/shaders/studio_effect_distance.frag
+        assets/shaders/studio_effect_composite.frag
+        assets/shaders/weapon_finish.vert
+        assets/shaders/weapon_finish.frag
+        assets/shaders/weapon_finish.json
+)
+
 target_include_directories(${PROJECT_NAME} PRIVATE
         include
         src
@@ -61,15 +91,21 @@ target_link_libraries(${PROJECT_NAME} ${TARGET_LIBRARIES_SCOPE}
         hwid_collector::hwid_collector
         cvars::cvars
         ncl_math::ncl_math
+        ncl_perf::ncl_perf
         easyloggingpp::easyloggingpp
         cpr::cpr
-        optic::optic
+        NextClient::profiling
         concurrencpp::concurrencpp
         bzip2
         glad::glad
+        ncl_gl::ncl_gl
+        ncl_material::ncl_material
+        ncl_studio::ncl_studio
+        ${PROJECT_NAME}::rc
         SDL2::SDL2
+        ${CMAKE_DL_LIBS}
         imageinfo::imageinfo
-        stb::stb
+        ncl_image::ncl_image
         EASTL
         unordered_dense::unordered_dense
         maxminddb::maxminddb
@@ -96,7 +132,6 @@ endif()
 
 target_compile_definitions(${PROJECT_NAME} PRIVATE
         LOG_TAG="game"
-        USE_OPTICK=$<BOOL:${USE_PROFILER}>
         _HAS_STATIC_RTTI=0 #disable rtti things in stl
         BREADCRUMBS_TAG="[${PROJECT_NAME}]"
 )
@@ -137,6 +172,8 @@ endif ()
 #-----------------------------------------------------------------
 add_library(engine_mini_export INTERFACE)
 add_library(NextClient::engine_mini ALIAS engine_mini_export)
+
+target_link_libraries(engine_mini_export INTERFACE goldsrc::abi ncl_perf::ncl_perf cvars::cvars)
 
 target_include_directories(engine_mini_export INTERFACE
         include
