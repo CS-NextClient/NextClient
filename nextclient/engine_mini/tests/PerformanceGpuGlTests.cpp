@@ -5,6 +5,8 @@
 #include <thread>
 
 #include <glad/glad.h>
+#include <ncl_gl/context.h>
+#include <ncl_gl/loader.h>
 #include <ncl_perf/profiler.h>
 #if USE_PROFILER
 #include <tracy/TracyOpenGL.hpp>
@@ -15,6 +17,38 @@
 #include "performance/GpuQueryCollector.h"
 #include "performance/performance_stages.h"
 #include "performance/TracyGpuAdapter.h"
+
+TEST(GlLoader, ReloadUsesTheCurrentOffscreenContext)
+{
+    RadarGlContext context;
+    std::string error;
+    ASSERT_TRUE(context.Initialize(error)) << error;
+    ASSERT_EQ(RadarGlContext::Current(), context.native_context());
+    ASSERT_TRUE(ncl_gl::Reload());
+    EXPECT_TRUE(ncl_gl::IsLoaded());
+    EXPECT_TRUE(GLAD_GL_VERSION_3_3);
+    EXPECT_NE(ncl_gl::LoadProc("glGetString"), nullptr);
+    EXPECT_EQ(RadarGlContext::Current(), context.native_context());
+}
+
+TEST(GlContext, NativeIdentityTracksReplacementAndClear)
+{
+    RadarGlContext first;
+    std::string error;
+    ASSERT_TRUE(first.Initialize(error)) << error;
+    EXPECT_EQ(ncl_gl::CurrentContext(), first.native_context());
+
+    RadarGlContext second;
+    ASSERT_TRUE(second.Initialize(error)) << error;
+    EXPECT_NE(first.native_context(), second.native_context());
+    EXPECT_EQ(ncl_gl::CurrentContext(), second.native_context());
+
+    ASSERT_TRUE(first.MakeCurrent());
+    EXPECT_EQ(ncl_gl::CurrentContext(), first.native_context());
+    ASSERT_TRUE(first.ClearCurrent());
+    EXPECT_EQ(ncl_gl::CurrentContext(), nullptr);
+    ASSERT_TRUE(first.MakeCurrent());
+}
 
 namespace
 {

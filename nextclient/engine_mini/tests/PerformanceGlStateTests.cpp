@@ -145,6 +145,24 @@ namespace
     };
 
     TestFontService g_Font;
+#ifndef _WIN32
+    std::string g_ConsoleText;
+
+    int CaptureConsoleText(int x, int, char* text)
+    {
+        g_ConsoleText += text;
+        return x;
+    }
+#endif
+
+    std::string& CapturedPanelText()
+    {
+#ifdef _WIN32
+        return g_Font.glyph_text;
+#else
+        return g_ConsoleText;
+#endif
+    }
 
     performance::PerformancePanel MakePanel(TextRenderInterface& text, ncl_perf::PerfClockInterface& clock, int* current_texture)
     {
@@ -152,7 +170,7 @@ namespace
         return performance::PerformancePanel(text, clock, current_texture);
 #else
         (void)text;
-        return performance::PerformancePanel(clock, current_texture);
+        return performance::PerformancePanel(clock, current_texture, nullptr, CaptureConsoleText);
 #endif
     }
 
@@ -398,6 +416,7 @@ namespace
             std::string error;
             ASSERT_TRUE(context.Initialize(error, true, 0, 640, 480)) << error;
             g_DeviceTestContext.reset();
+            CapturedPanelText().clear();
             if (!GLAD_GL_VERSION_3_3)
             {
                 GTEST_SKIP() << "GL 3.3 compatibility context unavailable";
@@ -495,6 +514,7 @@ namespace
         void TearDown() override
         {
             g_DeviceTestContext.reset();
+            CapturedPanelText().clear();
             if (p_currenttexture)
             {
                 g_Font.ReleaseGl();
@@ -825,6 +845,7 @@ namespace
     }
 }
 
+#ifdef _WIN32
 TEST_F(PerformanceGlStateTest, PanelReusesGlyphsAndGroupsAtlasDraws)
 {
     performance::PerfSnapshot snapshot;
@@ -843,6 +864,7 @@ TEST_F(PerformanceGlStateTest, PanelReusesGlyphsAndGroupsAtlasDraws)
     EXPECT_LE(g_PanelQuadBegins, layout->get_commands().size());
     EXPECT_EQ(glGetError(), GLenum(GL_NO_ERROR));
 }
+#endif
 namespace
 {
     class PanelTestClock : public ncl_perf::PerfClockInterface
@@ -867,9 +889,9 @@ TEST_F(PerformanceGlStateTest, MapperRevisionRefreshesGazeAndPreservesPerformanc
     mapper.target_name = "func_wall";
     mapper.revision = 1;
     panel.Draw(snapshot, 640, 480, 1, nullptr, &mapper);
-    EXPECT_NE(g_Font.glyph_text.find("E: dump to console"), std::string::npos);
+    EXPECT_NE(CapturedPanelText().find("E: dump to console"), std::string::npos);
     GlSnapshot before = Capture();
-    g_Font.glyph_text.clear();
+    CapturedPanelText().clear();
     mapper.target_name = "func_door";
     mapper.target_position = {4, 5, 6};
     mapper.target_origin = {7, 8, 9};
@@ -879,15 +901,19 @@ TEST_F(PerformanceGlStateTest, MapperRevisionRefreshesGazeAndPreservesPerformanc
     GlSnapshot after = Capture();
     EXPECT_EQ(before.integers, after.integers);
     EXPECT_EQ(before.floats, after.floats);
-    EXPECT_NE(g_Font.glyph_text.find("func_door"), std::string::npos);
-    EXPECT_NE(g_Font.glyph_text.find("Look: 4.0 5.0 6.0"), std::string::npos);
-    EXPECT_NE(g_Font.glyph_text.find("Object origin: 7.0 8.0 9.0"), std::string::npos);
-    EXPECT_EQ(g_Font.glyph_text.find("FPS 999"), std::string::npos);
+    EXPECT_NE(CapturedPanelText().find("func_door"), std::string::npos);
+    EXPECT_NE(CapturedPanelText().find("Look: 4.0 5.0 6.0"), std::string::npos);
+    EXPECT_NE(CapturedPanelText().find("Object origin: 7.0 8.0 9.0"), std::string::npos);
+    EXPECT_EQ(CapturedPanelText().find("FPS 999"), std::string::npos);
+#ifdef _WIN32
     uint32_t reads = g_Font.glyph_reads;
+#endif
     panel.Draw(snapshot, 640, 480, 1, nullptr, &mapper);
+#ifdef _WIN32
     EXPECT_EQ(g_Font.glyph_reads, reads);
+#endif
 
-    g_Font.glyph_text.clear();
+    CapturedPanelText().clear();
     mapper.level = 1;
     ++mapper.revision;
     ++g_Font.generation;
@@ -895,12 +921,42 @@ TEST_F(PerformanceGlStateTest, MapperRevisionRefreshesGazeAndPreservesPerformanc
     GlSnapshot summary = Capture();
     EXPECT_EQ(before.integers, summary.integers);
     EXPECT_EQ(before.floats, summary.floats);
-    EXPECT_EQ(g_Font.glyph_text.find("Object"), std::string::npos);
-    EXPECT_EQ(g_Font.glyph_text.find("func_door"), std::string::npos);
-    EXPECT_NE(g_Font.glyph_text.find("Look: 4.0 5.0 6.0"), std::string::npos);
+    EXPECT_EQ(CapturedPanelText().find("Object"), std::string::npos);
+    EXPECT_EQ(CapturedPanelText().find("func_door"), std::string::npos);
+    EXPECT_NE(CapturedPanelText().find("Look: 4.0 5.0 6.0"), std::string::npos);
     EXPECT_EQ(glGetError(), GLenum(GL_NO_ERROR));
 }
 
+#ifndef _WIN32
+TEST_F(PerformanceGlStateTest, ConsoleTextUsesLayoutRefreshAndInvalidation)
+{
+    PanelTestClock clock;
+    performance::PerformancePanel panel = MakePanel(g_Font, clock, p_currenttexture);
+    performance::PerfSnapshot snapshot;
+    panel.Draw(snapshot, 1600, 1200, 2);
+    ASSERT_FALSE(CapturedPanelText().empty());
+
+    CapturedPanelText().clear();
+    clock.time = 249000000;
+    snapshot.summaries[0].fps = 123;
+    panel.Draw(snapshot, 1600, 1200, 2);
+    EXPECT_EQ(CapturedPanelText().find("FPS 123"), std::string::npos);
+
+    CapturedPanelText().clear();
+    clock.time = 250000000;
+    panel.Draw(snapshot, 1600, 1200, 2);
+    EXPECT_NE(CapturedPanelText().find("FPS 123"), std::string::npos);
+
+    CapturedPanelText().clear();
+    snapshot.summaries[0].fps = 456;
+    panel.Invalidate();
+    panel.Draw(snapshot, 1600, 1200, 2);
+    EXPECT_NE(CapturedPanelText().find("FPS 456"), std::string::npos);
+    EXPECT_EQ(glGetError(), GLenum(GL_NO_ERROR));
+}
+#endif
+
+#ifdef _WIN32
 TEST_F(PerformanceGlStateTest, PanelRefreshesAtBoundedIntervalsAndInvalidatesGeometry)
 {
     PanelTestClock clock;
@@ -928,6 +984,7 @@ TEST_F(PerformanceGlStateTest, PanelRefreshesAtBoundedIntervalsAndInvalidatesGeo
     EXPECT_GT(g_Font.glyph_reads, reads);
     EXPECT_EQ(glGetError(), GLenum(GL_NO_ERROR));
 }
+#endif
 
 TEST_F(PerformanceGlStateTest, BackingAlphaChangesWithoutWaitingForTheLayoutRefresh)
 {
@@ -954,6 +1011,7 @@ TEST_F(PerformanceGlStateTest, BackingAlphaChangesWithoutWaitingForTheLayoutRefr
     }
 }
 
+#ifdef _WIN32
 TEST_F(PerformanceGlStateTest, PanelRetriesTransientGlyphsAndRefreshesLiveBatchingImmediately)
 {
     PanelTestClock clock;
@@ -976,6 +1034,7 @@ TEST_F(PerformanceGlStateTest, PanelRetriesTransientGlyphsAndRefreshesLiveBatchi
     EXPECT_GT(g_Font.glyph_reads, reads);
     EXPECT_EQ(glGetError(), GLenum(GL_NO_ERROR));
 }
+#endif
 
 TEST_F(PerformanceGlStateTest, IndependentBatchingRestoresCallerState)
 {
@@ -991,6 +1050,7 @@ TEST_F(PerformanceGlStateTest, IndependentBatchingRestoresCallerState)
     EXPECT_EQ(glGetError(), GLenum(GL_NO_ERROR));
 }
 
+#ifdef _WIN32
 TEST_F(PerformanceGlStateTest, LiveBatchingReusesUnchangedTextGeometryBetweenFrames)
 {
     PanelTestClock clock;
@@ -1015,6 +1075,7 @@ TEST_F(PerformanceGlStateTest, LiveBatchingReusesUnchangedTextGeometryBetweenFra
     EXPECT_EQ(g_Font.glyph_reads, reads);
     EXPECT_EQ(glGetError(), GLenum(GL_NO_ERROR));
 }
+#endif
 
 TEST_F(PerformanceGlStateTest, ShaderRendererAvailabilityUsesCachedContextState)
 {
@@ -1069,33 +1130,41 @@ TEST_F(PerformanceGlStateTest, PacketRevisionRefreshesNetworkAndBatchingWithoutR
             }
             mapper.wpoly = 1234;
             panel.Draw(snapshot, width, height, mode, &network, &mapper, 2, &live);
+#ifdef _WIN32
             uint32_t reads = g_Font.glyph_reads;
+#endif
             snapshot.summaries[0].fps = 999;
             mapper.wpoly = 9999;
             network.packet_age_ms = 2;
             ++network.revision;
             live.cpu_frame_count = live.cpu_frame_id = 2;
-            g_Font.glyph_text.clear();
+            CapturedPanelText().clear();
             panel.Draw(snapshot, width, height, mode, &network, &mapper, 2, &live);
 
+#ifdef _WIN32
             EXPECT_GT(g_Font.glyph_reads, reads);
-            EXPECT_NE(g_Font.glyph_text.find("Last packet 0.002 s ago"), std::string::npos);
-            EXPECT_NE(g_Font.glyph_text.find("last 2 frames"), std::string::npos);
-            EXPECT_EQ(g_Font.glyph_text.find("FPS 999"), std::string::npos);
-            EXPECT_EQ(g_Font.glyph_text.find("wpoly 9999"), std::string::npos);
+#endif
+            EXPECT_NE(CapturedPanelText().find("Last packet 0.002 s ago"), std::string::npos);
+            EXPECT_NE(CapturedPanelText().find("last 2 frames"), std::string::npos);
+            EXPECT_EQ(CapturedPanelText().find("FPS 999"), std::string::npos);
+            EXPECT_EQ(CapturedPanelText().find("wpoly 9999"), std::string::npos);
+#ifdef _WIN32
             reads = g_Font.glyph_reads;
+#endif
             ++network.revision;
             panel.Draw(snapshot, width, height, mode, &network, &mapper, 2, &live);
+#ifdef _WIN32
             EXPECT_EQ(g_Font.glyph_reads, reads);
+#endif
             for (std::vector<performance::PerfPlotBin>& graph : network.graphs)
             {
                 graph.resize(300);
             }
-            g_Font.glyph_text.clear();
+            CapturedPanelText().clear();
             panel.Draw(snapshot, width, height, mode, &network, &mapper, 2, &live);
-            EXPECT_NE(g_Font.glyph_text.find("Network | last 300 packets"), std::string::npos);
-            EXPECT_EQ(g_Font.glyph_text.find("FPS 999"), std::string::npos);
-            EXPECT_EQ(g_Font.glyph_text.find("wpoly 9999"), std::string::npos);
+            EXPECT_NE(CapturedPanelText().find("Network | last 300 packets"), std::string::npos);
+            EXPECT_EQ(CapturedPanelText().find("FPS 999"), std::string::npos);
+            EXPECT_EQ(CapturedPanelText().find("wpoly 9999"), std::string::npos);
             EXPECT_EQ(glGetError(), GLenum(GL_NO_ERROR));
         }
     }

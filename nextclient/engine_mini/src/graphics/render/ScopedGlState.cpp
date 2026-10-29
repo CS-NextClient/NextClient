@@ -25,10 +25,14 @@ namespace render
             glGetIntegerv(GL_RENDERBUFFER_BINDING, &renderbuffer_);
             glGetIntegerv(GL_PIXEL_PACK_BUFFER_BINDING, &pixel_pack_buffer_);
             glGetIntegerv(GL_PIXEL_UNPACK_BUFFER_BINDING, &pixel_unpack_buffer_);
+            glGetIntegerv(GL_ACTIVE_TEXTURE, &active_texture_);
             for (unsigned int unit = 0; unit < samplers_.size(); unit++)
             {
                 glGetIntegeri_v(GL_SAMPLER_BINDING, unit, &samplers_[unit]);
+                glActiveTexture(GL_TEXTURE0 + unit);
+                glGetIntegerv(GL_TEXTURE_BINDING_2D_MULTISAMPLE, &multisample_textures_[unit]);
             }
+            glActiveTexture(static_cast<GLenum>(active_texture_));
             glGetIntegerv(GL_READ_FRAMEBUFFER_BINDING, &read_framebuffer_);
             glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &draw_framebuffer_);
         }
@@ -106,7 +110,10 @@ namespace render
             for (unsigned int unit = 0; unit < samplers_.size(); unit++)
             {
                 glBindSampler(unit, static_cast<GLuint>(samplers_[unit]));
+                glActiveTexture(GL_TEXTURE0 + unit);
+                glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, static_cast<GLuint>(multisample_textures_[unit]));
             }
+            glActiveTexture(static_cast<GLenum>(active_texture_));
         }
 
         GL_RestoreTextureCache(texture_cache_);

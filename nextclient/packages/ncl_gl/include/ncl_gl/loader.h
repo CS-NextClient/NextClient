@@ -2,8 +2,8 @@
 
 namespace ncl_gl
 {
-    // Uses SDL on Linux and the driver resolver with an opengl32.dll fallback
-    // for core entry points on Windows.
+    // Uses SDL or an already loaded EGL resolver on Linux and an opengl32.dll fallback
+    // for core entry points on Windows after the driver resolver.
     void* LoadProc(const char* name);
 
     // Requires a current GL context on the calling thread.

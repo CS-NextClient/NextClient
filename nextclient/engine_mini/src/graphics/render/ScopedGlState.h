@@ -30,6 +30,8 @@ namespace render
         int pixel_pack_buffer_{};
         int pixel_unpack_buffer_{};
         std::array<int, render::kStudioTouchedTextureUnits> samplers_{};
+        std::array<int, render::kStudioTouchedTextureUnits> multisample_textures_{};
+        int active_texture_{};
         int read_framebuffer_{};
         int draw_framebuffer_{};
         bool modern_{};

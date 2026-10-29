@@ -5,6 +5,7 @@
 #if defined(_WIN32)
 #include <windows.h>
 #else
+#include <dlfcn.h>
 #include <SDL_video.h>
 #endif
 #include <glad/glad.h>
@@ -23,7 +24,24 @@ void* ncl_gl::LoadProc(const char* name)
 
     return p;
 #else
-    return SDL_GL_GetProcAddress(name);
+    void* address = SDL_GL_GetProcAddress(name);
+    if (address != nullptr)
+    {
+        return address;
+    }
+
+    void* library = dlopen("libEGL.so.1", RTLD_NOLOAD | RTLD_LAZY);
+    if (library == nullptr)
+    {
+        return nullptr;
+    }
+
+    using gl_proc_t = void (*)();
+    using get_proc_address_fn_t = gl_proc_t (*)(const char*);
+    get_proc_address_fn_t get_proc_address = reinterpret_cast<get_proc_address_fn_t>(dlsym(library, "eglGetProcAddress"));
+    address = get_proc_address != nullptr ? reinterpret_cast<void*>(get_proc_address(name)) : nullptr;
+    dlclose(library);
+    return address;
 #endif
 }
 

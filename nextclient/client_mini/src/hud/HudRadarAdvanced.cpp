@@ -30,6 +30,7 @@
 #include <goldsrc/engine/client_state.h>
 #include <goldsrc/pmove.h>
 #include <goldsrc/view.h>
+#include <ncl_gl/context.h>
 #include <ncl_math/vec3.h>
 #include <ncl_math/color.h>
 #include <next_client_mini/radar_cvars.h>
@@ -161,11 +162,7 @@ void* HudRadarAdvanced::CurrentContext() const
             return context;
         }
     }
-#ifdef _WIN32
-    return wglGetCurrentContext();
-#else
-    return nullptr;
-#endif
+    return ncl_gl::CurrentContext();
 }
 
 void* HudRadarAdvanced::CurrentWindow() const

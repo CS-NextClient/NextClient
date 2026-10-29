@@ -205,6 +205,7 @@ add_custom_target(verify-nitro-api-factory
         VERBATIM)
 
 if (NEXTCLIENT_BUILD_TESTS)
+    set_target_properties(nitro-api-factory-probe PROPERTIES EXCLUDE_FROM_ALL FALSE)
     add_subdirectory(tests)
     add_test(NAME nitro-api-shipping-factory
             COMMAND ${CMAKE_COMMAND} "-DPROBE_MANIFEST=${factory_probe_manifest}"
