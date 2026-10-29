@@ -63,6 +63,9 @@ jobs:
       - name: Build
         run: cmake --build --preset ninja-release --target BUILD_ALL --parallel
 
+      - name: Build matgen for provenance
+        run: cmake --build --preset ninja-release --target matgen --parallel
+
       # After the build: the gate resolves the includes of every compiled source, and the cmrc
       # sources of client_mini_rc and gui_app_core_rc are copied into place by a build rule.
       - name: Provenance gate

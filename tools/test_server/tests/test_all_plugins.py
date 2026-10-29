@@ -71,7 +71,7 @@ class AllPluginTests(unittest.TestCase):
     def test_api_search_finds_repository_one_level_above_client_parent(self):
         from all_plugins import Plugins_ResolveApi
         with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
+            root = Path(directory).resolve()
             api, module = self.ApiFixture(root)
             client = root / "nextclient/NextClient"
             client.mkdir(parents=True)
@@ -169,7 +169,7 @@ class AllPluginTests(unittest.TestCase):
     def test_failed_atomic_deployment_restores_previous_files(self):
         from all_plugins import Plugins_ReplaceFiles
         with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
+            root = Path(directory).resolve()
             (root / "first").write_bytes(b"previous-first")
             (root / "last").write_bytes(b"previous-last")
             original = Path.replace
@@ -266,7 +266,7 @@ class AllPluginTests(unittest.TestCase):
     def test_prepare_cli_saves_explicit_api_paths_without_changing_server_options(self):
         import test_server
         with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
+            root = Path(directory).resolve()
             config = root / "config.json"
             config.write_text(json.dumps({"schema": 1, "server": {"port": 27021}}))
             arguments = ["test_server.py", "--config", str(config), "prepare",
