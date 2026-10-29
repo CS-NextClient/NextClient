@@ -8,16 +8,27 @@
 #include "ModInfo.h"
 #include "KeyToggleCheckButton.h"
 
+#include <utility>
 #include <vgui_controls/Tooltip.h>
 #include <vgui_controls/CheckButton.h>
 #include <vgui_controls/ComboBox.h>
 #include <KeyValues.h>
 #include <vgui/ILocalize.h>
 #include <goldsrc/client_api.h>
+#include <next_engine_mini/ShaderRendererInterface.h>
+#include <next_engine_mini/render_cvars.h>
+#include <next_launcher/video_settings.h>
+#include <tier1/strtools.h>
 // memdbgon must be the last include file in a .cpp file!!!
 #include <tier0/memdbgon.h>
 
 #pragma warning(disable: 4101)
+
+namespace
+{
+    constexpr cvars::CvarDefinition kStudioShaderDef = render::FindCvar("r_studio_shader");
+    static_assert(kStudioShaderDef.name != nullptr);
+} // namespace
 
 inline bool IsWideScreen ( int width, int height )
 {
@@ -31,10 +42,15 @@ inline bool IsWideScreen ( int width, int height )
 //-----------------------------------------------------------------------------
 // Purpose:
 //-----------------------------------------------------------------------------
-COptionsSubVideo::COptionsSubVideo(vgui2::Panel *parent) : PropertyPage(parent, NULL)
+COptionsSubVideo::COptionsSubVideo(
+    vgui2::Panel* parent,
+    std::shared_ptr<nitro_utils::FileConfigProvider> config,
+    render::ShaderRendererInterface* renderer
+) :
+    PropertyPage(parent, NULL),
+    m_pUserConfig(std::move(config)),
+    m_Renderer(renderer)
 {
-    m_pUserConfig = std::make_shared<nitro_utils::FileConfigProvider>("user_game_config.ini");
-
     memset( &m_OrigSettings, 0, sizeof( m_OrigSettings ) );
     memset( &m_CurrentSettings, 0, sizeof( m_CurrentSettings ) );
 
@@ -55,6 +71,10 @@ COptionsSubVideo::COptionsSubVideo(vgui2::Panel *parent) : PropertyPage(parent, 
 
     m_pVsync = new CCvarToggleCheckButton( this, "VSync", "#GameUI_VSync", "gl_vsync" );
     m_pVsync->SetVisible(true);
+
+    m_pShaderRenderer = new CCvarToggleCheckButton(this, "ShaderRendering", "#GameUI_ShaderRendering", kStudioShaderDef.name);
+    m_pShaderRenderer->SetDefaultValue(V_atof(kStudioShaderDef.default_value) != 0.0f);
+    m_pShaderRenderer->AddActionSignalTarget(this);
 
     wchar_t *unicodeText = g_pVGuiLocalize->Find("#GameUI_AspectNormal");
     g_pVGuiLocalize->ConvertUnicodeToANSI(unicodeText, m_pszAspectName[0], 32);
@@ -103,7 +123,7 @@ COptionsSubVideo::COptionsSubVideo(vgui2::Panel *parent) : PropertyPage(parent, 
     m_pAddonsFolder->SetVisible(false);
 
     m_pLowVideoDetail = new vgui2::CheckButton( this, "LowVideoDetail", "#GameUI_LowVideoDetail" );
-    m_pLowVideoDetail->SetSelected(m_CurrentSettings.vid_level == 0);
+    m_pLowVideoDetail->SetSelected(m_CurrentSettings.vid_level != 0);
     m_pLowVideoDetail->SetVisible(true);
 
     m_pDisableMultitexture = new vgui2::CheckButton( this, "DisableMultitexture", "#GameUI_DisableMultitexture" );
@@ -116,8 +136,22 @@ COptionsSubVideo::COptionsSubVideo(vgui2::Panel *parent) : PropertyPage(parent, 
     m_pStretchAspect->SetSelected(m_CurrentSettings.stretch_aspect != 0);
     m_pStretchAspect->SetVisible(true);
 
+    m_pMsaa = new vgui2::ComboBox(this, "Msaa", 3, false);
+    m_pMsaa->AddItem("#GameUI_MsaaDefault", KeyValues::AutoDelete(new KeyValues("", "samples", -1)));
+    m_pMsaa->AddItem("#GameUI_MsaaOff", KeyValues::AutoDelete(new KeyValues("", "samples", 0)));
+    m_pMsaa->AddItem("#GameUI_Msaa4x", KeyValues::AutoDelete(new KeyValues("", "samples", 4)));
+    m_pMsaa->AddActionSignalTarget(this);
+    ResetMsaaSelection();
+
     LoadControlSettings("Resource\\OptionsSubVideo.res");
+    m_pMsaa->GetTooltip()->SetTooltipMaxWidth(360);
+    UpdateMsaaAvailability();
     PrepareResolutionList();
+
+    m_pShaderRenderer->SetEnabled(false);
+    m_pShaderRenderer->GetTooltip()->SetText("#GameUI_ShaderRenderingUnavailableTooltip");
+    m_pShaderRenderer->GetTooltip()->SetTooltipMaxWidth(360);
+    UpdateShaderRenderingAvailability();
 
     bool detailTexturesSupported = engine->pfnGetCvarFloat( "r_detailtexturessupported" ) > 0;
     if ( ModInfo().GetDetailedTexture() )
@@ -129,6 +163,44 @@ COptionsSubVideo::COptionsSubVideo(vgui2::Panel *parent) : PropertyPage(parent, 
     {
         m_pDetailTextures->SetVisible( false );
     }
+}
+
+void COptionsSubVideo::OnThink()
+{
+    BaseClass::OnThink();
+    UpdateShaderRenderingAvailability();
+}
+
+void COptionsSubVideo::UpdateShaderRenderingAvailability()
+{
+    render::ShaderRendererInterface* renderer = m_Renderer;
+    bool available = renderer && renderer->is_available();
+    if (available == m_pShaderRenderer->IsEnabled())
+    {
+        return;
+    }
+
+    m_pShaderRenderer->SetEnabled(available);
+    m_pShaderRenderer->GetTooltip()->SetText(available ? "#GameUI_ShaderRenderingTooltip" : "#GameUI_ShaderRenderingUnavailableTooltip");
+}
+
+void COptionsSubVideo::ResetMsaaSelection()
+{
+    int samples = m_CurrentSettings.msaa_samples;
+    int row = samples == 0 ? 1 : samples == 4 ? 2 : 0;
+    m_pMsaa->SilentActivateItemByRow(row);
+}
+
+void COptionsSubVideo::UpdateMsaaAvailability()
+{
+    bool available = !m_pLowVideoDetail->IsSelected();
+    if (!available)
+    {
+        ResetMsaaSelection();
+    }
+
+    m_pMsaa->SetEnabled(available);
+    m_pMsaa->GetTooltip()->SetText(available ? "#GameUI_MsaaTooltip" : "#GameUI_MsaaLowDetailTooltip");
 }
 
 void COptionsSubVideo::PrepareResolutionList( void )
@@ -242,11 +314,15 @@ void COptionsSubVideo::OnResetData()
     m_pWindowed->SetSelected(m_CurrentSettings.windowed);
     m_pHDModels->SetSelected(m_CurrentSettings.hdmodels);
     m_pAddonsFolder->SetSelected(m_CurrentSettings.addons_folder);
-    m_pLowVideoDetail->SetSelected(m_CurrentSettings.vid_level);
+    m_pLowVideoDetail->SetSelected(m_CurrentSettings.vid_level != 0);
+    ResetMsaaSelection();
+    UpdateMsaaAvailability();
     m_pDisableMultitexture->SetSelected(m_CurrentSettings.disable_multitexture);
     m_pStretchAspect->SetSelected(m_CurrentSettings.stretch_aspect);
     m_pDetailTextures->Reset();
     m_pVsync->Reset();
+    m_pShaderRenderer->Reset();
+    UpdateShaderRenderingAvailability();
 
     SetCurrentResolutionComboItem();
 }
@@ -299,6 +375,12 @@ void COptionsSubVideo::OnApplyChanges()
     m_pGammaSlider->ApplyChanges();
     m_pVsync->ApplyChanges();
 
+    UpdateShaderRenderingAvailability();
+    if (m_pShaderRenderer->IsEnabled() && m_pShaderRenderer->HasBeenModified())
+    {
+        m_pShaderRenderer->ApplyChanges();
+    }
+
     ApplyVidSettings(bChanged);
 }
 
@@ -314,6 +396,8 @@ void COptionsSubVideo::GetVidSettings()
     g_pGameUIFuncs->GetCurrentRenderer(p->renderer, 128, &p->windowed, &p->hdmodels, &p->addons_folder, &p->vid_level);
     p->disable_multitexture = m_pUserConfig->get_value_int("disable_multitexture", 0);
     p->stretch_aspect = m_pUserConfig->get_value_int("stretch_aspect", 0);
+    p->msaa_samples =
+        video_settings::NormalizeMsaaMode(m_pUserConfig->get_value_int(video_settings::kMsaaSamplesKey, video_settings::kDefaultMsaaSamples));
 
     strlwr( p->renderer );
 
@@ -397,6 +481,12 @@ void COptionsSubVideo::ApplyVidSettings(bool bForceRefresh)
         m_CurrentSettings.stretch_aspect = checked ? 1 : 0;
     }
 
+    if (m_pMsaa->IsEnabled())
+    {
+        KeyValues* msaa_data = m_pMsaa->GetActiveItemUserData();
+        m_CurrentSettings.msaa_samples = msaa_data->GetInt("samples");
+    }
+
     if ( memcmp( &m_OrigSettings, &m_CurrentSettings, sizeof( CVidSettings ) ) == 0 && !bForceRefresh)
     {
         return;
@@ -421,6 +511,7 @@ void COptionsSubVideo::ApplyVidSettings(bool bForceRefresh)
 
     m_pUserConfig->set_value("", "disable_multitexture", std::to_string(p->disable_multitexture), true);
     m_pUserConfig->set_value("", "stretch_aspect", std::to_string(p->stretch_aspect), true);
+    m_pUserConfig->set_value("", video_settings::kMsaaSamplesKey, std::to_string(p->msaa_samples), true);
 
     // Force restart of entire engine
     engine->pfnClientCmd("fmod stop\n");
@@ -461,6 +552,8 @@ void COptionsSubVideo::OnButtonChecked(KeyValues *data)
 
     if (pPanel == m_pLowVideoDetail)
     {
+        UpdateMsaaAvailability();
+
         if (state != m_CurrentSettings.vid_level)
         {
             OnDataChanged();
@@ -492,6 +585,11 @@ void COptionsSubVideo::OnButtonChecked(KeyValues *data)
     {
         OnDataChanged();
     }
+
+    if (pPanel == m_pShaderRenderer && m_pShaderRenderer->IsEnabled() && m_pShaderRenderer->HasBeenModified())
+    {
+        OnDataChanged();
+    }
 }
 
 //-----------------------------------------------------------------------------
@@ -505,6 +603,14 @@ void COptionsSubVideo::OnTextChanged(Panel *pPanel, const char *pszText)
         sprintf(sz, "%i x %i", m_CurrentSettings.w, m_CurrentSettings.h);
 
         if (strcmp(pszText, sz))
+        {
+            OnDataChanged();
+        }
+    }
+    else if (pPanel == m_pMsaa && m_pMsaa->IsEnabled())
+    {
+        KeyValues* msaa_data = m_pMsaa->GetActiveItemUserData();
+        if (msaa_data->GetInt("samples") != m_CurrentSettings.msaa_samples)
         {
             OnDataChanged();
         }

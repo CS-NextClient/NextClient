@@ -30,6 +30,7 @@
 #include <goldsrc/studio_api.h>
 #include <goldsrc/types.h>
 #include <goldsrc/view.h>
+#include "graphics/render/render_device.h"
 
 #include "common/common.h"
 #include "common/net_chan.h"
@@ -46,6 +47,11 @@
 #include "graphics/vgui2.h"
 #include "graphics/preview/preview.h"
 #include "graphics/preview/preview_model.h"
+#include "graphics/render/StudioIntercept.h"
+#include "graphics/render/model/studio_model_cache.h"
+#include "graphics/render/StudioDraw.h"
+#include "graphics/render/effects/studio_effects.h"
+#include "graphics/render/RendererLifecycle.h"
 #include "client/client.h"
 #include "client/cl_main.h"
 #include "client/download.h"
@@ -53,10 +59,15 @@
 #include "client/ncl_entity/cl_ncl_entity_sync.h"
 #include "client/ncl_entity/cl_ncl_entity_sync_overlay.h"
 #include "client/ncl_entity/WeaponSyncSystem.h"
+#include "client/ncl_entity/MaterialSyncSystem.h"
 #include "client/cl_private_resources.h"
 #include "client/cl_parsefn.h"
 #include "client/cl_game.h"
 #include "client/cl_string_registry.h"
+#include "graphics/render/material/material_edit.h"
+#include "graphics/render/render_state.h"
+#include "graphics/render/render_capture.h"
+#include "graphics/render/material/ServerMaterials.h"
 #include "binding/jsapi/jsapi.h"
 #include "common/cvar.h"
 #include "console/console.h"
@@ -64,6 +75,9 @@
 #include "cstrike_hack.h"
 #include "client/cl_sound.h"
 #include "client/ncl_entity/PlayerSyncSystem.h"
+#include "performance/performance_integration.h"
+#include "performance/PerformanceMonitor.h"
+#include <ncl_perf/profiler.h>
 
 NextClientVersion g_NextClientVersion;
 
@@ -128,6 +142,8 @@ goldsrc::refdef_t* r_refdef;
 float* p_g_SND_VoiceOverdrive;
 int* p_cszrawsentences;
 char* (*p_rgpszrawsentence)[goldsrc::CVOXFILESENTENCEMAX];
+float* p_scr_fov_value;
+goldsrc::dlight_t (*p_cl_elights)[kMaxElights];
 float* p_scr_con_current;
 goldsrc::keydest_t* p_key_dest;
 goldsrc::sfx_t** p_known_sfx;
@@ -180,8 +196,17 @@ nitroapi::SDL2Data* sdl2() { return g_NitroApi->GetSDL2Data(); }
 
 NclmVerificatorInterface* g_NclmVerificator;
 
+static void EngineMiniStopWorkers()
+{
+    g_pMatchmakingServers = nullptr;
+    taskcoro::TaskCoro::UnInitialize();
+    g_pTaskCoroImpl = nullptr;
+}
+
 static void EngineMiniUninitialize()
 {
+    Preview_UnbindEngine();
+    performance::runtime::Shutdown();
     CL_DeleteHttpDownloadManager();
     KV_UninitializeKeyValuesSystem();
 
@@ -191,10 +216,7 @@ static void EngineMiniUninitialize()
 
     // MultiSourceQuery's thread only exits once its owner is destroyed, and
     // TaskCoro::UnInitialize waits for every thread it runs
-    g_pMatchmakingServers = nullptr;
-
-    taskcoro::TaskCoro::UnInitialize();
-    g_pTaskCoroImpl = nullptr;
+    EngineMiniStopWorkers();
 
     g_NitroApi = nullptr;
     g_SettingGuard = nullptr;
@@ -251,6 +273,8 @@ static void EngineMiniUninitialize()
     p_g_SND_VoiceOverdrive = nullptr;
     p_cszrawsentences = nullptr;
     p_rgpszrawsentence = nullptr;
+    p_cl_elights = nullptr;
+    p_scr_fov_value = nullptr;
     p_scr_con_current = nullptr;
     p_key_dest = nullptr;
     p_known_sfx = nullptr;
@@ -299,6 +323,7 @@ static void EngineMiniInitialize(nitroapi::NitroApiInterface* nitro_api, NextCli
     taskcoro::TaskCoro::Initialize(g_pTaskCoroImpl);
 
     g_NitroApi = nitro_api;
+    performance::runtime::Bind(nitro_api);
     g_NextClientVersion = next_client_version;
     g_Analytics = analytics;
 
@@ -310,6 +335,8 @@ static void EngineMiniInitialize(nitroapi::NitroApiInterface* nitro_api, NextCli
 
 static void OnGameUninitializing()
 {
+    render::GetLifecycle().BeginShutdown();
+
     if (g_Analytics)
         g_Analytics->AddBreadcrumb("info", BREADCRUMBS_TAG " OnGameUninitializing");
     
@@ -321,8 +348,8 @@ static void OnGameUninitializing()
     if (g_pTaskCoroImpl)
         g_pTaskCoroImpl->ShutdownUpdateExecutor();
 
-    Preview_Shutdown();
-    PreviewModel_RestoreStudioApi();
+    render::GetLifecycle().ReleaseLiveContext();
+    performance::runtime::Shutdown();
 
     DiscordPresence_Shutdown();
     PROTECTOR_Shutdown();
@@ -365,7 +392,10 @@ static void OnGameInitializing(void* mainwindow, HDC* pmaindc, HGLRC* pbaseRC, c
     ColorScheme_ApplyAlias();
 
     if (v.Validate(eng()->cl_enginefunc, GET_VARIABLE_NAME(gEngfuncs)))
+    {
         std::memcpy(&gEngfuncs, eng()->cl_enginefunc, sizeof(gEngfuncs));
+        performance::runtime::BindPresentation();
+    }
 
     if (v.Validate(eng()->enginefuncs, GET_VARIABLE_NAME(g_engfuncs)))
         std::memcpy(&g_engfuncs, eng()->enginefuncs, sizeof(g_engfuncs));
@@ -414,9 +444,11 @@ static void OnGameInitializing(void* mainwindow, HDC* pmaindc, HGLRC* pbaseRC, c
     v.Assign(p_cl_visedicts, GET_VARIABLE_NAME(p_cl_visedicts), eng()->cl_visedicts);
     v.Assign(p_isFogEnabled, GET_VARIABLE_NAME(p_isFogEnabled), eng()->isFogEnabled);
     v.Assign(r_refdef, GET_VARIABLE_NAME(p_r_refdef), eng()->r_refdef);
+    v.Assign(p_scr_fov_value, GET_VARIABLE_NAME(p_scr_fov_value), eng()->scr_fov_value);
     v.Assign(p_g_SND_VoiceOverdrive, GET_VARIABLE_NAME(p_g_SND_VoiceOverdrive), eng()->g_SND_VoiceOverdrive);
     v.Assign(p_cszrawsentences, GET_VARIABLE_NAME(p_cszrawsentences), eng()->cszrawsentences);
     v.Assign(p_rgpszrawsentence, GET_VARIABLE_NAME(p_rgpszrawsentence), eng()->rgpszrawsentence);
+    v.Assign(p_cl_elights, GET_VARIABLE_NAME(p_cl_elights), eng()->cl_elights);
     v.Assign(p_scr_con_current, GET_VARIABLE_NAME(p_scr_con_current), eng()->scr_con_current);
     v.Assign(scr_downloading, GET_VARIABLE_NAME(scr_downloading), eng()->scr_downloading);
     v.Assign(p_cl_entities, GET_VARIABLE_NAME(p_cl_entities), eng()->cl_entities);
@@ -469,6 +501,10 @@ static void OnGameInitializing(void* mainwindow, HDC* pmaindc, HGLRC* pbaseRC, c
     g_Unsubs.emplace_back(eng()->CL_ReadPackets              |= [](const auto& next)                                                   { CL_ReadPackets(); });
     g_Unsubs.emplace_back(eng()->CL_RequestMissingResources  |= [](const auto& next)                                                   { return CL_RequestMissingResources(); });
     g_Unsubs.emplace_back(eng()->CL_Disconnect               |= [](const auto& next)                                                   { return CL_Disconnect(); });
+    g_Unsubs.emplace_back(eng()->CL_ClearState |= [](goldsrc::qboolean quiet, const auto& next) {
+        render::GetLifecycle().OnClientStateClearing();
+        next->Invoke(quiet);
+    });
     g_Unsubs.emplace_back(eng()->Host_Map_f                  |= [](const auto& next)                                                   { Host_Map_f(); });
     g_Unsubs.emplace_back(eng()->Host_FilterTime             |= [](float delay, const auto& next)                                      { return Host_FilterTime(delay); });
     g_Unsubs.emplace_back(eng()->Mod_ClearAll                |= [](const auto& next)                                                   { Mod_ClearAll(); });
@@ -534,14 +570,16 @@ static void OnGameInitializing(void* mainwindow, HDC* pmaindc, HGLRC* pbaseRC, c
     // The engine resolves its surface here, and schemes create their fonts right after, so this is
     // the last moment at which the text slots can be replaced before the first font is made.
     g_Unsubs.emplace_back(eng()->VGui_InitInterfacesList      += [](const char*, void*, int, bool)                                      { VGUI2_InstallTextSurface(); });
-    g_Unsubs.emplace_back(eng()->Draw_Shutdown               |= [](const auto& next)                                                   { VGUI2_UninstallTextSurface(); TextRender_ReleaseGl(); Draw_Shutdown(); });
-#else
-    g_Unsubs.emplace_back(eng()->Draw_Shutdown |= [](const auto& next) { Draw_Shutdown(); });
 #endif
+    g_Unsubs.emplace_back(eng()->Draw_Shutdown |= [](const auto& next) { Draw_Shutdown(); });
     g_Unsubs.emplace_back(eng()->Draw_PicFromWad             |= [](const char* name, const auto& next)                                 { return Draw_PicFromWad(name); });
     g_Unsubs.emplace_back(eng()->V_UpdatePalette             |= [](const auto& next)                                                   { V_UpdatePalette(); });
     g_Unsubs.emplace_back(eng()->V_CheckGamma                |= [](const auto& next)                                                   { return V_CheckGamma(); });
-    g_Unsubs.emplace_back(eng()->BuildGammaTable             |= [](float g, const auto& next)                                          { next->Invoke(g); BuildGammaTable(g); });
+    g_Unsubs.emplace_back(eng()->BuildGammaTable |= [](float g, const auto& next) {
+        render::Studio_Flush(render::StudioFlushReason::Resource);
+        next->Invoke(g);
+        BuildGammaTable(g);
+    });
     g_Unsubs.emplace_back(eng()->DT_SetRenderState           |= [](int diffuseId, const auto& next)                                    { return DT_SetRenderState(diffuseId); });
     g_Unsubs.emplace_back(eng()->DT_LoadDetailTexture        |= [](const char *diffuseName, int diffuseId, const auto& next)           { DT_LoadDetailTexture(diffuseName, diffuseId); });
     g_Unsubs.emplace_back(eng()->R_ForceCVars                |= [](goldsrc::qboolean mp, const auto& next)                                      { R_ForceCVars(mp); });
@@ -631,6 +669,7 @@ static void OnGameInitializing(void* mainwindow, HDC* pmaindc, HGLRC* pbaseRC, c
 
     g_Unsubs.emplace_back(client()->HUD_GetStudioModelInterface |= [](int version, goldsrc::r_studio_interface_t** ppinterface, goldsrc::engine_studio_api_t* pstudio, const auto& next) {
         // The client copies the table when it answers, so the patch has to be in before the call.
+        render::Studio_PatchApi(pstudio);
         PreviewModel_PatchStudioApi(pstudio);
 
         return next->Invoke(version, ppinterface, pstudio);
@@ -638,7 +677,15 @@ static void OnGameInitializing(void* mainwindow, HDC* pmaindc, HGLRC* pbaseRC, c
 
     g_Unsubs.emplace_back(client()->HUD_GetStudioModelInterface += [](int version, goldsrc::r_studio_interface_t **ppinterface, goldsrc::engine_studio_api_t *pstudio, int result) {
         pStudioAPI = *ppinterface;
+        PreviewModel_BindStudioInterface(pStudioAPI);
     });
+
+    g_Unsubs.emplace_back(
+        client()->HUD_StudioEvent |= [](const goldsrc::mstudioevent_s* event, const goldsrc::cl_entity_t* entity, const auto& next) {
+            render::StudioQueuePause pause;
+            next->Invoke(event, entity);
+        }
+    );
 
     g_Unsubs.emplace_back(eng()->Host_FrameInternal += [](float delta) {
         if (g_pTaskCoroImpl)
@@ -652,10 +699,15 @@ static void OnGameInitializing(void* mainwindow, HDC* pmaindc, HGLRC* pbaseRC, c
     g_Unsubs.emplace_back(eng()->S_StartDynamicSound |= S_StartDynamicSoundHook);
     
     GL_SetMode_Subscriber(mainwindow, pmaindc, pbaseRC, pszDriver, pszCmdLine, result);
+    if (result)
+    {
+        performance::runtime::ContextCreated();
+    }
 }
 
 static void OnGameInitialized()
 {
+    render::Renderer_InitializeMaterialFiles(gEngfuncs.pfnGetGameDirectory());
     nitro_utils::PtrValidator v;
 
 #ifdef _WIN32
@@ -704,6 +756,7 @@ static void OnGameInitialized()
         return;
     }
 
+    performance::runtime::PresentationInitialized();
     viewmodel_fov = gEngfuncs.pfnRegisterVariable(cvars::kViewmodelFov.name, cvars::kViewmodelFov.value, goldsrc::FCVAR_ARCHIVE);
 
     Preview_Init();
@@ -717,6 +770,10 @@ static void OnGameInitialized()
     CL_NclEntitySyncInit();
     CL_NclEntitySyncRegisterType(static_cast<uint8_t>(ncl_entity::EntityTypeId::Player), std::make_unique<PlayerSyncSystem>());
     CL_NclEntitySyncRegisterType(static_cast<uint8_t>(ncl_entity::EntityTypeId::Weapon), std::make_unique<WeaponSyncSystem>());
+    CL_NclEntitySyncRegisterType(
+        static_cast<uint8_t>(ncl_entity::EntityTypeId::Material),
+        std::make_unique<MaterialSyncSystem>(render::GetServerMaterials(), CL_GetStringRegistry())
+    );
     CL_NclEntitySyncOverlayInit();
     PROTECTOR_Init(g_SettingGuard);
     DiscordPresence_Init();
@@ -761,6 +818,13 @@ public:
 
             SPR_ResetState();
             Mod_ResetState();
+        });
+        unsubs_.emplace_back(engine_data->Sys_Error |= [](const char* error, const auto& next) {
+            render::GetLifecycle().OnFatalShutdown();
+            CL_DeleteHttpDownloadManager();
+            EngineMiniStopWorkers();
+            ncl_perf::Profiling_Stop();
+            next->Invoke(error);
         });
     }
 
@@ -825,6 +889,20 @@ public:
         return nullptr;
 #endif
     }
+
+    render::MaterialEditInterface* GetMaterialEdit() override
+    {
+        return render::MaterialEdit_Get();
+    }
 };
 
 EXPOSE_SINGLE_INTERFACE(EngineMini, EngineMiniInterface, ENGINE_MINI_INTERFACE_VERSION);
+
+namespace performance
+{
+    static IBaseInterface* CreatePerformanceMonitorInterface()
+    {
+        return reinterpret_cast<IBaseInterface*>(&performance::GetMonitor());
+    }
+    EXPOSE_INTERFACE_FN(CreatePerformanceMonitorInterface, PerformanceMonitorInterface, PERFORMANCE_MONITOR_INTERFACE_VERSION);
+} // namespace performance

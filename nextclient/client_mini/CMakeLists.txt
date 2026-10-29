@@ -2,7 +2,6 @@ cmake_minimum_required(VERSION 3.21)
 project(client_mini)
 set(OUTPUT_NAME "client_mini")
 
-find_package(optic REQUIRED)
 find_package(CMakeRC REQUIRED)
 
 set(CMAKE_POLICY_DEFAULT_CMP0077 NEW)
@@ -23,6 +22,7 @@ endif ()
 add_library(${PROJECT_NAME} SHARED
         src/hlsdk.h
         src/main.cpp
+
         src/main.h
         src/view.cpp
         src/view.h
@@ -109,6 +109,8 @@ add_library(${PROJECT_NAME} SHARED
         src/hud/radar/map/layers/RadarMapLayers.h
         src/hud/radar/map/layers/RadarLayerAnalysisJob.cpp
         src/hud/radar/map/layers/RadarLayerAnalysisJob.h
+        src/hud/radar/integration/LayerAnalysis.cpp
+        src/hud/radar/integration/LayerAnalysis.h
         src/hud/radar/map/MapBspGeometry.cpp
         src/hud/radar/map/MapBspGeometry.h
         src/hud/radar/map/MapRender.cpp
@@ -143,6 +145,7 @@ add_library(${PROJECT_NAME} SHARED
         src/hud/radar/integration/RadarLayersDump.cpp
         src/hud/radar/integration/RadarLayersDump.h
         src/hud/radar/integration/RadarDebug.cpp
+        src/hud/radar/integration/Performance.cpp
         src/hud/radar/integration/RadarDebug.h
         src/hud/radar/render/RadarFade.cpp
         src/hud/radar/render/RadarFade.h
@@ -201,7 +204,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
         nitro_api::nitro_api
         NextClient::gameui
         NextClient::engine_mini
-        optic::optic
+        NextClient::profiling
         glad::glad
         data_types::data_types
         ncl_math::ncl_math
@@ -230,7 +233,6 @@ endif ()
 
 target_compile_definitions(${PROJECT_NAME} PRIVATE
         LOG_TAG="game"
-        USE_OPTICK=$<BOOL:${USE_PROFILER}>
         _HAS_STATIC_RTTI=0 #disable rtti things in stl
 )
 
@@ -259,6 +261,8 @@ set_target_properties(${PROJECT_NAME} PROPERTIES
 #-----------------------------------------------------------------
 add_library(client_mini_export INTERFACE)
 add_library(NextClient::client_mini ALIAS client_mini_export)
+
+target_link_libraries(client_mini_export INTERFACE cvars::cvars goldsrc::abi)
 
 target_include_directories(client_mini_export INTERFACE
         include

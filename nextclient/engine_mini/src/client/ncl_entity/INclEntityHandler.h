@@ -16,13 +16,7 @@ namespace ncl_entity
 
 #include <nextclientapi_amxx/ncl_entity.h>
 
-struct ClientNclEntityFieldDescriptor
-{
-    uint16_t field_bit = 0;
-    ncl_entity::FieldType type = ncl_entity::FieldType::BYTE;
-};
-
-using NclEntityFields = ankerl::unordered_dense::map<uint16_t, ncl_entity::FieldValue>;
+#include "client/ncl_entity/ncl_entity_message.h"
 
 struct INclEntityHandler
 {

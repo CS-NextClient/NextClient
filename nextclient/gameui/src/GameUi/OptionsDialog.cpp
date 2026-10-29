@@ -1,6 +1,8 @@
 #include "OptionsDialog.h"
 
+#include <utility>
 #include <GameUi.h>
+#include <nitro_utils/config/FileConfigProvider.h>
 
 #include "vgui_controls/Button.h"
 #include "vgui_controls/CheckButton.h"
@@ -28,7 +30,8 @@
 
 #undef PostMessage
 
-COptionsDialog::COptionsDialog(vgui2::Panel *parent) : PropertyDialog(parent, "OptionsDialog")
+COptionsDialog::COptionsDialog(vgui2::Panel* parent, render::ShaderRendererInterface* renderer) :
+    PropertyDialog(parent, "OptionsDialog")
 {
     SetBounds(0, 0, 599, 466);
     SetSizeable(false);
@@ -50,7 +53,9 @@ COptionsDialog::COptionsDialog(vgui2::Panel *parent) : PropertyDialog(parent, "O
     m_pOptionsSubKeyboard = new COptionsSubKeyboard(this);
     m_pOptionsSubMouse = new COptionsSubMouse(this);
     m_pOptionsSubAudio = new COptionsSubAudio(this);
-    m_pOptionsSubVideo = new COptionsSubVideo(this);
+    std::shared_ptr<nitro_utils::FileConfigProvider> video_config =
+        std::make_shared<nitro_utils::FileConfigProvider>("user_game_config.ini");
+    m_pOptionsSubVideo = new COptionsSubVideo(this, std::move(video_config), renderer);
 
     if (!ModInfo().IsSinglePlayerOnly())
     {

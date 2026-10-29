@@ -1,5 +1,5 @@
 #include "../engine.h"
-#include <optick.h>
+#include <ncl_perf/profiler.h>
 #include "r_studio.h"
 #include <goldsrc/engine/model.h>
 #include <goldsrc/format/studio.h>
@@ -8,7 +8,7 @@
 
 int R_StudioBodyVariations(goldsrc::model_t* model)
 {
-    OPTICK_EVENT();
+    NCL_PROFILE_SCOPE();
 
     if (model->type != goldsrc::mod_studio)
         return 0;
@@ -29,7 +29,7 @@ int R_StudioBodyVariations(goldsrc::model_t* model)
 
 int ModelFrameCount(goldsrc::model_t* model)
 {
-    OPTICK_EVENT();
+    NCL_PROFILE_SCOPE();
 
     int count;
 

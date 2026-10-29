@@ -3,7 +3,7 @@
 #include <engine.h>
 
 #include <KeyValues.h>
-#include <optick.h>
+#include <ncl_perf/profiler.h>
 #include <nitro_utils/string_utils.h>
 #include <steam/steam_api.h>
 #include <goldsrc/client_api.h>
@@ -16,7 +16,7 @@
 
 std::shared_ptr<MasterClientInterface> MasterClientFactory::CreateClient()
 {
-    OPTICK_EVENT();
+    NCL_PROFILE_SCOPE();
 
     LoadConfigIfNeeded();
 
@@ -50,7 +50,7 @@ std::shared_ptr<MasterClientInterface> MasterClientFactory::CreateClient()
 
 std::shared_ptr<MasterClientCacheInterface> MasterClientFactory::CreateCacheClient()
 {
-    OPTICK_EVENT();
+    NCL_PROFILE_SCOPE();
 
     LoadConfigIfNeeded();
 
@@ -64,7 +64,7 @@ std::shared_ptr<MasterClientCacheInterface> MasterClientFactory::CreateCacheClie
 
 void MasterClientFactory::LoadConfigIfNeeded()
 {
-    OPTICK_EVENT();
+    NCL_PROFILE_SCOPE();
 
     if (config_loaded_)
     {

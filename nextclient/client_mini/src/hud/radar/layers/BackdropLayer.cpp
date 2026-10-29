@@ -5,6 +5,8 @@
 
 #include "main.h"
 
+#include "hud/radar/integration/Performance.h"
+
 #include <goldsrc/client_api.h>
 #include <goldsrc/cvar.h>
 #include <goldsrc/engine/model.h>
@@ -22,7 +24,7 @@
 
 namespace
 {
-    constexpr RadarCvarDef kOpacityCvar = RadarCvarDef_Get("hud_radar_opacity");
+    constexpr cvars::CvarDefinition kOpacityCvar = radar::FindCvar("hud_radar_opacity");
     static_assert(kOpacityCvar.name);
 
     // Matches SmokeRegistry's own table size: the registry never reports more.
@@ -45,8 +47,11 @@ namespace
     }
 } // namespace
 
-BackdropLayer::BackdropLayer(SmokeRegistry& smoke) :
-    smoke_(smoke)
+BackdropLayer::BackdropLayer(RadarDrawContext& draw, radar::integration::Performance& performance, SmokeRegistry& smoke) :
+    draw_(draw),
+    performance_(performance),
+    smoke_(smoke),
+    overview_(performance)
 {
 }
 
@@ -70,27 +75,32 @@ void BackdropLayer::ResetLayerImages()
     overview_.ResetLayerImages();
 }
 
-void BackdropLayer::OnVidInit()
+void BackdropLayer::OnVidInit(bool release)
 {
-    overview_.Invalidate();
+    overview_.Invalidate(release);
     clamped_sprite_ = nullptr; // sprite textures come back with default wrap
 }
 
 void BackdropLayer::Draw(const RadarFrame& frame)
 {
+    performance::PerformanceCpuScope scope(performance_.get_monitor(), performance::PerfStage::RadarBackdrop);
     DrawBackground(frame);
 
     // Commit the queued background disc before the map: the no-shader tile path draws through
     // the engine TriAPI, which never triggers the batch flush, so the disc would land on top.
-    RadarDraw_FlushPrims();
+    draw_.FlushPrims();
 
-    if (overview_.is_runtime())
     {
-        DrawRuntimeMap(frame);
-    }
-    else
-    {
-        DrawOverviewTiles(frame);
+        performance::PerformanceGpuScope gpu(performance_.get_monitor(), performance::PerfStage::RadarMapDraw);
+
+        if (overview_.is_runtime())
+        {
+            DrawRuntimeMap(frame);
+        }
+        else
+        {
+            DrawOverviewTiles(frame);
+        }
     }
 
     if (!frame.ctx.spectating)
@@ -114,18 +124,18 @@ void BackdropLayer::DrawBackground(const RadarFrame& frame)
     bool round = frame.shape.round;
 
     if (g_RadarCfg.bg->value != 0.0f &&
-        RadarDraw_DrawBlurBackground(box.x, box.y, box.size, !round, 0.35f, opacity, box.screen_w, box.screen_h))
+        draw_.DrawBlurBackground(box.x, box.y, box.size, !round, 0.35f, opacity, box.screen_w, box.screen_h))
     {
         return;
     }
 
     if (round)
     {
-        RadarDraw_DrawDisc(frame.shape.center, frame.shape.radius, {0, 0, 0, a});
+        draw_.DrawDisc(frame.shape.center, frame.shape.radius, {0, 0, 0, a});
     }
     else
     {
-        ncl_math::Color c = RadarDraw_ApplyFade({0, 0, 0});
+        ncl_math::Color c = draw_.ApplyFade({0, 0, 0});
         gEngfuncs.pfnFillRGBABlend((int)box.x, (int)box.y, (int)box.size, (int)box.size, c.r, c.g, c.b, a);
     }
 }
@@ -143,7 +153,7 @@ void BackdropLayer::DrawRuntimeMap(const RadarFrame& frame)
 
     float opacity = ComputeOpacityFraction();
 
-    RadarDraw_DrawMapTexture(
+    draw_.DrawMapTexture(
         runtime_map.texture,
         xy,
         uv,
@@ -168,7 +178,7 @@ void BackdropLayer::EnsureSpriteClamped(goldsrc::model_t* map, int total_frames)
     for (int i = 0; i < total_frames; i++)
     {
         tri->SpriteTexture(map, i);
-        RadarDraw_ClampBoundTexture();
+        draw_.ClampBoundTexture();
     }
 
     clamped_sprite_ = map;
@@ -239,8 +249,8 @@ void BackdropLayer::DrawOverviewTiles(const RadarFrame& frame)
 
     EnsureSpriteClamped(map, transform.total_frames);
 
-    bool masked = g_RadarCfg.map_mask->value != 0.0f &&
-        RadarDraw_BeginMask(frame.shape.center, frame.shape.radius, 1.5f, 0.0f, !frame.shape.round);
+    bool masked =
+        g_RadarCfg.map_mask->value != 0.0f && draw_.BeginMask(frame.shape.center, frame.shape.radius, 1.5f, 0.0f, !frame.shape.round);
 
     ncl_math::Aabb2 box_rect = {{box.x, box.y}, {box.x + box.size, box.y + box.size}};
     ncl_math::Vector2 row = transform.tile_origin;
@@ -284,7 +294,7 @@ void BackdropLayer::DrawOverviewTiles(const RadarFrame& frame)
 
     if (masked)
     {
-        RadarDraw_EndMask();
+        draw_.EndMask();
     }
 
     tri->RenderMode(goldsrc::kRenderNormal);
@@ -300,8 +310,8 @@ void BackdropLayer::DrawSmoke(const RadarFrame& frame)
         return;
     }
 
-    RadarDraw_SetPrimClip(frame.shape.center, frame.shape.radius, !frame.shape.round);
-    RadarDraw_BeginPrims();
+    draw_.SetPrimClip(frame.shape.center, frame.shape.radius, !frame.shape.round);
+    draw_.BeginPrims();
 
     for (int i = 0; i < n; i++)
     {
@@ -310,14 +320,14 @@ void BackdropLayer::DrawSmoke(const RadarFrame& frame)
         float sr = std::max(2.0f, (e - s).Length());
         RadarLayerStyle style = RadarLayerMarker_ComputeStyle(frame.layer_view, smokes[i].center);
 
-        RadarDraw_DrawDisc(s, sr, {210, 210, 210, (int)(110 * style.opacity)});
+        draw_.DrawDisc(s, sr, {210, 210, 210, (int)(110 * style.opacity)});
 
         RadarLayerPlacement placement = RadarLayerMarker_Place(frame.shape, s, 3, style);
-        RadarDraw_DrawLayerIndicator(placement.indicator, style.vertical, 3, {210, 210, 210, (int)(110 * style.opacity)});
+        draw_.DrawLayerIndicator(placement.indicator, style.vertical, 3, {210, 210, 210, (int)(110 * style.opacity)});
     }
 
-    RadarDraw_EndPrims();
-    RadarDraw_ClearPrimClip();
+    draw_.EndPrims();
+    draw_.ClearPrimClip();
 }
 
 void BackdropLayer::DrawBorder(const RadarFrame& frame)
@@ -340,7 +350,7 @@ void BackdropLayer::DrawBorder(const RadarFrame& frame)
     {
         float outer = frame.shape.radius;
         float inner = outer - (float)thickness - 0.5f;
-        RadarDraw_DrawBorderRing(frame.shape.center, outer, inner, 1.0f, rim.WithAlpha(ca));
+        draw_.DrawBorderRing(frame.shape.center, outer, inner, 1.0f, rim.WithAlpha(ca));
         return;
     }
 
@@ -348,7 +358,7 @@ void BackdropLayer::DrawBorder(const RadarFrame& frame)
     int y1 = (int)frame.box.y;
     int w = (int)frame.box.size;
 
-    ncl_math::Color f = RadarDraw_ApplyFade(rim);
+    ncl_math::Color f = draw_.ApplyFade(rim);
     gEngfuncs.pfnFillRGBABlend(x1, y1, w, thickness, f.r, f.g, f.b, ca);
     gEngfuncs.pfnFillRGBABlend(x1, y1 + w - thickness, w, thickness, f.r, f.g, f.b, ca);
     gEngfuncs.pfnFillRGBABlend(x1, y1, thickness, w, f.r, f.g, f.b, ca);

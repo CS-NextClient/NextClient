@@ -154,7 +154,7 @@ def Runtime_WaitEndpoint(record, timeout):
     raise TimeoutError("Owned server did not begin serving RCON within the ready deadline")
 
 
-def Runtime_CheckVersions(versions, lock, plugin_version):
+def Runtime_CheckVersions(versions, lock, plugin_version, all_plugins=False):
     parts = {part["name"]: part for part in lock["components"] if part["platform"] == kPlatform}
     expected = {"rehlds": ("version", r"ReHLDS version:\s*" + re.escape(parts["rehlds"]["version"]) + r"(?:-dev)?\b"),
                 "regamedll": ("game version", r"ReGameDLL version:\s*" + re.escape(parts["regamedll"]["version"]) + r"(?:-dev)?\b"),
@@ -163,7 +163,12 @@ def Runtime_CheckVersions(versions, lock, plugin_version):
                 "reapi": ("meta list", r"ReAPI\s+RUN\s+.*?\bv" + re.escape(parts["reapi"].get("runtime_version", parts["reapi"]["version"])) + r"\b"),
                 "plugin": ("amxx plugins", r"NextClient TestLab\s+" + re.escape(plugin_version) + r"\s+[^\n]*\brunning\b")}
     failed = [name for name, (command, pattern) in expected.items() if not re.search(pattern, versions.get(command, ""), re.I)]
-    for name in ["CStrike", "FakeMeta", "Ham Sandwich", "ReAPI", "JSON"]:
+    modules = ["CStrike", "FakeMeta", "Ham Sandwich", "ReAPI", "JSON"]
+    if all_plugins:
+        modules.append("Next Client API")
+        if not re.search(r"NextClient Material[^\n]*\brunning\b", versions.get("amxx plugins", ""), re.I):
+            failed.append("materials_plugin")
+    for name in modules:
         if not re.search(re.escape(name) + r"\s+[^\n]*\brunning\b", versions.get("amxx modules", ""), re.I):
             failed.append("module:" + name)
     return failed
@@ -190,6 +195,7 @@ def Runtime_QueryStatus(config):
 
 def Runtime_Inventory(config, record, ready):
     from install import Install_LoadLock
+    from all_plugins import kMaterialsMarker
     root = Path_Resolve(config["server"]["root"])
     lock = Install_LoadLock()
     versions = {command: Runtime_Rcon(record, command) for command in ["version", "game version", "meta version", "meta list", "amxx modules", "amxx plugins"]}
@@ -200,10 +206,12 @@ def Runtime_Inventory(config, record, ready):
                     map_hashes={path.stem: hashlib.sha256(path.read_bytes()).hexdigest() for path in [root / "cstrike/maps/cs_office.bsp", root / "cstrike/maps/de_dust2.bsp"] if path.is_file()},
                     map_profile_hashes={path.stem: hashlib.sha256(path.read_bytes()).hexdigest() for path in (root / "cstrike/addons/amxmodx/configs/nextclient_testlab/maps").glob("*.ini")},
                     build=Json_Read(root / ".nextclient-build.json") if (root / ".nextclient-build.json").is_file() else {},
+                    materials_build=Json_Read(root / kMaterialsMarker) if (root / kMaterialsMarker).is_file() else None,
                     valve_base=Json_Read(root / ".nextclient-base.json") if (root / ".nextclient-base.json").is_file() else None)
     steam = Path_Resolve(config["paths"]["cache"]) / "steamcmd" / kPlatform / ("steamcmd.exe" if os.name == "nt" else "linux32/steamcmd")
     metadata["steamcmd"] = {"sha256": hashlib.sha256(steam.read_bytes()).hexdigest()} if steam.is_file() else None
-    metadata["failed_versions"] = Runtime_CheckVersions(versions, lock, ready["data"]["plugin_version"])
+    metadata["failed_versions"] = Runtime_CheckVersions(versions, lock, ready["data"]["plugin_version"],
+                                                       all_plugins=(root / kMaterialsMarker).is_file())
     return metadata
 
 

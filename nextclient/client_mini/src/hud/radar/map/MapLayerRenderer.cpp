@@ -13,6 +13,7 @@
 
 #include "hud/radar/map/MapImageTone.h"
 #include "hud/radar/map/MapRenderState.h"
+#include "hud/radar/integration/Performance.h"
 
 namespace
 {
@@ -185,11 +186,6 @@ namespace
     }
 } // namespace
 
-MapLayerRenderer::~MapLayerRenderer()
-{
-    Reset();
-}
-
 RadarMapStatus MapLayerRenderer::Ensure(
     const RadarMapLayers& layers,
     std::span<const MapLayerMaterial> materials,
@@ -199,6 +195,8 @@ RadarMapStatus MapLayerRenderer::Ensure(
     std::string* waiting_reason
 )
 {
+    performance::PerformanceMonitorInterface* monitor = performance_.get_monitor();
+    performance::PerformanceCpuScope cpu(monitor, performance::PerfStage::RadarLayer);
     if (waiting_reason)
     {
         waiting_reason->clear();
@@ -218,6 +216,7 @@ RadarMapStatus MapLayerRenderer::Ensure(
 
     if (get_map(layer))
     {
+        performance_.AddCounter(performance::PerfCounterId::RadarLayerCacheHits, 1);
         cache_.Request(layer, frame);
 
         return RadarMapStatus::Ready;
@@ -278,6 +277,7 @@ RadarMapStatus MapLayerRenderer::Ensure(
         return Wait(waiting_reason, "stage=image_budget layer=" + std::to_string(layer) + " frame=" + std::to_string(frame));
     }
 
+    performance::PerformanceGpuScope gpu(monitor, performance::PerfStage::RadarLayer);
     MapRenderState saved;
     RuntimeMap& image = maps_[request.slot];
 
@@ -420,6 +420,7 @@ RadarMapStatus MapLayerRenderer::Ensure(
     image.bounds = layers.get_bounds();
     image.valid = true;
     cache_.Commit(request.slot, layer);
+    performance_.AddCounter(performance::PerfCounterId::RadarLayerImages, 1);
 
     return RadarMapStatus::Ready;
 }
@@ -465,11 +466,11 @@ const MapLayerCache& MapLayerRenderer::get_cache() const
     return cache_;
 }
 
-void MapLayerRenderer::Reset()
+void MapLayerRenderer::Reset(bool release)
 {
     for (RuntimeMap& map : maps_)
     {
-        if (map.texture)
+        if (release && map.texture)
         {
             glDeleteTextures(1, &map.texture);
         }
@@ -477,18 +478,18 @@ void MapLayerRenderer::Reset()
         map = {};
     }
 
-    if (framebuffer_)
+    if (release && framebuffer_)
     {
         glDeleteFramebuffers(1, &framebuffer_);
-        framebuffer_ = 0;
     }
 
-    if (depth_buffer_)
+    if (release && depth_buffer_)
     {
         glDeleteRenderbuffers(1, &depth_buffer_);
-        depth_buffer_ = 0;
     }
 
+    framebuffer_ = 0;
+    depth_buffer_ = 0;
     cache_.Reset();
     layers_ = nullptr;
     textured_ = false;

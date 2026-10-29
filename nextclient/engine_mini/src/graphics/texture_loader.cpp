@@ -1,8 +1,11 @@
+#include "graphics/texture_loader.h"
+
 #include <SDL_opengl.h>
 #include <SDL_video.h>
-#include <optick.h>
+#include <ncl_perf/profiler.h>
 #include <imageinfo.hpp>
-#include <stb/stb_image.h>
+#include <ncl_image/Decode.h>
+#include <ncl_material/MaterialPreset.h>
 #include <goldsrc/client_api.h>
 #include <goldsrc/cvar.h>
 #include <goldsrc/limits.h>
@@ -22,6 +25,11 @@ using namespace imageinfo;
 
 namespace tex
 {
+    namespace
+    {
+        constexpr int kTextureBufferBytes = kTextureMaxSize * kTextureMaxSize * 4;
+    }
+
     static std::tuple<GLenum, GLenum> GL_GetFormatAndInternalFormat(TextureFormat format)
     {
         GLenum gl_format;
@@ -91,7 +99,7 @@ namespace tex
         GLenum gl_internal_format
     )
     {
-        OPTICK_EVENT();
+        NCL_PROFILE_SCOPE();
 
         if (data != work_buf)
         {
@@ -123,11 +131,9 @@ namespace tex
         qglTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY_EXT, gl_ansio.value);
     }
 
-    static bool LoadTGA(const char* file, uint8_t* rgba_out, uint32_t size, int* width_out, int* height_out)
+    static bool LoadImage(const char* file, const std::vector<imageinfo::Format>& formats, uint8_t* rgba_out, uint32_t size, int* width_out, int* height_out)
     {
-        const uint32_t width_max = kTextureMaxSize;
-        const uint32_t height_max = kTextureMaxSize;
-        const uint32_t file_size_limit = size + 18 + 256 * 4 + 255; // TGA header (18) + max colormap (256*4) + max image ID (255)
+        const uint32_t file_size_limit = std::min<uint32_t>(size + ncl_material::kImageHeaderBytes, ncl_material::kMaxImageFileBytes);
 
         int file_len = 0;
         FileHandle_t file_handle = nullptr;
@@ -146,7 +152,7 @@ namespace tex
         //     return false;
         // }
 
-        ImageInfo image_info = imageinfo::parse<RawDataReader>(RawData(file_buffer, file_len), {kFormatTga}, true);
+        ImageInfo image_info = imageinfo::parse<RawDataReader>(RawData(file_buffer, file_len), formats, true);
 
         if (!image_info.ok())
         {
@@ -158,28 +164,50 @@ namespace tex
         int width = image_info.size().width;
         int height = image_info.size().height;
 
-        if ((int64_t)width * height > (int64_t)width_max * height_max)
+        if (!ncl_material::IsAdmissibleImage(width, height))
         {
-            Con_Printf("Image size is too large %s. Actual: %dx%d, Max: %dx%d\n", file, width, height, width_max, height_max);
+            Con_Printf("Image size is too large %s. Actual: %dx%d, Max: %dx%d\n", file, width, height, kTextureMaxSize, kTextureMaxSize);
             FS_Close(file_handle);
             return false;
         }
 
-        int components;
-        stbi_uc* image = stbi_load_from_memory(file_buffer, file_len, &width, &height, &components, STBI_rgb_alpha);
+        auto image = ncl_image::DecodeRgba8(
+            std::span<const uint8_t>(file_buffer, static_cast<size_t>(file_len)),
+            ncl_material::kMaxImagePixels
+        );
 
-        if (image == nullptr)
+        if (image.has_error())
         {
-            Con_Printf("Failed to parse image: %s\n", stbi_failure_reason());
+            const ncl_image::DecodeError& error = image.error();
+
+            if (error.code == ncl_image::DecodeErrorCode::Decoder)
+            {
+                Con_Printf("Failed to parse image: %s\n", error.description().c_str());
+            }
+            else if (error.code == ncl_image::DecodeErrorCode::DecodedDimensions)
+            {
+                Con_Printf(
+                    "Decoded image size is too large %s. Actual: %dx%d, Max: %dx%d\n",
+                    file,
+                    error.width,
+                    error.height,
+                    kTextureMaxSize,
+                    kTextureMaxSize
+                );
+            }
+            else
+            {
+                Con_Printf("Invalid decoded image dimensions: %s.\n", file);
+            }
+
             FS_Close(file_handle);
             return false;
         }
 
-        V_memcpy(rgba_out, image, width * height * 4);
-        *width_out = width;
-        *height_out = height;
+        V_memcpy(rgba_out, image->pixels.get(), static_cast<size_t>(image->width) * image->height * 4);
+        *width_out = image->width;
+        *height_out = image->height;
 
-        stbi_image_free(image);
         FS_Close(file_handle);
 
         return true;
@@ -187,21 +215,42 @@ namespace tex
 
     bool LoadTextureFromFile(Texture& texture, const TexIdentifierStr& identifier, const char* filename, bool mipmap, int filter)
     {
-        const int array_size = kTextureMaxSize * kTextureMaxSize * 4;
-
         ScratchArena arena(g_ScratchAllocator);
-        uint8_t* data = arena.AllocateArray<uint8_t>(array_size);
+        uint8_t* data = arena.AllocateArray<uint8_t>(kTextureBufferBytes);
 
         char new_filename[goldsrc::MAX_OSPATH];
         V_sprintf_safe(new_filename, "gfx/%s.tga", filename);
 
         int width, height;
-        if (LoadTGA(new_filename, data, array_size, &width, &height))
+        if (LoadImage(new_filename, {kFormatTga}, data, kTextureBufferBytes, &width, &height))
         {
             return LoadTexture(texture, identifier, TextureFormat::RGBA, data, width, height, mipmap, nullptr, filter);
         }
 
         return false;
+    }
+
+    bool LoadTextureFromPath(
+        Texture& texture,
+        const TexIdentifierStr& identifier,
+        const char* path,
+        bool mipmap,
+        int filter,
+        TextureLoadGuard guard
+    )
+    {
+        ScratchArena arena(g_ScratchAllocator);
+        uint8_t* data = arena.AllocateArray<uint8_t>(kTextureBufferBytes);
+
+        int width, height;
+
+        if (!LoadImage(path, {kFormatTga, kFormatPng}, data, kTextureBufferBytes, &width, &height))
+        {
+            return false;
+        }
+
+        return guard.is_current() &&
+               LoadTexture(texture, identifier, TextureFormat::RGBA, data, width, height, mipmap, nullptr, filter, guard);
     }
 
     bool LoadTexture(
@@ -213,10 +262,11 @@ namespace tex
         int height,
         bool mipmap,
         const uint8_t* palette,
-        int filter
+        int filter,
+        TextureLoadGuard guard
     )
     {
-        OPTICK_EVENT();
+        NCL_PROFILE_SCOPE();
 
         if ((int64_t)width * height > (int64_t)kTextureMaxSize * kTextureMaxSize)
         {
@@ -234,7 +284,12 @@ namespace tex
 
         if (g_modfuncs.m_pfnTextureLoad)
         {
-            g_modfuncs.m_pfnTextureLoad(identifier.c_str(), width, height, (char*)data);
+            g_modfuncs.m_pfnTextureLoad(identifier.c_str(), width, height, reinterpret_cast<char*>(const_cast<uint8_t*>(data)));
+        }
+
+        if (!guard.is_current())
+        {
+            return false;
         }
 
         // --- Texture metadata ---
@@ -377,7 +432,7 @@ namespace tex
 
     void UnloadTexture(Texture& texture)
     {
-        OPTICK_EVENT();
+        NCL_PROFILE_SCOPE();
 
         if (texture.palette.IsValid())
         {

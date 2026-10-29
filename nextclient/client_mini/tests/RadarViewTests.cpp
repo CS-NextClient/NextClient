@@ -510,7 +510,7 @@ TEST(RadarViewEdgeShift, CornersKeepPlayerVisibleAndTilesAlignedUnderRotation)
 
 TEST(RadarCvars, MapShiftDefaultsDisabledAndBounded)
 {
-    RadarCvarDef shift = RadarCvarDef_Get("hud_radar_map_shift");
+    cvars::CvarDefinition shift = radar::FindCvar("hud_radar_map_shift");
     ASSERT_NE(shift.name, nullptr);
     EXPECT_STREQ(shift.default_value, "0");
     EXPECT_FLOAT_EQ(shift.min_value, 0.0f);

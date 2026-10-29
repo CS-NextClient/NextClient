@@ -1,4 +1,5 @@
 {
   "schema": 1,
-  "server": {"bind": "127.0.0.1", "port": 27020, "maxplayers": 8, "map": "cs_office", "lan": true}
+  "server": {"bind": "127.0.0.1", "port": 27020, "maxplayers": 8, "map": "cs_office", "lan": true},
+  "paths": {"server_api": "auto", "server_api_module": "auto"}
 }

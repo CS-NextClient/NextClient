@@ -1,6 +1,7 @@
 #include "RadarGlContext.h"
 
 #include <cstdint>
+#include <unordered_map>
 
 #ifdef _WIN32
 #include <Windows.h>
@@ -51,10 +52,16 @@ namespace
     using egl_destroy_surface_t = egl_boolean_t (*)(egl_display_t, egl_surface_t);
     using egl_terminate_t = egl_boolean_t (*)(egl_display_t);
     using egl_get_error_t = int (*)();
+    using egl_current_context_t = egl_context_t (*)();
+    using egl_current_display_t = egl_display_t (*)();
+    using egl_current_surface_t = egl_surface_t (*)(int);
+    std::unordered_map<egl_display_t, unsigned int> g_EglDisplayOwners;
 
     constexpr egl_enum_t kEglPlatformSurfaceless = 0x31DD;
     constexpr egl_enum_t kEglOpenGlApi = 0x30A2;
     constexpr int kEglNone = 0x3038;
+    constexpr int kEglDraw = 0x3059;
+    constexpr int kEglRead = 0x305A;
     constexpr int kEglSurfaceType = 0x3033;
     constexpr int kEglPbufferBit = 0x0001;
     constexpr int kEglRenderableType = 0x3040;
@@ -109,6 +116,11 @@ struct RadarGlContext::Implementation
     egl_destroy_context_t destroy_context{};
     egl_destroy_surface_t destroy_surface{};
     egl_terminate_t terminate{};
+    egl_current_context_t get_current_context{};
+    egl_display_t previous_display{};
+    egl_surface_t previous_draw{};
+    egl_surface_t previous_read{};
+    egl_context_t previous_context{};
     bool initialized{};
     bool current{};
 #endif
@@ -137,9 +149,9 @@ struct RadarGlContext::Implementation
             UnregisterClassW(kWindowClassName, instance);
         }
 #elif defined(__linux__)
-        if (current)
+        if (current && get_current_context() == context)
         {
-            make_current(display, nullptr, nullptr, nullptr);
+            make_current(previous_display != nullptr ? previous_display : display, previous_draw, previous_read, previous_context);
         }
         if (context)
         {
@@ -151,7 +163,13 @@ struct RadarGlContext::Implementation
         }
         if (initialized)
         {
-            terminate(display);
+            auto owner = g_EglDisplayOwners.find(display);
+
+            if (--owner->second == 0)
+            {
+                terminate(display);
+                g_EglDisplayOwners.erase(owner);
+            }
         }
         if (library)
         {
@@ -160,7 +178,7 @@ struct RadarGlContext::Implementation
 #endif
     }
 
-    bool Initialize(std::string& error)
+    bool Initialize(std::string& error, bool double_buffer, int samples, int width, int height)
     {
 #ifdef _WIN32
         instance = GetModuleHandleW(nullptr);
@@ -170,11 +188,11 @@ struct RadarGlContext::Implementation
         definition.hInstance = instance;
         definition.lpszClassName = kWindowClassName;
         window_class = RegisterClassW(&definition);
-        if (!window_class)
+        if (!window_class && GetLastError() != ERROR_CLASS_ALREADY_EXISTS)
         {
             return WindowsError(error, "RegisterClassW");
         }
-        window = CreateWindowExW(0, kWindowClassName, L"", WS_POPUP, 0, 0, 1, 1, nullptr, nullptr, instance, nullptr);
+        window = CreateWindowExW(0, kWindowClassName, L"", WS_POPUP, 0, 0, width, height, nullptr, nullptr, instance, nullptr);
         if (!window)
         {
             return WindowsError(error, "CreateWindowExW");
@@ -188,6 +206,10 @@ struct RadarGlContext::Implementation
         format.nSize = sizeof(format);
         format.nVersion = 1;
         format.dwFlags = PFD_DRAW_TO_WINDOW | PFD_SUPPORT_OPENGL;
+        if (double_buffer)
+        {
+            format.dwFlags |= PFD_DOUBLEBUFFER;
+        }
         format.iPixelType = PFD_TYPE_RGBA;
         format.cColorBits = 24;
         format.cAlphaBits = 8;
@@ -212,6 +234,74 @@ struct RadarGlContext::Implementation
             return WindowsError(error, "wglMakeCurrent");
         }
         current = true;
+        if (samples > 0)
+        {
+            using ChoosePixelFormat_t = BOOL(WINAPI*)(HDC, const int*, const FLOAT*, UINT, int*, UINT*);
+            ChoosePixelFormat_t choose = reinterpret_cast<ChoosePixelFormat_t>(wglGetProcAddress("wglChoosePixelFormatARB"));
+            if (choose == nullptr)
+            {
+                error = "WGL_ARB_pixel_format is required for multisampled window tests";
+                return false;
+            }
+            const int attributes[] = {
+                0x2001,
+                TRUE, // WGL_DRAW_TO_WINDOW_ARB
+                0x2010,
+                TRUE, // WGL_SUPPORT_OPENGL_ARB
+                0x2011,
+                double_buffer ? TRUE : FALSE, // WGL_DOUBLE_BUFFER_ARB
+                0x2013,
+                0x202B, // WGL_PIXEL_TYPE_ARB, WGL_TYPE_RGBA_ARB
+                0x2014,
+                24, // WGL_COLOR_BITS_ARB
+                0x201B,
+                8, // WGL_ALPHA_BITS_ARB
+                0x2022,
+                24, // WGL_DEPTH_BITS_ARB
+                0x2041,
+                TRUE, // WGL_SAMPLE_BUFFERS_ARB
+                0x2042,
+                samples, // WGL_SAMPLES_ARB
+                0
+            };
+            UINT count = 0;
+            if (!choose(device_context, attributes, nullptr, 1, &pixel_format, &count) || count == 0)
+            {
+                error = "WGL has no matching multisampled window pixel format";
+                return false;
+            }
+            HWND multisample_window = CreateWindowExW(0, kWindowClassName, L"", WS_POPUP, 0, 0, width, height, nullptr, nullptr, instance, nullptr);
+            HDC multisample_dc = multisample_window ? GetDC(multisample_window) : nullptr;
+            HGLRC multisample_context = nullptr;
+            if (multisample_dc != nullptr && DescribePixelFormat(multisample_dc, pixel_format, sizeof(format), &format) != 0 &&
+                SetPixelFormat(multisample_dc, pixel_format, &format))
+            {
+                multisample_context = wglCreateContext(multisample_dc);
+            }
+            if (multisample_context == nullptr || !wglMakeCurrent(multisample_dc, multisample_context))
+            {
+                WindowsError(error, "Create multisampled WGL context");
+                if (multisample_context != nullptr)
+                {
+                    wglDeleteContext(multisample_context);
+                }
+                if (multisample_dc != nullptr)
+                {
+                    ReleaseDC(multisample_window, multisample_dc);
+                }
+                if (multisample_window != nullptr)
+                {
+                    DestroyWindow(multisample_window);
+                }
+                return false;
+            }
+            wglDeleteContext(context);
+            ReleaseDC(window, device_context);
+            DestroyWindow(window);
+            context = multisample_context;
+            device_context = multisample_dc;
+            window = multisample_window;
+        }
 #elif defined(__linux__)
         library = dlopen("libEGL.so.1", RTLD_NOW | RTLD_LOCAL);
         if (!library)
@@ -226,6 +316,8 @@ struct RadarGlContext::Implementation
         egl_create_surface_t create_surface{};
         egl_create_context_t create_context{};
         egl_get_error_t get_error{};
+        egl_current_display_t get_current_display{};
+        egl_current_surface_t get_current_surface{};
         if (!LoadEglFunction(library, "eglGetProcAddress", get_proc_address, error) ||
             !LoadEglFunction(library, "eglInitialize", initialize, error) || !LoadEglFunction(library, "eglBindAPI", bind_api, error) ||
             !LoadEglFunction(library, "eglChooseConfig", choose_config, error) ||
@@ -234,7 +326,10 @@ struct RadarGlContext::Implementation
             !LoadEglFunction(library, "eglMakeCurrent", make_current, error) ||
             !LoadEglFunction(library, "eglDestroyContext", destroy_context, error) ||
             !LoadEglFunction(library, "eglDestroySurface", destroy_surface, error) ||
-            !LoadEglFunction(library, "eglTerminate", terminate, error) || !LoadEglFunction(library, "eglGetError", get_error, error))
+            !LoadEglFunction(library, "eglTerminate", terminate, error) || !LoadEglFunction(library, "eglGetError", get_error, error) ||
+            !LoadEglFunction(library, "eglGetCurrentContext", get_current_context, error) ||
+            !LoadEglFunction(library, "eglGetCurrentDisplay", get_current_display, error) ||
+            !LoadEglFunction(library, "eglGetCurrentSurface", get_current_surface, error))
         {
             return false;
         }
@@ -260,6 +355,11 @@ struct RadarGlContext::Implementation
             return egl_error("eglInitialize");
         }
         initialized = true;
+        ++g_EglDisplayOwners[display];
+        previous_context = get_current_context();
+        previous_display = get_current_display();
+        previous_draw = get_current_surface(kEglDraw);
+        previous_read = get_current_surface(kEglRead);
         if (!bind_api(kEglOpenGlApi))
         {
             return egl_error("eglBindAPI(EGL_OPENGL_API)");
@@ -290,7 +390,7 @@ struct RadarGlContext::Implementation
             error = "EGL has no RGBA8 pbuffer configuration for desktop OpenGL";
             return false;
         }
-        const int surface_attributes[] = {kEglWidth, 1, kEglHeight, 1, kEglNone};
+        const int surface_attributes[] = {kEglWidth, width, kEglHeight, height, kEglNone};
         surface = create_surface(display, config, surface_attributes);
         if (!surface)
         {
@@ -338,15 +438,57 @@ RadarGlContext::RadarGlContext() = default;
 
 RadarGlContext::~RadarGlContext() = default;
 
-bool RadarGlContext::Initialize(std::string& error)
+bool RadarGlContext::Initialize(std::string& error, bool double_buffer, int samples, int width, int height)
 {
     implementation_.reset();
     error.clear();
     implementation_ = std::make_unique<Implementation>();
-    if (!implementation_->Initialize(error))
+    if (!implementation_->Initialize(error, double_buffer, samples, width, height))
     {
         implementation_.reset();
         return false;
     }
     return true;
+}
+
+bool RadarGlContext::MakeCurrent()
+{
+#ifdef _WIN32
+    return wglMakeCurrent(implementation_->device_context, implementation_->context) != 0;
+#elif defined(__linux__)
+    return implementation_->make_current(
+               implementation_->display, implementation_->surface, implementation_->surface, implementation_->context
+           ) != 0;
+#endif
+}
+
+bool RadarGlContext::ClearCurrent()
+{
+#ifdef _WIN32
+    return wglMakeCurrent(nullptr, nullptr) != 0;
+#elif defined(__linux__)
+    return implementation_->make_current(implementation_->display, nullptr, nullptr, nullptr) != 0;
+#endif
+}
+
+void* RadarGlContext::native_context() const
+{
+    return reinterpret_cast<void*>(implementation_->context);
+}
+
+void* RadarGlContext::Current()
+{
+#ifdef _WIN32
+    return wglGetCurrentContext();
+#elif defined(__linux__)
+    void* library = dlopen("libEGL.so.1", RTLD_NOLOAD | RTLD_LAZY);
+    if (library == nullptr)
+    {
+        return nullptr;
+    }
+    egl_current_context_t query = reinterpret_cast<egl_current_context_t>(dlsym(library, "eglGetCurrentContext"));
+    void* context = query != nullptr ? query() : nullptr;
+    dlclose(library);
+    return context;
+#endif
 }

@@ -1,18 +1,12 @@
 #pragma once
 
-#include <string_view>
+#include <cvars/CvarDefinition.h>
 
 // Registration defaults of the cvars NextClient owns. The engine's cvar_t keeps only the
 // current value, so nothing can ask the engine what a cvar was registered with: the
 // modules that register these cvars and the settings UI share this table instead.
 namespace cvars
 {
-    struct CvarDefault
-    {
-        const char* name;
-        const char* value;
-    };
-
     // registered by client_mini
     inline constexpr CvarDefault kViewmodelDisableShift{"viewmodel_disable_shift", "0"};
     inline constexpr CvarDefault kViewmodelOffsetX{"viewmodel_offset_x", "0"};
@@ -82,12 +76,6 @@ namespace cvars
     // nullptr for a cvar outside the table
     constexpr const char* FindDefault(std::string_view name)
     {
-        for (const CvarDefault& entry : kAll)
-        {
-            if (name == entry.name)
-                return entry.value;
-        }
-
-        return nullptr;
+        return FindDefinition(kAll, name).value;
     }
 }

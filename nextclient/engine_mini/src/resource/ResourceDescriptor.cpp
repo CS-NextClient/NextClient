@@ -1,5 +1,9 @@
 #include "ResourceDescriptor.h"
 
+#include <filesystem>
+#include <fstream>
+#include <system_error>
+
 #include <engine.h>
 #include <client/cl_private_resources.h>
 #include <common/com_strings.h>
@@ -41,7 +45,20 @@ bool ResourceDescriptor::SaveToFile(const char* data, int length) const
 
     if (full_path.has_parent_path())
     {
-        std::filesystem::create_directories(full_path.parent_path());
+        std::error_code error;
+        std::filesystem::create_directories(full_path.parent_path(), error);
+        if (error)
+        {
+            Con_DPrintf(
+                ConLogType::Error,
+                "%s: Can't create directories for '%s' to save '%s': %s\n",
+                __func__,
+                save_path_.c_str(),
+                filename_.c_str(),
+                error.message().c_str()
+            );
+            return false;
+        }
     }
 
     std::ofstream file(full_path, std::ios::out | std::ios::binary);

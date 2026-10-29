@@ -1,7 +1,6 @@
 # Coroutine runtime
 
-`TaskCoroImpl` owns the concurrencpp executors; `SynchronizationContext` chooses where continuations
-resume. The launcher and engine have separate lifetime and frame-pump arrangements.
+`TaskCoroImpl` owns the concurrencpp executors; `SynchronizationContext` chooses where continuations resume. The launcher and engine have separate lifetime and frame-pump arrangements.
 
 ## Cancellation and ownership
 
@@ -30,7 +29,4 @@ resume. The launcher and engine have separate lifetime and frame-pump arrangemen
 
 ## Verification
 
-Exercise cancellation while work is still running, completion after cancellation, and shutdown
-after the main-thread pump stops. The updater is a concrete consumer of tracked IO shutdown; its
-tests and affected DLL builds are useful checks, but successful HTTP requests alone do not cover
-the lifetime contract above.
+Exercise cancellation while work is still running, completion after cancellation, and shutdown after the main-thread pump stops. The updater is a concrete consumer of tracked IO shutdown; its tests and affected DLL builds are useful checks, but successful HTTP requests alone do not cover the lifetime contract above.

@@ -1,8 +1,12 @@
 #include "main.h"
+
+#include "hud/radar/integration/Performance.h"
 #include <cstring>
 #include <ranges>
+#include <optional>
 #include <thread>
 #include <next_client_mini/client_mini.h>
+#include <next_engine_mini/engine_mini.h>
 #include <data_types/MessageReader.h>
 #include <goldsrc/client_api.h>
 #include <goldsrc/cvar.h>
@@ -17,6 +21,7 @@
 #include <strtools.h>
 #include <taskcoro/impl/TaskCoroImpl.h>
 #include <taskcoro/TaskCoro.h>
+
 
 #include "camera.h"
 #include "studiorenderer.h"
@@ -99,6 +104,7 @@ static void HUD_InitPost()
     sv = g_NitroApi->GetEngineData()->server;
     sv_static = g_NitroApi->GetEngineData()->server_static;
 
+
     ViewInit();
     FovInit();
     InspectInit();
@@ -113,6 +119,8 @@ static void HUD_InitPost()
     ColorChatInConsolePatch();
 
     RadarHooks_PatchHudText();
+
+
 }
 
 static int HUD_RedrawHandler(float flTime, int iIntermission, HUD_RedrawNext next)
@@ -179,6 +187,7 @@ static int HUD_VidInitHandler(HUD_VidInitNext next)
 
     ViewVidInit();
     g_GameHud->VidInit();
+
 
     return 1;
 }
@@ -312,11 +321,22 @@ static void HUD_ProcessPlayerStateHandler(goldsrc::entity_state_t* dst, const go
 class ClientMini : public ClientMiniInterface
 {
     std::shared_ptr<taskcoro::TaskCoroImpl> task_runtime_;
+    std::optional<radar::integration::Performance> radar_performance_;
 
     void ShutdownHud()
     {
+        for (const auto& subscription : g_Unsub)
+        {
+            subscription->Unsubscribe();
+        }
+        g_Unsub.clear();
         RadarHooks_UnpatchHudText();
-        g_GameHud.reset();
+        if (g_GameHud)
+        {
+            g_GameHud->Shutdown();
+            g_GameHud.reset();
+        }
+        radar_performance_.reset();
 
         if (task_runtime_)
         {
@@ -355,11 +375,22 @@ public:
 
         task_runtime_ = std::make_shared<taskcoro::TaskCoroImpl>(std::this_thread::get_id(), false);
         taskcoro::TaskCoro::Initialize(task_runtime_);
-        g_GameHud = std::make_unique<GameHud>(nitro_api);
-        g_Unsub.emplace_back(client_data->HUD_Shutdown += [this] { ShutdownHud(); });
+        CreateInterfaceFn engine_factory = Sys_GetFactory("next_engine_mini.dll");
+        radar_performance_.emplace(
+            engine_factory ? reinterpret_cast<performance::PerformanceMonitorInterface*>(
+                                 engine_factory(PERFORMANCE_MONITOR_INTERFACE_VERSION, nullptr)
+                             )
+                           : nullptr
+        );
+        g_GameHud = std::make_unique<GameHud>(nitro_api, *radar_performance_, *task_runtime_);
+        g_Unsub.emplace_back(client_data->HUD_Shutdown += [this] {
+            ClientMini* owner = this;
+            owner->ShutdownHud();
+        });
         g_Unsub.emplace_back(eng()->Sys_Error |= [this](const char* error, const auto& next) {
             // Sys_Error exits the process without Host_Shutdown, so HUD_Shutdown never fires on that path.
-            ShutdownHud();
+            ClientMini* owner = this;
+            owner->ShutdownHud();
             next->Invoke(error);
         });
     }

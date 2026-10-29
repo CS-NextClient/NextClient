@@ -9,9 +9,10 @@
 #include <nitroapi/hook/StaticHookId.h>
 #include <platform.h>
 #include "../seh_platform.h"
+#include "FrameLifecycle.h"
 
-#ifdef NITROAPI_USE_PROFILER
-#include "../profiler.h"
+#if USE_PROFILER
+#include "profiler.h"
 #endif
 
 namespace nitroapi
@@ -93,22 +94,41 @@ namespace nitroapi
                 return;
             }
 
-#ifdef NITROAPI_USE_PROFILER
+#if USE_PROFILER
             s_callback_ = [hook_callback = std::move(hook_callback)](TArgs... args) -> TResult {
-                if (!g_ProfilerInsideFrame)
-                    return hook_callback(std::forward<TArgs>(args)...);
-
-                static char event_name[64] = {'\0'};
-                if (event_name[0] == '\0')
-                    V_snprintf(event_name, sizeof(event_name), "Hook %s", magic_enum::enum_name(HookId));
-
-                OPTICK_EVENT(event_name);
+                NCL_PROFILE_NAMED_SCOPE((nitroapi::profiling::HookName<HookId, false>()));
 
                 return hook_callback(std::forward<TArgs>(args)...);
             };
 #else
             s_callback_ = std::move(hook_callback);
 #endif
+
+            if constexpr (HookId == StaticHookId::Host_Frame)
+            {
+                FrameLifecycleService& lifecycle = FrameLifecycle_GetDefaultService();
+                s_callback_ = [&lifecycle, callback = std::move(s_callback_)](TArgs... args) -> TResult {
+                    return FrameLifecycle_InvokeHost(lifecycle, [&] { return callback(std::forward<TArgs>(args)...); });
+                };
+            }
+            else if constexpr (HookId == StaticHookId::Host_FrameInternal)
+            {
+                FrameLifecycleService& lifecycle = FrameLifecycle_GetDefaultService();
+                s_callback_ = [&lifecycle, callback = std::move(s_callback_)](TArgs... args) {
+                    lifecycle.BeginBody();
+                    callback(std::forward<TArgs>(args)...);
+                    lifecycle.EndBody();
+                };
+            }
+            else if constexpr (HookId == StaticHookId::Host_FilterTime)
+            {
+                FrameLifecycleService& lifecycle = FrameLifecycle_GetDefaultService();
+                s_callback_ = [&lifecycle, callback = std::move(s_callback_)](TArgs... args) -> TResult {
+                    TResult result = callback(std::forward<TArgs>(args)...);
+                    lifecycle.ReportFilter(result);
+                    return result;
+                };
+            }
 
             LOG_IF(hook_active_, WARNING) << "[static hook] Hook callback changed for " << magic_enum::enum_name(HookId);
 
@@ -129,14 +149,10 @@ namespace nitroapi
         {
             uint32_t address = hook_active_ ? trampoline_address_ : hook_address_;
 
-#ifdef NITROAPI_USE_PROFILER
-            if (g_ProfilerInsideFrame && hook_active_)
+#if USE_PROFILER
+            if (hook_active_)
             {
-                static char event_name[64] = {'\0'};
-                if (event_name[0] == '\0')
-                    V_snprintf(event_name, sizeof(event_name), "Original %s", magic_enum::enum_name(HookId));
-
-                OPTICK_EVENT(event_name);
+                NCL_PROFILE_NAMED_SCOPE((nitroapi::profiling::HookName<HookId, true>()));
 
                 return InvokeInternal(address, std::forward<TArgs>(args)...);
             }

@@ -1,16 +1,21 @@
-Language: EN | [RU](https://github.com/CS-NextClient/NextClient/blob/main/README.ru.md)
+Language: EN | [RU](README.ru.md)
 
 NextClient
 ==========
 
-NextClient is a modification for Counter-Strike 1.6 aimed at introducing new functionality for both players and developers of server modifications on amxmodx.
-NextClient has integrated some features from [csldr](https://github.com/mikkokko/csldr).
+[Documentation index](docs/README.md) | [Testing](docs/testing/README.md) | [Developer tools](docs/tools/developer-panel.md)
 
-*Please note that the official version of NextClient does not include an emulator. Next21 team is not developing a Steam emulator. You still need to have Steam running and a purchased copy of Cs 1.6 to play on the NextClient version from GitHub.*
+NextClient extends Counter-Strike 1.6 for players and developers of server modifications using AMX Mod X. NextClient has integrated some features from [csldr](https://github.com/mikkokko/csldr).
+
+*The official version of NextClient ships without a Steam emulator. The Next21 team does not develop one. The GitHub version requires a purchased copy of Counter-Strike 1.6 and a running Steam client.*
 
 *Some antivirus engines flag NextClient binaries. These are heuristic false positives caused by runtime detouring of engine functions. Official builds are produced from the source code of this repository by GitHub Actions and carry a signed build provenance attestation. Details and false positive reporting: [docs/reporting-av-false-positives.md](docs/reporting-av-false-positives.md).*
 
-### Main features:
+## Getting started
+
+For a ready-to-use client, follow [Installation](#installation). To work on the source, start with [Building](#building), then choose a guide from the [documentation index](docs/README.md).
+
+## Main features
 
  - Windows and Linux support (x86)
  - Protector - protects the client from malicious commands from the server
@@ -23,7 +28,7 @@ NextClient has integrated some features from [csldr](https://github.com/mikkokko
  - 2 GUI schemes with the ability to change them through the settings, and the ability to add your own schemes without deleting the old ones
  - HTML interface support in GameUI based on CEF (Chromium Embedded Framework) with a JS API for interacting with the client (Windows only)
  - Display more than 255hp when using [server module](https://github.com/CS-NextClient/NextClientServerApi)
- - Display number and size of remaining files, total file size and upload speed when connected to the server
+ - Display number and size of remaining files, total file size and download speed when connected to the server
  - Color chat in console
  - Various improvements from [csldr](https://github.com/mikkokko/csldr) for viewmodel:
    - Adjustable origin
@@ -33,7 +38,8 @@ NextClient has integrated some features from [csldr](https://github.com/mikkokko
    - Client-side weapon inspecting
    - Bone controlled camera movement
 
-### Features for amxmodx developers:
+## Features for AMX Mod X developers
+
  - Cvars sandbox, the ability to change cvars for a client (from a limited list) while a client is on the server
  - Killfeed customization
  - Sprite API, control of sprites on the screen
@@ -46,13 +52,13 @@ NextClient has integrated some features from [csldr](https://github.com/mikkokko
  - Separate precache for regular cs 1.6 client and NextClient
  - Precache of hud.txt and other standard resources
 
-### New cvars
+## New cvars
 <details>
 <summary>Click to expand</summary>
 
 | Cvar name | Default value | Available in sandbox*       | Description |
 | --- |---------------|-----------------------------| --- |
-| viewmodel_disable_shift | 0             | Yes                         | Disable viewmodel shifting (when you looking up or down). |
+| viewmodel_disable_shift | 0             | Yes                         | Disable viewmodel shifting (when looking up or down). |
 | viewmodel_offset_x | 0             | Yes                         |  |
 | viewmodel_offset_y | 0             | Yes                         |  |
 | viewmodel_offset_z | 0             | Yes                         |  |
@@ -100,10 +106,9 @@ NextClient has integrated some features from [csldr](https://github.com/mikkokko
 | hud_radar_name_size | 0.8 | No | Player name size. Min: 0.6<br/>Max: 2.0 |
 | hud_radar_allies | 1 | No | 1 - show teammates revealed by the server, 0 - also require line of sight. |
 
-*Can the server change the value of a cvar using the cvars sandbox feature.
-</details>
+*Can the server change the value of a cvar using the cvars sandbox feature. </details>
 
-### Console commands
+## Console commands
 
 | Command | Purpose |
 | --- | --- |
@@ -125,7 +130,7 @@ bindlist
 
 ### Windows
 
-1. NextClient only works with engine version 8684, make sure you are on the beta branch "steam_legacy - Pre-25th Anniversary Build" in Steam (⚠️ Note: you need the official game files from Steam! You cannot install NextClient on pirate clients!)
+1. NextClient requires engine build 8684. Select the "steam_legacy - Pre-25th Anniversary Build" beta branch in Steam and use the official game files.
 2. Copy the entire Counter-Strike 1.6 (Half-Life) folder to a separate folder outside of the Steam folder
 3. Copy all NextClient files to the folder where you copied all the CS 1.6 files
 4. Start Steam.
@@ -164,11 +169,12 @@ chmod +x nextclient.sh cstrike.exe
 
 `nextclient.sh` runs the native Linux client through the Steam Runtime. It finds the runtime in regular and Snap Steam installations. Arguments are passed to the game, for example `./nextclient.sh -windowed`.
 
-### ⚠️ Warning! Never put NextClient files directly into the game installation folder in Steam! This will lead to VAC ban! ⚠️
+**Use a separate game copy outside the Steam folder. Installing NextClient in Steam's managed game folder risks a VAC ban.**
 
 ## Changing the master server
 
-The configuration file is located at the path `platform\config\MasterServer.vdf`
+The configuration file is `platform\config\MasterServer.vdf`.
+
 ```vdf
 "MasterServer"
 {
@@ -198,6 +204,7 @@ The configuration file is located at the path `platform\config\MasterServer.vdf`
 ### Windows
 
 Requirements:
+
  - The latest version of MSVC 2022 or later
  - CMake 3.21 or higher
  - Git LFS, set up with `git lfs install` before cloning (in a clone made without it, run `git lfs pull`)
@@ -211,29 +218,34 @@ cd NextClient
 ```
 
 Using Visual Studio 2022 generator:
+
 ```
 cmake --preset vs2022
 cmake --build --preset vs2022-release --target BUILD_ALL
 ```
 
 Using Visual Studio 2026 generator:
+
 ```
 cmake --preset vs2026
 cmake --build --preset vs2026-release --target BUILD_ALL
 ```
 
 Or using Ninja:
+
 ```
 cmake --preset ninja
 cmake --build --preset ninja-release --target BUILD_ALL
 ```
 
-`BUILD_ALL` also copies all built files and assets to `NEXTCLIENT_INSTALL_DIR` if the variable is set.
-You can pass it directly when configuring:
+`BUILD_ALL` also copies all built files and assets to `NEXTCLIENT_INSTALL_DIR` if the variable is set. You can pass it directly when configuring:
+
 ```
 cmake --preset vs2022 -DNEXTCLIENT_INSTALL_DIR="C:/Games/CS 1.6 - NextClient"
 ```
+
 Or create a `CMakeUserPresets.json` in the project root (gitignored) to avoid passing it every time:
+
 ```json
 {
   "version": 3,
@@ -260,7 +272,9 @@ Or create a `CMakeUserPresets.json` in the project root (gitignored) to avoid pa
   ]
 }
 ```
+
 Then:
+
 ```
 cmake --preset vs2022-local
 cmake --build --preset vs2022-local-release --target BUILD_ALL
@@ -290,16 +304,19 @@ The `linux` preset builds 32-bit modules with Ninja Multi-Config. `BUILD_ALL` co
 ## Working in IDE
 
 ### CLion
+
  - On Windows, use the Visual Studio x86 toolchain; on Linux, use GCC and the `linux` preset
  - Enable the required presets in CMake settings (Settings -> Build -> CMake), e.g. `vs2022 - vs2022-debug` and `vs2022 - vs2022-release`
  - Build the `BUILD_ALL` target
 
 ### Visual Studio
+
  - Open the project folder
  - Select build preset, e.g. `vs2022-debug` or `vs2022-release`
  - In the main menu, select Build -> Build All
 
 ### VS Code
+
  - Install the `ms-vscode.cmake-tools` extension
  - Select the `vs2022`, `vs2026`, `ninja`, or `linux` configure preset and the corresponding build configuration
  - Build the `BUILD_ALL` target

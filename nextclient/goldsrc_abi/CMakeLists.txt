@@ -8,7 +8,7 @@ target_include_directories(goldsrc_abi INTERFACE
 target_compile_features(goldsrc_abi INTERFACE cxx_std_23)
 
 # Compiled, never linked: the assertions are checked by the compiler.
-add_library(goldsrc_abi_golden OBJECT tests/golden_layout.cpp)
+add_library(goldsrc_abi_golden OBJECT tests/golden_layout.cpp tests/studio_layout.cpp)
 target_link_libraries(goldsrc_abi_golden PRIVATE goldsrc::abi)
 
 if (MSVC)

@@ -5,6 +5,10 @@ find_package(GTest CONFIG REQUIRED)
 include(GoogleTest)
 
 add_executable(${TARGET_NAME}
+
+        RadarPerformanceTests.cpp
+        cvar_definition_tests.cpp
+        ../src/hud/radar/integration/Performance.cpp
         RadarLayersDumpTests.cpp
         ../src/hud/radar/integration/RadarLayersDump.cpp
         RadarBspFixture.cpp
@@ -18,6 +22,9 @@ add_executable(${TARGET_NAME}
         RadarLayerContextTests.cpp
         RadarLayerLifecycleTests.cpp
         RadarLayerAnalysisJobTests.cpp
+        RadarLayerAnalysisIntegrationTests.cpp
+        RadarLayerScheduledRuntime.h
+        ../src/hud/radar/integration/LayerAnalysis.cpp
         ../src/hud/radar/map/layers/RadarLayerAnalysisJob.cpp
         ../src/hud/radar/map/layers/MapLayerCache.cpp
         ../src/hud/radar/map/layers/RadarLayerContext.cpp
@@ -41,6 +48,14 @@ add_executable(${TARGET_NAME}
         ../src/hud/radar/map/MapGeometry.cpp
         ../src/hud/radar/map/MapReachability.cpp
         ../src/hud/radar/map/MapBspGeometry.cpp
+        MaterialDocTests.cpp
+        MaterialResolveTests.cpp
+        StudioMeshBuilderTests.cpp
+        StudioValidateTests.cpp
+        StudioMetadataTests.cpp
+        StudioReferencePoseTests.cpp
+        StudioTexturesTests.cpp
+        MaterialPresetTests.cpp
         RadarUtilTests.cpp
         RadarViewTests.cpp
         RadarFrameTimeTests.cpp
@@ -82,9 +97,14 @@ add_executable(${TARGET_NAME}
 )
 
 target_link_libraries(${TARGET_NAME} PRIVATE
+        NextClient::profiling
+        NextClient::engine_mini
         GTest::gtest
         GTest::gtest_main
         ncl_math::ncl_math
+        ncl_gl::ncl_gl
+        ncl_material::ncl_material
+        ncl_studio::ncl_studio
         goldsrc::abi
         glad::glad
         TaskCoro::TaskCoro
@@ -115,6 +135,7 @@ endif()
 set_property(DIRECTORY APPEND PROPERTY TEST_INCLUDE_FILES "${CMAKE_CURRENT_BINARY_DIR}/radar-test-properties.cmake")
 
 add_executable(radar-gl-tests
+        ../src/hud/radar/integration/Performance.cpp
         MapLayerRenderGlTests.cpp
         ../src/hud/radar/render/RadarView.cpp
         ../src/hud/radar/markers/RadarLayerMarker.cpp
@@ -128,6 +149,8 @@ add_executable(radar-gl-tests
         ../src/hud/radar/map/layers/MapLayerCache.cpp
         ../src/hud/radar/map/layers/MapLayerOverrides.cpp
         RadarShaderTests.cpp
+        ProgramBuildCallbacksTests.cpp
+        RadarGraphicsLifetimeTests.cpp
         RadarDrawGlTests.cpp
         RadarGlContext.cpp
         ../src/hud/radar/render/RadarDraw.cpp
@@ -135,6 +158,8 @@ add_executable(radar-gl-tests
 )
 
 target_link_libraries(radar-gl-tests PRIVATE
+        easyloggingpp::easyloggingpp
+        NextClient::engine_mini
         GTest::gtest_main
         glad::glad
         goldsrc::abi
@@ -146,6 +171,7 @@ target_link_libraries(radar-gl-tests PRIVATE
         TaskCoro::TaskCoro
 )
 target_include_directories(radar-gl-tests PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/../../nitro_api/src
         ${CMAKE_CURRENT_SOURCE_DIR}/../src
         ${CMAKE_CURRENT_SOURCE_DIR}/../include
 )
@@ -155,9 +181,11 @@ target_compile_definitions(radar-gl-tests PRIVATE
 
 if (WIN32)
     target_compile_definitions(radar-gl-tests PRIVATE NOMINMAX)
-    target_link_libraries(radar-gl-tests PRIVATE opengl32 gdi32 user32)
+    target_link_libraries(radar-gl-tests PRIVATE
+        easyloggingpp::easyloggingpp opengl32 gdi32 user32)
 else()
-    target_link_libraries(radar-gl-tests PRIVATE ${CMAKE_DL_LIBS})
+    target_link_libraries(radar-gl-tests PRIVATE
+        easyloggingpp::easyloggingpp ${CMAKE_DL_LIBS})
 endif()
 
 if (UNIX)

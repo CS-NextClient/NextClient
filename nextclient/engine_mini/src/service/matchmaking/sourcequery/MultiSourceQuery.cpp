@@ -1,7 +1,7 @@
 #include "MultiSourceQuery.h"
 
 #include <easylogging++.h>
-#include <optick.h>
+#include <ncl_perf/profiler.h>
 #include <algorithm>
 #include <ranges>
 
@@ -38,7 +38,7 @@ MultiSourceQuery::MultiSourceQuery(int32_t timeout, uint8_t retries) :
 
     TaskCoro::RunInNewThread([this]
     {
-        OPTICK_THREAD("MultiSourceQuery");
+        NCL_PROFILE_THREAD_NAME("MultiSourceQuery");
         MainLoop();
     });
 }
@@ -138,7 +138,7 @@ void MultiSourceQuery::MainLoop()
     {
         while (!cancellation_token_->IsCanceled())
         {
-            OPTICK_EVENT("MainLoop")
+            NCL_PROFILE_NAMED_SCOPE("MainLoop")
 
             auto current_time = high_resolution_clock::now();
 
@@ -148,7 +148,7 @@ void MultiSourceQuery::MainLoop()
             CloseExpiredSockets(current_time);
 
             {
-                OPTICK_EVENT("Update")
+                NCL_PROFILE_NAMED_SCOPE("Update")
                 manual_sync_ctx_->Update();
             }
 
@@ -166,7 +166,7 @@ void MultiSourceQuery::MainLoop()
 
 void MultiSourceQuery::AssembleBuffer(ByteBuffer& buffer, netadr_t from_addr)
 {
-    OPTICK_EVENT()
+    NCL_PROFILE_SCOPE()
 
     auto current_time = high_resolution_clock::now();
 
@@ -238,7 +238,7 @@ void MultiSourceQuery::AssembleBuffer(ByteBuffer& buffer, netadr_t from_addr)
 
 void MultiSourceQuery::ProcessIncomingBuffers(high_resolution_clock::time_point current_time)
 {
-    OPTICK_EVENT()
+    NCL_PROFILE_SCOPE()
 
     for (auto& rcv : recv_)
     {
@@ -275,7 +275,7 @@ void MultiSourceQuery::ProcessIncomingBuffers(high_resolution_clock::time_point 
 
 void MultiSourceQuery::ProcessQueries(netadr_t address, ByteBuffer& buffer)
 {
-    OPTICK_EVENT()
+    NCL_PROFILE_SCOPE()
 
     netadr_t query_address = address;
     if (!queries_.contains(query_address))
@@ -323,7 +323,7 @@ void MultiSourceQuery::ProcessQueries(netadr_t address, ByteBuffer& buffer)
 
 void MultiSourceQuery::ProcessTimeoutQueries(high_resolution_clock::time_point current_time)
 {
-    OPTICK_EVENT()
+    NCL_PROFILE_SCOPE()
 
     for (auto& q : queries_)
     {
@@ -357,7 +357,7 @@ void MultiSourceQuery::ProcessTimeoutQueries(high_resolution_clock::time_point c
 
 void MultiSourceQuery::ReceiveAndAssembleBuffers()
 {
-    OPTICK_EVENT()
+    NCL_PROFILE_SCOPE()
 
     int cycle_guard = 1000;
     int total_bytes_received;
@@ -449,7 +449,7 @@ void MultiSourceQuery::ReceiveAndAssembleBuffers()
 
 void MultiSourceQuery::CloseExpiredSockets(high_resolution_clock::time_point current_time)
 {
-    OPTICK_EVENT()
+    NCL_PROFILE_SCOPE()
 
     for (auto it = sockets_.begin(); it != sockets_.end(); )
     {
@@ -466,7 +466,7 @@ void MultiSourceQuery::CloseExpiredSockets(high_resolution_clock::time_point cur
 
 void MultiSourceQuery::CreateSocket(bool broadcast)
 {
-    OPTICK_EVENT()
+    NCL_PROFILE_SCOPE()
 
     SOCKET s = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
 
@@ -481,7 +481,7 @@ void MultiSourceQuery::CreateSocket(bool broadcast)
 
 void MultiSourceQuery::CreateSocketIfNeeded(bool broadcast)
 {
-    OPTICK_EVENT()
+    NCL_PROFILE_SCOPE()
 
     if (!sockets_.empty())
     {

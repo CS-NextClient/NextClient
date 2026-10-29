@@ -2,7 +2,8 @@
 #include "cl_main.h"
 #include "client.h"
 
-#include <optick.h>
+#include <ncl_perf/profiler.h>
+#include <next_engine_mini/MaterialEditInterface.h>
 #include <next_engine_mini/nclm_proto.h>
 #include <hwid_collector/hwid_collector.h>
 #include <goldsrc/client_api.h>
@@ -38,6 +39,13 @@
 #include "cl_string_registry.h"
 #include "client/client.h"
 #include "client/cl_sound.h"
+#include "graphics/render/material/material_edit.h"
+#include "graphics/render/render_capture.h"
+
+#include "graphics/render/material/ServerMaterials.h"
+#include "graphics/render/StudioIntercept.h"
+#include "graphics/render/model/studio_model_cache.h"
+#include "graphics/render/RendererLifecycle.h"
 
 namespace
 {
@@ -107,28 +115,30 @@ namespace
 
 void SetCareerAudioState(int state)
 {
-    OPTICK_EVENT();
+    NCL_PROFILE_SCOPE();
 
     eng()->SetCareerAudioState.InvokeChained(state);
 }
 
 void AddStartupTiming(const char* name)
 {
-    OPTICK_EVENT();
+    NCL_PROFILE_SCOPE();
 
     eng()->AddStartupTiming.InvokeChained(name);
 }
 
 void CL_ClearState(goldsrc::qboolean quiet)
 {
-    OPTICK_EVENT();
+    NCL_PROFILE_SCOPE();
 
     eng()->CL_ClearState.InvokeChained(quiet);
 }
 
 void CL_Disconnect()
 {
-    OPTICK_EVENT();
+    NCL_PROFILE_SCOPE();
+
+    render::GetLifecycle().OnDisconnectBegin();
 
     cls->connect_time = -99999.0;
     cls->connect_retry = 0;
@@ -219,42 +229,42 @@ void CL_Disconnect()
 
 void S_BeginPrecaching()
 {
-    OPTICK_EVENT();
+    NCL_PROFILE_SCOPE();
 
     cl->fPrecaching = 1;
 }
 
 void S_EndPrecaching()
 {
-    OPTICK_EVENT();
+    NCL_PROFILE_SCOPE();
 
     cl->fPrecaching = 0;
 }
 
 void CL_ConnectionlessPacket()
 {
-    OPTICK_EVENT();
+    NCL_PROFILE_SCOPE();
 
     eng()->CL_ConnectionlessPacket.InvokeChained();
 }
 
 goldsrc::qboolean CL_IsDevOverviewMode()
 {
-    OPTICK_EVENT();
+    NCL_PROFILE_SCOPE();
 
     return eng()->CL_IsDevOverviewMode.InvokeChained();
 }
 
 void CL_SetDevOverView(goldsrc::refdef_t* refdef)
 {
-    OPTICK_EVENT();
+    NCL_PROFILE_SCOPE();
 
     return eng()->CL_SetDevOverView.InvokeChained(refdef);
 }
 
 const char* CL_CleanFileName(const char* filename)
 {
-    OPTICK_EVENT();
+    NCL_PROFILE_SCOPE();
 
     const char* pfilename = filename;
 
@@ -266,14 +276,14 @@ const char* CL_CleanFileName(const char* filename)
 
 int CL_GetFragmentSize(void* state)
 {
-    OPTICK_EVENT();
+    NCL_PROFILE_SCOPE();
 
     return eng()->CL_GetFragmentSize.InvokeChained(state);
 }
 
 void CL_ClearCaches()
 {
-    OPTICK_EVENT();
+    NCL_PROFILE_SCOPE();
 
     for (int i = 1; i < ARRAYSIZE(cl->event_precache) && cl->event_precache[i].pszScript; ++i)
     {
@@ -286,10 +296,12 @@ void CL_ClearCaches()
 
 void CL_ClearClientState()
 {
-    OPTICK_EVENT();
+    NCL_PROFILE_SCOPE();
 
+    render::GetLifecycle().OnClientStateClearing();
     CL_NclEntitySyncClear();
     CL_StringRegistryClear();
+    render::ServerMaterials_Clear();
 
     for (auto& frame : cl->frames)
     {
@@ -323,7 +335,7 @@ void CL_ClearClientState()
 
 void CL_ConnectClient()
 {
-    OPTICK_EVENT();
+    NCL_PROFILE_SCOPE();
 
     ContinueLoadingProgressBar("ClientConnect", 2, 0.0);
 
@@ -399,7 +411,7 @@ void CL_ConnectClient()
 
 bool CL_PrecacheResources()
 {
-    OPTICK_EVENT();
+    NCL_PROFILE_SCOPE();
 
     SetLoadingProgressBarStatusText("#GameUI_PrecachingResources");
     ContinueLoadingProgressBar("ClientConnect", 7, 0.0);
@@ -528,7 +540,7 @@ bool CL_PrecacheResources()
 
 void CL_HandleNclMessage()
 {
-    OPTICK_EVENT();
+    NCL_PROFILE_SCOPE();
 
     const char* raw_buffer = MSG_ReadString();
 
@@ -578,7 +590,7 @@ void CL_HandleNclMessage()
 
 void CL_Send_CvarValue()
 {
-    OPTICK_EVENT();
+    NCL_PROFILE_SCOPE();
 
     // nclm protocol check
     int readcount = *pMsg_readcount;
@@ -619,7 +631,7 @@ void CL_Send_CvarValue()
 
 void CL_StopPlayback()
 {
-    OPTICK_EVENT();
+    NCL_PROFILE_SCOPE();
 
     eng()->CL_StopPlayback.InvokeChained();
 }

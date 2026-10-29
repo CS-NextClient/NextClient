@@ -48,6 +48,12 @@ Scheme
 		Button.DepressedTextColor		"White"
 		Button.DepressedBgColor			"76 88 68 255"
 		Button.FocusBorderColor			"Black"
+
+		DeveloperTools.BgColor	"57 65 50 255"
+		DeveloperTools.TextColor	"255 255 255 255"
+		DeveloperTools.ButtonBgColor	"76 88 68 255"
+		DeveloperTools.ArmedBgColor	"96 108 88 255"
+		DeveloperTools.DepressedBgColor	"50 60 44 255"
 		
 		CheckButton.TextColor			"OffWhite"
 		CheckButton.SelectedTextColor	"196 181 80 255"

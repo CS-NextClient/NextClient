@@ -2,7 +2,8 @@
 
 #include <cmath>
 
-#include <optick.h>
+#include <ncl_perf/profiler.h>
+#include <next_engine_mini/MaterialEditInterface.h>
 #include <common/mem.h>
 #include <goldsrc/cvar.h>
 #include <goldsrc/engine/client_state.h>
@@ -15,9 +16,21 @@
 
 #include "gl_local.h"
 #include "gl_draw.h"
+#include "graphics/render/material/material_edit.h"
+
+#include "graphics/render/material/material_textures.h"
+#include "graphics/render/render_capture.h"
+#include "graphics/render/render_test.h"
+#include "graphics/render/StudioDraw.h"
+#include "graphics/render/effects/studio_effects.h"
+#include "graphics/render/StudioDump.h"
+#include "graphics/render/model/studio_model_cache.h"
+#include "graphics/render/RendererLifecycle.h"
+#include "graphics/render/StudioIntercept.h"
 #include "ViewmodelFrustumCalculator.h"
 #include "console/console.h"
 #include "common/sys_dll.h"
+#include "performance/PerformanceMonitor.h"
 #include "common/cvar.h"
 #include "client/cl_main.h"
 
@@ -30,14 +43,14 @@ static bool IsVec3Finite(const vec3_t v)
 
 int CL_FxBlend(goldsrc::cl_entity_t* e)
 {
-    OPTICK_EVENT();
+    NCL_PROFILE_SCOPE();
 
     return eng()->CL_FxBlend.InvokeChained(e);
 }
 
 float GlowBlend(goldsrc::cl_entity_t* pEntity)
 {
-    OPTICK_EVENT();
+    NCL_PROFILE_SCOPE();
 
     // the engine traces to r_entorigin, which R_SetupAttachmentPoint moves to an attachment point when curstate.body != 0
     if (!IsVec3Finite(r_refdef->vieworg) || !IsVec3Finite(*p_r_entorigin))
@@ -63,7 +76,7 @@ void R_AllowFog(goldsrc::qboolean allow)
 
 float* R_GetAttachmentPoint(int entity, int attachment)
 {
-    OPTICK_EVENT();
+    NCL_PROFILE_SCOPE();
 
     return eng()->R_GetAttachmentPoint.InvokeChained(entity, attachment);
 }
@@ -108,7 +121,7 @@ void R_RestoreProjectionMatrix()
 
 void AddTEntity(goldsrc::cl_entity_t* ent)
 {
-    OPTICK_EVENT();
+    NCL_PROFILE_SCOPE();
 
     return eng()->AddTEntity.InvokeChained(ent);
 }
@@ -125,7 +138,7 @@ void AppendTEntity_Subscriber(goldsrc::cl_entity_t* ent)
 
 void R_DestroyObjects()
 {
-    OPTICK_EVENT();
+    NCL_PROFILE_SCOPE();
 
     if (*p_transObjects)
     {
@@ -138,7 +151,7 @@ void R_DestroyObjects()
 
 void R_DrawSpriteModel(goldsrc::cl_entity_t* e)
 {
-    OPTICK_EVENT();
+    NCL_PROFILE_SCOPE();
 
     eng()->R_DrawSpriteModel.InvokeChained(e);
 }
@@ -157,21 +170,23 @@ void R_DrawViewmodelSpriteModel(goldsrc::cl_entity_t* e)
 
 void R_DrawBrushModel(goldsrc::cl_entity_t* e)
 {
-    OPTICK_EVENT();
+    NCL_PROFILE_SCOPE();
 
     eng()->R_DrawBrushModel.InvokeChained(e);
 }
 
 void R_DrawAliasModel(goldsrc::cl_entity_t* e)
 {
-    OPTICK_EVENT();
+    NCL_PROFILE_SCOPE();
 
     eng()->R_DrawAliasModel.InvokeChained(e);
 }
 
 void R_NewMap()
 {
-    OPTICK_EVENT();
+    NCL_PROFILE_SCOPE();
+
+    render::GetLifecycle().OnMapReset();
 
     // Force a skybox reload: on reconnect to a cached (same-map) BSP, R_InitSky is skipped and gLoadSky stays false,
     // so R_LoadSkys would wipe the sky without reloading it (white sky).
@@ -187,84 +202,82 @@ void R_NewMap()
 
 void R_SetupFrame()
 {
-    OPTICK_EVENT();
+    NCL_PROFILE_SCOPE();
 
     eng()->R_SetupFrame.InvokeChained();
 }
 
 void R_SetFrustum()
 {
-    OPTICK_EVENT();
+    NCL_PROFILE_SCOPE();
 
     eng()->R_SetFrustum.InvokeChained();
 }
 
 void R_SetupGL()
 {
-    OPTICK_EVENT();
+    NCL_PROFILE_SCOPE();
 
     eng()->R_SetupGL.InvokeChained();
 }
 
 void R_MarkLeaves()
 {
-    OPTICK_EVENT();
+    NCL_PROFILE_SCOPE();
 
     eng()->R_MarkLeaves.InvokeChained();
 }
 
 void R_DrawWorld()
 {
-    OPTICK_EVENT();
+    NCL_PROFILE_SCOPE();
 
     eng()->R_DrawWorld.InvokeChained();
 }
 
 void R_RenderFinalFog()
 {
-    OPTICK_EVENT();
+    NCL_PROFILE_SCOPE();
 
     eng()->R_RenderFinalFog.InvokeChained();
 }
 
 void R_RenderDlights()
 {
-    OPTICK_EVENT();
+    NCL_PROFILE_SCOPE();
 
     eng()->R_RenderDlights.InvokeChained();
 }
 
 void R_DrawParticles()
 {
-    OPTICK_EVENT();
+    NCL_PROFILE_SCOPE();
 
     eng()->R_DrawParticles.InvokeChained();
 }
 
 void R_DrawViewModel()
 {
-    OPTICK_EVENT();
-
+    NCL_PROFILE_SCOPE();
     eng()->R_DrawViewModel.InvokeChained();
 }
 
 void R_PolyBlend()
 {
-    OPTICK_EVENT();
+    NCL_PROFILE_SCOPE();
 
     eng()->R_PolyBlend.InvokeChained();
 }
 
 void R_PreDrawViewModel()
 {
-    OPTICK_EVENT();
-
+    NCL_PROFILE_SCOPE();
     eng()->R_PreDrawViewModel.InvokeChained();
 }
 
 void R_Clear()
 {
-    OPTICK_EVENT();
+    NCL_PROFILE_SCOPE();
 
     eng()->R_Clear.InvokeChained();
 }
@@ -273,16 +286,20 @@ void R_DrawStudioModel(goldsrc::cl_entity_t* ent,
                        const std::function<goldsrc::cl_entity_t*(int index)>& ent_list_getter,
                        int ent_list_count)
 {
-    OPTICK_EVENT();
+    NCL_PROFILE_SCOPE();
 
     if (ent->player)
     {
+        render::StudioPlayerEffectsScope effects(ent);
         pStudioAPI->StudioDrawPlayer(goldsrc::STUDIO_RENDER | goldsrc::STUDIO_EVENTS, &ent->curstate);
+        render::Studio_EndModel();
         return;
     }
 
     if (ent->curstate.movetype == goldsrc::MOVETYPE_FOLLOW)
     {
+        NCL_PROFILE_NAMED_SCOPE("Studio follow traversal");
+
         for (int i = 0; i < ent_list_count; i++)
         {
             goldsrc::cl_entity_t* e = ent_list_getter(i);
@@ -290,10 +307,17 @@ void R_DrawStudioModel(goldsrc::cl_entity_t* ent,
             if (e->index == ent->curstate.aiment)
             {
                 *p_currententity = e;
-                if ((*p_currententity)->player)
-                    pStudioAPI->StudioDrawPlayer(0, &(*p_currententity)->curstate);
-                else
-                    pStudioAPI->StudioDrawModel(0);
+                {
+                    NCL_PROFILE_NAMED_SCOPE("Studio parent pose");
+                    if ((*p_currententity)->player)
+                    {
+                        pStudioAPI->StudioDrawPlayer(0, &(*p_currententity)->curstate);
+                    }
+                    else
+                    {
+                        pStudioAPI->StudioDrawModel(0);
+                    }
+                }
                 *p_currententity = ent;
                 pStudioAPI->StudioDrawModel(goldsrc::STUDIO_RENDER | goldsrc::STUDIO_EVENTS);
             }
@@ -303,11 +327,13 @@ void R_DrawStudioModel(goldsrc::cl_entity_t* ent,
     {
         pStudioAPI->StudioDrawModel(goldsrc::STUDIO_RENDER | goldsrc::STUDIO_EVENTS);
     }
+
+    render::Studio_EndModel();
 }
 
 void R_DrawTEntitiesOnList(goldsrc::qboolean clientOnly)
 {
-    OPTICK_EVENT();
+    NCL_PROFILE_SCOPE();
 
     if (r_drawentities->value == 0.0)
         return;
@@ -392,10 +418,12 @@ void R_DrawTEntitiesOnList(goldsrc::qboolean clientOnly)
 
 void R_DrawEntitiesOnList()
 {
-    OPTICK_EVENT();
+    NCL_PROFILE_SCOPE();
 
     if (r_drawentities->value == 0.0)
         return;
+
+    render::Studio_BeginOpaquePass();
 
     for (int i = 0; i < *p_cl_numvisedicts; i++)
     {
@@ -411,6 +439,7 @@ void R_DrawEntitiesOnList()
         switch (ent->model->type)
         {
             case goldsrc::mod_brush:
+                render::Studio_Flush(render::StudioFlushReason::Brush);
                 R_DrawBrushModel(ent);
                 break;
 
@@ -423,6 +452,7 @@ void R_DrawEntitiesOnList()
         }
     }
 
+    render::Studio_EndOpaquePass();
     *p_r_blend = 1.0;
 
     for (int i = 0; i < *p_cl_numvisedicts; i++)
@@ -451,7 +481,7 @@ void R_DrawEntitiesOnList()
 
 void R_RenderScene()
 {
-    OPTICK_EVENT();
+    NCL_PROFILE_SCOPE();
 
     *p_r_blend = 1.0f;
     
@@ -498,7 +528,7 @@ void R_RenderScene()
 
 void R_RenderView()
 {
-    OPTICK_EVENT();
+    NCL_PROFILE_SCOPE();
 
     double time1 = 0;
 
@@ -517,11 +547,15 @@ void R_RenderView()
     }
 
     *p_mirror = false;
+
     R_Clear();
     if (!r_refdef->onlyClientDraws)
         R_PreDrawViewModel();
 
+    render::StudioEffects_BeginView();
     R_RenderScene();
+    render::Studio_Flush(render::StudioFlushReason::StageEnd);
+    render::StudioEffects_EndView();
 
     if (!r_refdef->onlyClientDraws)
     {
@@ -531,6 +565,11 @@ void R_RenderView()
 
         R_PolyBlend();
     }
+
+    render::Studio_DiscardPending();
+    render::Test_Draw();
+    render::Dump_OnSceneEnd();
+    render::Capture_OnSceneEnd();
 
     S_ExtraUpdate();
 

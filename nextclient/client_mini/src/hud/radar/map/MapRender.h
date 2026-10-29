@@ -1,5 +1,7 @@
 #pragma once
 
+#include "hud/radar/integration/Performance.h"
+
 #include <array>
 #include <cstdint>
 #include <span>
@@ -42,6 +44,7 @@ struct MapLayerMaterial
 class MapLayerRenderer
 {
 private:
+    radar::integration::Performance& performance_;
     MapLayerCache cache_;
     std::array<RuntimeMap, kMapLayerImageLimit> maps_{};
 
@@ -54,8 +57,10 @@ private:
     std::string failure_reason_;
 
 public:
-    MapLayerRenderer() = default;
-    ~MapLayerRenderer();
+    explicit MapLayerRenderer(radar::integration::Performance& performance) :
+        performance_(performance)
+    {}
+    ~MapLayerRenderer() = default;
 
     MapLayerRenderer(const MapLayerRenderer&) = delete;
     MapLayerRenderer& operator=(const MapLayerRenderer&) = delete;
@@ -74,7 +79,7 @@ public:
     const MapLayerCache& get_cache() const;
     const std::string& get_failure_reason() const;
 
-    void Reset();
+    void Reset(bool release = true);
 
 private:
     RadarMapStatus Fail(const RadarMapLayers& layers, bool textured, std::string reason);

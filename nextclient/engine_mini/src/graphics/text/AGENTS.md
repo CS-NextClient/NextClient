@@ -1,8 +1,6 @@
 # Shared text renderer
 
-`text_render.cpp` implements the engine-owned `TextRenderInterface`; `glyph_atlas` stores its GL
-cells. `text_surface.cpp` adapts the stock `VGUI_Surface026` object. The public interface lives in
-`nextclient/engine_mini/include/next_engine_mini/TextRenderInterface.h`.
+`text_render.cpp` implements the engine-owned `TextRenderInterface`; `glyph_atlas` stores its GL cells. `text_surface.cpp` adapts the stock `VGUI_Surface026` object. The public interface lives in `nextclient/engine_mini/include/next_engine_mini/TextRenderInterface.h`.
 
 ## Font and glyph contracts
 
@@ -32,10 +30,8 @@ cells. `text_surface.cpp` adapts the stock `VGUI_Surface026` object. The public 
 
 ## GL lifetime and verification
 
-Keep GL cleanup in `TextRender_ReleaseGl`, before drawing shutdown. Restore touched state after
-each draw, including texture unit zero's binding, blend state and current color. Atlas textures use
-the coverage format documented on `TextGlyphFormat`; changes must preserve shadow modulation.
+Keep GL cleanup in `TextRender_ReleaseGl`, before drawing shutdown. Restore touched state after each draw, including texture unit zero's binding, blend state and current color. Atlas textures use the coverage format documented on `TextGlyphFormat`; changes must preserve shadow modulation.
 
-`engine_mini-tests` includes `TextSurfaceTests.cpp` for adapter routing and metrics. These tests do
-not prove rendered appearance. Existing runtime diagnostics are `text_service_info`,
-`text_surface_info` and `text_atlas_dump`; extend them when additional runtime evidence is needed.
+On Windows, `engine_mini-tests` includes `TextSurfaceTests.cpp` for adapter routing and metrics. These tests do not prove rendered appearance. Existing runtime diagnostics are `text_service_info`, `text_surface_info` and `text_atlas_dump`; extend them when additional runtime evidence is needed.
+
+`TextRender_ForgetGl` and `GlyphAtlas::ForgetGl` drop atlas names without GL calls. They invalidate cells and advance text generation while retaining CPU fonts. Renderer context loss uses forgetting; live release uses `TextRender_ReleaseGl` before device invalidation. Late cleanup after forgetting must not delete names belonging to the lost context. Standalone draw shutdown retains the surface adapter for later context creation; terminal shutdown restores its slots before engine interfaces expire.

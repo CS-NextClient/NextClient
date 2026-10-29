@@ -1,13 +1,16 @@
 #pragma once
 
+class RadarDrawContext;
+
 #include "HudBase.h"
 #include "HudBaseHelper.h"
 
 class HudRadar : public HudBase, public HudBaseHelper {
-	bool &m_bDrawRadar;
-	
-public:
-	explicit HudRadar(nitroapi::NitroApiInterface* nitro_api);
+    RadarDrawContext& draw_;
+    bool& m_bDrawRadar;
 
-	void Draw(float flTime) override;
+public:
+    explicit HudRadar(nitroapi::NitroApiInterface* nitro_api, RadarDrawContext& draw);
+
+    void Draw(float flTime) override;
 };

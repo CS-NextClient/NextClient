@@ -1,0 +1,228 @@
+--- a/public/client/TracyProfiler.cpp
++++ b/public/client/TracyProfiler.cpp
+@@ -65,6 +65,7 @@
+ #include <string.h>
+ #include <sys/stat.h>
+ #include <thread>
++#include <vector>
+ 
+ #include "../common/TracyAlign.hpp"
+ #include "../common/TracyAlloc.hpp"
+@@ -908,6 +909,7 @@ LONG WINAPI CrashFilterExecute( PEXCEPTION_POINTERS pExp )
+ #endif
+ 
+ static Profiler* s_instance = nullptr;
++static std::atomic<uint64_t> s_cZoneEpoch { 0 };
+ static Thread* s_thread;
+ #ifndef TRACY_NO_FRAME_IMAGE
+ static Thread* s_compressThread;
+@@ -1556,6 +1558,7 @@ Profiler::Profiler()
+ {
+     TRACY_ASSERT( !s_instance );
+     s_instance = this;
++    s_cZoneEpoch.fetch_add( 1, std::memory_order_release );
+ 
+ #ifndef TRACY_DELAYED_INIT
+ #  ifdef _MSC_VER
+@@ -4754,24 +4757,77 @@ int64_t Profiler::GetTimeQpc()
+ 
+ }
+ 
+-#ifdef __cplusplus
+-extern "C" {
++namespace
++{
++struct CZoneStack
++{
++    uint64_t epoch = 0;
++#ifdef TRACY_ON_DEMAND
++    uint64_t connection = 0;
+ #endif
++    std::vector<TracyCZoneCtx> zones;
++};
+ 
+-TRACY_API TracyCZoneCtx ___tracy_emit_zone_begin( const struct ___tracy_source_location_data* srcloc, int32_t active )
++// IDs survive manual runtime restarts so a late end cannot match a new zone.
++std::atomic<uint64_t> s_nextCZoneId { 1 };
++
++CZoneStack& CurrentCZoneStack()
++{
++    thread_local CZoneStack stack;
++    const auto epoch = tracy::s_cZoneEpoch.load( std::memory_order_acquire );
++#ifdef TRACY_ON_DEMAND
++    const auto connection = tracy::GetProfiler().ConnectionId();
++    if( stack.epoch != epoch || stack.connection != connection )
++#else
++    if( stack.epoch != epoch )
++#endif
++    {
++        stack.zones.clear();
++        stack.epoch = epoch;
++#ifdef TRACY_ON_DEMAND
++        stack.connection = connection;
++#endif
++    }
++    return stack;
++}
++
++TracyCZoneCtx BeginCZone( int32_t active )
+ {
+-    ___tracy_c_zone_context ctx;
++    TracyCZoneCtx ctx {};
++#ifdef TRACY_MANUAL_LIFETIME
++    if( !tracy::IsProfilerStarted() ) return ctx;
++#endif
+ #ifdef TRACY_ON_DEMAND
+     ctx.active = active && tracy::GetProfiler().IsConnected();
+ #else
+     ctx.active = active;
+ #endif
+     if( !ctx.active ) return ctx;
++    auto& stack = CurrentCZoneStack();
+ #ifdef TRACY_ON_DEMAND
+-    ctx.connectionId = tracy::GetProfiler().ConnectionId();
++    ctx.connectionId = stack.connection;
++#endif
++    const auto id = s_nextCZoneId.fetch_add( 1, std::memory_order_relaxed );
++    if( id > UINT32_MAX )
++    {
++        ctx.active = 0;
++        return ctx;
++    }
++    ctx.id = uint32_t( id );
++    stack.zones.push_back( ctx );
++    return ctx;
++}
++}
++
++#ifdef __cplusplus
++extern "C" {
+ #endif
+-    const auto id = tracy::GetProfiler().GetNextZoneId();
+-    ctx.id = id;
++
++TRACY_API TracyCZoneCtx ___tracy_emit_zone_begin( const struct ___tracy_source_location_data* srcloc, int32_t active )
++{
++    TracyCZoneCtx ctx = BeginCZone( active );
++    if( !ctx.active ) return ctx;
++    const auto id = ctx.id;
+ 
+ #ifndef TRACY_NO_VERIFY
+     {
+@@ -4791,18 +4847,9 @@ TRACY_API TracyCZoneCtx ___tracy_emit_zone_begin( const struct ___tracy_source_l
+ 
+ TRACY_API TracyCZoneCtx ___tracy_emit_zone_begin_callstack( const struct ___tracy_source_location_data* srcloc, int32_t depth, int32_t active )
+ {
+-    ___tracy_c_zone_context ctx;
+-#ifdef TRACY_ON_DEMAND
+-    ctx.active = active && tracy::GetProfiler().IsConnected();
+-#else
+-    ctx.active = active;
+-#endif
++    TracyCZoneCtx ctx = BeginCZone( active );
+     if( !ctx.active ) return ctx;
+-#ifdef TRACY_ON_DEMAND
+-    ctx.connectionId = tracy::GetProfiler().ConnectionId();
+-#endif
+-    const auto id = tracy::GetProfiler().GetNextZoneId();
+-    ctx.id = id;
++    const auto id = ctx.id;
+ 
+ #ifndef TRACY_NO_VERIFY
+     {
+@@ -4827,22 +4874,13 @@ TRACY_API TracyCZoneCtx ___tracy_emit_zone_begin_callstack( const struct ___trac
+ 
+ TRACY_API TracyCZoneCtx ___tracy_emit_zone_begin_alloc( uint64_t srcloc, int32_t active )
+ {
+-    ___tracy_c_zone_context ctx;
+-#ifdef TRACY_ON_DEMAND
+-    ctx.active = active && tracy::GetProfiler().IsConnected();
+-#else
+-    ctx.active = active;
+-#endif
++    TracyCZoneCtx ctx = BeginCZone( active );
+     if( !ctx.active )
+     {
+         tracy::QueuePayload_Free( (void*)srcloc );
+         return ctx;
+     }
+-#ifdef TRACY_ON_DEMAND
+-    ctx.connectionId = tracy::GetProfiler().ConnectionId();
+-#endif
+-    const auto id = tracy::GetProfiler().GetNextZoneId();
+-    ctx.id = id;
++    const auto id = ctx.id;
+ 
+ #ifndef TRACY_NO_VERIFY
+     {
+@@ -4862,22 +4900,13 @@ TRACY_API TracyCZoneCtx ___tracy_emit_zone_begin_alloc( uint64_t srcloc, int32_t
+ 
+ TRACY_API TracyCZoneCtx ___tracy_emit_zone_begin_alloc_callstack( uint64_t srcloc, int32_t depth, int32_t active )
+ {
+-    ___tracy_c_zone_context ctx;
+-#ifdef TRACY_ON_DEMAND
+-    ctx.active = active && tracy::GetProfiler().IsConnected();
+-#else
+-    ctx.active = active;
+-#endif
++    TracyCZoneCtx ctx = BeginCZone( active );
+     if( !ctx.active )
+     {
+         tracy::QueuePayload_Free( (void*)srcloc );
+         return ctx;
+     }
+-#ifdef TRACY_ON_DEMAND
+-    ctx.connectionId = tracy::GetProfiler().ConnectionId();
+-#endif
+-    const auto id = tracy::GetProfiler().GetNextZoneId();
+-    ctx.id = id;
++    const auto id = ctx.id;
+ 
+ #ifndef TRACY_NO_VERIFY
+     {
+@@ -4903,20 +4932,35 @@ TRACY_API TracyCZoneCtx ___tracy_emit_zone_begin_alloc_callstack( uint64_t srclo
+ TRACY_API void ___tracy_emit_zone_end( TracyCZoneCtx ctx )
+ {
+     if( !ctx.active ) return;
++#ifdef TRACY_MANUAL_LIFETIME
++    if( !tracy::IsProfilerStarted() ) return;
++#endif
++    auto& stack = CurrentCZoneStack();
+ #ifdef TRACY_ON_DEMAND
+-    if( tracy::GetProfiler().ConnectionId() != ctx.connectionId ) return;
++    if( stack.connection != ctx.connectionId ) return;
+ #endif
+-#ifndef TRACY_NO_VERIFY
++    auto& zones = stack.zones;
++    auto position = zones.size();
++    while( position != 0 && zones[position - 1].id != ctx.id ) --position;
++    if( position == 0 ) return;
++
++    // A nonlocal engine abort can skip the destructors of nested C zones.
++    while( zones.size() >= position )
+     {
+-        TracyQueuePrepareC( tracy::QueueType::ZoneValidation );
+-        tracy::MemWrite( &item->zoneValidation.id, ctx.id );
+-        TracyQueueCommitC( zoneValidationThread );
+-    }
++        const auto closing = zones.back();
++        zones.pop_back();
++#ifndef TRACY_NO_VERIFY
++        {
++            TracyQueuePrepareC( tracy::QueueType::ZoneValidation );
++            tracy::MemWrite( &item->zoneValidation.id, closing.id );
++            TracyQueueCommitC( zoneValidationThread );
++        }
+ #endif
+-    {
+-        TracyQueuePrepareC( tracy::QueueType::ZoneEnd );
+-        tracy::MemWrite( &item->zoneEnd.time, tracy::Profiler::GetTime() );
+-        TracyQueueCommitC( zoneEndThread );
++        {
++            TracyQueuePrepareC( tracy::QueueType::ZoneEnd );
++            tracy::MemWrite( &item->zoneEnd.time, tracy::Profiler::GetTime() );
++            TracyQueueCommitC( zoneEndThread );
++        }
+     }
+ }
+ 

@@ -16,7 +16,19 @@
 
 #include "Browser/MainMenuBrowser.h"
 
+class CGameUI;
+class ScenePreviewInterface;
+namespace goldsrc
+{
+    struct cl_enginefunc_t;
+}
+namespace vgui2
+{
+    class ILocalize;
+}
+
 class CGameMenu;
+class CDeveloperToolsPanel;
 class CBackgroundMenuButton;
 class CBinkPanel;
 class CBackGroundPanel;
@@ -125,7 +137,8 @@ class CBasePanel : public vgui2::Panel
     DECLARE_CLASS_SIMPLE(CBasePanel, vgui2::Panel);
 
 public:
-    CBasePanel(void);
+    CBasePanel(CGameUI& host, ScenePreviewInterface* preview, render::ShaderRendererInterface* renderer);
+    void CreateDeveloperTools(goldsrc::cl_enginefunc_t& engine, vgui2::ILocalize& localize);
     ~CBasePanel(void) override;
 
 public:
@@ -211,9 +224,13 @@ private:
     MESSAGE_FUNC_INT(OnActivateModule, "ActivateModule", moduleIndex);
 
 private:
+    CGameUI& m_Host;
+    ScenePreviewInterface* m_Preview;
+    render::ShaderRendererInterface* m_Renderer;
     CMainMenuGameLogo *m_pGameLogo;
     CUtlVector<CBackgroundMenuButton *> m_pGameMenuButtons;
     CGameMenu *m_pGameMenu;
+    CDeveloperToolsPanel* m_pDeveloperTools{};
     int m_iGameMenuInset;
     CUtlVector<coord> m_iGameTitlePos;
     coord m_iGameMenuPos;

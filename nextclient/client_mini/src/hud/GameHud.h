@@ -28,7 +28,12 @@ class GameHud
     std::vector<std::shared_ptr<HudBase>> all_hud_;
 
 public:
-    explicit GameHud(nitroapi::NitroApiInterface* nitro_api);
+    GameHud(
+        nitroapi::NitroApiInterface* nitro_api,
+        radar::integration::Performance& performance,
+        taskcoro::TaskCoroImplInterface& scheduler
+    );
+    void Shutdown();
 
     void Init();
     void VidInit();

@@ -17,6 +17,7 @@
 #include <goldsrc/engine/sound.h>
 #include <goldsrc/engine/video.h>
 #include <goldsrc/entity.h>
+#include <goldsrc/efx_api.h>
 #include <goldsrc/keys.h>
 #include <goldsrc/server_api.h>
 #include <goldsrc/studio_api.h>
@@ -89,6 +90,15 @@ extern goldsrc::refdef_t* r_refdef;
 extern float* p_g_SND_VoiceOverdrive;
 extern int* p_cszrawsentences;
 extern char* (*p_rgpszrawsentence)[goldsrc::CVOXFILESENTENCEMAX];
+extern float* p_scr_fov_value;
+
+inline constexpr int kMaxElights = 64;
+extern goldsrc::dlight_t (*p_cl_elights)[kMaxElights];
+
+inline bool Elight_Alive(const goldsrc::dlight_t& light)
+{
+    return light.die > cl->time && light.radius > 0.0f;
+}
 extern float* p_scr_con_current;
 extern goldsrc::keydest_t* p_key_dest;
 extern goldsrc::sfx_t** p_known_sfx;

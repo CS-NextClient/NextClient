@@ -25,6 +25,8 @@ add_library(nitro_api SHARED
         src/hook/GenericHookStatic.h
         src/hook/GenericHookVaformatStatic.h
         src/NitroApi.cpp
+        src/FrameLifecycle.cpp
+        src/modules/sdl2/loaded_sdl_module.cpp
         src/NitroApi.h
         src/HookStorage.h
         src/modules/windows/WindowsModule.cpp
@@ -67,6 +69,7 @@ add_library(nitro_api SHARED
 add_dependencies(nitro_api goldsrc_abi_golden)
 
 target_include_directories(nitro_api PRIVATE
+        src
         ${OPENGL_INCLUDE_DIR}
         dep/easyloggingpp/src
         ${NEXTCLIENT_ROOT}/dep/nitro_utils/include
@@ -141,11 +144,7 @@ if (WIN32)
     )
 endif()
 
-if (USE_PROFILER)
-    find_package(optic REQUIRED)
-    target_link_libraries(nitro_api PRIVATE optic::optic)
-    target_compile_definitions(nitro_api PRIVATE USE_OPTICK NITROAPI_USE_PROFILER)
-endif()
+target_link_libraries(nitro_api PRIVATE NextClient::profiling)
 
 set_target_properties(${PROJECT_NAME} PROPERTIES
         PREFIX ""
@@ -175,3 +174,45 @@ target_link_libraries(nitro_api_export INTERFACE
 target_compile_definitions(nitro_api_export INTERFACE
         NITRO_API_INCLUDED
 )
+
+add_executable(nitro-api-factory-probe EXCLUDE_FROM_ALL tests/ShippingFactoryProbe.cpp)
+target_include_directories(nitro-api-factory-probe PRIVATE include)
+target_link_libraries(nitro-api-factory-probe PRIVATE ${CMAKE_DL_LIBS})
+if (WIN32)
+    target_compile_definitions(nitro-api-factory-probe PRIVATE NOMINMAX WIN32_LEAN_AND_MEAN)
+endif ()
+
+set(factory_runtime_files "$<TARGET_FILE:nitro_api>")
+if (WIN32)
+    list(APPEND factory_runtime_files "${NEXTCLIENT_ROOT}/test_support/runtime/tier0.dll")
+else ()
+    list(APPEND factory_runtime_files "$<TARGET_FILE:tier0>" "$<TARGET_FILE:vstdlib>")
+endif ()
+if (USE_PROFILER)
+    list(APPEND factory_runtime_files "$<TARGET_FILE:Tracy::TracyClient>")
+endif ()
+set(factory_probe_manifest "${CMAKE_CURRENT_BINARY_DIR}/factory-probe-$<CONFIG>.cmake")
+string(CONCAT factory_probe_content
+        "set(PROBE [==[$<TARGET_FILE:nitro-api-factory-probe>]==])\n"
+        "set(PROVIDER [==[$<TARGET_FILE:nitro_api>]==])\n"
+        "set(PREPARED_DIRECTORY [==[${CMAKE_CURRENT_BINARY_DIR}/factory-probe/$<CONFIG>]==])\n"
+        "set(RUNTIME_FILES [==[${factory_runtime_files}]==])\n")
+file(GENERATE OUTPUT "${factory_probe_manifest}" CONTENT "${factory_probe_content}")
+add_custom_target(verify-nitro-api-factory
+        COMMAND ${CMAKE_COMMAND} "-DPROBE_MANIFEST=${factory_probe_manifest}"
+                -P "${NEXTCLIENT_ROOT}/cmake/RunNitroApiFactoryProbe.cmake"
+        DEPENDS nitro-api-factory-probe nitro_api
+        VERBATIM)
+
+if (NEXTCLIENT_BUILD_TESTS)
+    add_subdirectory(tests)
+    add_test(NAME nitro-api-shipping-factory
+            COMMAND ${CMAKE_COMMAND} "-DPROBE_MANIFEST=${factory_probe_manifest}"
+                    -P "${NEXTCLIENT_ROOT}/cmake/RunNitroApiFactoryProbe.cmake")
+    add_test(NAME nitro-api-shipping-factory-missing-provider
+            COMMAND ${CMAKE_COMMAND} "-DPROBE=$<TARGET_FILE:nitro-api-factory-probe>"
+                    "-DPROVIDER=${CMAKE_CURRENT_BINARY_DIR}/missing-provider-$<CONFIG>.dll" -DEXPECTED_PHASE=load
+                    -P "${NEXTCLIENT_ROOT}/cmake/tests/NitroApiFactoryProbeFailure.cmake")
+    set_tests_properties(nitro-api-shipping-factory nitro-api-shipping-factory-missing-provider
+            PROPERTIES LABELS shipping-factory)
+endif ()

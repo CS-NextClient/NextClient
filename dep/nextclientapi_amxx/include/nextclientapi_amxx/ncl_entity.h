@@ -12,6 +12,10 @@ namespace ncl_entity
     {
         Unknown,
         Player,
-        Weapon
+        Weapon,
+
+        // What a server has dressed an entity in. Any edict can wear one, which is why it
+        // is a type of its own rather than a field of the weapon.
+        Material
     };
 }

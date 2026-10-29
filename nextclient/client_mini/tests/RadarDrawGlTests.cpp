@@ -10,6 +10,9 @@
 #include <ncl_gl/loader.h>
 
 #include "RadarGlContext.h"
+#include "RadarGlAllocations.h"
+#include "RadarRecordingMonitor.h"
+#include "hud/radar/integration/Performance.h"
 #include "hud/radar/markers/RadarLayerMarker.h"
 #include "hud/radar/render/RadarDraw.h"
 
@@ -37,13 +40,17 @@ namespace
 
     class RadarDrawGlTest : public testing::Test
     {
-    private:
+    protected:
         RadarGlContext context_;
         bool context_ready_{};
         GLuint texture_{};
         GLuint framebuffer_{};
 
     protected:
+        RadarRecordingMonitor monitor;
+        radar::integration::Performance performance_{&monitor};
+        RadarDrawContext draw_{performance_};
+
         void SetUp() override
         {
             std::string error;
@@ -51,10 +58,11 @@ namespace
             context_ready_ = true;
             RecordProperty("renderer", reinterpret_cast<const char*>(glGetString(GL_RENDERER)));
             gEngfuncs.Con_DPrintf = ShaderFailure;
-            RadarDraw_ResetGl();
-            ASSERT_TRUE(RadarDraw_CheckPrimsAvailable());
-            RadarDraw_ClearFade();
-            RadarDraw_ClearPrimClip();
+            draw_.ResetGl(true);
+            draw_.Prepare(RadarGlContext::Current(), nullptr);
+            ASSERT_TRUE(draw_.CheckPrimsAvailable());
+            draw_.ClearFade();
+            draw_.ClearPrimClip();
 
             glGenTextures(1, &texture_);
             glBindTexture(GL_TEXTURE_2D, texture_);
@@ -83,7 +91,7 @@ namespace
             {
                 return;
             }
-            RadarDraw_ResetGl();
+            draw_.ResetGl(true);
             glDeleteTextures(1, &texture_);
             glDeleteFramebuffers(1, &framebuffer_);
         }
@@ -92,17 +100,17 @@ namespace
         {
             glClearColor(0, 0, 0, 0);
             glClear(GL_COLOR_BUFFER_BIT);
-            RadarDraw_BeginPrims();
+            draw_.BeginPrims();
             if (bomb)
             {
-                RadarDraw_DrawBomb({64, 64}, 8, {255, 215, 95, 102});
+                draw_.DrawBomb({64, 64}, 8, {255, 215, 95, 102});
             }
             else
             {
-                RadarDraw_DrawDisc({44, 64}, 5, {255, 0, 0, 128});
-                RadarDraw_DrawDisc({84, 64}, 5, {255, 0, 0, 128});
+                draw_.DrawDisc({44, 64}, 5, {255, 0, 0, 128});
+                draw_.DrawDisc({84, 64}, 5, {255, 0, 0, 128});
             }
-            RadarDraw_EndPrims();
+            draw_.EndPrims();
             std::vector<unsigned char> pixels(kImageSize * kImageSize * 4);
             glReadPixels(0, 0, kImageSize, kImageSize, GL_RGBA, GL_UNSIGNED_BYTE, pixels.data());
             EXPECT_EQ(glGetError(), GL_NO_ERROR);
@@ -113,7 +121,7 @@ namespace
         {
             glClearColor(0, 0, 0, 0);
             glClear(GL_COLOR_BUFFER_BIT);
-            RadarDraw_BeginPrims();
+            draw_.BeginPrims();
             for (int player = 0; player < 32; player++)
             {
                 ncl_math::Vector2 center{8.0f + (player % 8) * 16.0f, 16.0f + (player / 8) * 28.0f};
@@ -125,10 +133,10 @@ namespace
                     trail[point] = {center.x + point * 0.025f, center.y - 6.0f};
                     trail_alpha[point] = (uint8_t)point;
                 }
-                RadarDraw_DrawPolyline(trail, trail_alpha, color, 1.5f);
+                draw_.DrawPolyline(trail, trail_alpha, color, 1.5f);
                 if (!batched)
                 {
-                    RadarDraw_FlushPrims();
+                    draw_.FlushPrims();
                 }
             }
             for (int player = 0; player < 32; player++)
@@ -138,19 +146,17 @@ namespace
                 for (int copy = 0; copy < 2; copy++)
                 {
                     ncl_math::Vector2 pos = center + ncl_math::Vector2{(float)copy * 3.0f, 0.0f};
-                    RadarDraw_DrawDisc(pos, 3, color);
-                    RadarDraw_DrawTriangle(
-                        pos + ncl_math::Vector2{0, 6}, pos + ncl_math::Vector2{-2, 2}, pos + ncl_math::Vector2{2, 2}, color
-                    );
-                    RadarDraw_DrawRing(pos, 3, 2, color);
-                    RadarDraw_DrawRect(pos + ncl_math::Vector2{-3, -9}, pos + ncl_math::Vector2{3, -8}, color);
+                    draw_.DrawDisc(pos, 3, color);
+                    draw_.DrawTriangle(pos + ncl_math::Vector2{0, 6}, pos + ncl_math::Vector2{-2, 2}, pos + ncl_math::Vector2{2, 2}, color);
+                    draw_.DrawRing(pos, 3, 2, color);
+                    draw_.DrawRect(pos + ncl_math::Vector2{-3, -9}, pos + ncl_math::Vector2{3, -8}, color);
                     if (!batched)
                     {
-                        RadarDraw_FlushPrims();
+                        draw_.FlushPrims();
                     }
                 }
             }
-            RadarDraw_EndPrims();
+            draw_.EndPrims();
             std::vector<unsigned char> pixels(kImageSize * kImageSize * 4);
             glReadPixels(0, 0, kImageSize, kImageSize, GL_RGBA, GL_UNSIGNED_BYTE, pixels.data());
             EXPECT_EQ(glGetError(), GL_NO_ERROR);
@@ -165,12 +171,12 @@ namespace
         {
             glClearColor(0, 0, 0, 0);
             glClear(GL_COLOR_BUFFER_BIT);
-            RadarDraw_BeginPrims();
+            draw_.BeginPrims();
             const ncl_math::Color color{80, 160, 220};
             const float radius = 5.0f;
             if (pair)
             {
-                RadarDraw_DrawPlayerMarkerFade(current, previous, radius, color);
+                draw_.DrawPlayerMarkerFade(current, previous, radius, color);
             }
             else
             {
@@ -181,23 +187,23 @@ namespace
                 {
                     ncl_math::Vector2 base = current.pos - direction * (radius * 0.8f);
                     ncl_math::Vector2 width = direction.Perp() * (radius * 1.2f);
-                    RadarDraw_DrawTriangle(current.pos + direction * (radius * 1.7f), base + width, base - width, single);
+                    draw_.DrawTriangle(current.pos + direction * (radius * 1.7f), base + width, base - width, single);
                 }
                 else
                 {
                     if (directed)
                     {
-                        RadarDraw_DrawTriangle(
+                        draw_.DrawTriangle(
                             current.pos + direction * (radius * 2.0f),
                             current.pos + direction.Rotated(0.62f) * radius,
                             current.pos + direction.Rotated(-0.62f) * radius,
                             {240, 240, 240, single.a}
                         );
                     }
-                    RadarDraw_DrawDisc(current.pos, radius, single);
+                    draw_.DrawDisc(current.pos, radius, single);
                 }
             }
-            RadarDraw_EndPrims();
+            draw_.EndPrims();
             std::vector<unsigned char> pixels(kImageSize * kImageSize * 4);
             glReadPixels(0, 0, kImageSize, kImageSize, GL_RGBA, GL_UNSIGNED_BYTE, pixels.data());
             EXPECT_EQ(glGetError(), GL_NO_ERROR);
@@ -215,6 +221,26 @@ namespace
         }
     };
 } // namespace
+
+TEST_F(RadarDrawGlTest, QueuedMarkersStartGpuOnlyAtActualFlush)
+{
+    monitor.gpu_begins.clear();
+    monitor.gpu_ends = 0;
+    monitor.counters.fill(0);
+    draw_.ResetStats();
+    draw_.BeginPrims();
+    draw_.DrawRect({2, 2}, {8, 8}, {255, 255, 255, 255});
+    draw_.DrawRect({12, 12}, {18, 18}, {255, 255, 255, 255});
+    EXPECT_TRUE(monitor.gpu_begins.empty());
+    draw_.FlushPrims();
+    EXPECT_EQ(monitor.gpu_begins, (std::vector<ncl_perf::PerfScopeId_t>{performance::PerfStage::RadarBatch}));
+    EXPECT_EQ(monitor.gpu_ends, 1u);
+    EXPECT_EQ(monitor.counters[uint32_t(performance::PerfCounterId::RadarBatches)], 1u);
+    EXPECT_EQ(monitor.counters[uint32_t(performance::PerfCounterId::RadarQuads)], 2u);
+    draw_.EndPrims();
+    EXPECT_EQ(monitor.gpu_begins.size(), 1u);
+    EXPECT_EQ(glGetError(), GL_NO_ERROR);
+}
 
 TEST_F(RadarDrawGlTest, TranslucentBombKeepsItsPixelsWithInheritedAlphaTest)
 {
@@ -267,9 +293,9 @@ TEST_F(RadarDrawGlTest, HeightIndicatorStaysCloseToRenderedPlayerAndEdgeArrows)
                 RadarDrawPlayerMarker marker{.pos = placement.marker, .direction = direction, .offscreen = offscreen};
                 std::vector<unsigned char> marker_pixels = RenderPlayerMarker(marker, {}, false);
                 glClear(GL_COLOR_BUFFER_BIT);
-                RadarDraw_BeginPrims();
-                RadarDraw_DrawLayerIndicator(placement.indicator, vertical, 5, {255, 255, 255});
-                RadarDraw_EndPrims();
+                draw_.BeginPrims();
+                draw_.DrawLayerIndicator(placement.indicator, vertical, 5, {255, 255, 255});
+                draw_.EndPrims();
                 std::vector<unsigned char> arrow_pixels(kImageSize * kImageSize * 4);
                 glReadPixels(0, 0, kImageSize, kImageSize, GL_RGBA, GL_UNSIGNED_BYTE, arrow_pixels.data());
                 EXPECT_EQ(glGetError(), GL_NO_ERROR);
@@ -310,22 +336,22 @@ TEST_F(RadarDrawGlTest, FullPlayerSetAndTrailsMatchSeparateDrawsAcrossRepeatedFr
         for (int frame = 0; frame < 16; frame++)
         {
             SCOPED_TRACE(frame);
-            RadarDraw_ResetStats();
+            draw_.ResetStats();
             EXPECT_EQ(RenderFullPlayerSet(true, alpha), expected);
-            EXPECT_EQ(RadarDraw_GetStats().batches, 1);
-            EXPECT_EQ(RadarDraw_GetStats().quads, 4320);
+            EXPECT_EQ(draw_.GetStats().batches, 1);
+            EXPECT_EQ(draw_.GetStats().quads, 4320);
         }
     }
 }
 
 TEST_F(RadarDrawGlTest, CoincidentPlayerCrossfadeKeepsOpaqueMarkerBrightness)
 {
-    auto render = [](float weight) {
+    auto render = [this](float weight) {
         glClearColor(0, 0, 0, 0);
         glClear(GL_COLOR_BUFFER_BIT);
-        RadarDraw_BeginPrims();
-        RadarDraw_DrawPlayerMarkerFade({{64, 64}, {}, 1.0f, weight, false}, {{64, 64}, {}, 1.0f, 1.0f - weight, false}, 5, {255, 0, 0});
-        RadarDraw_EndPrims();
+        draw_.BeginPrims();
+        draw_.DrawPlayerMarkerFade({{64, 64}, {}, 1.0f, weight, false}, {{64, 64}, {}, 1.0f, 1.0f - weight, false}, 5, {255, 0, 0});
+        draw_.EndPrims();
         std::array<unsigned char, 4> pixel{};
         glReadPixels(64, 64, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, pixel.data());
         return pixel;
@@ -423,25 +449,25 @@ TEST_F(RadarDrawGlTest, PlayerMarkerFadeKeepsDisjointConfirmedPositions)
 
 TEST_F(RadarDrawGlTest, FullPlayerMarkerFadesKeepBrightnessAcrossRepeatedFrames)
 {
-    auto render = [](bool pair, float weight) {
+    auto render = [this](bool pair, float weight) {
         glClearColor(0, 0, 0, 0);
         glClear(GL_COLOR_BUFFER_BIT);
-        RadarDraw_ResetStats();
-        RadarDraw_BeginPrims();
+        draw_.ResetStats();
+        draw_.BeginPrims();
         for (int player = 0; player < 32; player++)
         {
             ncl_math::Vector2 center{8.0f + (player % 8) * 16.0f, 16.0f + (player / 8) * 28.0f};
             ncl_math::Color color{player % 2 ? 255 : 80, 160, 220};
             if (pair)
             {
-                RadarDraw_DrawPlayerMarkerFade({center, {}, 1.0f, weight, false}, {center, {}, 1.0f, 1.0f - weight, false}, 3, color);
+                draw_.DrawPlayerMarkerFade({center, {}, 1.0f, weight, false}, {center, {}, 1.0f, 1.0f - weight, false}, 3, color);
             }
             else
             {
-                RadarDraw_DrawDisc(center, 3, color);
+                draw_.DrawDisc(center, 3, color);
             }
         }
-        RadarDraw_EndPrims();
+        draw_.EndPrims();
         std::vector<unsigned char> pixels(kImageSize * kImageSize * 4);
         glReadPixels(0, 0, kImageSize, kImageSize, GL_RGBA, GL_UNSIGNED_BYTE, pixels.data());
         return pixels;
@@ -458,8 +484,8 @@ TEST_F(RadarDrawGlTest, FullPlayerMarkerFadesKeepBrightnessAcrossRepeatedFrames)
             max_error = std::max(max_error, std::abs((int)actual[index] - (int)expected[index]));
         }
         EXPECT_LE(max_error, 1);
-        EXPECT_EQ(RadarDraw_GetStats().batches, 1);
-        EXPECT_EQ(RadarDraw_GetStats().quads, 32);
+        EXPECT_EQ(draw_.GetStats().batches, 1);
+        EXPECT_EQ(draw_.GetStats().quads, 32);
     }
     EXPECT_EQ(glGetError(), GL_NO_ERROR);
 }
@@ -498,31 +524,13 @@ TEST_F(RadarDrawGlTest, BlurCaptureIgnoresIncomingScissor)
 {
     glClearColor(0, 0, 0, 1);
     glClear(GL_COLOR_BUFFER_BIT);
-    ASSERT_TRUE(RadarDraw_DrawBlurBackground(
-        64,
-        64,
-        32,
-        true,
-        0.5f,
-        1.0f,
-        128,
-        128
-    ));
+    ASSERT_TRUE(draw_.DrawBlurBackground(64, 64, 32, true, 0.5f, 1.0f, 128, 128));
 
     glClearColor(1, 0, 0, 1);
     glClear(GL_COLOR_BUFFER_BIT);
     glScissor(64, 64, 32, 32);
     glEnable(GL_SCISSOR_TEST);
-    ASSERT_TRUE(RadarDraw_DrawBlurBackground(
-        64,
-        64,
-        32,
-        true,
-        0.5f,
-        1.0f,
-        128,
-        128
-    ));
+    ASSERT_TRUE(draw_.DrawBlurBackground(64, 64, 32, true, 0.5f, 1.0f, 128, 128));
 
     std::array<unsigned char, 4> clipped{};
     glReadPixels(80, 80, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, clipped.data());
@@ -534,16 +542,7 @@ TEST_F(RadarDrawGlTest, BlurCaptureIgnoresIncomingScissor)
 
     glDisable(GL_SCISSOR_TEST);
     glClear(GL_COLOR_BUFFER_BIT);
-    ASSERT_TRUE(RadarDraw_DrawBlurBackground(
-        64,
-        64,
-        32,
-        true,
-        0.5f,
-        1.0f,
-        128,
-        128
-    ));
+    ASSERT_TRUE(draw_.DrawBlurBackground(64, 64, 32, true, 0.5f, 1.0f, 128, 128));
 
     std::array<unsigned char, 4> reference{};
     glReadPixels(80, 80, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, reference.data());
@@ -579,7 +578,8 @@ TEST_F(RadarDrawGlTest, BlurCaptureRestoresStateAcrossAllocationAndResize)
 
         for (bool clipped : {false, true})
         {
-            RadarDraw_ResetGl();
+            draw_.ResetGl(true);
+            draw_.Prepare(RadarGlContext::Current(), nullptr);
             int step = 0;
 
             for (int size : {32, 32, 48})
@@ -602,16 +602,7 @@ TEST_F(RadarDrawGlTest, BlurCaptureRestoresStateAcrossAllocationAndResize)
                     glEnable(GL_SCISSOR_TEST);
                 }
 
-                ASSERT_TRUE(RadarDraw_DrawBlurBackground(
-                    64,
-                    64,
-                    (float)size,
-                    true,
-                    0.5f,
-                    1.0f,
-                    128,
-                    128
-                ));
+                ASSERT_TRUE(draw_.DrawBlurBackground(64, 64, (float)size, true, 0.5f, 1.0f, 128, 128));
 
                 GLint state = 0;
                 glGetIntegerv(GL_READ_FRAMEBUFFER_BINDING, &state);
@@ -662,4 +653,239 @@ TEST_F(RadarDrawGlTest, BlurCaptureRestoresStateAcrossAllocationAndResize)
     glBindFramebuffer(GL_FRAMEBUFFER, draw_fb);
     glDeleteFramebuffers(1, &read_fb);
     glDeleteTextures(1, &read_texture);
+}
+
+TEST_F(RadarDrawGlTest, IndependentOwnersFlushOnlyTheirOwnMonitorAndKeepShaderCache)
+{
+    RadarRecordingMonitor second_monitor;
+    radar::integration::Performance second_performance{&second_monitor};
+    RadarDrawContext second{second_performance};
+    second.Prepare(RadarGlContext::Current(), nullptr);
+    ASSERT_TRUE(second.CheckPrimsAvailable());
+    monitor.gpu_begins.clear();
+    monitor.counters.fill(0);
+    RadarGlAllocations observe;
+
+    draw_.BeginPrims();
+    draw_.DrawDisc({32, 32}, 4, {255, 0, 0});
+    second.BeginPrims();
+    second.DrawDisc({64, 64}, 4, {0, 255, 0});
+    EXPECT_TRUE(monitor.gpu_begins.empty());
+    EXPECT_TRUE(second_monitor.gpu_begins.empty());
+    second.EndFrame();
+    EXPECT_TRUE(monitor.gpu_begins.empty());
+    EXPECT_EQ(second_monitor.counters[uint32_t(performance::PerfCounterId::RadarBatches)], 1u);
+    draw_.EndFrame();
+    EXPECT_EQ(monitor.counters[uint32_t(performance::PerfCounterId::RadarBatches)], 1u);
+    EXPECT_EQ(draw_.GetStats().quads, 1);
+    EXPECT_EQ(second.GetStats().quads, 1);
+    EXPECT_TRUE(observe.objects.programs.empty());
+    EXPECT_EQ(observe.shader_creates, 0u);
+    second.ResetGl(true);
+}
+
+TEST_F(RadarDrawGlTest, EndFrameClearsClipFadeRegionAndQueuedVertices)
+{
+    draw_.BeginPrims();
+    draw_.SetPrimClip({0, 0}, 1, false);
+    draw_.SetFade({0, 255, 0, 255});
+    draw_.DrawDisc({64, 64}, 5, {255, 0, 0});
+    draw_.EndFrame();
+    int batches = draw_.GetStats().batches;
+    draw_.EndFrame();
+    EXPECT_EQ(draw_.GetStats().batches, batches);
+    glClearColor(0, 0, 0, 0);
+    glClear(GL_COLOR_BUFFER_BIT);
+    draw_.BeginPrims();
+    draw_.DrawDisc({64, 64}, 5, {255, 0, 0});
+    draw_.EndPrims();
+    std::array<unsigned char, 4> pixel{};
+    glReadPixels(64, 64, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, pixel.data());
+    EXPECT_EQ(pixel, (std::array<unsigned char, 4>{255, 0, 0, 255}));
+}
+
+TEST_F(RadarDrawGlTest, SameNativeLifetimeReleasesActualProgramsAndEffects)
+{
+    RadarDrawContext owner{performance_};
+    owner.Prepare(RadarGlContext::Current(), nullptr);
+    RadarGlObjects names;
+    {
+        RadarGlAllocations observe;
+        ASSERT_TRUE(owner.CheckPrimsAvailable());
+        ASSERT_TRUE(owner.DrawBlurBackground(0, 0, 32, true, 0, 1, 128, 128));
+        names = observe.objects;
+    }
+    ASSERT_EQ(names.programs.size(), 3u);
+    ASSERT_EQ(names.textures.size(), 3u);
+    ASSERT_EQ(names.framebuffers.size(), 3u);
+    for (GLuint program : names.programs)
+    {
+        EXPECT_EQ(glIsProgram(program), GL_TRUE);
+    }
+    for (GLuint texture : names.textures)
+    {
+        EXPECT_EQ(glIsTexture(texture), GL_TRUE);
+    }
+    owner.ResetGl(owner.is_context(RadarGlContext::Current(), nullptr));
+    glUseProgram(0);
+    for (GLuint program : names.programs)
+    {
+        EXPECT_EQ(glIsProgram(program), GL_FALSE);
+    }
+    for (GLuint texture : names.textures)
+    {
+        EXPECT_EQ(glIsTexture(texture), GL_FALSE);
+    }
+    for (GLuint framebuffer : names.framebuffers)
+    {
+        EXPECT_EQ(glIsFramebuffer(framebuffer), GL_FALSE);
+    }
+    EXPECT_EQ(glIsTexture(texture_), GL_TRUE);
+    EXPECT_EQ(glIsFramebuffer(framebuffer_), GL_TRUE);
+    EXPECT_FALSE(owner.CheckPrimsAvailable());
+    owner.ResetGl(false);
+    owner.Prepare(RadarGlContext::Current(), nullptr);
+    ASSERT_TRUE(owner.CheckPrimsAvailable());
+    owner.ResetGl(true);
+}
+
+TEST_F(RadarDrawGlTest, ForeignCurrentPreservesOverlappingLinkedProgramsAndImages)
+{
+    RadarDrawContext owner{performance_};
+    owner.Prepare(RadarGlContext::Current(), nullptr);
+    RadarGlObjects names;
+    {
+        RadarGlAllocations observe;
+        ASSERT_TRUE(owner.CheckPrimsAvailable());
+        ASSERT_TRUE(owner.DrawBlurBackground(0, 0, 32, true, 0, 1, 128, 128));
+        names = observe.objects;
+    }
+    RadarGlContext foreign;
+    std::string error;
+    ASSERT_TRUE(foreign.Initialize(error)) << error;
+    EXPECT_NE(RadarGlContext::Current(), context_.native_context());
+    std::vector<GLuint> sentinels;
+    GLuint maximum = *std::max_element(names.programs.begin(), names.programs.end());
+    ASSERT_LT(maximum, 128u);
+    while (sentinels.empty() || sentinels.back() < maximum)
+    {
+        sentinels.push_back(glCreateProgram());
+        ASSERT_LT(sentinels.size(), 128u);
+    }
+    GLuint vertex = ncl_gl::CompileShader(GL_VERTEX_SHADER, "#version 120\nvoid main(){gl_Position=gl_Vertex;}");
+    GLuint fragment = ncl_gl::CompileShader(GL_FRAGMENT_SHADER, "#version 120\nvoid main(){gl_FragColor=vec4(1);}");
+    for (GLuint program : names.programs)
+    {
+        ASSERT_NE(std::find(sentinels.begin(), sentinels.end(), program), sentinels.end());
+        glAttachShader(program, vertex);
+        glAttachShader(program, fragment);
+        glLinkProgram(program);
+        GLint linked = 0;
+        glGetProgramiv(program, GL_LINK_STATUS, &linked);
+        ASSERT_EQ(linked, GL_TRUE);
+    }
+    std::vector<GLuint> framebuffer_sentinels;
+    GLuint last_framebuffer = *std::max_element(names.framebuffers.begin(), names.framebuffers.end());
+    ASSERT_LT(last_framebuffer, 128u);
+    while (framebuffer_sentinels.empty() || framebuffer_sentinels.back() < last_framebuffer)
+    {
+        GLuint name = 0;
+        glGenFramebuffers(1, &name);
+        framebuffer_sentinels.push_back(name);
+        ASSERT_LT(framebuffer_sentinels.size(), 128u);
+    }
+    const std::array<unsigned char, 4> color{19, 71, 143, 255};
+    for (size_t i = 0; i < names.textures.size(); ++i)
+    {
+        glBindTexture(GL_TEXTURE_2D, names.textures[i]);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, 1, 1, 0, GL_RGBA, GL_UNSIGNED_BYTE, color.data());
+        ASSERT_NE(
+            std::find(framebuffer_sentinels.begin(), framebuffer_sentinels.end(), names.framebuffers[i]), framebuffer_sentinels.end()
+        );
+        glBindFramebuffer(GL_FRAMEBUFFER, names.framebuffers[i]);
+        ASSERT_EQ(glIsFramebuffer(names.framebuffers[i]), GL_TRUE);
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, names.textures[i], 0);
+        ASSERT_EQ(glCheckFramebufferStatus(GL_FRAMEBUFFER), GL_FRAMEBUFFER_COMPLETE);
+    }
+    ASSERT_EQ(glGetError(), GL_NO_ERROR);
+    {
+        RadarGlAllocations observe;
+        owner.BeginPrims();
+        owner.DrawDisc({10, 10}, 4, {255, 0, 0});
+        owner.ResetGl(owner.is_context(RadarGlContext::Current(), nullptr));
+        EXPECT_EQ(observe.delete_calls, 0u);
+        EXPECT_EQ(observe.draws, 0u);
+    }
+    for (GLuint program : names.programs)
+    {
+        GLint linked = 0;
+        EXPECT_EQ(glIsProgram(program), GL_TRUE);
+        glGetProgramiv(program, GL_LINK_STATUS, &linked);
+        EXPECT_EQ(linked, GL_TRUE);
+    }
+    for (size_t i = 0; i < names.textures.size(); ++i)
+    {
+        EXPECT_EQ(glIsTexture(names.textures[i]), GL_TRUE);
+        EXPECT_EQ(glIsFramebuffer(names.framebuffers[i]), GL_TRUE);
+        glBindFramebuffer(GL_FRAMEBUFFER, names.framebuffers[i]);
+        EXPECT_EQ(glCheckFramebufferStatus(GL_FRAMEBUFFER), GL_FRAMEBUFFER_COMPLETE);
+        std::array<unsigned char, 4> pixel{};
+        glReadPixels(0, 0, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, pixel.data());
+        EXPECT_EQ(pixel, color);
+    }
+    for (GLuint program : sentinels)
+    {
+        glDeleteProgram(program);
+    }
+    glDeleteShader(vertex);
+    glDeleteShader(fragment);
+    glDeleteTextures(static_cast<GLsizei>(names.textures.size()), names.textures.data());
+    glDeleteFramebuffers(static_cast<GLsizei>(framebuffer_sentinels.size()), framebuffer_sentinels.data());
+    ASSERT_TRUE(context_.MakeCurrent());
+    names.Release();
+}
+
+TEST_F(RadarDrawGlTest, NoCurrentAndPassiveDestructionNeverDeleteOrFlush)
+{
+    RadarGlObjects names;
+    auto owner = std::make_unique<RadarDrawContext>(performance_);
+    owner->Prepare(RadarGlContext::Current(), nullptr);
+    {
+        RadarGlAllocations observe;
+        ASSERT_TRUE(owner->CheckPrimsAvailable());
+        names = observe.objects;
+    }
+    owner->BeginPrims();
+    owner->DrawDisc({16, 16}, 4, {255, 0, 0});
+    ASSERT_TRUE(context_.ClearCurrent());
+    {
+        RadarGlAllocations observe;
+        owner->ResetGl(owner->is_context(RadarGlContext::Current(), nullptr));
+        owner.reset();
+        RadarDrawContext unprepared{performance_};
+        EXPECT_EQ(observe.delete_calls, 0u);
+        EXPECT_EQ(observe.draws, 0u);
+    }
+    ASSERT_TRUE(context_.MakeCurrent());
+    for (GLuint program : names.programs)
+    {
+        EXPECT_EQ(glIsProgram(program), GL_TRUE);
+    }
+    names.Release();
+
+    owner = std::make_unique<RadarDrawContext>(performance_);
+    owner->Prepare(RadarGlContext::Current(), nullptr);
+    {
+        RadarGlAllocations observe;
+        ASSERT_TRUE(owner->CheckPrimsAvailable());
+        names = observe.objects;
+        unsigned int deletes = observe.delete_calls;
+        owner.reset();
+        EXPECT_EQ(observe.delete_calls, deletes);
+    }
+    for (GLuint program : names.programs)
+    {
+        EXPECT_EQ(glIsProgram(program), GL_TRUE);
+    }
+    names.Release();
 }

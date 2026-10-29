@@ -1,13 +1,14 @@
 #include "RadarDraw.h"
 
 #include <algorithm>
-#include <chrono>
 #include <cmath>
 #include <cstddef>
 #include <string>
 #include <vector>
 
 #include "main.h"
+
+#include "hud/radar/integration/Performance.h"
 
 #include <ncl_gl/loader.h>
 #include <ncl_gl/program.h>
@@ -25,7 +26,6 @@ CMRC_DECLARE(client_mini_rc);
 
 namespace
 {
-    bool g_ProgramDone;
 
     constexpr const char* kMaskUniforms[RadarDrawUniform::kMaskCount] = {
         "uMode",
@@ -55,18 +55,13 @@ namespace
         "uClipCenter", "uClipRadius", "uClipSquare", "uFadeColor", "uFadeAmt",
     };
 
-    enum
-    {
-        kAttrPos,
-        kAttrShape,
-        kAttrCenter,
-        kAttrColor,
-        kAttrTri,
-        kAttrTri2,
-        kAttrCount,
-    };
-    constexpr const char* kPrimAttribs[kAttrCount] = {
-        "aPos", "aShape", "aCenter", "aColor", "aTri", "aTri2",
+    constexpr const char* kPrimAttribs[] = {
+        "aPos",
+        "aShape",
+        "aCenter",
+        "aColor",
+        "aTri",
+        "aTri2",
     };
 
     constexpr const char* kBlurUniforms[RadarDrawUniform::kBlurCount] = {
@@ -87,52 +82,6 @@ namespace
         RadarDrawUniform::kBlurCount <= ncl_gl::kMaxUniforms
     );
 
-    ncl_gl::Program g_Mask;
-    ncl_gl::Program g_Prim;
-    ncl_gl::Program g_Blur;
-
-    // Flashbang wash: primitives blend toward this color rather than being covered by
-    // an overlay fill, which would halo the backdrop. Amount is 0 outside a flash.
-    ncl_math::ColorF g_FadeColor;
-    float g_FadeAmt;
-
-    // g_ClipR's huge default radius means no clip.
-    ncl_math::Vector2 g_ClipCenter;
-    float g_ClipR = 1.0e9f;
-    bool g_ClipSquare;
-
-    GLuint g_CurrentProgram;
-    GLenum g_BlendSrc, g_BlendDst;
-    bool g_BlendSet; // false = unknown (the engine may have changed blend state)
-
-    GLint g_PrimAttr[kAttrCount];
-
-    // Deferred quad batch: primitives queue instead of drawing, and the run is flushed
-    // when blend or clip changes or another draw intervenes, so call order is preserved.
-    struct PrimVertex
-    {
-        float pos[2];
-        float shape[4];  // shape, feather, radius, len
-        float center[4]; // center.xy, dir.xy
-        float color[4];  // rgba (0..1)
-        float tri[4];    // t0.xy, t1.xy
-        float tri2[4];   // t2.xy, spread, pad
-    };
-    struct PrimBatch
-    {
-        std::vector<PrimVertex> verts;
-        bool open;
-        GLenum src, dst;
-        ncl_math::Vector2 clip_center;
-        float clip_radius = 1.0e9f;
-        float clip_square;
-        GLuint tex; // glyph atlas, 0 when the run draws no glyphs
-    };
-    PrimBatch g_Batch;
-    int g_PrimRegion; // >0 defers the unbind to the outermost EndPrims
-
-    RadarDrawStats g_Stats;
-
     std::string LoadShaderSource(const char* name)
     {
         auto fs = cmrc::client_mini_rc::get_filesystem();
@@ -143,235 +92,6 @@ namespace
     bool EnsureGlad()
     {
         return ncl_gl::EnsureLoaded() && GLAD_GL_VERSION_2_0 != 0;
-    }
-
-    void Init()
-    {
-        g_ProgramDone = true;
-
-        if (!EnsureGlad())
-        {
-            return;
-        }
-
-        std::string vs_src = LoadShaderSource("radar.vert");
-        std::string prim_vs_src = LoadShaderSource("radar_prim.vert");
-        std::string mask_src = LoadShaderSource("radar_mask.frag");
-        std::string prim_src = LoadShaderSource("radar_prim.frag");
-        std::string backdrop_src = LoadShaderSource("radar_backdrop.frag");
-
-        std::string error_log;
-        ncl_gl::LoadProgram(g_Mask, vs_src.c_str(), mask_src.c_str(), kMaskUniforms, RadarDrawUniform::kMaskCount, nullptr, 0, &error_log);
-
-        if (!g_Mask.ok)
-        {
-            gEngfuncs.Con_DPrintf("radar mask shader failed: %s\n", error_log.c_str());
-        }
-
-        if (g_Mask.ok)
-        {
-            glUseProgram(g_Mask.prog);
-            glUniform1i(glGetUniformLocation(g_Mask.prog, "uTex"), 0);
-            glUseProgram(0);
-        }
-
-        error_log.clear();
-        ncl_gl::LoadProgram(g_Prim, prim_vs_src.c_str(), prim_src.c_str(), kPrimUniforms, kPrimCount, kPrimAttribs, kAttrCount, &error_log);
-
-        if (!g_Prim.ok)
-        {
-            gEngfuncs.Con_DPrintf("radar prim shader failed: %s\n", error_log.c_str());
-        }
-
-        if (g_Prim.ok)
-        {
-            for (int i = 0; i < kAttrCount; i++)
-            {
-                g_PrimAttr[i] = glGetAttribLocation(g_Prim.prog, kPrimAttribs[i]);
-            }
-
-            glUseProgram(g_Prim.prog);
-            glUniform1i(glGetUniformLocation(g_Prim.prog, "uAtlas"), 0);
-            glUseProgram(0);
-        }
-
-        error_log.clear();
-        ncl_gl::LoadProgram(
-            g_Blur, vs_src.c_str(), backdrop_src.c_str(), kBlurUniforms, RadarDrawUniform::kBlurCount, nullptr, 0, &error_log
-        );
-
-        if (!g_Blur.ok)
-        {
-            gEngfuncs.Con_DPrintf("radar backdrop shader failed: %s\n", error_log.c_str());
-        }
-
-        if (g_Blur.ok)
-        {
-            glUseProgram(g_Blur.prog);
-            glUniform1i(glGetUniformLocation(g_Blur.prog, "uTex"), 0);
-            glUseProgram(0);
-
-            RadarDrawInternal_InitEffectsGl(g_Blur);
-        }
-    }
-
-    // The cache is safe only because UseProgram(0) invalidates it whenever control returns
-    // to the engine.
-    void SetBlend(GLenum src, GLenum dst)
-    {
-        if (g_BlendSet && g_BlendSrc == src && g_BlendDst == dst)
-        {
-            return;
-        }
-
-        glEnable(GL_BLEND);
-        glBlendFunc(src, dst);
-        g_BlendSrc = src;
-        g_BlendDst = dst;
-        g_BlendSet = true;
-    }
-
-    // Binds the prim program directly: UseProgram would recurse here.
-    void FlushBatch()
-    {
-        if (g_Batch.verts.empty())
-        {
-            g_Batch.open = false;
-            return;
-        }
-
-        if (g_CurrentProgram != g_Prim.prog)
-        {
-            glUseProgram(g_Prim.prog);
-            g_CurrentProgram = g_Prim.prog;
-        }
-
-        SetBlend(g_Batch.src, g_Batch.dst);
-        glUniform2f(g_Prim.loc[kPrimClipCenter], g_Batch.clip_center.x, g_Batch.clip_center.y);
-        glUniform1f(g_Prim.loc[kPrimClipRadius], g_Batch.clip_radius);
-        glUniform1f(g_Prim.loc[kPrimClipSquare], g_Batch.clip_square);
-        glUniform3f(g_Prim.loc[kPrimFadeColor], g_FadeColor.r, g_FadeColor.g, g_FadeColor.b);
-        glUniform1f(g_Prim.loc[kPrimFadeAmt], g_FadeAmt);
-
-        // Restore rather than unbind afterwards: hw.dll caches the bound texture name and
-        // early-outs on a hit, so leaving a foreign texture bound desyncs that cache.
-        GLint prev_tex = 0;
-        GLint prev_unit = GL_TEXTURE0;
-
-        if (g_Batch.tex != 0)
-        {
-            // The engine's multitexture path can leave unit 1 current; the sampler is on unit 0.
-            glGetIntegerv(GL_ACTIVE_TEXTURE, &prev_unit);
-            glActiveTexture(GL_TEXTURE0);
-            glGetIntegerv(GL_TEXTURE_BINDING_2D, &prev_tex);
-            glBindTexture(GL_TEXTURE_2D, g_Batch.tex);
-        }
-
-        // Client-side vertex arrays, so make sure no engine VBO hijacks the pointers.
-        GLint prev_vbo = 0;
-        glGetIntegerv(GL_ARRAY_BUFFER_BINDING, &prev_vbo);
-        glBindBuffer(GL_ARRAY_BUFFER, 0);
-
-        const char* base = reinterpret_cast<const char*>(g_Batch.verts.data());
-        GLsizei stride = sizeof(PrimVertex);
-        glVertexAttribPointer(g_PrimAttr[kAttrPos], 2, GL_FLOAT, GL_FALSE, stride, base + offsetof(PrimVertex, pos));
-        glVertexAttribPointer(g_PrimAttr[kAttrShape], 4, GL_FLOAT, GL_FALSE, stride, base + offsetof(PrimVertex, shape));
-        glVertexAttribPointer(g_PrimAttr[kAttrCenter], 4, GL_FLOAT, GL_FALSE, stride, base + offsetof(PrimVertex, center));
-        glVertexAttribPointer(g_PrimAttr[kAttrColor], 4, GL_FLOAT, GL_FALSE, stride, base + offsetof(PrimVertex, color));
-        glVertexAttribPointer(g_PrimAttr[kAttrTri], 4, GL_FLOAT, GL_FALSE, stride, base + offsetof(PrimVertex, tri));
-        glVertexAttribPointer(g_PrimAttr[kAttrTri2], 4, GL_FLOAT, GL_FALSE, stride, base + offsetof(PrimVertex, tri2));
-
-        for (int i = 0; i < kAttrCount; i++)
-        {
-            glEnableVertexAttribArray(g_PrimAttr[i]);
-        }
-
-        // The engine's alpha test must not discard shader coverage or marker crossfades.
-        GLboolean alpha_test = glIsEnabled(GL_ALPHA_TEST);
-        if (alpha_test)
-        {
-            glDisable(GL_ALPHA_TEST);
-        }
-        glDrawArrays(GL_QUADS, 0, (GLsizei)g_Batch.verts.size());
-        if (alpha_test)
-        {
-            glEnable(GL_ALPHA_TEST);
-        }
-        g_Stats.batches++;
-        g_Stats.quads += (int)g_Batch.verts.size() / 4;
-
-        for (int i = 0; i < kAttrCount; i++)
-        {
-            glDisableVertexAttribArray(g_PrimAttr[i]);
-        }
-
-        glBindBuffer(GL_ARRAY_BUFFER, prev_vbo);
-
-        if (g_Batch.tex != 0)
-        {
-            glBindTexture(GL_TEXTURE_2D, (GLuint)prev_tex);
-            glActiveTexture((GLenum)prev_unit);
-        }
-
-        g_Batch.verts.clear();
-        g_Batch.open = false;
-        g_Batch.tex = 0;
-    }
-
-    void UseProgram(GLuint p)
-    {
-        // Hand-off must draw the queued primitives first, so they land in call order.
-        if (p != g_Prim.prog && g_Batch.open)
-        {
-            FlushBatch();
-        }
-
-        if (p != g_CurrentProgram)
-        {
-            glUseProgram(p);
-            g_CurrentProgram = p;
-        }
-
-        if (p == 0)
-        {
-            g_BlendSet = false;
-        }
-    }
-
-    void ApplyFade(GLint color_loc, GLint amt_loc)
-    {
-        glUniform3f(color_loc, g_FadeColor.r, g_FadeColor.g, g_FadeColor.b);
-        glUniform1f(amt_loc, g_FadeAmt);
-    }
-
-    void AddQuad(GLenum blend_src, GLenum blend_dst, const PrimVertex (&corners)[4], GLuint tex = 0)
-    {
-        float clip_sq = g_ClipSquare ? 1.0f : 0.0f;
-
-        if (g_Batch.open &&
-            (g_Batch.src != blend_src || g_Batch.dst != blend_dst || g_Batch.clip_center != g_ClipCenter ||
-             g_Batch.clip_radius != g_ClipR || g_Batch.clip_square != clip_sq ||
-             (tex != 0 && g_Batch.tex != 0 && g_Batch.tex != tex)))
-        {
-            FlushBatch();
-        }
-
-        g_Batch.open = true;
-        g_Batch.src = blend_src;
-        g_Batch.dst = blend_dst;
-        g_Batch.clip_center = g_ClipCenter;
-        g_Batch.clip_radius = g_ClipR;
-        g_Batch.clip_square = clip_sq;
-
-        if (tex != 0)
-        {
-            g_Batch.tex = tex;
-        }
-
-        for (int c = 0; c < 4; c++)
-        {
-            g_Batch.verts.push_back(corners[c]);
-        }
     }
 
     // Must match the vShape.x dispatch in radar_prim.frag.
@@ -387,188 +107,136 @@ namespace
     constexpr float kShapeDisconnectedSignal = 9.0f;
     constexpr float kShapePlayerMarkerFade = 10.0f;
 
-    struct ShapeParams
-    {
-        float shape;
-        float feather;
-        ncl_math::Vector2 center; // shape center / cone apex
-        float radius;                 // disc radius / cross half-extent / ring outer
-        float len;                    // cone length / cross half-width / ring inner
-        ncl_math::Vector2 dir;        // cone direction (unit)
-        float spread;                 // cone half-angle (radians)
-        ncl_math::Color color;
-        float alpha;                  // 0..1
-        ncl_math::Vector2 t0, t1, t2;
-    };
-
-    void AddShapeQuad(const ShapeParams& p, GLenum blend_src, GLenum blend_dst, ncl_math::Aabb2 quad)
-    {
-        if (!RadarDraw_CheckPrimsAvailable())
-        {
-            return;
-        }
-
-        PrimVertex v = PrimVertex{};
-        v.shape[0] = p.shape;
-        v.shape[1] = p.feather;
-        v.shape[2] = p.radius;
-        v.shape[3] = p.len;
-        v.center[0] = p.center.x;
-        v.center[1] = p.center.y;
-        v.center[2] = p.dir.x;
-        v.center[3] = p.dir.y;
-        ncl_math::ColorF cf = p.color.ToFloat();
-        v.color[0] = cf.r;
-        v.color[1] = cf.g;
-        v.color[2] = cf.b;
-        v.color[3] = p.alpha;
-        v.tri[0] = p.t0.x;
-        v.tri[1] = p.t0.y;
-        v.tri[2] = p.t1.x;
-        v.tri[3] = p.t1.y;
-        v.tri2[0] = p.t2.x;
-        v.tri2[1] = p.t2.y;
-        v.tri2[2] = p.spread;
-        v.tri2[3] = 0.0f;
-
-        const ncl_math::Vector2 corner_pos[4] = {
-            {quad.min.x, quad.min.y}, {quad.max.x, quad.min.y}, {quad.max.x, quad.max.y}, {quad.min.x, quad.max.y}
-        };
-        PrimVertex corners[4] = {v, v, v, v};
-
-        for (int c = 0; c < 4; c++)
-        {
-            corners[c].pos[0] = corner_pos[c].x;
-            corners[c].pos[1] = corner_pos[c].y;
-        }
-
-        AddQuad(blend_src, blend_dst, corners);
-    }
-
 } // namespace
 
-bool RadarDraw_CheckPrimsAvailable()
+bool RadarDrawContext::CheckPrimsAvailable()
 {
-    if (!g_ProgramDone)
-    {
-        Init();
-    }
+    EnsurePrograms();
 
-    return g_Prim.ok;
+    return prim_.ok;
 }
 
-void RadarDraw_ResetGl()
+void RadarDrawContext::ResetGl(bool release)
 {
-    RadarDrawInternal_ResetEffectsGl();
+    ResetEffectsGl(release);
 
-    // A video mode change can recreate the GL context and dangle these handles. Deleting a
-    // handle from a destroyed context is a no-op, so this runs either way.
-    if (ncl_gl::IsLoaded())
+    if (release && ncl_gl::IsLoaded())
     {
-        if (g_Mask.prog)
+        if (mask_.prog)
         {
-            glDeleteProgram(g_Mask.prog);
+            glDeleteProgram(mask_.prog);
         }
 
-        if (g_Prim.prog)
+        if (prim_.prog)
         {
-            glDeleteProgram(g_Prim.prog);
+            glDeleteProgram(prim_.prog);
         }
 
-        if (g_Blur.prog)
+        if (blur_.prog)
         {
-            glDeleteProgram(g_Blur.prog);
+            glDeleteProgram(blur_.prog);
         }
 
     }
 
-    g_ProgramDone = false;
-    g_Mask = ncl_gl::Program{};
-    g_Prim = ncl_gl::Program{};
-    g_Blur = ncl_gl::Program{};
-    g_CurrentProgram = 0;
-    g_Batch = PrimBatch{};
-    g_BlendSet = false;
+    owning_context_ = nullptr;
+    owning_window_ = nullptr;
+    prim_region_ = 0;
+    clip_center_ = {};
+    clip_r_ = 1.0e9f;
+    clip_square_ = false;
+    fade_color_ = {};
+    fade_amt_ = 0.0f;
+    program_done_ = false;
+    mask_ = ncl_gl::Program{};
+    prim_ = ncl_gl::Program{};
+    blur_ = ncl_gl::Program{};
+    current_program_ = 0;
+    batch_ = PrimBatch{};
+    blend_set_ = false;
 }
 
-void RadarDraw_ResetStats()
+void RadarDrawContext::ResetStats()
 {
-    g_Stats = RadarDrawStats{};
+    stats_ = RadarDrawStats{};
 }
 
-RadarDrawStats RadarDraw_GetStats()
+RadarDrawStats RadarDrawContext::GetStats()
 {
-    return g_Stats;
+    return stats_;
 }
 
-void RadarDraw_SetPrimClip(ncl_math::Vector2 center, float radius, bool square)
+void RadarDrawContext::SetPrimClip(ncl_math::Vector2 center, float radius, bool square)
 {
-    g_ClipCenter = center;
-    g_ClipR = radius;
-    g_ClipSquare = square;
+    clip_center_ = center;
+    clip_r_ = radius;
+    clip_square_ = square;
 }
 
-void RadarDraw_ClearPrimClip()
+void RadarDrawContext::ClearPrimClip()
 {
-    g_ClipCenter = {};
-    g_ClipR = 1.0e9f;
-    g_ClipSquare = false;
+    clip_center_ = {};
+    clip_r_ = 1.0e9f;
+    clip_square_ = false;
 }
 
-void RadarDraw_BeginPrims()
+void RadarDrawContext::BeginPrims()
 {
-    g_PrimRegion++;
+    prim_region_++;
 }
 
-void RadarDraw_EndPrims()
+void RadarDrawContext::EndPrims()
 {
-    if (g_PrimRegion > 0 && --g_PrimRegion == 0)
+    if (prim_region_ > 0 && --prim_region_ == 0)
     {
         UseProgram(0);
     }
 }
 
-void RadarDraw_FlushPrims()
+void RadarDrawContext::FlushPrims()
 {
-    if (g_Batch.open)
+    if (batch_.open)
     {
         FlushBatch();
         UseProgram(0);
     }
 }
 
-void RadarDraw_SetFade(ncl_math::Color color)
+void RadarDrawContext::SetFade(ncl_math::Color color)
 {
     // The fade applies per batch at flush time; queued primitives must be committed first
     // or the change recolors them retroactively.
-    RadarDraw_FlushPrims();
-    g_FadeColor = ncl_math::ColorF{color.r / 255.0f, color.g / 255.0f, color.b / 255.0f};
-    g_FadeAmt = std::clamp(color.a / 255.0f, 0.0f, 1.0f);
+    FlushPrims();
+    fade_color_ = ncl_math::ColorF{color.r / 255.0f, color.g / 255.0f, color.b / 255.0f};
+    fade_amt_ = std::clamp(color.a / 255.0f, 0.0f, 1.0f);
 }
 
-void RadarDraw_ClearFade()
+void RadarDrawContext::ClearFade()
 {
-    RadarDraw_FlushPrims();
-    g_FadeAmt = 0.0f;
+    FlushPrims();
+    fade_amt_ = 0.0f;
 }
 
-void RadarDraw_EndFrame()
+void RadarDrawContext::EndFrame()
 {
-    RadarDraw_ClearFade();
+    ClearFade();
+    ClearPrimClip();
+    prim_region_ = 0;
+    UseProgram(0);
 }
 
-ncl_math::Color RadarDraw_ApplyFade(ncl_math::Color color)
+ncl_math::Color RadarDrawContext::ApplyFade(ncl_math::Color color)
 {
-    if (g_FadeAmt <= 0.0f)
+    if (fade_amt_ <= 0.0f)
     {
         return color;
     }
 
     // Lerp blends all four channels, so the source alpha is put back explicitly.
-    return ncl_math::Lerp(color, g_FadeColor.ToBytes().WithAlpha(color.a), g_FadeAmt);
+    return ncl_math::Lerp(color, fade_color_.ToBytes().WithAlpha(color.a), fade_amt_);
 }
 
-void RadarDraw_DrawPolyline(
+void RadarDrawContext::DrawPolyline(
     std::span<const ncl_math::Vector2> points,
     std::span<const uint8_t> alpha,
     ncl_math::Color color,
@@ -577,7 +245,7 @@ void RadarDraw_DrawPolyline(
 {
     int count = (int)points.size();
 
-    if (count < 2 || !RadarDraw_CheckPrimsAvailable())
+    if (count < 2 || !CheckPrimsAvailable())
     {
         return;
     }
@@ -605,7 +273,7 @@ void RadarDraw_DrawPolyline(
     });
 }
 
-void RadarDraw_DrawDisc(ncl_math::Vector2 center, float radius, ncl_math::Color color)
+void RadarDrawContext::DrawDisc(ncl_math::Vector2 center, float radius, ncl_math::Color color)
 {
     float e = radius + 2.0f;
     AddShapeQuad(
@@ -615,7 +283,7 @@ void RadarDraw_DrawDisc(ncl_math::Vector2 center, float radius, ncl_math::Color 
     );
 }
 
-void RadarDraw_DrawPlayerMarkerFade(
+void RadarDrawContext::DrawPlayerMarkerFade(
     const RadarDrawPlayerMarker& current,
     const RadarDrawPlayerMarker& previous,
     float radius,
@@ -651,7 +319,7 @@ void RadarDraw_DrawPlayerMarkerFade(
     );
 }
 
-void RadarDraw_DrawTriangle(ncl_math::Vector2 p0, ncl_math::Vector2 p1, ncl_math::Vector2 p2, ncl_math::Color color)
+void RadarDrawContext::DrawTriangle(ncl_math::Vector2 p0, ncl_math::Vector2 p1, ncl_math::Vector2 p2, ncl_math::Color color)
 {
     ncl_math::Aabb2 bb = ncl_math::Aabb2::Empty();
     bb.Include(p0);
@@ -666,7 +334,7 @@ void RadarDraw_DrawTriangle(ncl_math::Vector2 p0, ncl_math::Vector2 p1, ncl_math
     );
 }
 
-void RadarDraw_DrawRect(ncl_math::Vector2 min, ncl_math::Vector2 max, ncl_math::Color color)
+void RadarDrawContext::DrawRect(ncl_math::Vector2 min, ncl_math::Vector2 max, ncl_math::Color color)
 {
     ncl_math::ColorF cf = color.ToFloat();
 
@@ -689,12 +357,7 @@ void RadarDraw_DrawRect(ncl_math::Vector2 min, ncl_math::Vector2 max, ncl_math::
     AddQuad(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, corners);
 }
 
-void RadarDraw_DrawGlyph(
-    unsigned int atlas,
-    const ncl_math::Aabb2& rect,
-    const ncl_math::Aabb2& uv,
-    ncl_math::Color fill
-)
+void RadarDrawContext::DrawGlyph(unsigned int atlas, const ncl_math::Aabb2& rect, const ncl_math::Aabb2& uv, ncl_math::Color fill)
 {
     PrimVertex v{};
     v.shape[0] = kShapeGlyph;
@@ -722,7 +385,7 @@ void RadarDraw_DrawGlyph(
     AddQuad(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, corners, (GLuint)atlas);
 }
 
-void RadarDraw_DrawBomb(ncl_math::Vector2 center, float half_extent, ncl_math::Color color)
+void RadarDrawContext::DrawBomb(ncl_math::Vector2 center, float half_extent, ncl_math::Color color)
 {
     float margin = half_extent + 2.0f;
     AddShapeQuad(
@@ -733,7 +396,7 @@ void RadarDraw_DrawBomb(ncl_math::Vector2 center, float half_extent, ncl_math::C
     );
 }
 
-void RadarDraw_DrawDisconnectedSignal(ncl_math::Vector2 center, float half_extent, float half_width, ncl_math::Color color)
+void RadarDrawContext::DrawDisconnectedSignal(ncl_math::Vector2 center, float half_extent, float half_width, ncl_math::Color color)
 {
     float margin = half_extent + half_width + 2.0f;
     AddShapeQuad(
@@ -750,7 +413,7 @@ void RadarDraw_DrawDisconnectedSignal(ncl_math::Vector2 center, float half_exten
     );
 }
 
-void RadarDraw_DrawCross(ncl_math::Vector2 center, float half_extent, float half_width, ncl_math::Color color)
+void RadarDrawContext::DrawCross(ncl_math::Vector2 center, float half_extent, float half_width, ncl_math::Color color)
 {
     float m = half_extent + half_width + 2.0f;
     AddShapeQuad(
@@ -761,7 +424,7 @@ void RadarDraw_DrawCross(ncl_math::Vector2 center, float half_extent, float half
     );
 }
 
-void RadarDraw_DrawQuestionMark(ncl_math::Vector2 center, float half_extent, float half_width, ncl_math::Color color)
+void RadarDrawContext::DrawQuestionMark(ncl_math::Vector2 center, float half_extent, float half_width, ncl_math::Color color)
 {
     float m = half_extent + half_width + 2.0f;
     AddShapeQuad(
@@ -778,7 +441,7 @@ void RadarDraw_DrawQuestionMark(ncl_math::Vector2 center, float half_extent, flo
     );
 }
 
-void RadarDraw_DrawRing(ncl_math::Vector2 center, float outer, float inner, ncl_math::Color color)
+void RadarDrawContext::DrawRing(ncl_math::Vector2 center, float outer, float inner, ncl_math::Color color)
 {
     float m = outer + 2.0f;
     AddShapeQuad(
@@ -789,9 +452,9 @@ void RadarDraw_DrawRing(ncl_math::Vector2 center, float outer, float inner, ncl_
     );
 }
 
-void RadarDraw_DrawBorderRing(ncl_math::Vector2 center, float outer, float inner, float feather, ncl_math::Color color)
+void RadarDrawContext::DrawBorderRing(ncl_math::Vector2 center, float outer, float inner, float feather, ncl_math::Color color)
 {
-    if (RadarDraw_BeginMaskRing(center, outer, inner, feather, color.ToFloat(), false))
+    if (BeginMaskRing(center, outer, inner, feather, color.ToFloat(), false))
     {
         SetBlend(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
         float m = outer + 2.0f;
@@ -801,7 +464,7 @@ void RadarDraw_DrawBorderRing(ncl_math::Vector2 center, float outer, float inner
         glVertex2f(center.x + m, center.y + m);
         glVertex2f(center.x - m, center.y + m);
         glEnd();
-        RadarDraw_EndMask();
+        EndMask();
         return;
     }
 
@@ -859,7 +522,14 @@ void RadarDraw_DrawBorderRing(ncl_math::Vector2 center, float outer, float inner
     glColor4ub(255, 255, 255, 255);
 }
 
-void RadarDraw_DrawCone(ncl_math::Vector2 apex, ncl_math::Vector2 dir, float length, float spread, ncl_math::Color color, float peak_alpha)
+void RadarDrawContext::DrawCone(
+    ncl_math::Vector2 apex,
+    ncl_math::Vector2 dir,
+    float length,
+    float spread,
+    ncl_math::Color color,
+    float peak_alpha
+)
 {
     ncl_math::Vector2 perp = dir.Perp();
     float hw = length * tanf(spread);
@@ -876,51 +546,25 @@ void RadarDraw_DrawCone(ncl_math::Vector2 apex, ncl_math::Vector2 dir, float len
     );
 }
 
-bool RadarDrawInternal_EnsureGlad()
+void RadarDrawContext::EnsurePrograms()
 {
-    return ::EnsureGlad();
-}
-
-void RadarDrawInternal_EnsurePrograms()
-{
-    if (!g_ProgramDone)
+    if (owning_context_ && !program_done_)
     {
         Init();
     }
 }
 
-ncl_gl::Program& RadarDrawInternal_GetMaskProgram()
+ncl_gl::Program& RadarDrawContext::GetMaskProgram()
 {
-    return g_Mask;
+    return mask_;
 }
 
-ncl_gl::Program& RadarDrawInternal_GetBlurProgram()
+ncl_gl::Program& RadarDrawContext::GetBlurProgram()
 {
-    return g_Blur;
+    return blur_;
 }
 
-void RadarDrawInternal_UseProgram(GLuint p)
-{
-    ::UseProgram(p);
-}
-
-void RadarDrawInternal_SetBlend(GLenum src, GLenum dst)
-{
-    ::SetBlend(src, dst);
-}
-
-void RadarDrawInternal_ApplyFade(GLint color_loc, GLint amt_loc)
-{
-    ::ApplyFade(color_loc, amt_loc);
-}
-
-void RadarDrawInternal_AddBlurMs(float ms)
-{
-    g_Stats.blur_ms += ms;
-}
-
-
-void RadarDraw_DrawLayerIndicator(ncl_math::Vector2 screen, int vertical, int size, ncl_math::Color color)
+void RadarDrawContext::DrawLayerIndicator(ncl_math::Vector2 screen, int vertical, int size, ncl_math::Color color)
 {
     if (vertical == 0)
     {
@@ -935,5 +579,295 @@ void RadarDraw_DrawLayerIndicator(ncl_math::Vector2 screen, int vertical, int si
         screen + ncl_math::Vector2{half, vertical * half * 0.5f},
     };
     uint8_t alpha[] = {color.a, color.a, color.a};
-    RadarDraw_DrawPolyline(points, alpha, color, width);
+    DrawPolyline(points, alpha, color, width);
+}
+
+void RadarDrawContext::Init()
+{
+    program_done_ = true;
+
+    if (!EnsureGlad())
+    {
+        return;
+    }
+
+    std::string vs_src = LoadShaderSource("radar.vert");
+    std::string prim_vs_src = LoadShaderSource("radar_prim.vert");
+    std::string mask_src = LoadShaderSource("radar_mask.frag");
+    std::string prim_src = LoadShaderSource("radar_prim.frag");
+    std::string backdrop_src = LoadShaderSource("radar_backdrop.frag");
+
+    ncl_gl::ProgramBuildCallbacks callbacks = performance_.ProgramCallbacks();
+    std::string error_log;
+    ncl_gl::LoadProgram(
+        mask_, vs_src.c_str(), mask_src.c_str(), kMaskUniforms, RadarDrawUniform::kMaskCount, nullptr, 0, &error_log, &callbacks
+    );
+
+    if (!mask_.ok)
+    {
+        gEngfuncs.Con_DPrintf("radar mask shader failed: %s\n", error_log.c_str());
+    }
+
+    if (mask_.ok)
+    {
+        glUseProgram(mask_.prog);
+        glUniform1i(glGetUniformLocation(mask_.prog, "uTex"), 0);
+        glUseProgram(0);
+    }
+
+    error_log.clear();
+    ncl_gl::LoadProgram(
+        prim_, prim_vs_src.c_str(), prim_src.c_str(), kPrimUniforms, kPrimCount, kPrimAttribs, kAttrCount, &error_log, &callbacks
+    );
+
+    if (!prim_.ok)
+    {
+        gEngfuncs.Con_DPrintf("radar prim shader failed: %s\n", error_log.c_str());
+    }
+
+    if (prim_.ok)
+    {
+        for (int i = 0; i < kAttrCount; i++)
+        {
+            prim_attr_[i] = glGetAttribLocation(prim_.prog, kPrimAttribs[i]);
+        }
+
+        glUseProgram(prim_.prog);
+        glUniform1i(glGetUniformLocation(prim_.prog, "uAtlas"), 0);
+        glUseProgram(0);
+    }
+
+    error_log.clear();
+    ncl_gl::LoadProgram(
+        blur_, vs_src.c_str(), backdrop_src.c_str(), kBlurUniforms, RadarDrawUniform::kBlurCount, nullptr, 0, &error_log, &callbacks
+    );
+
+    if (!blur_.ok)
+    {
+        gEngfuncs.Con_DPrintf("radar backdrop shader failed: %s\n", error_log.c_str());
+    }
+
+    if (blur_.ok)
+    {
+        glUseProgram(blur_.prog);
+        glUniform1i(glGetUniformLocation(blur_.prog, "uTex"), 0);
+        glUseProgram(0);
+
+        InitEffectsGl(blur_);
+    }
+}
+
+// UseProgram(0) invalidates this cache before returning control to the engine.
+void RadarDrawContext::SetBlend(GLenum src, GLenum dst)
+{
+    if (blend_set_ && blend_src_ == src && blend_dst_ == dst)
+    {
+        return;
+    }
+
+    glEnable(GL_BLEND);
+    glBlendFunc(src, dst);
+    blend_src_ = src;
+    blend_dst_ = dst;
+    blend_set_ = true;
+}
+
+// Bind directly here: UseProgram flushes the batch before switching programs.
+void RadarDrawContext::FlushBatch()
+{
+    if (batch_.verts.empty())
+    {
+        batch_.open = false;
+        return;
+    }
+
+    if (current_program_ != prim_.prog)
+    {
+        glUseProgram(prim_.prog);
+        current_program_ = prim_.prog;
+    }
+
+    SetBlend(batch_.src, batch_.dst);
+    glUniform2f(prim_.loc[kPrimClipCenter], batch_.clip_center.x, batch_.clip_center.y);
+    glUniform1f(prim_.loc[kPrimClipRadius], batch_.clip_radius);
+    glUniform1f(prim_.loc[kPrimClipSquare], batch_.clip_square);
+    glUniform3f(prim_.loc[kPrimFadeColor], fade_color_.r, fade_color_.g, fade_color_.b);
+    glUniform1f(prim_.loc[kPrimFadeAmt], fade_amt_);
+
+    // Restore rather than unbind afterwards: hw.dll caches the bound texture name and
+    // early-outs on a hit, so leaving a foreign texture bound desyncs that cache.
+    GLint prev_tex = 0;
+    GLint prev_unit = GL_TEXTURE0;
+
+    if (batch_.tex != 0)
+    {
+        // The engine's multitexture path can leave unit 1 current; the sampler is on unit 0.
+        glGetIntegerv(GL_ACTIVE_TEXTURE, &prev_unit);
+        glActiveTexture(GL_TEXTURE0);
+        glGetIntegerv(GL_TEXTURE_BINDING_2D, &prev_tex);
+        glBindTexture(GL_TEXTURE_2D, batch_.tex);
+    }
+
+    // Client-side vertex arrays, so make sure no engine VBO hijacks the pointers.
+    GLint prev_vbo = 0;
+    glGetIntegerv(GL_ARRAY_BUFFER_BINDING, &prev_vbo);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+    const char* base = reinterpret_cast<const char*>(batch_.verts.data());
+    GLsizei stride = sizeof(PrimVertex);
+    glVertexAttribPointer(prim_attr_[kAttrPos], 2, GL_FLOAT, GL_FALSE, stride, base + offsetof(PrimVertex, pos));
+    glVertexAttribPointer(prim_attr_[kAttrShape], 4, GL_FLOAT, GL_FALSE, stride, base + offsetof(PrimVertex, shape));
+    glVertexAttribPointer(prim_attr_[kAttrCenter], 4, GL_FLOAT, GL_FALSE, stride, base + offsetof(PrimVertex, center));
+    glVertexAttribPointer(prim_attr_[kAttrColor], 4, GL_FLOAT, GL_FALSE, stride, base + offsetof(PrimVertex, color));
+    glVertexAttribPointer(prim_attr_[kAttrTri], 4, GL_FLOAT, GL_FALSE, stride, base + offsetof(PrimVertex, tri));
+    glVertexAttribPointer(prim_attr_[kAttrTri2], 4, GL_FLOAT, GL_FALSE, stride, base + offsetof(PrimVertex, tri2));
+
+    for (int i = 0; i < kAttrCount; i++)
+    {
+        glEnableVertexAttribArray(prim_attr_[i]);
+    }
+
+    // The engine's alpha test must not discard shader coverage or marker crossfades.
+    GLboolean alpha_test = glIsEnabled(GL_ALPHA_TEST);
+    if (alpha_test)
+    {
+        glDisable(GL_ALPHA_TEST);
+    }
+
+    performance::PerformanceMonitorInterface* monitor = performance_.get_monitor();
+    {
+        performance::PerformanceCpuScope cpu(monitor, performance::PerfStage::RadarBatch);
+        performance::PerformanceGpuScope gpu(monitor, performance::PerfStage::RadarBatch);
+        glDrawArrays(GL_QUADS, 0, static_cast<GLsizei>(batch_.verts.size()));
+    }
+
+    if (monitor)
+    {
+        monitor->AddCounter(performance::PerfCounterId::RadarBatches, 1);
+        monitor->AddCounter(performance::PerfCounterId::RadarQuads, batch_.verts.size() / 4);
+    }
+
+    if (alpha_test)
+    {
+        glEnable(GL_ALPHA_TEST);
+    }
+
+    stats_.batches++;
+    stats_.quads += (int)batch_.verts.size() / 4;
+
+    for (int i = 0; i < kAttrCount; i++)
+    {
+        glDisableVertexAttribArray(prim_attr_[i]);
+    }
+
+    glBindBuffer(GL_ARRAY_BUFFER, prev_vbo);
+
+    if (batch_.tex != 0)
+    {
+        glBindTexture(GL_TEXTURE_2D, (GLuint)prev_tex);
+        glActiveTexture((GLenum)prev_unit);
+    }
+
+    batch_.verts.clear();
+    batch_.open = false;
+    batch_.tex = 0;
+}
+
+void RadarDrawContext::UseProgram(GLuint p)
+{
+    // Hand-off must draw the queued primitives first, so they land in call order.
+    if (p != prim_.prog && batch_.open)
+    {
+        FlushBatch();
+    }
+
+    if (p != current_program_)
+    {
+        glUseProgram(p);
+        current_program_ = p;
+    }
+
+    if (p == 0)
+    {
+        blend_set_ = false;
+    }
+}
+
+void RadarDrawContext::ApplyFade(GLint color_loc, GLint amt_loc)
+{
+    glUniform3f(color_loc, fade_color_.r, fade_color_.g, fade_color_.b);
+    glUniform1f(amt_loc, fade_amt_);
+}
+
+void RadarDrawContext::AddQuad(GLenum blend_src, GLenum blend_dst, const PrimVertex (&corners)[4], GLuint tex)
+{
+    float clip_sq = clip_square_ ? 1.0f : 0.0f;
+
+    if (batch_.open &&
+        (batch_.src != blend_src || batch_.dst != blend_dst || batch_.clip_center != clip_center_ || batch_.clip_radius != clip_r_ ||
+         batch_.clip_square != clip_sq || (tex != 0 && batch_.tex != 0 && batch_.tex != tex)))
+    {
+        FlushBatch();
+    }
+
+    batch_.open = true;
+    batch_.src = blend_src;
+    batch_.dst = blend_dst;
+    batch_.clip_center = clip_center_;
+    batch_.clip_radius = clip_r_;
+    batch_.clip_square = clip_sq;
+
+    if (tex != 0)
+    {
+        batch_.tex = tex;
+    }
+
+    for (int c = 0; c < 4; c++)
+    {
+        batch_.verts.push_back(corners[c]);
+    }
+}
+
+void RadarDrawContext::AddShapeQuad(const ShapeParams& p, GLenum blend_src, GLenum blend_dst, ncl_math::Aabb2 quad)
+{
+    if (!CheckPrimsAvailable())
+    {
+        return;
+    }
+
+    PrimVertex v = PrimVertex{};
+    v.shape[0] = p.shape;
+    v.shape[1] = p.feather;
+    v.shape[2] = p.radius;
+    v.shape[3] = p.len;
+    v.center[0] = p.center.x;
+    v.center[1] = p.center.y;
+    v.center[2] = p.dir.x;
+    v.center[3] = p.dir.y;
+    ncl_math::ColorF cf = p.color.ToFloat();
+    v.color[0] = cf.r;
+    v.color[1] = cf.g;
+    v.color[2] = cf.b;
+    v.color[3] = p.alpha;
+    v.tri[0] = p.t0.x;
+    v.tri[1] = p.t0.y;
+    v.tri[2] = p.t1.x;
+    v.tri[3] = p.t1.y;
+    v.tri2[0] = p.t2.x;
+    v.tri2[1] = p.t2.y;
+    v.tri2[2] = p.spread;
+    v.tri2[3] = 0.0f;
+
+    const ncl_math::Vector2 corner_pos[4] = {
+        {quad.min.x, quad.min.y}, {quad.max.x, quad.min.y}, {quad.max.x, quad.max.y}, {quad.min.x, quad.max.y}
+    };
+    PrimVertex corners[4] = {v, v, v, v};
+
+    for (int c = 0; c < 4; c++)
+    {
+        corners[c].pos[0] = corner_pos[c].x;
+        corners[c].pos[1] = corner_pos[c].y;
+    }
+
+    AddQuad(blend_src, blend_dst, corners);
 }

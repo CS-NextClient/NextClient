@@ -1,0 +1,2116 @@
+--- /dev/null
++++ b/public/client/TracyQueueMemory.hpp
+@@ -0,0 +1,33 @@
++#pragma once
++
++#include <stddef.h>
++#include <stdint.h>
++#include "../common/TracyApi.h"
++
++namespace tracy
++{
++struct QueueItem;
++
++struct QueueMemoryStatus
++{
++    size_t used;
++    size_t peak;
++    size_t limit;
++    uint32_t stopped;
++};
++
++TRACY_API void* QueuePayload_Allocate( size_t size );
++TRACY_API void QueuePayload_Free( void* ptr );
++TRACY_API bool QueuePayload_IsManaged( const void* ptr );
++TRACY_API bool QueuePayload_SealItem( QueueItem& item );
++TRACY_API char* QueuePayload_CopyString( const char* text );
++TRACY_API void* QueueMemory_Allocate( size_t size );
++TRACY_API void QueueMemory_Free( void* ptr );
++TRACY_API QueueMemoryStatus QueueMemory_GetStatus();
++TRACY_API bool QueueMemory_IsStopped();
++TRACY_API bool QueueMemory_IsUnderPressure();
++TRACY_API void QueueMemory_Reset();
++TRACY_API QueueItem* QueueMemory_DroppedItem();
++TRACY_API void QueueMemory_DiscardItem( const QueueItem& item );
++TRACY_API void QueueMemory_DiscardDeferredItem( const QueueItem& item );
++}
+--- /dev/null
++++ b/public/client/TracyQueueMemory.cpp
+@@ -0,0 +1,258 @@
++#include "TracyQueueMemory.hpp"
++
++#include <atomic>
++#include <mutex>
++#include <string.h>
++#include "../common/TracyAlloc.hpp"
++#include "../common/TracyAssert.hpp"
++
++#ifdef _WIN32
++#include <windows.h>
++#else
++#include <sys/mman.h>
++#endif
++
++namespace tracy
++{
++namespace
++{
++    constexpr size_t kQueueLimit = 128u * 1024u * 1024u;
++#ifdef _WIN32
++    constexpr size_t kAllocationGranularity = 64u * 1024u;
++#else
++    constexpr size_t kAllocationGranularity = 4096u;
++#endif
++    struct alignas(16) AllocationHeader
++    {
++        size_t size;
++    };
++    std::atomic<size_t> g_QueueUsed { 0 };
++    std::atomic<size_t> g_QueuePeak { 0 };
++    std::atomic<uint32_t> g_QueueStopped { 0 };
++
++    void StopCapture( uint32_t reason )
++    {
++        uint32_t expected = 0;
++        g_QueueStopped.compare_exchange_strong( expected, reason, std::memory_order_acq_rel );
++    }
++}
++
++void* QueueMemory_Allocate( size_t size )
++{
++    if( QueueMemory_IsStopped() ) return nullptr;
++    if( size > kQueueLimit - sizeof( AllocationHeader ) - ( kAllocationGranularity - 1 ) )
++    {
++        StopCapture( 1 );
++        return nullptr;
++    }
++    const size_t charged = ( size + sizeof( AllocationHeader ) + kAllocationGranularity - 1 ) & ~( kAllocationGranularity - 1 );
++    size_t used = g_QueueUsed.load( std::memory_order_relaxed );
++    for(;;)
++    {
++        if( charged > kQueueLimit - used )
++        {
++            StopCapture( 1 );
++            return nullptr;
++        }
++        if( g_QueueUsed.compare_exchange_weak( used, used + charged, std::memory_order_acq_rel ) ) break;
++    }
++    size_t peak = g_QueuePeak.load( std::memory_order_relaxed );
++    while( peak < used + charged && !g_QueuePeak.compare_exchange_weak( peak, used + charged, std::memory_order_relaxed ) ) {}
++#ifdef _WIN32
++    void* raw = VirtualAlloc( nullptr, charged, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE );
++#else
++    void* raw = mmap( nullptr, charged, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0 );
++    if( raw == MAP_FAILED ) raw = nullptr;
++#endif
++    if( !raw )
++    {
++        g_QueueUsed.fetch_sub( charged, std::memory_order_acq_rel );
++        StopCapture( 2 );
++        return nullptr;
++    }
++    auto header = static_cast<AllocationHeader*>( raw );
++    header->size = charged;
++    return header + 1;
++}
++
++void QueueMemory_Free( void* ptr )
++{
++    if( !ptr ) return;
++    auto header = static_cast<AllocationHeader*>( ptr ) - 1;
++    const size_t charged = header->size;
++#ifdef _WIN32
++    const bool released = VirtualFree( header, 0, MEM_RELEASE ) != 0;
++#else
++    const bool released = munmap( header, charged ) == 0;
++#endif
++    TRACY_ASSERT( released );
++    if( released ) g_QueueUsed.fetch_sub( charged, std::memory_order_acq_rel );
++}
++
++namespace
++{
++    struct PayloadPage;
++    struct alignas(16) PayloadHeader
++    {
++        PayloadPage* page;
++        PayloadHeader* next;
++    };
++    struct alignas(16) PayloadPage
++    {
++        PayloadPage* next;
++        PayloadHeader* free;
++        size_t block_size;
++        size_t live;
++    };
++    constexpr size_t kPayloadPageSize = 64u * 1024u - sizeof( AllocationHeader );
++    constexpr size_t kPayloadClasses = 11;
++    PayloadPage* g_PayloadPages[kPayloadClasses] {};
++    PayloadHeader* g_LargePayloads = nullptr;
++    std::mutex g_PayloadMutex;
++}
++
++void* QueuePayload_Allocate( size_t size )
++{
++    if( QueueMemory_IsStopped() ) return nullptr;
++    if( size > kQueueLimit - sizeof( PayloadHeader ) )
++    {
++        StopCapture( 1 );
++        return nullptr;
++    }
++    std::lock_guard<std::mutex> lock( g_PayloadMutex );
++    size_t block_size = 32;
++    size_t index = 0;
++    while( block_size < size + sizeof( PayloadHeader ) && index < kPayloadClasses )
++    {
++        block_size *= 2;
++        ++index;
++    }
++    if( index == kPayloadClasses )
++    {
++        auto header = static_cast<PayloadHeader*>( QueueMemory_Allocate( size + sizeof( PayloadHeader ) ) );
++        if( !header ) return nullptr;
++        header->page = nullptr;
++        header->next = g_LargePayloads;
++        g_LargePayloads = header;
++        return header + 1;
++    }
++    PayloadPage* page = g_PayloadPages[index];
++    while( page && !page->free ) page = page->next;
++    if( !page )
++    {
++        page = static_cast<PayloadPage*>( QueueMemory_Allocate( kPayloadPageSize ) );
++        if( !page ) return nullptr;
++        page->next = g_PayloadPages[index];
++        page->free = nullptr;
++        page->block_size = block_size;
++        page->live = 0;
++        g_PayloadPages[index] = page;
++        for( size_t offset = sizeof( PayloadPage ); offset + block_size <= kPayloadPageSize; offset += block_size )
++        {
++            auto header = reinterpret_cast<PayloadHeader*>( reinterpret_cast<char*>( page ) + offset );
++            header->page = page;
++            header->next = page->free;
++            page->free = header;
++        }
++    }
++    auto header = page->free;
++    page->free = header->next;
++    ++page->live;
++    return header + 1;
++}
++
++void QueuePayload_Free( void* ptr )
++{
++    if( !ptr ) return;
++    {
++        std::lock_guard<std::mutex> lock( g_PayloadMutex );
++        auto large = &g_LargePayloads;
++        while( *large )
++        {
++            auto header = *large;
++            if( header + 1 == ptr )
++            {
++                *large = header->next;
++                QueueMemory_Free( header );
++                return;
++            }
++            large = &header->next;
++        }
++        for( size_t index = 0; index < kPayloadClasses; ++index )
++        {
++            auto position = &g_PayloadPages[index];
++            while( *position )
++            {
++                auto page = *position;
++                const uintptr_t address = uintptr_t( ptr );
++                const uintptr_t start = uintptr_t( page ) + sizeof( PayloadPage ) + sizeof( PayloadHeader );
++                if( address >= start && address < uintptr_t( page ) + kPayloadPageSize && ( address - start ) % page->block_size == 0 )
++                {
++                    auto header = static_cast<PayloadHeader*>( ptr ) - 1;
++                    header->next = page->free;
++                    page->free = header;
++                    if( --page->live == 0 )
++                    {
++                        *position = page->next;
++                        QueueMemory_Free( page );
++                    }
++                    return;
++                }
++                position = &page->next;
++            }
++        }
++    }
++    tracy_free( ptr );
++}
++
++bool QueuePayload_IsManaged( const void* ptr )
++{
++    if( !ptr ) return false;
++    std::lock_guard<std::mutex> lock( g_PayloadMutex );
++    for( auto header = g_LargePayloads; header; header = header->next )
++    {
++        if( header + 1 == ptr ) return true;
++    }
++    for( size_t index = 0; index < kPayloadClasses; ++index )
++    {
++        for( auto page = g_PayloadPages[index]; page; page = page->next )
++        {
++            const uintptr_t address = uintptr_t( ptr );
++            const uintptr_t start = uintptr_t( page ) + sizeof( PayloadPage ) + sizeof( PayloadHeader );
++            if( address >= start && address < uintptr_t( page ) + kPayloadPageSize && ( address - start ) % page->block_size == 0 ) return true;
++        }
++    }
++    return false;
++}
++
++char* QueuePayload_CopyString( const char* text )
++{
++    if( !text ) return nullptr;
++    const size_t size = strlen( text ) + 1;
++    auto copy = static_cast<char*>( QueuePayload_Allocate( size ) );
++    if( copy ) memcpy( copy, text, size );
++    return copy;
++}
++
++QueueMemoryStatus QueueMemory_GetStatus()
++{
++    return { g_QueueUsed.load( std::memory_order_acquire ), g_QueuePeak.load( std::memory_order_acquire ), kQueueLimit, g_QueueStopped.load( std::memory_order_acquire ) };
++}
++
++bool QueueMemory_IsStopped()
++{
++    return g_QueueStopped.load( std::memory_order_acquire ) != 0;
++}
++
++bool QueueMemory_IsUnderPressure()
++{
++    return g_QueueUsed.load( std::memory_order_relaxed ) >= kQueueLimit * 3 / 4;
++}
++
++void QueueMemory_Reset()
++{
++    TRACY_ASSERT( g_QueueUsed.load( std::memory_order_acquire ) == 0 );
++    g_QueuePeak.store( 0, std::memory_order_release );
++    g_QueueStopped.store( 0, std::memory_order_release );
++}
++}
+--- /dev/null
++++ b/public/client/TracyQueueVector.hpp
+@@ -0,0 +1,92 @@
++#pragma once
++
++#include <string.h>
++#include "TracyQueueMemory.hpp"
++#include "../common/TracyAssert.hpp"
++
++namespace tracy
++{
++template<typename T>
++void QueueVector_Discard( const T& item )
++{
++    QueuePayload_Free( item.image );
++}
++inline void QueueVector_Discard( const QueueItem& item )
++{
++    QueueMemory_DiscardItem( item );
++}
++template<typename T>
++bool QueueVector_Seal( T& ) { return !QueueMemory_IsStopped(); }
++inline bool QueueVector_Seal( QueueItem& item ) { return QueuePayload_SealItem( item ); }
++template<typename T>
++class QueueVector
++{
++    T* m_ptr = nullptr;
++    T* m_write = nullptr;
++    T* m_end = nullptr;
++    T m_discard {};
++    bool m_discarding = false;
++
++    bool Grow()
++    {
++        const size_t capacity = m_ptr ? size_t( m_end - m_ptr ) : 0;
++        const size_t next = capacity ? capacity * 2 : 16;
++        auto ptr = static_cast<T*>( QueueMemory_Allocate( sizeof( T ) * next ) );
++        if( !ptr ) return false;
++        const size_t count = size();
++        if( count ) memcpy( ptr, m_ptr, count * sizeof( T ) );
++        QueueMemory_Free( m_ptr );
++        m_ptr = ptr;
++        m_write = ptr + count;
++        m_end = ptr + next;
++        return true;
++    }
++
++public:
++    explicit QueueVector( size_t capacity )
++    {
++        m_ptr = static_cast<T*>( QueueMemory_Allocate( sizeof( T ) * capacity ) );
++        m_write = m_ptr;
++        m_end = m_ptr ? m_ptr + capacity : nullptr;
++    }
++    ~QueueVector() { QueueMemory_Free( m_ptr ); }
++    QueueVector( const QueueVector& ) = delete;
++    QueueVector& operator=( const QueueVector& ) = delete;
++    bool empty() const { return m_ptr == m_write; }
++    size_t size() const { return m_ptr ? size_t( m_write - m_ptr ) : 0; }
++    T* data() { return m_ptr; }
++    T* begin() { return m_ptr; }
++    T* end() { return m_write; }
++    T& operator[]( size_t index ) { return m_ptr[index]; }
++    void clear() { m_write = m_ptr; }
++    T* prepare_next()
++    {
++        m_discarding = QueueMemory_IsStopped() || ( m_write == m_end && !Grow() );
++        if( m_discarding )
++        {
++            m_discard = {};
++            return &m_discard;
++        }
++        return m_write;
++    }
++    bool is_discarding() const { return m_discarding; }
++    void commit_next()
++    {
++        if( m_discarding || !QueueVector_Seal( *m_write ) ) QueueVector_Discard( m_discarding ? m_discard : *m_write );
++        else ++m_write;
++    }
++    void commit_retained() { TRACY_ASSERT( !m_discarding ); ++m_write; }
++    void swap( QueueVector& other )
++    {
++        auto ptr = m_ptr;
++        auto write = m_write;
++        auto end = m_end;
++        m_ptr = other.m_ptr;
++        m_write = other.m_write;
++        m_end = other.m_end;
++        other.m_ptr = ptr;
++        other.m_write = write;
++        other.m_end = end;
++    }
++};
++}
+--- a/public/TracyClient.cpp
++++ b/public/TracyClient.cpp
+@@ -20,6 +20,7 @@
+ #endif
+ 
+ #include "common/tracy_lz4.cpp"
++#include "client/TracyQueueMemory.cpp"
+ #include "client/TracyProfiler.cpp"
+ #include "client/TracyCallstack.cpp"
+ #include "client/TracySysPower.cpp"
+--- a/public/client/tracy_concurrentqueue.h
++++ b/public/client/tracy_concurrentqueue.h
+@@ -31,6 +31,7 @@
+ #pragma once
+ 
+ #include "../common/TracyAlloc.hpp"
++#include "TracyQueueMemory.hpp"
+ #include "../common/TracyForceInline.hpp"
+ #include "../common/TracySystem.hpp"
+ 
+@@ -141,7 +142,7 @@
+ 	// but many producers, a smaller block size should be favoured. For few producers
+ 	// and/or many elements, a larger block size is preferred. A sane default
+ 	// is provided. Must be a power of 2.
+-	static const size_t BLOCK_SIZE = 64*1024;
++	static const size_t BLOCK_SIZE = 4*1024;
+ 
+ 	// For explicit producers (i.e. when using a producer token), the block is
+ 	// checked for being empty by iterating through a list of flags, one per element.
+@@ -171,13 +172,13 @@
+ #if defined(malloc) || defined(free)
+ 	// Gah, this is 2015, stop defining macros that break standard code already!
+ 	// Work around malloc/free being special macros:
+-	static inline void* WORKAROUND_malloc(size_t size) { return tracy::tracy_malloc(size); }
+-	static inline void WORKAROUND_free(void* ptr) { return tracy::tracy_free(ptr); }
++	static inline void* WORKAROUND_malloc(size_t size) { return tracy::QueueMemory_Allocate(size); }
++	static inline void WORKAROUND_free(void* ptr) { return tracy::QueueMemory_Free(ptr); }
+ 	static inline void* (malloc)(size_t size) { return WORKAROUND_malloc(size); }
+ 	static inline void (free)(void* ptr) { return WORKAROUND_free(ptr); }
+ #else
+-	static inline void* malloc(size_t size) { return tracy::tracy_malloc(size); }
+-	static inline void free(void* ptr) { return tracy::tracy_free(ptr); }
++	static inline void* malloc(size_t size) { return tracy::QueueMemory_Allocate(size); }
++	static inline void free(void* ptr) { return tracy::QueueMemory_Free(ptr); }
+ #endif
+ };
+ 
+@@ -1017,7 +1018,7 @@
+ 			}
+ 		}
+ 
+-        inline void enqueue_begin_alloc(index_t currentTailIndex)
++        inline bool enqueue_begin_alloc(index_t currentTailIndex)
+         {
+             // We reached the end of a block, start a new one
+             if (this->tailBlock != nullptr && this->tailBlock->next->is_empty()) {
+@@ -1037,11 +1038,12 @@
+                     // Hmm, the circular block index is already full -- we'll need
+                     // to allocate a new index. Note pr_blockIndexRaw can only be nullptr if
+                     // the initial allocation failed in the constructor.
+-                    new_block_index(pr_blockIndexSlotsUsed);
++                    if (!new_block_index(pr_blockIndexSlotsUsed)) return false;
+                 }
+ 
+                 // Insert a new block in the circular linked list
+                 auto newBlock = this->parent->ConcurrentQueue::requisition_block();
++                if (!newBlock) return false;
+                 newBlock->reset_empty();
+                 if (this->tailBlock == nullptr) {
+                     newBlock->next = newBlock;
+@@ -1060,13 +1062,15 @@
+             entry.block = this->tailBlock;
+             blockIndex.load(std::memory_order_relaxed)->front.store(pr_blockIndexFront, std::memory_order_release);
+             pr_blockIndexFront = (pr_blockIndexFront + 1) & (pr_blockIndexSize - 1);
++            return true;
+         }
+ 
+         tracy_force_inline T* enqueue_begin(index_t& currentTailIndex)
+         {
++            if (tracy::QueueMemory_IsStopped()) return nullptr;
+             currentTailIndex = this->tailIndex.load(std::memory_order_relaxed);
+             if (details::cqUnlikely((currentTailIndex & static_cast<index_t>(BLOCK_SIZE - 1)) == 0)) {
+-                this->enqueue_begin_alloc(currentTailIndex);
++                if (!this->enqueue_begin_alloc(currentTailIndex)) return nullptr;
+             }
+             return (*this->tailBlock)[currentTailIndex];
+         }
+@@ -1379,14 +1383,14 @@
+ 	static inline U* create()
+ 	{
+ 		auto p = (Traits::malloc)(sizeof(U));
+-		return new (p) U;
++		return p ? new (p) U : nullptr;
+ 	}
+ 
+ 	template<typename U, typename A1>
+ 	static inline U* create(A1&& a1)
+ 	{
+ 		auto p = (Traits::malloc)(sizeof(U));
+-		return new (p) U(std::forward<A1>(a1));
++		return p ? new (p) U(std::forward<A1>(a1)) : nullptr;
+ 	}
+ 
+ 	template<typename U>
+--- a/public/client/tracy_SPSCQueue.h
++++ b/public/client/tracy_SPSCQueue.h
+@@ -29,6 +29,7 @@
+ #include <type_traits> // std::enable_if, std::is_*_constructible
+ 
+ #include "../common/TracyAlloc.hpp"
++#include "TracyQueueMemory.hpp"
+ 
+ #if defined (_MSC_VER)
+ #pragma warning(push)
+@@ -42,7 +43,7 @@
+   explicit SPSCQueue(const size_t capacity)
+       : capacity_(capacity) {
+     capacity_++; // Needs one slack element
+-    slots_ = (T*)tracy_malloc(sizeof(T) * (capacity_ + 2 * kPadding));
++    slots_ = (T*)QueueMemory_Allocate(sizeof(T) * (capacity_ + 2 * kPadding));
+ 
+     static_assert(alignof(SPSCQueue<T>) == kCacheLineSize, "");
+     static_assert(sizeof(SPSCQueue<T>) >= 3 * kCacheLineSize, "");
+@@ -55,7 +56,7 @@
+     while (front()) {
+       pop();
+     }
+-    tracy_free(slots_);
++    QueueMemory_Free(slots_);
+   }
+ 
+   // non-copyable and non-movable
+@@ -63,20 +64,23 @@
+   SPSCQueue &operator=(const SPSCQueue &) = delete;
+ 
+   template <typename... Args>
+-  void emplace(Args &&...args) noexcept(
++  bool emplace(Args &&...args) noexcept(
+       std::is_nothrow_constructible<T, Args &&...>::value) {
+     static_assert(std::is_constructible<T, Args &&...>::value,
+                   "T must be constructible with Args&&...");
++    if (!slots_ || QueueMemory_IsStopped()) return false;
+     auto const writeIdx = writeIdx_.load(std::memory_order_relaxed);
+     auto nextWriteIdx = writeIdx + 1;
+     if (nextWriteIdx == capacity_) {
+       nextWriteIdx = 0;
+     }
+     while (nextWriteIdx == readIdxCache_) {
++      if (QueueMemory_IsStopped()) return false;
+       readIdxCache_ = readIdx_.load(std::memory_order_acquire);
+     }
+     new (&slots_[writeIdx + kPadding]) T(std::forward<Args>(args)...);
+     writeIdx_.store(nextWriteIdx, std::memory_order_release);
++    return true;
+   }
+ 
+   T *front() noexcept {
+--- a/public/client/TracyProfiler.hpp
++++ b/public/client/TracyProfiler.hpp
+@@ -16,6 +16,7 @@
+ #include "TracySysPower.hpp"
+ #include "TracySysTime.hpp"
+ #include "TracyFastVector.hpp"
++#include "TracyQueueVector.hpp"
+ #include "../common/TracyQueue.hpp"
+ #include "../common/TracyAlign.hpp"
+ #include "../common/TracyAlloc.hpp"
+@@ -170,24 +171,32 @@
+ 
+ 
+ #define TracyLfqPrepare( _type ) \
+-    tracy::moodycamel::ConcurrentQueueDefaultTraits::index_t __magic; \
++    tracy::moodycamel::ConcurrentQueueDefaultTraits::index_t __magic = 0; \
+     auto __token = tracy::GetToken(); \
+-    auto& __tail = __token->get_tail_index(); \
+-    auto item = __token->enqueue_begin( __magic ); \
++    auto item = __token ? __token->enqueue_begin( __magic ) : nullptr; \
++    const bool __publish = item != nullptr; \
++    if( !item ) item = tracy::QueueMemory_DroppedItem(); \
+     tracy::MemWrite( &item->hdr.type, _type );
+ 
+ #define TracyLfqCommit \
+-    __tail.store( __magic + 1, std::memory_order_release );
++    do { \
++        if( __publish && tracy::QueuePayload_SealItem( *item ) ) __token->get_tail_index().store( __magic + 1, std::memory_order_release ); \
++        else tracy::QueueMemory_DiscardItem( *item ); \
++    } while( 0 );
+ 
+ #define TracyLfqPrepareC( _type ) \
+-    tracy::moodycamel::ConcurrentQueueDefaultTraits::index_t __magic; \
++    tracy::moodycamel::ConcurrentQueueDefaultTraits::index_t __magic = 0; \
+     auto __token = tracy::GetToken(); \
+-    auto& __tail = __token->get_tail_index(); \
+-    auto item = __token->enqueue_begin( __magic ); \
++    auto item = __token ? __token->enqueue_begin( __magic ) : nullptr; \
++    const bool __publish = item != nullptr; \
++    if( !item ) item = tracy::QueueMemory_DroppedItem(); \
+     tracy::MemWrite( &item->hdr.type, _type );
+ 
+ #define TracyLfqCommitC \
+-    __tail.store( __magic + 1, std::memory_order_release );
++    do { \
++        if( __publish && tracy::QueuePayload_SealItem( *item ) ) __token->get_tail_index().store( __magic + 1, std::memory_order_release ); \
++        else tracy::QueueMemory_DiscardItem( *item ); \
++    } while( 0 );
+ 
+ 
+ #ifdef TRACY_FIBERS
+@@ -414,7 +423,8 @@
+         if( !profiler.IsConnected() ) return;
+ #  endif
+         const auto sz = size_t( w ) * size_t( h ) * 4;
+-        auto ptr = (char*)tracy_malloc( sz );
++        auto ptr = (char*)QueuePayload_Allocate( sz );
++        if( !ptr ) return;
+         memcpy( ptr, image, sz );
+ 
+         profiler.m_fiLock.lock();
+@@ -498,7 +508,9 @@
+             tracy::GetProfiler().SendCallstack( callstack_depth );
+         }
+ 
+-        auto ptr = (char*)tracy_malloc( txtLength );
++        auto ptr = (char*)QueuePayload_Allocate( txtLength );
++
++        if( !ptr ) return;
+         memcpy( ptr, txt, txtLength );
+         TaggedUserlandAddress taggedPtr{ (uint64_t)ptr, MakeMessageMetadata( source, severity ) };
+ 
+@@ -558,7 +570,8 @@
+     static tracy_force_inline void MessageAppInfo( const char* txt, size_t size )
+     {
+         TRACY_ASSERT( size < (std::numeric_limits<uint16_t>::max)() );
+-        auto ptr = (char*)tracy_malloc( size );
++        auto ptr = (char*)QueuePayload_Allocate( size );
++        if( !ptr ) return;
+         memcpy( ptr, txt, size );
+         TaggedUserlandAddress taggedPtr{ (uint64_t)ptr, MakeMessageMetadata( MessageSourceType::User, MessageSeverity::Info ) };
+ 
+@@ -845,7 +858,9 @@
+         if( size < 0 ) return 0;
+         TRACY_ASSERT( size < (std::numeric_limits<uint16_t>::max)() );
+ 
+-        char* ptr = (char*)tracy_malloc( size_t( size ) + 1 );
++        char* ptr = (char*)QueuePayload_Allocate( size_t( size ) + 1 );
++
++        if( !ptr ) return 0;
+         va_start( args, fmt );
+         vsnprintf( ptr, size_t( size ) + 1, fmt, args );
+         va_end( args );
+@@ -882,7 +897,9 @@
+         if( size < 0 ) return;
+         TRACY_ASSERT( size < (std::numeric_limits<uint16_t>::max)() );
+ 
+-        char* ptr = (char*)tracy_malloc( size_t( size ) + 1 );
++        char* ptr = (char*)QueuePayload_Allocate( size_t( size ) + 1 );
++
++        if( !ptr ) return;
+         va_start( args, fmt );
+         vsnprintf( ptr, size_t( size ) + 1, fmt, args );
+         va_end( args );
+@@ -906,7 +923,7 @@
+ 
+     tracy_force_inline bool IsConnected() const
+     {
+-        return m_isConnected.load( std::memory_order_acquire );
++        return m_isConnected.load( std::memory_order_acquire ) && !QueueMemory_IsStopped();
+     }
+ 
+     tracy_force_inline void SetProgramName( const char* name )
+@@ -924,9 +941,22 @@
+ 
+     tracy_force_inline void DeferItem( const QueueItem& item )
+     {
++        if( !QueuePayload_SealItem( const_cast<QueueItem&>( item ) ) )
++        {
++            QueueMemory_DiscardDeferredItem( item );
++            return;
++        }
+         m_deferredLock.lock();
+-        auto dst = m_deferredQueue.push_next();
+-        memcpy( dst, &item, sizeof( item ) );
++        auto dst = m_deferredQueue.prepare_next();
++        if( m_deferredQueue.is_discarding() )
++        {
++            QueueMemory_DiscardDeferredItem( item );
++        }
++        else
++        {
++            memcpy( dst, &item, sizeof( item ) );
++            m_deferredQueue.commit_retained();
++        }
+         m_deferredLock.unlock();
+     }
+ #endif
+@@ -972,7 +1002,8 @@
+         const auto sz32 = uint32_t( 2 + 4 + 4 + functionSz + 1 + sourceSz + 1 + nameSz );
+         TRACY_ASSERT( sz32 <= (std::numeric_limits<uint16_t>::max)() );
+         const auto sz = uint16_t( sz32 );
+-        auto ptr = (char*)tracy_malloc( sz );
++        auto ptr = (char*)QueuePayload_Allocate( sz );
++        if( !ptr ) return 0;
+         memcpy( ptr, &sz, 2 );
+         memcpy( ptr + 2, &color, 4 );
+         memcpy( ptr + 6, &line, 4 );
+@@ -1187,11 +1218,11 @@
+ 
+     char* m_lz4Buf;
+ 
+-    FastVector<QueueItem> m_serialQueue, m_serialDequeue;
++    QueueVector<QueueItem> m_serialQueue, m_serialDequeue;
+     TracyMutex m_serialLock;
+ 
+ #ifndef TRACY_NO_FRAME_IMAGE
+-    FastVector<FrameImageQueueItem> m_fiQueue, m_fiDequeue;
++    QueueVector<FrameImageQueueItem> m_fiQueue, m_fiDequeue;
+     TracyMutex m_fiLock;
+ #endif
+ 
+@@ -1206,7 +1237,7 @@
+     std::atomic<bool> m_symbolsBusy;
+ 
+     TracyMutex m_deferredLock;
+-    FastVector<QueueItem> m_deferredQueue;
++    QueueVector<QueueItem> m_deferredQueue;
+ #endif
+ 
+ #ifdef TRACY_HAS_SYSTIME
+--- a/public/client/TracyProfiler.cpp
++++ b/public/client/TracyProfiler.cpp
+@@ -688,7 +688,7 @@
+         auto str = (char*)tracy_malloc( sz );
+         sysctlbyname( "hw.machine", str, &sz, nullptr, 0 );
+         ptr += sprintf( ptr, "Device: %s\n", DecodeIosDevice( str ) );
+-        tracy_free( str );
++        QueuePayload_Free( str );
+     }
+ #else
+     ptr += sprintf( ptr, "CPU: unknown\n" );
+@@ -1188,7 +1188,7 @@
+     {
+         SysTraceStop();
+         sysTraceThread->~Thread();
+-        tracy_free( sysTraceThread );
++        QueuePayload_Free( sysTraceThread );
+     }
+ }
+ #endif
+@@ -1209,7 +1209,7 @@
+ #endif
+ }
+ 
+-constexpr size_t QueuePrealloc = 256 * 1024;
++constexpr size_t QueuePrealloc = 16 * 1024;
+ 
+ TRACY_API int64_t GetFrequencyQpc()
+ {
+@@ -1264,6 +1264,7 @@
+ static std::atomic<bool> s_isProfilerStarted { false };
+ TRACY_API void StartupProfiler()
+ {
++    QueueMemory_Reset();
+     s_profilerData = (ProfilerData*)tracy_malloc( sizeof( ProfilerData ) );
+     new (s_profilerData) ProfilerData();
+     s_profilerData->profiler.SpawnWorkerThreads();
+@@ -1279,7 +1280,7 @@
+ {
+     s_isProfilerStarted.store( false, std::memory_order_seq_cst );
+     s_profilerData->~ProfilerData();
+-    tracy_free( s_profilerData );
++    QueuePayload_Free( s_profilerData );
+     s_profilerData = nullptr;
+ #if defined TRACY_HAS_CUSTOM_ALLOCATOR
+     PlatformAllocatorFinalize();
+@@ -1355,7 +1356,7 @@
+     static void sDestructor(void* p)
+     {
+         ((ProfilerThreadData*)p)->~ProfilerThreadData();
+-        tracy_free(p);
++        QueuePayload_Free(p);
+     }
+ };
+ 
+@@ -1532,8 +1533,8 @@
+     , m_bufferOffset( 0 )
+     , m_bufferStart( 0 )
+     , m_lz4Buf( (char*)tracy_malloc( LZ4Size + sizeof( lz4sz_t ) ) )
+-    , m_serialQueue( 1024*1024 )
+-    , m_serialDequeue( 1024*1024 )
++    , m_serialQueue( 4*1024 )
++    , m_serialDequeue( 4*1024 )
+ #ifndef TRACY_NO_FRAME_IMAGE
+     , m_fiQueue( 16 )
+     , m_fiDequeue( 16 )
+@@ -1544,7 +1545,7 @@
+ #ifdef TRACY_ON_DEMAND
+     , m_connectionId( 0 )
+     , m_symbolsBusy( false )
+-    , m_deferredQueue( 64*1024 )
++    , m_deferredQueue( 1024 )
+ #endif
+     , m_paramCallback( nullptr )
+     , m_sourceCallback( nullptr )
+@@ -1714,16 +1715,19 @@
+ 
+ #ifdef TRACY_HAS_CALLSTACK
+     s_symbolThread->~Thread();
+-    tracy_free( s_symbolThread );
++    QueuePayload_Free( s_symbolThread );
+ #endif
+ 
+ #ifndef TRACY_NO_FRAME_IMAGE
+     s_compressThread->~Thread();
+-    tracy_free( s_compressThread );
++    QueuePayload_Free( s_compressThread );
+ #endif
+ 
+     s_thread->~Thread();
+-    tracy_free( s_thread );
++    QueuePayload_Free( s_thread );
++
++    moodycamel::ConsumerToken token( GetQueue() );
++    ClearQueues( token );
+ 
+ #ifdef TRACY_HAS_CALLSTACK
+     EndCallstack();
+@@ -1731,29 +1735,29 @@
+ 
+ #ifdef __linux__
+     m_kcore->~KCore();
+-    tracy_free( m_kcore );
++    QueuePayload_Free( m_kcore );
+ #endif
+ 
+ #if !defined _WIN32 && !defined TRACY_HAS_CUSTOM_SAFE_COPY
+     close( m_pipe[0] );
+     close( m_pipe[1] );
+ #endif
+-    tracy_free( m_safeSendBuffer );
+-
+-    tracy_free( m_lz4Buf );
+-    tracy_free( m_buffer );
++    QueuePayload_Free( m_safeSendBuffer );
++
++    QueuePayload_Free( m_lz4Buf );
++    QueuePayload_Free( m_buffer );
+     LZ4_freeStream( (LZ4_stream_t*)m_stream );
+ 
+     if( m_sock )
+     {
+         m_sock->~Socket();
+-        tracy_free( m_sock );
++        QueuePayload_Free( m_sock );
+     }
+ 
+     if( m_broadcast )
+     {
+         m_broadcast->~UdpBroadcast();
+-        tracy_free( m_broadcast );
++        QueuePayload_Free( m_broadcast );
+     }
+ 
+ #ifdef TRACY_MANUAL_LIFETIME
+@@ -1761,12 +1765,15 @@
+     while( threadName )
+     {
+         auto next = threadName->next;
+-        tracy_free( const_cast<char*>( threadName->name ) );
+-        tracy_free( threadName );
++        QueuePayload_Free( const_cast<char*>( threadName->name ) );
++        QueuePayload_Free( threadName );
+         threadName = next;
+     }
+ #endif
+ 
++#ifdef TRACY_ON_DEMAND
++    for( const auto& item : m_deferredQueue ) QueueMemory_DiscardDeferredItem( item );
++#endif
+     TRACY_ASSERT( s_instance );
+     s_instance = nullptr;
+ }
+@@ -1939,7 +1946,7 @@
+     if( !m_broadcast->Open( addr, broadcastPort ) )
+     {
+         m_broadcast->~UdpBroadcast();
+-        tracy_free( m_broadcast );
++        QueuePayload_Free( m_broadcast );
+         m_broadcast = nullptr;
+     }
+ #endif
+@@ -2013,7 +2020,7 @@
+             if( !res || memcmp( shibboleth, HandshakeShibboleth, HandshakeShibbolethSize ) != 0 )
+             {
+                 m_sock->~Socket();
+-                tracy_free( m_sock );
++                QueuePayload_Free( m_sock );
+                 m_sock = nullptr;
+                 continue;
+             }
+@@ -2023,17 +2030,26 @@
+             if( !res )
+             {
+                 m_sock->~Socket();
+-                tracy_free( m_sock );
++                QueuePayload_Free( m_sock );
+                 m_sock = nullptr;
+                 continue;
+             }
+ 
++            if( QueueMemory_IsStopped() )
++            {
++                HandshakeStatus status = HandshakeNotAvailable;
++                m_sock->Send( &status, sizeof( status ) );
++                m_sock->~Socket();
++                QueuePayload_Free( m_sock );
++                m_sock = nullptr;
++                continue;
++            }
+             if( protocolVersion != ProtocolVersion )
+             {
+                 HandshakeStatus status = HandshakeProtocolMismatch;
+                 m_sock->Send( &status, sizeof( status ) );
+                 m_sock->~Socket();
+-                tracy_free( m_sock );
++                QueuePayload_Free( m_sock );
+                 m_sock = nullptr;
+                 continue;
+             }
+@@ -2111,6 +2127,7 @@
+         int keepAlive = 0;
+         for(;;)
+         {
++            if( QueueMemory_IsStopped() ) break;
+             ProcessSysTime();
+ #ifdef TRACY_HAS_SYSPOWER
+             m_sysPower.Tick();
+@@ -2127,7 +2144,7 @@
+                 {
+                     if( !CommitData() ) break;
+                 }
+-                if( keepAlive == 500 )
++                if( keepAlive == 2500 )
+                 {
+                     QueueItem ka;
+                     ka.hdr.type = QueueType::KeepAlive;
+@@ -2139,7 +2156,7 @@
+                 else if( !m_sock->HasData() )
+                 {
+                     keepAlive++;
+-                    std::this_thread::sleep_for( std::chrono::milliseconds( 10 ) );
++                    std::this_thread::sleep_for( std::chrono::milliseconds( 2 ) );
+                 }
+             }
+             else
+@@ -2147,6 +2164,7 @@
+                 keepAlive = 0;
+             }
+ 
++            if( QueueMemory_IsUnderPressure() && m_bufferOffset != m_bufferStart && !CommitData() ) break;
+             bool connActive = true;
+             while( m_sock->HasData() )
+             {
+@@ -2167,7 +2185,7 @@
+ #endif
+ 
+         m_sock->~Socket();
+-        tracy_free( m_sock );
++        QueuePayload_Free( m_sock );
+         m_sock = nullptr;
+ 
+ #ifndef TRACY_ON_DEMAND
+@@ -2190,7 +2208,7 @@
+                 if( !res || memcmp( shibboleth, HandshakeShibboleth, HandshakeShibbolethSize ) != 0 )
+                 {
+                     m_sock->~Socket();
+-                    tracy_free( m_sock );
++                    QueuePayload_Free( m_sock );
+                     m_sock = nullptr;
+                     continue;
+                 }
+@@ -2200,7 +2218,7 @@
+                 if( !res )
+                 {
+                     m_sock->~Socket();
+-                    tracy_free( m_sock );
++                    QueuePayload_Free( m_sock );
+                     m_sock = nullptr;
+                     continue;
+                 }
+@@ -2208,7 +2226,7 @@
+                 HandshakeStatus status = HandshakeNotAvailable;
+                 m_sock->Send( &status, sizeof( status ) );
+                 m_sock->~Socket();
+-                tracy_free( m_sock );
++                QueuePayload_Free( m_sock );
+             }
+         }
+ #endif
+@@ -2356,9 +2374,15 @@
+                 const auto w = fi->w;
+                 const auto h = fi->h;
+                 const auto csz = size_t( w * h / 2 );
+-                auto texbuf = (char*)tracy_malloc( csz );
++                auto texbuf = (char*)QueuePayload_Allocate( csz );
++                if( !texbuf )
++                {
++                    QueuePayload_Free( fi->image );
++                    ++fi;
++                    continue;
++                }
+                 CompressImageDxt1( (const char*)fi->image, texbuf, w, h );
+-                tracy_free( fi->image );
++                QueuePayload_Free( fi->image );
+ 
+                 TracyLfqPrepare( QueueType::FrameImage );
+                 MemWrite( &item->frameImageFat.image, (uint64_t)texbuf );
+@@ -2396,12 +2420,12 @@
+     case QueueType::ZoneText:
+     case QueueType::ZoneName:
+         ptr = MemRead( &item.zoneTextFat.text );
+-        tracy_free( (void*)ptr );
++        QueuePayload_Free( (void*)ptr );
+         break;
+     case QueueType::MessageColor:
+     case QueueType::MessageColorCallstack:
+         ptr = MemRead( &item.messageColorFat.textAndMetadata ).GetAddress();
+-        tracy_free( (void*)ptr );
++        QueuePayload_Free( (void*)ptr );
+         break;
+     case QueueType::Message:
+     case QueueType::MessageCallstack:
+@@ -2409,39 +2433,39 @@
+     case QueueType::MessageAppInfo:
+ #endif
+         ptr = MemRead( &item.messageFat.textAndMetadata ).GetAddress();
+-        tracy_free( (void*)ptr );
++        QueuePayload_Free( (void*)ptr );
+         break;
+     case QueueType::ZoneBeginAllocSrcLoc:
+     case QueueType::ZoneBeginAllocSrcLocCallstack:
+         ptr = MemRead( &item.zoneBegin.srcloc );
+-        tracy_free( (void*)ptr );
++        QueuePayload_Free( (void*)ptr );
+         break;
+     case QueueType::GpuZoneBeginAllocSrcLoc:
+     case QueueType::GpuZoneBeginAllocSrcLocCallstack:
+     case QueueType::GpuZoneBeginAllocSrcLocSerial:
+     case QueueType::GpuZoneBeginAllocSrcLocCallstackSerial:
+         ptr = MemRead( &item.gpuZoneBegin.srcloc );
+-        tracy_free( (void*)ptr );
++        QueuePayload_Free( (void*)ptr );
+         break;
+     case QueueType::CallstackSerial:
+     case QueueType::Callstack:
+         ptr = MemRead( &item.callstackFat.ptr );
+-        tracy_free( (void*)ptr );
++        QueuePayload_Free( (void*)ptr );
+         break;
+     case QueueType::CallstackAlloc:
+         ptr = MemRead( &item.callstackAllocFat.nativePtr );
+-        tracy_free( (void*)ptr );
++        QueuePayload_Free( (void*)ptr );
+         ptr = MemRead( &item.callstackAllocFat.ptr );
+-        tracy_free( (void*)ptr );
++        QueuePayload_Free( (void*)ptr );
+         break;
+     case QueueType::CallstackSample:
+     case QueueType::CallstackSampleContextSwitch:
+         ptr = MemRead( &item.callstackSampleFat.ptr );
+-        tracy_free( (void*)ptr );
++        QueuePayload_Free( (void*)ptr );
+         break;
+     case QueueType::FrameImage:
+         ptr = MemRead( &item.frameImageFat.image );
+-        tracy_free( (void*)ptr );
++        QueuePayload_Free( (void*)ptr );
+         break;
+ #ifdef TRACY_HAS_CALLSTACK
+     case QueueType::CallstackFrameSize:
+@@ -2452,10 +2476,10 @@
+         for( uint8_t i=0; i<size; i++ )
+         {
+             const auto& frame = data[i];
+-            tracy_free_fast( (void*)frame.name );
+-            tracy_free_fast( (void*)frame.file );
+-        }
+-        tracy_free_fast( (void*)data );
++            QueuePayload_Free( (void*)frame.name );
++            QueuePayload_Free( (void*)frame.file );
++        }
++        QueuePayload_Free( (void*)data );
+         break;
+     }
+     case QueueType::SymbolInformation:
+@@ -2464,28 +2488,28 @@
+         if( needFree )
+         {
+             ptr = MemRead( &item.symbolInformationFat.fileString );
+-            tracy_free( (void*)ptr );
++            QueuePayload_Free( (void*)ptr );
+         }
+         break;
+     }
+     case QueueType::SymbolCodeMetadata:
+         ptr = MemRead( &item.symbolCodeMetadata.ptr );
+-        tracy_free( (void*)ptr );
++        QueuePayload_Free( (void*)ptr );
+         break;
+ #endif
+ #ifndef TRACY_ON_DEMAND
+     case QueueType::LockName:
+         ptr = MemRead( &item.lockNameFat.name );
+-        tracy_free( (void*)ptr );
++        QueuePayload_Free( (void*)ptr );
+         break;
+     case QueueType::GpuContextName:
+         ptr = MemRead( &item.gpuContextNameFat.ptr );
+-        tracy_free( (void*)ptr );
++        QueuePayload_Free( (void*)ptr );
+         break;
+ #endif
+     case QueueType::GpuAnnotationName:
+         ptr = MemRead( &item.gpuAnnotationNameFat.ptr );
+-        tracy_free( (void*)ptr );
++        QueuePayload_Free( (void*)ptr );
+         break;
+ #ifdef TRACY_ON_DEMAND
+     case QueueType::MessageAppInfo:
+@@ -2497,25 +2521,165 @@
+ #ifdef TRACY_HAS_SYSTEM_TRACING
+     case QueueType::ExternalNameMetadata:
+         ptr = MemRead( &item.externalNameMetadata.name );
+-        tracy_free( (void*)ptr );
++        QueuePayload_Free( (void*)ptr );
+         ptr = MemRead( &item.externalNameMetadata.threadName );
+-        tracy_free_fast( (void*)ptr );
++        QueuePayload_Free( (void*)ptr );
+         break;
+ #endif
+     case QueueType::SourceCodeMetadata:
+         ptr = MemRead( &item.sourceCodeMetadata.ptr );
+-        tracy_free( (void*)ptr );
++        QueuePayload_Free( (void*)ptr );
+         break;
+     case QueueType::SectionEnter:
+         ptr = MemRead( &item.sectionEnterFat.text );
+-        tracy_free( (void*)ptr );
++        QueuePayload_Free( (void*)ptr );
+         break;
+ #ifndef TRACY_ON_DEMAND
+     case QueueType::SectionSetup:
+         ptr = MemRead( &item.sectionSetupFat.text );
+-        tracy_free( (void*)ptr );
+-        break;
+-#endif
++        QueuePayload_Free( (void*)ptr );
++        break;
++#endif
++    default:
++        break;
++    }
++}
++
++namespace
++{
++    bool SealPointer( uint64_t* field, size_t size )
++    {
++        const auto original = reinterpret_cast<void*>( MemRead( field ) );
++        if( !original || QueuePayload_IsManaged( original ) ) return true;
++        void* copy = QueuePayload_Allocate( size );
++        if( !copy ) return false;
++        memcpy( copy, original, size );
++        tracy_free( original );
++        MemWrite( field, uint64_t( copy ) );
++        return true;
++    }
++    bool SealString( uint64_t* field )
++    {
++        const auto original = reinterpret_cast<const char*>( MemRead( field ) );
++        return !original || SealPointer( field, strlen( original ) + 1 );
++    }
++    bool SealSourceLocation( uint64_t* field )
++    {
++        const auto original = reinterpret_cast<const uint16_t*>( MemRead( field ) );
++        return !original || SealPointer( field, MemRead( original ) );
++    }
++}
++
++TRACY_API bool QueuePayload_SealItem( QueueItem& item )
++{
++    if( QueueMemory_IsStopped() ) return false;
++    switch( item.hdr.type )
++    {
++    case QueueType::ZoneText:
++    case QueueType::ZoneName:
++        return SealPointer( &item.zoneTextFat.text, MemRead( &item.zoneTextFat.size ) );
++    case QueueType::Message:
++    case QueueType::MessageCallstack:
++    case QueueType::MessageAppInfo:
++    {
++        auto tagged = MemRead( &item.messageFat.textAndMetadata );
++        uint64_t pointer = tagged.GetAddress();
++        if( !SealPointer( &pointer, MemRead( &item.messageFat.size ) ) ) return false;
++        MemWrite( &item.messageFat.textAndMetadata, TaggedUserlandAddress( pointer, tagged.GetTag() ) );
++        return true;
++    }
++    case QueueType::MessageColor:
++    case QueueType::MessageColorCallstack:
++    {
++        auto tagged = MemRead( &item.messageColorFat.textAndMetadata );
++        uint64_t pointer = tagged.GetAddress();
++        if( !SealPointer( &pointer, MemRead( &item.messageColorFat.size ) ) ) return false;
++        MemWrite( &item.messageColorFat.textAndMetadata, TaggedUserlandAddress( pointer, tagged.GetTag() ) );
++        return true;
++    }
++    case QueueType::ZoneBeginAllocSrcLoc:
++    case QueueType::ZoneBeginAllocSrcLocCallstack:
++        return SealSourceLocation( &item.zoneBegin.srcloc );
++    case QueueType::GpuZoneBeginAllocSrcLoc:
++    case QueueType::GpuZoneBeginAllocSrcLocCallstack:
++    case QueueType::GpuZoneBeginAllocSrcLocSerial:
++    case QueueType::GpuZoneBeginAllocSrcLocCallstackSerial:
++        return SealSourceLocation( &item.gpuZoneBegin.srcloc );
++    case QueueType::Callstack:
++    case QueueType::CallstackSerial:
++    {
++        const auto trace = reinterpret_cast<const uintptr_t*>( MemRead( &item.callstackFat.ptr ) );
++        return !trace || SealPointer( &item.callstackFat.ptr, ( trace[0] + 1 ) * sizeof( uintptr_t ) );
++    }
++    case QueueType::CallstackSample:
++    case QueueType::CallstackSampleContextSwitch:
++    {
++        const auto trace = reinterpret_cast<const uint64_t*>( MemRead( &item.callstackSampleFat.ptr ) );
++        return !trace || SealPointer( &item.callstackSampleFat.ptr, ( trace[0] + 1 ) * sizeof( uint64_t ) );
++    }
++    case QueueType::CallstackAlloc:
++    {
++        const auto trace = reinterpret_cast<const uintptr_t*>( MemRead( &item.callstackAllocFat.nativePtr ) );
++        if( trace && !SealPointer( &item.callstackAllocFat.nativePtr, ( trace[0] + 1 ) * sizeof( uintptr_t ) ) ) return false;
++        const auto payload = reinterpret_cast<const uint16_t*>( MemRead( &item.callstackAllocFat.ptr ) );
++        return !payload || SealPointer( &item.callstackAllocFat.ptr, sizeof( uint16_t ) + MemRead( payload ) );
++    }
++    case QueueType::SourceCodeMetadata:
++        return SealPointer( &item.sourceCodeMetadata.ptr, MemRead( &item.sourceCodeMetadata.size ) );
++    case QueueType::SymbolCodeMetadata:
++        return SealPointer( &item.symbolCodeMetadata.ptr, MemRead( &item.symbolCodeMetadata.size ) );
++    case QueueType::SymbolInformation:
++        return !MemRead( &item.symbolInformationFat.needFree ) || SealString( &item.symbolInformationFat.fileString );
++    case QueueType::ExternalNameMetadata:
++        return SealString( &item.externalNameMetadata.name ) && SealString( &item.externalNameMetadata.threadName );
++    case QueueType::LockName:
++        return SealPointer( &item.lockNameFat.name, MemRead( &item.lockNameFat.size ) );
++    case QueueType::GpuContextName:
++        return SealPointer( &item.gpuContextNameFat.ptr, MemRead( &item.gpuContextNameFat.size ) );
++    case QueueType::GpuAnnotationName:
++        return SealPointer( &item.gpuAnnotationNameFat.ptr, MemRead( &item.gpuAnnotationNameFat.size ) );
++    case QueueType::SectionEnter:
++        return SealString( &item.sectionEnterFat.text );
++    case QueueType::SectionSetup:
++        return SealString( &item.sectionSetupFat.text );
++    default:
++        return true;
++    }
++}
++
++static void FreeAssociatedMemoryBatch( QueueItem* item, size_t size )
++{
++    while( size-- > 0 ) FreeAssociatedMemory( *item++ );
++}
++
++TRACY_API QueueItem* QueueMemory_DroppedItem()
++{
++    thread_local QueueItem item {};
++    memset( &item, 0, sizeof( item ) );
++    return &item;
++}
++
++TRACY_API void QueueMemory_DiscardItem( const QueueItem& item )
++{
++    FreeAssociatedMemory( item );
++}
++
++TRACY_API void QueueMemory_DiscardDeferredItem( const QueueItem& item )
++{
++    switch( item.hdr.type )
++    {
++    case QueueType::MessageAppInfo:
++        QueuePayload_Free( (void*)MemRead( &item.messageFat.textAndMetadata ).GetAddress() );
++        break;
++    case QueueType::GpuContextName:
++        QueuePayload_Free( (void*)MemRead( &item.gpuContextNameFat.ptr ) );
++        break;
++    case QueueType::SectionSetup:
++        QueuePayload_Free( (void*)MemRead( &item.sectionSetupFat.text ) );
++        break;
++    case QueueType::LockName:
++        QueuePayload_Free( (void*)MemRead( &item.lockNameFat.name ) );
++        break;
+     default:
+         break;
+     }
+@@ -2564,7 +2728,11 @@
+         },
+         [this, &connectionLost] ( QueueItem* item, size_t sz )
+         {
+-            if( connectionLost ) return;
++            if( connectionLost )
++            {
++                FreeAssociatedMemoryBatch( item, sz );
++                return;
++            }
+             InitAllocator();
+             TRACY_ASSERT( sz > 0 );
+             int64_t refThread = m_refTimeThread;
+@@ -2584,7 +2752,7 @@
+                         ptr = MemRead( &item->zoneTextFat.text );
+                         size = MemRead( &item->zoneTextFat.size );
+                         SendSingleString( (const char*)ptr, size );
+-                        tracy_free_fast( (void*)ptr );
++                        QueuePayload_Free( (void*)ptr );
+                         break;
+                     case QueueType::Message:
+                     case QueueType::MessageCallstack:
+@@ -2593,7 +2761,7 @@
+                         ptr = taggedPtr.GetAddress();
+                         size = MemRead( &item->messageFat.size );
+                         SendSingleString( (const char*)ptr, size );
+-                        tracy_free_fast( (void*)ptr );
++                        QueuePayload_Free( (void*)ptr );
+                         break;
+                     }
+                     case QueueType::MessageColor:
+@@ -2603,7 +2771,7 @@
+                         ptr = taggedPtr.GetAddress();
+                         size = MemRead( &item->messageColorFat.size );
+                         SendSingleString( (const char*)ptr, size );
+-                        tracy_free_fast( (void*)ptr );
++                        QueuePayload_Free( (void*)ptr );
+                         break;
+                     }
+                     case QueueType::MessageAppInfo:
+@@ -2611,7 +2779,7 @@
+                         size = MemRead( &item->messageFat.size );
+                         SendSingleString( (const char*)ptr, size );
+ #ifndef TRACY_ON_DEMAND
+-                        tracy_free_fast( (void*)ptr );
++                        QueuePayload_Free( (void*)ptr );
+ #endif
+                         break;
+                     case QueueType::ZoneBeginAllocSrcLoc:
+@@ -2623,13 +2791,13 @@
+                         MemWrite( &item->zoneBegin.time, dt );
+                         ptr = MemRead( &item->zoneBegin.srcloc );
+                         SendSourceLocationPayload( ptr );
+-                        tracy_free_fast( (void*)ptr );
++                        QueuePayload_Free( (void*)ptr );
+                         break;
+                     }
+                     case QueueType::Callstack:
+                         ptr = MemRead( &item->callstackFat.ptr );
+                         SendCallstackPayload( ptr );
+-                        tracy_free_fast( (void*)ptr );
++                        QueuePayload_Free( (void*)ptr );
+                         break;
+                     case QueueType::CallstackAlloc:
+                         ptr = MemRead( &item->callstackAllocFat.nativePtr );
+@@ -2638,18 +2806,18 @@
+                             const char* remove[] = { "lua_pcall", nullptr };
+                             CutCallstack( (void*)ptr, remove );
+                             SendCallstackPayload( ptr );
+-                            tracy_free_fast( (void*)ptr );
++                            QueuePayload_Free( (void*)ptr );
+                         }
+                         ptr = MemRead( &item->callstackAllocFat.ptr );
+                         SendCallstackAlloc( ptr );
+-                        tracy_free_fast( (void*)ptr );
++                        QueuePayload_Free( (void*)ptr );
+                         break;
+                     case QueueType::CallstackSample:
+                     case QueueType::CallstackSampleContextSwitch:
+                     {
+                         ptr = MemRead( &item->callstackSampleFat.ptr );
+                         SendCallstackPayload64( ptr );
+-                        tracy_free_fast( (void*)ptr );
++                        QueuePayload_Free( (void*)ptr );
+                         int64_t t = MemRead( &item->callstackSampleFat.time );
+                         int64_t dt = t - refCtx;
+                         refCtx = t;
+@@ -2681,7 +2849,7 @@
+                         const auto h = MemRead( &item->frameImageFat.h );
+                         const auto csz = size_t( w * h / 2 );
+                         SendLongString( ptr, (const char*)ptr, csz, QueueType::FrameImageData );
+-                        tracy_free_fast( (void*)ptr );
++                        QueuePayload_Free( (void*)ptr );
+                         break;
+                     }
+                     case QueueType::ZoneBegin:
+@@ -2763,7 +2931,7 @@
+                         MemWrite( &item->gpuZoneBegin.cpuTime, dt );
+                         ptr = MemRead( &item->gpuZoneBegin.srcloc );
+                         SendSourceLocationPayload( ptr );
+-                        tracy_free_fast( (void*)ptr );
++                        QueuePayload_Free( (void*)ptr );
+                         break;
+                     }
+                     case QueueType::GpuZoneEnd:
+@@ -2779,14 +2947,14 @@
+                         size = MemRead( &item->gpuContextNameFat.size );
+                         SendSingleString( (const char*)ptr, size );
+ #ifndef TRACY_ON_DEMAND
+-                        tracy_free_fast( (void*)ptr );
++                        QueuePayload_Free( (void*)ptr );
+ #endif
+                         break;
+                     case QueueType::GpuAnnotationName:
+                         ptr = MemRead( &item->gpuAnnotationNameFat.ptr );
+                         size = MemRead( &item->gpuAnnotationNameFat.size );
+                         SendSingleString( (const char*)ptr, size );
+-                        tracy_free_fast( (void*)ptr );
++                        QueuePayload_Free( (void*)ptr );
+                         break;
+                     case QueueType::PlotDataInt:
+                     case QueueType::PlotDataFloat:
+@@ -2846,10 +3014,10 @@
+ 
+                             AppendData( &item, QueueDataSize[(int)QueueType::CallstackFrame] );
+ 
+-                            tracy_free_fast( (void*)frame.name );
+-                            tracy_free_fast( (void*)frame.file );
++                            QueuePayload_Free( (void*)frame.name );
++                            QueuePayload_Free( (void*)frame.file );
+                         }
+-                        tracy_free_fast( (void*)data );
++                        QueuePayload_Free( (void*)data );
+                         continue;
+                     }
+                     case QueueType::SymbolInformation:
+@@ -2857,7 +3025,7 @@
+                         auto fileString = (const char*)MemRead( &item->symbolInformationFat.fileString );
+                         auto needFree = MemRead( &item->symbolInformationFat.needFree );
+                         SendSingleString( fileString );
+-                        if( needFree ) tracy_free_fast( (void*)fileString );
++                        if( needFree ) QueuePayload_Free( (void*)fileString );
+                         break;
+                     }
+                     case QueueType::SymbolCodeMetadata:
+@@ -2866,7 +3034,7 @@
+                         auto ptr = (const char*)MemRead( &item->symbolCodeMetadata.ptr );
+                         auto size = MemRead( &item->symbolCodeMetadata.size );
+                         SendLongString( symbol, ptr, size, QueueType::SymbolCode );
+-                        tracy_free_fast( (void*)ptr );
++                        QueuePayload_Free( (void*)ptr );
+                         ++item;
+                         continue;
+                     }
+@@ -2879,8 +3047,8 @@
+                         auto threadName = (const char*)MemRead( &item->externalNameMetadata.threadName );
+                         SendString( thread, threadName, QueueType::ExternalThreadName );
+                         SendString( thread, name, QueueType::ExternalName );
+-                        tracy_free_fast( (void*)threadName );
+-                        tracy_free_fast( (void*)name );
++                        QueuePayload_Free( (void*)threadName );
++                        QueuePayload_Free( (void*)name );
+                         ++item;
+                         continue;
+                     }
+@@ -2891,7 +3059,7 @@
+                         auto size = MemRead( &item->sourceCodeMetadata.size );
+                         auto id = MemRead( &item->sourceCodeMetadata.id );
+                         SendLongString( (uint64_t)id, ptr, size, QueueType::SourceCode );
+-                        tracy_free_fast( (void*)ptr );
++                        QueuePayload_Free( (void*)ptr );
+                         ++item;
+                         continue;
+                     }
+@@ -2904,7 +3072,7 @@
+                         ptr = MemRead( &item->sectionEnterFat.text );
+                         size = MemRead( &item->sectionEnterFat.size );
+                         SendSingleString( (const char*)ptr, size );
+-                        tracy_free_fast( (void*)ptr );
++                        QueuePayload_Free( (void*)ptr );
+                         break;
+                     }
+                     case QueueType::SectionLeave:
+@@ -2920,7 +3088,7 @@
+                         size = MemRead( &item->sectionSetupFat.size );
+                         SendSingleString( (const char*)ptr, size );
+ #ifndef TRACY_ON_DEMAND
+-                        tracy_free_fast( (void*)ptr );
++                        QueuePayload_Free( (void*)ptr );
+ #endif
+                         break;
+                     default:
+@@ -2930,6 +3098,7 @@
+                 }
+                 if( !AppendData( item++, QueueDataSize[idx] ) )
+                 {
++                    FreeAssociatedMemoryBatch( item, sz );
+                     connectionLost = true;
+                     m_refTimeThread = refThread;
+                     m_refTimeCtx = refCtx;
+@@ -2956,7 +3125,11 @@
+             while( sz-- > 0 )
+             {
+                 FreeAssociatedMemory( *item );
+-                if( timeStop < 0 ) return;
++                if( timeStop < 0 )
++                {
++                    FreeAssociatedMemoryBatch( item + 1, sz );
++                    return;
++                }
+                 const auto idx = MemRead( &item->hdr.idx );
+                 if( idx == (uint8_t)QueueType::ContextSwitch )
+                 {
+@@ -2965,6 +3138,7 @@
+                     {
+                         timeStop = -1;
+                         m_refTimeCtx = refCtx;
++                        FreeAssociatedMemoryBatch( item + 1, sz );
+                         return;
+                     }
+                     int64_t dt = csTime - refCtx;
+@@ -2974,6 +3148,7 @@
+                     {
+                         timeStop = -2;
+                         m_refTimeCtx = refCtx;
++                        FreeAssociatedMemoryBatch( item + 1, sz );
+                         return;
+                     }
+                 }
+@@ -2984,6 +3159,7 @@
+                     {
+                         timeStop = -1;
+                         m_refTimeCtx = refCtx;
++                        FreeAssociatedMemoryBatch( item + 1, sz );
+                         return;
+                     }
+                     int64_t dt = csTime - refCtx;
+@@ -2993,6 +3169,7 @@
+                     {
+                         timeStop = -2;
+                         m_refTimeCtx = refCtx;
++                        FreeAssociatedMemoryBatch( item + 1, sz );
+                         return;
+                     }
+                 }
+@@ -3061,7 +3238,7 @@
+                 case QueueType::CallstackSerial:
+                     ptr = MemRead( &item->callstackFat.ptr );
+                     SendCallstackPayload( ptr );
+-                    tracy_free_fast( (void*)ptr );
++                    QueuePayload_Free( (void*)ptr );
+                     break;
+                 case QueueType::LockWait:
+                 case QueueType::LockSharedWait:
+@@ -3096,7 +3273,7 @@
+                     uint16_t size = MemRead( &item->lockNameFat.size );
+                     SendSingleString( (const char*)ptr, size );
+ #ifndef TRACY_ON_DEMAND
+-                    tracy_free_fast( (void*)ptr );
++                    QueuePayload_Free( (void*)ptr );
+ #endif
+                     break;
+                 }
+@@ -3149,7 +3326,7 @@
+                     MemWrite( &item->gpuZoneBegin.cpuTime, dt );
+                     ptr = MemRead( &item->gpuZoneBegin.srcloc );
+                     SendSourceLocationPayload( ptr );
+-                    tracy_free_fast( (void*)ptr );
++                    QueuePayload_Free( (void*)ptr );
+                     break;
+                 }
+                 case QueueType::GpuZoneEndSerial:
+@@ -3174,7 +3351,7 @@
+                     uint16_t size = MemRead( &item->gpuContextNameFat.size );
+                     SendSingleString( (const char*)ptr, size );
+ #ifndef TRACY_ON_DEMAND
+-                    tracy_free_fast( (void*)ptr );
++                    QueuePayload_Free( (void*)ptr );
+ #endif
+                     break;
+                 }
+@@ -3183,7 +3360,7 @@
+                     ptr = MemRead( &item->gpuAnnotationNameFat.ptr );
+                     uint16_t size = MemRead( &item->gpuAnnotationNameFat.size );
+                     SendSingleString( (const char*)ptr, size );
+-                    tracy_free_fast( (void*)ptr );
++                    QueuePayload_Free( (void*)ptr );
+                     break;
+                 }
+ #ifdef TRACY_FIBERS
+@@ -3233,7 +3410,7 @@
+                     MemWrite( &item->zoneBegin.time, dt );
+                     ptr = MemRead( &item->zoneBegin.srcloc );
+                     SendSourceLocationPayload( ptr );
+-                    tracy_free_fast( (void*)ptr );
++                    QueuePayload_Free( (void*)ptr );
+                     break;
+                 }
+                 case QueueType::ZoneEnd:
+@@ -3270,7 +3447,7 @@
+                     ptr = MemRead( &item->zoneTextFat.text );
+                     uint16_t size = MemRead( &item->zoneTextFat.size );
+                     SendSingleString( (const char*)ptr, size );
+-                    tracy_free_fast( (void*)ptr );
++                    QueuePayload_Free( (void*)ptr );
+                     break;
+                 }
+                 case QueueType::Message:
+@@ -3281,7 +3458,7 @@
+                     ptr = taggedPtr.GetAddress();
+                     uint16_t size = MemRead( &item->messageFat.size );
+                     SendSingleString( (const char*)ptr, size );
+-                    tracy_free_fast( (void*)ptr );
++                    QueuePayload_Free( (void*)ptr );
+                     break;
+                 }
+                 case QueueType::MessageColor:
+@@ -3292,7 +3469,7 @@
+                     ptr = taggedPtr.GetAddress();
+                     uint16_t size = MemRead( &item->messageColorFat.size );
+                     SendSingleString( (const char*)ptr, size );
+-                    tracy_free_fast( (void*)ptr );
++                    QueuePayload_Free( (void*)ptr );
+                     break;
+                 }
+                 case QueueType::Callstack:
+@@ -3300,7 +3477,7 @@
+                     ThreadCtxCheckSerial( callstackFatThread );
+                     ptr = MemRead( &item->callstackFat.ptr );
+                     SendCallstackPayload( ptr );
+-                    tracy_free_fast( (void*)ptr );
++                    QueuePayload_Free( (void*)ptr );
+                     break;
+                 }
+                 case QueueType::CallstackAlloc:
+@@ -3312,11 +3489,11 @@
+                         const char* remove[] = { "lua_pcall", nullptr };
+                         CutCallstack( (void*)ptr, remove );
+                         SendCallstackPayload( ptr );
+-                        tracy_free_fast( (void*)ptr );
++                        QueuePayload_Free( (void*)ptr );
+                     }
+                     ptr = MemRead( &item->callstackAllocFat.ptr );
+                     SendCallstackAlloc( ptr );
+-                    tracy_free_fast( (void*)ptr );
++                    QueuePayload_Free( (void*)ptr );
+                     break;
+                 }
+                 case QueueType::FiberEnter:
+@@ -3476,7 +3653,7 @@
+ 
+ void Profiler::SafeCopyEpilog( char* buf )
+ {
+-    if( buf != m_safeSendBuffer ) tracy_free( buf );
++    if( buf != m_safeSendBuffer ) QueuePayload_Free( buf );
+ 
+ #ifndef NDEBUG
+     m_inUse.store( false );
+@@ -3487,7 +3664,7 @@
+ {
+     const lz4sz_t lz4sz = LZ4_compress_fast_continue( (LZ4_stream_t*)m_stream, data, m_lz4Buf + sizeof( lz4sz_t ), (int)len, LZ4Size, 1 );
+     memcpy( m_lz4Buf, &lz4sz, sizeof( lz4sz ) );
+-    return m_sock->Send( m_lz4Buf, lz4sz + sizeof( lz4sz_t ) ) != -1;
++    return m_sock->SendInterruptible( m_lz4Buf, lz4sz + sizeof( lz4sz_t ), [] { return QueueMemory_IsStopped() || ShouldExit(); } ) != -1;
+ }
+ 
+ void Profiler::SendString( uint64_t str, const char* ptr, size_t len, QueueType type )
+@@ -3754,7 +3931,11 @@
+ {
+     TRACY_ASSERT( m_exectime != 0 );
+     TRACY_ASSERT( m_queryData );
+-    m_symbolQueue.emplace( SymbolQueueItem { SymbolQueueItemType::SourceCode, uint64_t( m_queryData ), uint64_t( m_queryImage ), id } );
++    if( !m_symbolQueue.emplace( SymbolQueueItem { SymbolQueueItemType::SourceCode, uint64_t( m_queryData ), uint64_t( m_queryImage ), id } ) )
++    {
++        QueuePayload_Free( m_queryData );
++        QueuePayload_Free( m_queryImage );
++    }
+     m_queryData = nullptr;
+     m_queryImage = nullptr;
+ }
+@@ -3767,8 +3948,20 @@
+     case SymbolQueueItemType::CallstackFrame:
+     {
+         const auto frameData = DecodeCallstackPtr( si.ptr );
+-        auto data = tracy_malloc_fast( sizeof( CallstackEntry ) * frameData.size );
+-        memcpy( data, frameData.data, sizeof( CallstackEntry ) * frameData.size );
++        auto data = static_cast<CallstackEntry*>( QueuePayload_Allocate( sizeof( CallstackEntry ) * frameData.size ) );
++        for( uint8_t index = 0; index < frameData.size; ++index )
++        {
++            const auto& original = frameData.data[index];
++            if( data )
++            {
++                data[index] = original;
++                data[index].name = QueuePayload_CopyString( original.name );
++                data[index].file = QueuePayload_CopyString( original.file );
++            }
++            tracy_free( const_cast<char*>( original.name ) );
++            tracy_free( const_cast<char*>( original.file ) );
++        }
++        if( !data ) break;
+         TracyLfqPrepare( QueueType::CallstackFrameSize );
+         MemWrite( &item->callstackFrameSizeFat.ptr, si.ptr );
+         MemWrite( &item->callstackFrameSizeFat.size, frameData.size );
+@@ -4297,9 +4490,9 @@
+         TracyLfqCommit;
+     }
+ 
+-    tracy_free( cpuData );
+-    tracy_free( coreInfo );
+-    tracy_free( packageInfo );
++    QueuePayload_Free( cpuData );
++    QueuePayload_Free( coreInfo );
++    QueuePayload_Free( packageInfo );
+ #elif defined __linux__
+     const int numcpus = std::thread::hardware_concurrency();
+     auto cpuData = (CpuData*)tracy_malloc( sizeof( CpuData ) * numcpus );
+@@ -4314,7 +4507,7 @@
+         FILE* f = fopen( path, "rb" );
+         if( !f )
+         {
+-            tracy_free( cpuData );
++            QueuePayload_Free( cpuData );
+             return;
+         }
+         auto read = fread( buf, 1, 1024, f );
+@@ -4361,7 +4554,7 @@
+         TracyLfqCommit;
+     }
+ 
+-    tracy_free( cpuData );
++    QueuePayload_Free( cpuData );
+ #endif
+ #endif
+ }
+@@ -4489,7 +4682,7 @@
+             }
+             else
+             {
+-                tracy_free_fast( ptr );
++                QueuePayload_Free( ptr );
+             }
+         }
+         fclose( f );
+@@ -4524,7 +4717,7 @@
+                     }
+                     else
+                     {
+-                        tracy_free_fast( ptr );
++                        QueuePayload_Free( ptr );
+                     }
+                 }
+                 close( d );
+@@ -4554,7 +4747,7 @@
+             }
+             else
+             {
+-                tracy_free_fast( ptr );
++                QueuePayload_Free( ptr );
+             }
+         }
+     }
+@@ -4567,8 +4760,8 @@
+         TracyLfqCommit;
+     }
+ 
+-    tracy_free_fast( data );
+-    tracy_free_fast( image );
++    QueuePayload_Free( data );
++    QueuePayload_Free( image );
+ }
+ 
+ #if defined _WIN32 && defined TRACY_TIMER_QPC
+@@ -4663,7 +4856,7 @@
+ #endif
+     if( !ctx.active )
+     {
+-        tracy::tracy_free( (void*)srcloc );
++        tracy::QueuePayload_Free( (void*)srcloc );
+         return ctx;
+     }
+ #ifdef TRACY_ON_DEMAND
+@@ -4698,7 +4891,7 @@
+ #endif
+     if( !ctx.active )
+     {
+-        tracy::tracy_free( (void*)srcloc );
++        tracy::QueuePayload_Free( (void*)srcloc );
+         return ctx;
+     }
+ #ifdef TRACY_ON_DEMAND
+@@ -4755,7 +4948,8 @@
+ #ifdef TRACY_ON_DEMAND
+     if( tracy::GetProfiler().ConnectionId() != ctx.connectionId ) return;
+ #endif
+-    auto ptr = (char*)tracy::tracy_malloc( size );
++    auto ptr = (char*)tracy::QueuePayload_Allocate( size );
++    if( !ptr ) return;
+     memcpy( ptr, txt, size );
+ #ifndef TRACY_NO_VERIFY
+     {
+@@ -4785,7 +4979,9 @@
+     if( size < 0 ) return;
+     TRACY_ASSERT( size < (std::numeric_limits<uint16_t>::max)() );
+ 
+-    char* ptr = (char*)tracy::tracy_malloc( size_t( size ) + 1 );
++    char* ptr = (char*)tracy::QueuePayload_Allocate( size_t( size ) + 1 );
++
++    if( !ptr ) return;
+     va_start( args, fmt );
+     vsnprintf( ptr, size_t( size ) + 1, fmt, args );
+     va_end( args );
+@@ -4810,7 +5006,8 @@
+ #ifdef TRACY_ON_DEMAND
+     if( tracy::GetProfiler().ConnectionId() != ctx.connectionId ) return;
+ #endif
+-    auto ptr = (char*)tracy::tracy_malloc( size );
++    auto ptr = (char*)tracy::QueuePayload_Allocate( size );
++    if( !ptr ) return;
+     memcpy( ptr, txt, size );
+ #ifndef TRACY_NO_VERIFY
+     {
+@@ -4840,7 +5037,9 @@
+     if( size < 0 ) return;
+     TRACY_ASSERT( size < (std::numeric_limits<uint16_t>::max)() );
+ 
+-    char* ptr = (char*)tracy::tracy_malloc( size_t( size ) + 1 );
++    char* ptr = (char*)tracy::QueuePayload_Allocate( size_t( size ) + 1 );
++
++    if( !ptr ) return;
+     va_start( args, fmt );
+     vsnprintf( ptr, size_t( size ) + 1, fmt, args );
+     va_end( args );
+@@ -5021,7 +5220,7 @@
+ #ifdef TRACY_ON_DEMAND
+     if( !tracy::GetProfiler().IsConnected() )
+     {
+-        tracy::tracy_free( (void*)data.srcloc );
++        tracy::QueuePayload_Free( (void*)data.srcloc );
+         return;
+     }
+ #endif
+@@ -5039,7 +5238,7 @@
+ #ifdef TRACY_ON_DEMAND
+     if( !tracy::GetProfiler().IsConnected() )
+     {
+-        tracy::tracy_free( (void*)data.srcloc );
++        tracy::QueuePayload_Free( (void*)data.srcloc );
+         return;
+     }
+ #endif
+@@ -5098,7 +5297,8 @@
+ 
+ TRACY_API void ___tracy_emit_gpu_context_name( const struct ___tracy_gpu_context_name_data data )
+ {
+-    auto ptr = (char*)tracy::tracy_malloc( data.len );
++    auto ptr = (char*)tracy::QueuePayload_Allocate( data.len );
++    if( !ptr ) return;
+     memcpy( ptr, data.name, data.len );
+ 
+     TracyLfqPrepareC( tracy::QueueType::GpuContextName );
+@@ -5173,7 +5373,7 @@
+ #ifdef TRACY_ON_DEMAND
+     if( !tracy::GetProfiler().IsConnected() )
+     {
+-        tracy::tracy_free( (void*)data.srcloc );
++        tracy::QueuePayload_Free( (void*)data.srcloc );
+         return;
+     }
+ #endif
+@@ -5192,7 +5392,7 @@
+ #ifdef TRACY_ON_DEMAND
+     if( !tracy::GetProfiler().IsConnected() )
+     {
+-        tracy::tracy_free( (void*)data.srcloc );
++        tracy::QueuePayload_Free( (void*)data.srcloc );
+         return;
+     }
+ #endif
+@@ -5254,7 +5454,8 @@
+ 
+ TRACY_API void ___tracy_emit_gpu_context_name_serial( const struct ___tracy_gpu_context_name_data data )
+ {
+-    auto ptr = (char*)tracy::tracy_malloc( data.len );
++    auto ptr = (char*)tracy::QueuePayload_Allocate( data.len );
++    if( !ptr ) return;
+     memcpy( ptr, data.name, data.len );
+ 
+     auto item = tracy::Profiler::QueueSerial();
+@@ -5345,7 +5546,7 @@
+     lockdata->m_lockCount.~atomic();
+     lockdata->m_active.~atomic();
+ #endif
+-    tracy::tracy_free((void*)lockdata);
++    tracy::QueuePayload_Free((void*)lockdata);
+ }
+ 
+ TRACY_API int32_t ___tracy_before_lock_lockable_ctx( struct __tracy_lockable_context_data* lockdata )
+@@ -5453,7 +5654,8 @@
+ TRACY_API void ___tracy_custom_name_lockable_ctx( struct __tracy_lockable_context_data* lockdata, const char* name, size_t nameSz )
+ {
+     TRACY_ASSERT( nameSz < (std::numeric_limits<uint16_t>::max)() );
+-    auto ptr = (char*)tracy::tracy_malloc( nameSz );
++    auto ptr = (char*)tracy::QueuePayload_Allocate( nameSz );
++    if( !ptr ) return;
+     memcpy( ptr, name, nameSz );
+     auto item = tracy::Profiler::QueueSerial();
+     tracy::MemWrite( &item->hdr.type, tracy::QueueType::LockName );
+@@ -5509,7 +5711,7 @@
+     lockdata->m_base.m_lockCount.~atomic();
+     lockdata->m_base.m_active.~atomic();
+ #endif
+-    tracy::tracy_free((void*)lockdata);
++    tracy::QueuePayload_Free((void*)lockdata);
+ }
+ 
+ TRACY_API int32_t ___tracy_before_lock_shared_lockable_ctx( struct __tracy_shared_lockable_context_data* lockdata )
+--- a/public/client/TracyScoped.hpp
++++ b/public/client/TracyScoped.hpp
+@@ -93,7 +93,8 @@
+ #ifdef TRACY_ON_DEMAND
+         if( GetProfiler().ConnectionId() != m_connectionId ) return;
+ #endif
+-        auto ptr = (char*)tracy_malloc( size );
++        auto ptr = (char*)QueuePayload_Allocate( size );
++        if( !ptr ) return;
+         memcpy( ptr, txt, size );
+         TracyQueuePrepare( QueueType::ZoneText );
+         MemWrite( &item->zoneTextFat.text, (uint64_t)ptr );
+@@ -114,7 +115,9 @@
+         if( size < 0 ) return;
+         TRACY_ASSERT( size < (std::numeric_limits<uint16_t>::max)() );
+ 
+-        char* ptr = (char*)tracy_malloc( size_t( size ) + 1 );
++        char* ptr = (char*)QueuePayload_Allocate( size_t( size ) + 1 );
++
++        if( !ptr ) return;
+         va_start( args, fmt );
+         vsnprintf( ptr, size_t( size ) + 1, fmt, args );
+         va_end( args );
+@@ -132,7 +135,8 @@
+ #ifdef TRACY_ON_DEMAND
+         if( GetProfiler().ConnectionId() != m_connectionId ) return;
+ #endif
+-        auto ptr = (char*)tracy_malloc( size );
++        auto ptr = (char*)QueuePayload_Allocate( size );
++        if( !ptr ) return;
+         memcpy( ptr, txt, size );
+         TracyQueuePrepare( QueueType::ZoneName );
+         MemWrite( &item->zoneTextFat.text, (uint64_t)ptr );
+@@ -153,7 +157,9 @@
+         if( size < 0 ) return;
+         TRACY_ASSERT( size < (std::numeric_limits<uint16_t>::max)() );
+ 
+-        char* ptr = (char*)tracy_malloc( size_t( size ) + 1 );
++        char* ptr = (char*)QueuePayload_Allocate( size_t( size ) + 1 );
++
++        if( !ptr ) return;
+         va_start( args, fmt );
+         vsnprintf( ptr, size_t( size ) + 1, fmt, args );
+         va_end( args );
+--- a/public/client/TracyLock.hpp
++++ b/public/client/TracyLock.hpp
+@@ -156,7 +156,8 @@
+     tracy_force_inline void CustomName( const char* name, size_t size )
+     {
+         TRACY_ASSERT( size < (std::numeric_limits<uint16_t>::max)() );
+-        auto ptr = (char*)tracy_malloc( size );
++        auto ptr = (char*)QueuePayload_Allocate( size );
++        if( !ptr ) return;
+         memcpy( ptr, name, size );
+         auto item = Profiler::QueueSerial();
+         MemWrite( &item->hdr.type, QueueType::LockName );
+@@ -453,7 +454,8 @@
+     tracy_force_inline void CustomName( const char* name, size_t size )
+     {
+         TRACY_ASSERT( size < (std::numeric_limits<uint16_t>::max)() );
+-        auto ptr = (char*)tracy_malloc( size );
++        auto ptr = (char*)QueuePayload_Allocate( size );
++        if( !ptr ) return;
+         memcpy( ptr, name, size );
+         auto item = Profiler::QueueSerial();
+         MemWrite( &item->hdr.type, QueueType::LockName );
+--- a/public/tracy/TracyOpenGL.hpp
++++ b/public/tracy/TracyOpenGL.hpp
+@@ -189,7 +189,8 @@
+ 
+     void Name( const char* name, uint16_t len )
+     {
+-        auto ptr = (char*)tracy_malloc( len );
++        auto ptr = (char*)QueuePayload_Allocate( len );
++        if( !ptr ) return;
+         memcpy( ptr, name, len );
+ 
+         TracyLfqPrepare( QueueType::GpuContextName );
+--- a/public/client/TracyCallstack.hpp
++++ b/public/client/TracyCallstack.hpp
+@@ -49,6 +49,7 @@
+ #include <stdint.h>
+ 
+ #include "../common/TracyAlloc.hpp"
++#include "TracyQueueMemory.hpp"
+ #include "../common/TracyAssert.hpp"
+ 
+ namespace tracy
+@@ -107,7 +108,8 @@
+ static tracy_force_inline void* Callstack( int32_t depth )
+ {
+     TRACY_ASSERT( depth >= 1 && depth < 63 );
+-    auto trace = (uintptr_t*)tracy_malloc( ( 1 + depth ) * sizeof( uintptr_t ) );
++    auto trace = (uintptr_t*)QueuePayload_Allocate( ( 1 + depth ) * sizeof( uintptr_t ) );
++    if( !trace ) return nullptr;
+     const auto num = ___tracy_RtlWalkFrameChain( (void**)( trace + 1 ), depth, 0 );
+     *trace = num;
+     return trace;
+@@ -137,7 +139,8 @@
+ {
+     TRACY_ASSERT( depth >= 1 && depth < 63 );
+ 
+-    auto trace = (uintptr_t*)tracy_malloc( ( 1 + depth ) * sizeof( uintptr_t ) );
++    auto trace = (uintptr_t*)QueuePayload_Allocate( ( 1 + depth ) * sizeof( uintptr_t ) );
++    if( !trace ) return nullptr;
+     BacktraceState state = { (void**)(trace+1), (void**)(trace+1+depth) };
+     _Unwind_Backtrace( tracy_unwind_callback, &state );
+ 
+@@ -152,7 +155,8 @@
+ {
+     TRACY_ASSERT( depth >= 1 );
+ 
+-    auto trace = (uintptr_t*)tracy_malloc( ( 1 + (size_t)depth ) * sizeof( uintptr_t ) );
++    auto trace = (uintptr_t*)QueuePayload_Allocate( ( 1 + (size_t)depth ) * sizeof( uintptr_t ) );
++    if( !trace ) return nullptr;
+ 
+ #ifdef TRACY_LIBUNWIND_BACKTRACE
+     size_t num =  unw_backtrace( (void**)(trace+1), depth );
+--- a/public/client/TracySysTrace.cpp
++++ b/public/client/TracySysTrace.cpp
+@@ -147,7 +147,8 @@
+                 const uint64_t sz = ( record->UserDataLength - 16 ) / 8;
+                 if( sz > 0 )
+                 {
+-                    auto trace = (uint64_t*)tracy_malloc( ( 1 + sz ) * sizeof( uint64_t ) );
++                    auto trace = (uint64_t*)QueuePayload_Allocate( ( 1 + sz ) * sizeof( uint64_t ) );
++                    if( !trace ) return;
+                     memcpy( trace, &sz, sizeof( uint64_t ) );
+                     memcpy( trace+1, sw->stack, sizeof( uint64_t ) * sz );
+                     TracyLfqPrepare( QueueType::CallstackSample );
+@@ -1131,7 +1132,8 @@
+ 
+ static uint64_t* GetCallstackBlock( uint64_t cnt, RingBuffer& ring, uint64_t offset )
+ {
+-    auto trace = (uint64_t*)tracy_malloc_fast( ( 1 + cnt ) * sizeof( uint64_t ) );
++    auto trace = (uint64_t*)QueuePayload_Allocate( ( 1 + cnt ) * sizeof( uint64_t ) );
++    if( !trace ) return nullptr;
+     ring.Read( trace+1, offset, sizeof( uint64_t ) * cnt );
+ 
+ #if defined __x86_64__ || defined _M_X64
+--- a/public/common/TracySocket.hpp
++++ b/public/common/TracySocket.hpp
+@@ -26,6 +26,7 @@
+     void Close();
+ 
+     int Send( const void* buf, int len );
++    int SendInterruptible( const void* buf, int len, bool (*shouldExit)() );
+     int GetSendBufSize();
+ 
+     int ReadUpTo( void* buf, int len );
+--- a/public/common/TracySocket.cpp
++++ b/public/common/TracySocket.cpp
+@@ -264,6 +264,54 @@
+     return int( buf - start );
+ }
+ 
++int Socket::SendInterruptible( const void* _buf, int len, bool (*shouldExit)() )
++{
++    const auto sock = m_sock.load( std::memory_order_relaxed );
++    auto buf = static_cast<const char*>( _buf );
++    const auto start = buf;
++#ifdef _WIN32
++    u_long mode = 1;
++    if( ioctlsocket( sock, FIONBIO, &mode ) != 0 ) return -1;
++    struct RestoreMode
++    {
++        socket_t sock;
++        ~RestoreMode() { u_long mode = 0; ioctlsocket( sock, FIONBIO, &mode ); }
++    } restore { socket_t( sock ) };
++#else
++    const int flags = fcntl( sock, F_GETFL, 0 );
++    if( flags == -1 || fcntl( sock, F_SETFL, flags | O_NONBLOCK ) == -1 ) return -1;
++    struct RestoreMode
++    {
++        int sock;
++        int flags;
++        ~RestoreMode() { fcntl( sock, F_SETFL, flags ); }
++    } restore { sock, flags };
++#endif
++    while( len > 0 )
++    {
++        if( shouldExit() ) return -1;
++        const auto result = send( sock, buf, len, MSG_NOSIGNAL );
++        if( result == 0 ) return -1;
++        if( result < 0 )
++        {
++#ifdef _WIN32
++            const int error = WSAGetLastError();
++            if( error != WSAEWOULDBLOCK && error != WSAEINTR ) return -1;
++#else
++            if( errno != EWOULDBLOCK && errno != EAGAIN && errno != EINTR ) return -1;
++#endif
++            struct pollfd fd {};
++            fd.fd = socket_t( sock );
++            fd.events = POLLOUT;
++            poll( &fd, 1, 10 );
++            continue;
++        }
++        len -= result;
++        buf += result;
++    }
++    return int( buf - start );
++}
++
+ int Socket::GetSendBufSize()
+ {
+     const auto sock = m_sock.load( std::memory_order_relaxed );

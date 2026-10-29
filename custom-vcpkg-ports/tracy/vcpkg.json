@@ -1,0 +1,16 @@
+{
+  "name": "tracy",
+  "version": "0.14.1",
+  "description": "Shared Tracy client with bounded capture memory, explicit GPU cleanup and recoverable C CPU zones.",
+  "homepage": "https://github.com/wolfpld/tracy",
+  "license": "BSD-3-Clause",
+  "supports": "!(windows & (arm | uwp))",
+  "dependencies": [
+    { "name": "pthreads", "platform": "!windows" },
+    { "name": "vcpkg-cmake", "host": true },
+    { "name": "vcpkg-cmake-config", "host": true }
+  ],
+  "features": {
+    "on-demand": { "description": "Capture when a viewer is connected." }
+  }
+}

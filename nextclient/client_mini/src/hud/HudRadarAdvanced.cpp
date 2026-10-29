@@ -7,9 +7,16 @@
 #include <string>
 #include <string_view>
 #include <utility>
+
+#ifdef _WIN32
+#include <Windows.h>
+#endif
 #include <vector>
 
 #include "main.h"
+
+#include "hud/radar/integration/Performance.h"
+#include "hud/radar/integration/graphics_retirement_hooks.h"
 
 #include <goldsrc/client_api.h>
 #include <goldsrc/cstrike/game.h>
@@ -45,8 +52,8 @@
 
 namespace
 {
-    constexpr RadarCvarDef kScaleCvar = RadarCvarDef_Get("hud_radar_scale");
-    constexpr RadarCvarDef kMapScaleCvar = RadarCvarDef_Get("hud_radar_map_scale");
+    constexpr cvars::CvarDefinition kScaleCvar = radar::FindCvar("hud_radar_scale");
+    constexpr cvars::CvarDefinition kMapScaleCvar = radar::FindCvar("hud_radar_map_scale");
     static_assert(kScaleCvar.name && kMapScaleCvar.name);
 
     static_assert(static_cast<int>(RadarTeam::Unassigned) == goldsrc::cstrike::TEAM_UNASSIGNED);
@@ -91,8 +98,20 @@ namespace
 
 } // namespace
 
-HudRadarAdvanced::HudRadarAdvanced(nitroapi::NitroApiInterface* nitro_api) :
-    HudBaseHelper(nitro_api)
+HudRadarAdvanced::HudRadarAdvanced(
+    nitroapi::NitroApiInterface* nitro_api,
+    radar::integration::Performance& performance,
+    taskcoro::TaskCoroImplInterface& scheduler
+) :
+    HudBaseHelper(nitro_api),
+    performance_(performance),
+    draw_(performance),
+    layer_analysis_(scheduler, performance),
+    visibility_(smoke_, performance),
+    text_(draw_, performance),
+    backdrop_(draw_, performance, smoke_),
+    players_(draw_, performance, visibility_, policy_, broadcast_, text_),
+    objectives_(draw_, performance, visibility_, policy_, broadcast_, text_)
 {
     policy_.SetLogger(LogPolicyMessage);
 
@@ -110,15 +129,86 @@ HudRadarAdvanced::HudRadarAdvanced(nitroapi::NitroApiInterface* nitro_api) :
     sinks.layer_preparation = &layer_preparation_;
     sinks.layer_image_waiting_reason = &backdrop_.get_overview().get_layer_waiting_reason();
     RadarHooks_SetSinks(sinks);
+
+    sdl_ = nitro_api->GetSDL2Data();
+    has_current_context_ = sdl_ && radar::integration::HasNativeFunction(sdl_->SDL_GL_GetCurrentContext);
+    has_current_window_ = sdl_ && radar::integration::HasNativeFunction(sdl_->SDL_GL_GetCurrentWindow);
+    radar::integration::SubscribeGraphicsRetirement(*this, draw_, *nitro_api->GetEngineData(), sdl_, graphics_subscriptions_);
 }
 
 HudRadarAdvanced::~HudRadarAdvanced()
 {
-    RadarHooks_UpdateScoreboard(scoreboard_, nullptr);
+    StopGraphicsCallbacks();
     RadarHooks_ClearSinks();
-    layer_analysis_job_.Shutdown();
-    RadarDraw_ResetGl();
+    layer_analysis_.Shutdown();
+}
+
+void HudRadarAdvanced::StopGraphicsCallbacks()
+{
+    for (const auto& subscription : graphics_subscriptions_)
+    {
+        subscription->Unsubscribe();
+    }
+    graphics_subscriptions_.clear();
+}
+
+void* HudRadarAdvanced::CurrentContext() const
+{
+    if (has_current_context_)
+    {
+        if (void* context = sdl_->SDL_GL_GetCurrentContext())
+        {
+            return context;
+        }
+    }
+#ifdef _WIN32
+    return wglGetCurrentContext();
+#else
+    return nullptr;
+#endif
+}
+
+void* HudRadarAdvanced::CurrentWindow() const
+{
+    return has_current_window_ ? sdl_->SDL_GL_GetCurrentWindow() : nullptr;
+}
+
+void HudRadarAdvanced::ResetGraphics()
+{
+    bool release = draw_.is_context(CurrentContext(), CurrentWindow());
+    backdrop_.OnVidInit(release);
+    draw_.ResetGl(release);
     text_.ResetGl();
+    RadarHooks_InvalidateGlyphMetrics();
+}
+
+bool HudRadarAdvanced::PrepareGraphics()
+{
+    void* context = CurrentContext();
+    void* window = CurrentWindow();
+    if (!draw_.is_context(context, window))
+    {
+        backdrop_.OnVidInit(false);
+        draw_.ResetGl(false);
+        text_.ResetGl();
+        RadarHooks_InvalidateGlyphMetrics();
+        draw_.Prepare(context, window);
+    }
+    return context != nullptr;
+}
+
+void HudRadarAdvanced::Shutdown()
+{
+    if (shutdown_)
+    {
+        return;
+    }
+    shutdown_ = true;
+    StopGraphicsCallbacks();
+    RadarHooks_ClearSinks();
+    RadarHooks_UpdateScoreboard(scoreboard_, nullptr);
+    layer_analysis_.Shutdown();
+    ResetGraphics();
 }
 
 void HudRadarAdvanced::OnPlayerRespawn(PlayersLayer::ResetReason reason, float previous_time, float time)
@@ -132,8 +222,7 @@ void HudRadarAdvanced::OnPlayerRespawn(PlayersLayer::ResetReason reason, float p
 
 void HudRadarAdvanced::VidInit()
 {
-    RadarDraw_ResetGl();
-    text_.ResetGl();
+    ResetGraphics();
     ResetMapLayers();
     players_.OnVidInit();
     objectives_.OnVidInit();
@@ -148,6 +237,7 @@ void HudRadarAdvanced::VidInit()
 
 void HudRadarAdvanced::InitHUDData()
 {
+    PrepareGraphics();
     ResetMapLayers();
     OnPlayerRespawn(PlayersLayer::ResetReason::InitHud);
 }
@@ -243,6 +333,7 @@ bool HudRadarAdvanced::ShouldDraw()
 
 void HudRadarAdvanced::UpdateFrameContext(bool spectating, float flTime)
 {
+    performance::PerformanceCpuScope scope(performance_.get_monitor(), performance::PerfStage::RadarPolicy);
     ctx_ = FrameContext{};
     ctx_.message_num = eng()->client_state->parsecount;
     ctx_.spectating = spectating;
@@ -363,7 +454,7 @@ void HudRadarAdvanced::ReportLayerFailure(RadarMapMode mode, int layer)
 
 void HudRadarAdvanced::ResetMapLayers()
 {
-    layer_analysis_job_.Reset();
+    layer_analysis_.Reset();
     layer_context_.Reset();
     backdrop_.OnVidInit();
     objectives_.ResetLayerCache();
@@ -401,9 +492,9 @@ RadarMapStatus HudRadarAdvanced::EnsureMapLayers(RadarMapMode mode)
         backdrop_.ResetLayerImages();
 
         if (!layer_lifecycle_.is_layout_ready() &&
-            !(layer_analysis_job_.is_pending() && RadarLayerContext_IsLayeredMode(mode) && RadarLayerContext_IsLayeredMode(map_mode_)))
+            !(layer_analysis_.is_pending() && RadarLayerContext_IsLayeredMode(mode) && RadarLayerContext_IsLayeredMode(map_mode_)))
         {
-            layer_analysis_job_.Reset();
+            layer_analysis_.Reset();
             objectives_.ResetLayerCache();
             map_layers_.Reset();
             layer_lifecycle_.Reset();
@@ -432,11 +523,11 @@ RadarMapStatus HudRadarAdvanced::EnsureMapLayers(RadarMapMode mode)
         return RadarMapStatus::Waiting;
     }
 
-    if (std::unique_ptr<RadarLayerAnalysisResult> result = layer_analysis_job_.Poll())
+    if (std::unique_ptr<RadarLayerAnalysisResult> result = layer_analysis_.Poll())
     {
         objectives_.ResetLayerCache();
         map_layers_ = std::move(result->map);
-        layer_analysis_ms_ = result->analysis_ms;
+        layer_analysis_ms_ = float(result->duration_ns) / 1000000.0f;
 
         if (!result->warning.empty())
         {
@@ -449,7 +540,7 @@ RadarMapStatus HudRadarAdvanced::EnsureMapLayers(RadarMapMode mode)
         }
     }
 
-    if (layer_analysis_job_.is_pending())
+    if (layer_analysis_.is_pending())
     {
         layer_preparation_.waiting_reason = "stage=analysis_worker state=scheduled";
 
@@ -505,6 +596,8 @@ RadarMapStatus HudRadarAdvanced::EnsureMapLayers(RadarMapMode mode)
         const auto capture_start = std::chrono::steady_clock::now();
         RadarMapGeometry geometry;
 
+        performance::PerformanceCpuScope capture(performance_.get_monitor(), performance::PerfStage::RadarCapture);
+
         if (!MapBspGeometry_Collect(*world, *hull, crouch_bounds, geometry, &layer_preparation_.waiting_reason))
         {
             return RadarMapStatus::Waiting;
@@ -548,7 +641,7 @@ RadarMapStatus HudRadarAdvanced::EnsureMapLayers(RadarMapMode mode)
         }
 
         layer_preparation_.capture_ms = std::chrono::duration<float, std::milli>(std::chrono::steady_clock::now() - capture_start).count();
-        layer_analysis_job_.Start(std::move(geometry), std::move(overrides));
+        layer_analysis_.Start(std::move(geometry), std::move(overrides));
         layer_preparation_.waiting_reason = "stage=analysis_worker state=scheduled";
     }
 
@@ -562,6 +655,7 @@ RadarMapStatus HudRadarAdvanced::EnsureMapLayers(RadarMapMode mode)
 
 RadarMapStatus HudRadarAdvanced::EnsureMapLayout(RadarMapMode mode, bool prepare_only)
 {
+    performance::PerformanceCpuScope scope(performance_.get_monitor(), performance::PerfStage::RadarLayout);
     RadarMapStatus status = EnsureMapLayers(mode);
 
     if (RadarLayerContext_IsLayeredMode(mode))
@@ -664,7 +758,10 @@ void HudRadarAdvanced::PrepareHudTextZone()
 {
     g_MapUnavailable = false;
 
-    if (!RadarConfig_CheckAdvancedActive() || !ShouldDraw())
+    bool should_draw = RadarConfig_IsAdvancedSelected() && ShouldDraw();
+    radar::integration::CpuScope scope(performance_.get_monitor(), performance::PerfStage::RadarPrepare, should_draw);
+
+    if (!PrepareGraphics() || !RadarConfig_CheckAdvancedActive(draw_) || !should_draw)
     {
         return;
     }
@@ -681,7 +778,8 @@ void HudRadarAdvanced::PrepareHudTextZone()
 
 void HudRadarAdvanced::UpdateScoreboard(bool hud_visible)
 {
-    if (hud_visible && RadarConfig_CheckAdvancedActive() && ShouldDraw() && !g_MapUnavailable && g_RadarCfg.shift_scoreboard->value != 0.0f)
+    if (hud_visible && PrepareGraphics() && RadarConfig_CheckAdvancedActive(draw_) && ShouldDraw() && !g_MapUnavailable &&
+        g_RadarCfg.shift_scoreboard->value != 0.0f)
     {
         RadarBox box = ComputeBox(g_iUser1 != 0 || cl_enginefunc()->IsSpectateOnly());
         RadarHooks_UpdateScoreboard(scoreboard_, &box);
@@ -696,27 +794,20 @@ void HudRadarAdvanced::Draw(float flTime)
 {
     g_MapUnavailable = false;
 
-    if (!RadarConfig_CheckAdvancedActive())
+    bool should_draw = RadarConfig_IsAdvancedSelected() && ShouldDraw();
+    radar::integration::CpuScope scope(performance_.get_monitor(), performance::PerfStage::RadarDraw, should_draw);
+
+    if (!PrepareGraphics() || !RadarConfig_CheckAdvancedActive(draw_))
     {
         return;
     }
 
-    if (!ShouldDraw())
+    if (!should_draw)
     {
         return;
     }
 
-    bool debug = RadarDebug_IsEnabled();
-    std::chrono::steady_clock::time_point debug_start;
-
-    RadarDraw_ResetStats();
-    text_.ResetStats();
-    visibility_.ResetStats();
-
-    if (debug)
-    {
-        debug_start = std::chrono::steady_clock::now();
-    }
+    draw_.ResetStats();
 
     if (has_layer_frame_time_)
     {
@@ -783,14 +874,14 @@ void HudRadarAdvanced::Draw(float flTime)
 
     if (flash_alpha_ > 0)
     {
-        RadarDraw_SetFade(flash_col.WithAlpha(flash_alpha_));
+        draw_.SetFade(flash_col.WithAlpha(flash_alpha_));
     }
     else
     {
-        RadarDraw_ClearFade();
+        draw_.ClearFade();
     }
 
-    RadarFrame frame{box, transform, flTime, (float)m_flTimeDelta, ctx_, flash_alpha_, shape};
+    RadarFrame frame{draw_, box, transform, flTime, (float)m_flTimeDelta, ctx_, flash_alpha_, shape};
     frame.layer_view = layer_context_.get_view();
     frame.layer_view.enabled = frame.layer_view.enabled && RadarLayerContext_IsLayeredMode(mode) && layer_lifecycle_.is_image_ready();
 
@@ -802,14 +893,7 @@ void HudRadarAdvanced::Draw(float flTime)
     visibility_.EndObjectiveTests();
     players_.Draw(frame);
 
-    RadarDraw_EndFrame();
-
-    if (debug)
-    {
-        RadarDrawStats stats = RadarDraw_GetStats();
-        float total_ms = std::chrono::duration<float, std::milli>(std::chrono::steady_clock::now() - debug_start).count();
-        RadarDebug_DrawFrame(box, total_ms, stats.blur_ms, visibility_.get_traces_ms(), text_.get_ms(), stats.batches);
-    }
+    draw_.EndFrame();
 }
 
 int HudRadarAdvanced::ComputeFlashAlpha(ncl_math::Color& color)

@@ -352,6 +352,15 @@ namespace nitroapi
 
         VGui_InitInterfacesList,
 
+        SDL_GL_SwapWindow,
+        SDL_GL_GetDrawableSize,
+        SDL_GL_GetCurrentWindow,
+        SDL_GetWindowSize,
+        SDL_GetVersion,
+        SDL_GL_CreateContext,
+        SDL_GL_DeleteContext,
+        SDL_GL_GetCurrentContext,
+
         LAST_ITEM
     };
 }

@@ -7,6 +7,7 @@
 
 namespace goldsrc
 {
+    inline constexpr int MAXSTUDIOBONES = 128;
     inline constexpr int MAXSTUDIOSKINS = 100;
     inline constexpr int STUDIO_HAS_NORMALS = 0x00000001;
     inline constexpr int STUDIO_LOOPING = 0x00000001;
@@ -134,6 +135,42 @@ namespace goldsrc
         int width;
         int height;
         int index;
+    };
+
+    struct mstudiobonecontroller_t
+    {
+        int bone;
+        int type;
+        float start;
+        float end;
+        int rest;
+        int index;
+    };
+
+    struct mstudiomesh_t
+    {
+        int numtris;
+        int triindex;
+        int skinref;
+        int numnorms;
+        int normindex;
+    };
+
+    struct mstudiomodel_t
+    {
+        char name[64];
+        int type;
+        float boundingradius;
+        int nummesh;
+        int meshindex;
+        int numverts;
+        int vertinfoindex;
+        int vertindex;
+        int numnorms;
+        int norminfoindex;
+        int normindex;
+        int numgroups;
+        int groupindex;
     };
 
     struct studiohdr_t

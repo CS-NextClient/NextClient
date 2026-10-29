@@ -1,7 +1,6 @@
 # Client module
 
-`src/main.cpp` connects the stock client callbacks to `GameHud`, the view code and weapon
-behavior. The radar has additional [local rules](src/hud/radar/AGENTS.md).
+`src/main.cpp` connects the stock client callbacks to `GameHud`, the view code and weapon behavior. The radar has additional [local rules](src/hud/radar/AGENTS.md).
 
 ## Ownership and callback order
 
@@ -32,14 +31,8 @@ behavior. The radar has additional [local rules](src/hud/radar/AGENTS.md).
 
 ## Verification
 
-Build `client_mini` and run the affected cases in `client_mini-tests`, `view-tests` and
-`crosshair-tests`. Keep geometry, policy and buffering decisions independent of the engine so those
-tests can exercise them. Engine callback
-fakes verify arguments, return values and ordering; they do not verify the actual GL output.
+Build `client_mini` and run the affected cases in `client_mini-tests`, `view-tests` and `crosshair-tests`. Keep geometry, policy and buffering decisions independent of the engine so those tests can exercise them. Engine callback fakes verify arguments, return values and ordering; they do not verify the actual GL output.
 
-For radar shader changes, also build and run `radar-gl-tests`. It checks production shader pixels
-with an offscreen GL context; context requirements and commands are in
-[the verification procedure](../../docs/testing/radar-layers.md).
+For radar shader changes, also build and run `radar-gl-tests`. It checks production shader pixels with an offscreen GL context; context requirements and commands are in [the verification procedure](../../docs/testing/radar-layers.md).
 
-For public header or callback changes, also build their consumers, particularly `gameui` for
-the shared radar cvar table in `include/next_client_mini/radar_cvars.h`.
+For public header or callback changes, also build their consumers, particularly `gameui` for the shared radar cvar table in `include/next_client_mini/radar_cvars.h`.

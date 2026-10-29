@@ -2,6 +2,43 @@
 
 #include <tier1/interface.h>
 
+enum class PreviewModelStatus
+{
+    Ready,
+    NotFound,
+    InvalidModel,
+    CapacityExceeded,
+    RendererUnavailable
+};
+
+enum class PreviewRenderMode
+{
+    Configured,
+    MaterialAuthoring
+};
+
+enum class PreviewDrawStatus
+{
+    Ready,
+    InvalidViewport,
+    RendererUnavailable,
+    ModelDrawFailed
+};
+
+struct PreviewModelInfo
+{
+    float bounds_min[3]{};
+    float bounds_max[3]{};
+    int skin_family_count{};
+    int body_count{};
+    int sequence_count{};
+};
+
+struct PreviewSequenceInfo
+{
+    char name[64]{};
+    float duration{};
+};
 // Screen coordinates, y measured from the top.
 struct PreviewRect
 {
@@ -45,10 +82,19 @@ struct PreviewModel
     bool camera_space;
     float fov;              // horizontal, degrees; camera-space models only
     bool mirror;            // camera-space models only
+    int skin{};
+    int body{};
+    float scale = 1.0f;
 };
 
 // A scene LoadScene answered with, or 0.
 using PreviewSceneHandle = int;
+
+struct PreviewHit
+{
+    int model_index = -1;
+    int texture_index = -1;
+};
 
 struct PreviewDrawParams
 {
@@ -61,14 +107,32 @@ struct PreviewDrawParams
 
     bool clear;
     float clear_color[3];
+    double time{};
+    PreviewRenderMode mode{};
+    bool materials_enabled = true;
+    bool interactive{};
+    int cursor_x = -1; // local viewport coordinates, y from the top
+    int cursor_y = -1;
+    bool sun_gizmo{};
+    bool occluder{};
 };
 
 class ScenePreviewInterface : public IBaseInterface
 {
 public:
+    virtual bool is_authoring_available() const = 0;
     virtual PreviewSceneHandle LoadScene(const char* path, const char* const* wads, int wad_count) = 0;
     virtual void FreeScene(PreviewSceneHandle scene) = 0;
-    virtual void Draw(const PreviewDrawParams& params, const PreviewRect& rect, const PreviewRect& clip) = 0;
+    virtual PreviewModelStatus PrepareModel(const char* path, PreviewModelInfo* out) = 0;
+    virtual bool GetSequenceInfo(const char* path, int index, PreviewSequenceInfo* out) = 0;
+    virtual PreviewDrawStatus Draw(
+        const PreviewDrawParams& params,
+        const PreviewRect& rect,
+        const PreviewRect& clip,
+        PreviewHit* hit = nullptr
+    ) = 0;
+    // Requires preview drawing to have finished. Preserves scenes and model-session identity.
+    virtual void CloseAuthoring() = 0;
 };
 
-#define SCENE_PREVIEW_INTERFACE_VERSION "ScenePreview001"
+#define SCENE_PREVIEW_INTERFACE_VERSION "ScenePreview002"

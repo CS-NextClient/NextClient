@@ -26,6 +26,7 @@
 namespace
 {
     constexpr std::string_view kSoundPath = DEFAULT_SOUNDPATH;
+    constexpr std::string_view kMaterialsPath = "materials/";
 }
 
 static goldsrc::resourcetype_t GetResourceTypeByPath(const std::string& filepath)
@@ -49,6 +50,12 @@ static goldsrc::resourcetype_t GetResourceTypeByPath(const std::string& filepath
         (path_lower.ends_with(".wav") || path_lower.ends_with(".mp3")))
     {
         resource_type = goldsrc::t_sound;
+    }
+    // .mat is a material preset, .png and .tga are the only images a material may name.
+    else if (path_lower.starts_with(kMaterialsPath) &&
+        (path_lower.ends_with(".mat") || path_lower.ends_with(".png") || path_lower.ends_with(".tga")))
+    {
+        resource_type = goldsrc::t_generic;
     }
 
     return resource_type;
@@ -80,6 +87,7 @@ std::string PrivateRes_GetPrivateFolder()
 {
     std::string server_folder = cls->servername;
 
+    nitro_utils::trim(server_folder);
     nitro_utils::to_lower(server_folder);
 
     if (!server_folder.contains(':'))

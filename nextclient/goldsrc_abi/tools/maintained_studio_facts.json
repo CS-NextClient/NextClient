@@ -1,0 +1,81 @@
+{
+  "ownership": "maintained additions outside the frozen generated model",
+  "engine_build": 8684,
+  "sources": {
+    "sdk_commit": "e3130f351307968101ae569f609ce2c2d4b8eb3e",
+    "frozen_input_hashes": {
+      "engine/studio.h": "a1552b6b8d8d2f932fb5398d6c6179dd90aa9b0073387f61f057fa092841fea2",
+      "common/dlight.h": "9090159b2c5a0c923e2150d15e0eba7f517130b12fa5ab772cf9a4352b4fbf5e",
+      "common/entity_types.h": "b3cff11408a9f1ddbe8379418409ecbc51a9289bf968522f2f3f82e9b1310409"
+    },
+    "stock_hw_sha256": "1e775773292407106ac17c98bc19f0444e8f1525d46e592de5cc53afad2b89e1",
+    "stock_dwarf_records": {
+      "dlight_t": "28e3",
+      "mstudiomodel_t": "79f44",
+      "mstudiomesh_t": "7a01d",
+      "mstudiobonecontroller_t": "79a9b"
+    }
+  },
+  "constants": {
+    "MAXSTUDIOBONES": 128,
+    "ET_NORMAL": 0
+  },
+  "records": {
+    "dlight_t": {
+      "size": 40,
+      "align": 4,
+      "fields": {
+        "origin": 0,
+        "radius": 12,
+        "color": 16,
+        "die": 20,
+        "decay": 24,
+        "minlight": 28,
+        "key": 32,
+        "dark": 36
+      }
+    },
+    "mstudiomodel_t": {
+      "size": 112,
+      "align": 4,
+      "fields": {
+        "name": 0,
+        "type": 64,
+        "boundingradius": 68,
+        "nummesh": 72,
+        "meshindex": 76,
+        "numverts": 80,
+        "vertinfoindex": 84,
+        "vertindex": 88,
+        "numnorms": 92,
+        "norminfoindex": 96,
+        "normindex": 100,
+        "numgroups": 104,
+        "groupindex": 108
+      }
+    },
+    "mstudiomesh_t": {
+      "size": 20,
+      "align": 4,
+      "fields": {
+        "numtris": 0,
+        "triindex": 4,
+        "skinref": 8,
+        "numnorms": 12,
+        "normindex": 16
+      }
+    },
+    "mstudiobonecontroller_t": {
+      "size": 24,
+      "align": 4,
+      "fields": {
+        "bone": 0,
+        "type": 4,
+        "start": 8,
+        "end": 12,
+        "rest": 16,
+        "index": 20
+      }
+    }
+  }
+}
