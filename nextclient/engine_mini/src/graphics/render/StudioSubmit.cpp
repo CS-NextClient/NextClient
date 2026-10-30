@@ -96,6 +96,7 @@ namespace render
         cpu_scope_.reset();
         bound_vao_ = 0;
         material_state_ = StudioMaterialState{};
+        ResetStateCache();
         counts_.clear();
         offsets_.clear();
     }
@@ -194,6 +195,113 @@ namespace render
         }
 
         bound_vao_ = 0;
+        ResetStateCache();
+    }
+
+    void StudioGlSubmission::ResetStateCache()
+    {
+        raster_valid_ = false;
+        alpha_test_.reset();
+        alpha_func_set_ = false;
+        bound_texture_.reset();
+    }
+
+    void StudioGlSubmission::ApplyBlend(bool enabled, int src_rgb, int dst_rgb, int src_alpha, int dst_alpha)
+    {
+        if (!raster_valid_ || applied_raster_.blend != enabled)
+        {
+            SetEnabled(GL_BLEND, enabled);
+            applied_raster_.blend = enabled;
+        }
+
+        if (!raster_valid_ || applied_raster_.blend_src_rgb != src_rgb || applied_raster_.blend_dst_rgb != dst_rgb ||
+            applied_raster_.blend_src_alpha != src_alpha || applied_raster_.blend_dst_alpha != dst_alpha)
+        {
+            glBlendFuncSeparate(src_rgb, dst_rgb, src_alpha, dst_alpha);
+            applied_raster_.blend_src_rgb = src_rgb;
+            applied_raster_.blend_dst_rgb = dst_rgb;
+            applied_raster_.blend_src_alpha = src_alpha;
+            applied_raster_.blend_dst_alpha = dst_alpha;
+        }
+    }
+
+    void StudioGlSubmission::ApplyDepthWrite(bool enabled)
+    {
+        if (!raster_valid_ || applied_raster_.depth_write != enabled)
+        {
+            glDepthMask(enabled ? GL_TRUE : GL_FALSE);
+            applied_raster_.depth_write = enabled;
+        }
+    }
+
+    void StudioGlSubmission::ApplyAlphaTest(bool enabled)
+    {
+        if (!alpha_test_.has_value() || *alpha_test_ != enabled)
+        {
+            SetEnabled(GL_ALPHA_TEST, enabled);
+            alpha_test_ = enabled;
+        }
+
+        if (enabled && !alpha_func_set_)
+        {
+            glAlphaFunc(GL_GREATER, 0.5f);
+            alpha_func_set_ = true;
+        }
+    }
+
+    void StudioGlSubmission::ApplyRasterState(const StudioDrawPacket& packet)
+    {
+        const StudioRasterState& state = packet.raster;
+
+        ApplyBlend(
+            state.blend,
+            state.blend_src_rgb,
+            state.blend_dst_rgb,
+            state.blend_src_alpha,
+            state.blend_dst_alpha
+        );
+        ApplyDepthWrite(state.depth_write);
+
+        if (!raster_valid_ || applied_raster_.blend_equation_rgb != state.blend_equation_rgb ||
+            applied_raster_.blend_equation_alpha != state.blend_equation_alpha)
+        {
+            glBlendEquationSeparate(state.blend_equation_rgb, state.blend_equation_alpha);
+            applied_raster_.blend_equation_rgb = state.blend_equation_rgb;
+            applied_raster_.blend_equation_alpha = state.blend_equation_alpha;
+        }
+
+        if (!raster_valid_ || applied_raster_.depth_test != state.depth_test)
+        {
+            SetEnabled(GL_DEPTH_TEST, state.depth_test);
+            applied_raster_.depth_test = state.depth_test;
+        }
+
+        if (!raster_valid_ || applied_raster_.depth_func != state.depth_func)
+        {
+            glDepthFunc(state.depth_func);
+            applied_raster_.depth_func = state.depth_func;
+        }
+
+        if (!raster_valid_ || applied_raster_.depth_range[0] != state.depth_range[0] ||
+            applied_raster_.depth_range[1] != state.depth_range[1])
+        {
+            glDepthRange(state.depth_range[0], state.depth_range[1]);
+            applied_raster_.depth_range[0] = state.depth_range[0];
+            applied_raster_.depth_range[1] = state.depth_range[1];
+        }
+
+        if (!raster_valid_ || applied_raster_.cull != !packet.flipped)
+        {
+            SetEnabled(GL_CULL_FACE, !packet.flipped);
+            applied_raster_.cull = !packet.flipped;
+        }
+
+        if (!raster_valid_)
+        {
+            glCullFace(GL_FRONT);
+        }
+
+        raster_valid_ = true;
     }
 
     void Studio_ApplyFaceCulling(bool flipped)
@@ -215,16 +323,7 @@ namespace render
         size_t bone_floats = has_material ? kStudioBoneFloats : static_cast<size_t>(packet.bone_count) * 12;
         {
             performance::LocalCpuScope cpu(monitor_.get_studio_detail_monitor(), performance::PerfStage::StudioStateApply);
-            SetEnabled(GL_BLEND, packet.raster.blend);
-            glBlendFuncSeparate(
-                packet.raster.blend_src_rgb, packet.raster.blend_dst_rgb, packet.raster.blend_src_alpha, packet.raster.blend_dst_alpha
-            );
-            glBlendEquationSeparate(packet.raster.blend_equation_rgb, packet.raster.blend_equation_alpha);
-            SetEnabled(GL_DEPTH_TEST, packet.raster.depth_test);
-            glDepthMask(packet.raster.depth_write ? GL_TRUE : GL_FALSE);
-            glDepthFunc(packet.raster.depth_func);
-            glDepthRange(packet.raster.depth_range[0], packet.raster.depth_range[1]);
-            Studio_ApplyFaceCulling(packet.flipped);
+            ApplyRasterState(packet);
             glMatrixMode(GL_MODELVIEW);
             glLoadMatrixf(packet.modelview.data());
             glMatrixMode(GL_PROJECTION);
@@ -341,24 +440,25 @@ namespace render
 
             {
                 performance::LocalCpuScope cpu(monitor_.get_studio_detail_monitor(), performance::PerfStage::StudioStateApply);
-                SetEnabled(GL_BLEND, packet.raster.blend);
-                glBlendFuncSeparate(
-                    packet.raster.blend_src_rgb, packet.raster.blend_dst_rgb, packet.raster.blend_src_alpha, packet.raster.blend_dst_alpha
+                ApplyBlend(
+                    packet.raster.blend,
+                    packet.raster.blend_src_rgb,
+                    packet.raster.blend_dst_rgb,
+                    packet.raster.blend_src_alpha,
+                    packet.raster.blend_dst_alpha
                 );
-                glDepthMask(packet.raster.depth_write ? GL_TRUE : GL_FALSE);
-                SetEnabled(GL_ALPHA_TEST, head.masked);
+                ApplyDepthWrite(packet.raster.depth_write);
+                ApplyAlphaTest(head.masked);
 
                 if (head.masked)
                 {
-                    glAlphaFunc(GL_GREATER, 0.5f);
-                    glDepthMask(GL_TRUE);
+                    ApplyDepthWrite(true);
                 }
 
                 if (head.additive)
                 {
-                    glEnable(GL_BLEND);
-                    glBlendFunc(GL_ONE, GL_ONE);
-                    glDepthMask(GL_FALSE);
+                    ApplyBlend(true, GL_ONE, GL_ONE, GL_ONE, GL_ONE);
+                    ApplyDepthWrite(false);
                 }
             }
 
@@ -371,7 +471,11 @@ namespace render
 
             {
                 performance::LocalCpuScope cpu(monitor_.get_studio_detail_monitor(), performance::PerfStage::StudioTextureSetup);
-                callbacks_.bind_texture(callbacks_.user, head.texture);
+                if (!bound_texture_.has_value() || *bound_texture_ != head.texture)
+                {
+                    callbacks_.bind_texture(callbacks_.user, head.texture);
+                    bound_texture_ = head.texture;
+                }
             }
 
             {
@@ -458,6 +562,7 @@ namespace render
             }
         }
 
+        ResetStateCache();
         cpu_scope_.reset();
     }
 } // namespace render

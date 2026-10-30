@@ -75,6 +75,140 @@ namespace
         glBindTexture(GL_TEXTURE_2D, texture);
     }
 
+    struct SubmissionStateCallCounts
+    {
+        std::vector<GLenum> capabilities;
+        std::vector<unsigned int> base_textures;
+        int blend_functions{};
+        int blend_equations{};
+        int depth_masks{};
+        int depth_functions{};
+        int depth_ranges{};
+        int cull_faces{};
+        int alpha_functions{};
+        int program_binds{};
+    };
+
+    SubmissionStateCallCounts g_SubmissionStateCalls;
+    PFNGLENABLEPROC g_CacheOriginalEnable{};
+    PFNGLDISABLEPROC g_CacheOriginalDisable{};
+    PFNGLBLENDFUNCSEPARATEPROC g_CacheOriginalBlendFuncSeparate{};
+    PFNGLBLENDFUNCPROC g_CacheOriginalBlendFunc{};
+    PFNGLBLENDEQUATIONSEPARATEPROC g_CacheOriginalBlendEquationSeparate{};
+    PFNGLDEPTHMASKPROC g_CacheOriginalDepthMask{};
+    PFNGLDEPTHFUNCPROC g_CacheOriginalDepthFunc{};
+    PFNGLDEPTHRANGEPROC g_CacheOriginalDepthRange{};
+    PFNGLCULLFACEPROC g_CacheOriginalCullFace{};
+    PFNGLALPHAFUNCPROC g_CacheOriginalAlphaFunc{};
+    PFNGLUSEPROGRAMPROC g_CacheOriginalUseProgram{};
+
+    void APIENTRY ObserveCacheEnable(GLenum cap)
+    {
+        g_SubmissionStateCalls.capabilities.push_back(cap);
+        g_CacheOriginalEnable(cap);
+    }
+
+    void APIENTRY ObserveCacheDisable(GLenum cap)
+    {
+        g_SubmissionStateCalls.capabilities.push_back(cap);
+        g_CacheOriginalDisable(cap);
+    }
+
+    void APIENTRY ObserveCacheBlendFuncSeparate(GLenum sr, GLenum dr, GLenum sa, GLenum da)
+    {
+        g_SubmissionStateCalls.blend_functions++;
+        g_CacheOriginalBlendFuncSeparate(sr, dr, sa, da);
+    }
+
+    void APIENTRY ObserveCacheBlendFunc(GLenum src, GLenum dst)
+    {
+        g_SubmissionStateCalls.blend_functions++;
+        g_CacheOriginalBlendFunc(src, dst);
+    }
+
+    void APIENTRY ObserveCacheBlendEquationSeparate(GLenum rgb, GLenum alpha)
+    {
+        g_SubmissionStateCalls.blend_equations++;
+        g_CacheOriginalBlendEquationSeparate(rgb, alpha);
+    }
+
+    void APIENTRY ObserveCacheDepthMask(GLboolean enabled)
+    {
+        g_SubmissionStateCalls.depth_masks++;
+        g_CacheOriginalDepthMask(enabled);
+    }
+
+    void APIENTRY ObserveCacheDepthFunc(GLenum func)
+    {
+        g_SubmissionStateCalls.depth_functions++;
+        g_CacheOriginalDepthFunc(func);
+    }
+
+    void APIENTRY ObserveCacheDepthRange(GLdouble near_value, GLdouble far_value)
+    {
+        g_SubmissionStateCalls.depth_ranges++;
+        g_CacheOriginalDepthRange(near_value, far_value);
+    }
+
+    void APIENTRY ObserveCacheCullFace(GLenum face)
+    {
+        g_SubmissionStateCalls.cull_faces++;
+        g_CacheOriginalCullFace(face);
+    }
+
+    void APIENTRY ObserveCacheAlphaFunc(GLenum func, GLfloat ref)
+    {
+        g_SubmissionStateCalls.alpha_functions++;
+        g_CacheOriginalAlphaFunc(func, ref);
+    }
+
+    void APIENTRY ObserveCacheUseProgram(GLuint program)
+    {
+        g_SubmissionStateCalls.program_binds++;
+        g_CacheOriginalUseProgram(program);
+    }
+
+    void ObserveCachedBaseTexture(void*, unsigned int texture)
+    {
+        g_SubmissionStateCalls.base_textures.push_back(texture);
+        BindBaseTexture(nullptr, texture);
+    }
+
+    class SubmissionStateObservers
+    {
+    public:
+        SubmissionStateObservers()
+        {
+            g_SubmissionStateCalls = {};
+            g_CacheOriginalEnable = std::exchange(glad_glEnable, ObserveCacheEnable);
+            g_CacheOriginalDisable = std::exchange(glad_glDisable, ObserveCacheDisable);
+            g_CacheOriginalBlendFuncSeparate = std::exchange(glad_glBlendFuncSeparate, ObserveCacheBlendFuncSeparate);
+            g_CacheOriginalBlendFunc = std::exchange(glad_glBlendFunc, ObserveCacheBlendFunc);
+            g_CacheOriginalBlendEquationSeparate = std::exchange(glad_glBlendEquationSeparate, ObserveCacheBlendEquationSeparate);
+            g_CacheOriginalDepthMask = std::exchange(glad_glDepthMask, ObserveCacheDepthMask);
+            g_CacheOriginalDepthFunc = std::exchange(glad_glDepthFunc, ObserveCacheDepthFunc);
+            g_CacheOriginalDepthRange = std::exchange(glad_glDepthRange, ObserveCacheDepthRange);
+            g_CacheOriginalCullFace = std::exchange(glad_glCullFace, ObserveCacheCullFace);
+            g_CacheOriginalAlphaFunc = std::exchange(glad_glAlphaFunc, ObserveCacheAlphaFunc);
+            g_CacheOriginalUseProgram = std::exchange(glad_glUseProgram, ObserveCacheUseProgram);
+        }
+
+        ~SubmissionStateObservers()
+        {
+            glad_glEnable = g_CacheOriginalEnable;
+            glad_glDisable = g_CacheOriginalDisable;
+            glad_glBlendFuncSeparate = g_CacheOriginalBlendFuncSeparate;
+            glad_glBlendFunc = g_CacheOriginalBlendFunc;
+            glad_glBlendEquationSeparate = g_CacheOriginalBlendEquationSeparate;
+            glad_glDepthMask = g_CacheOriginalDepthMask;
+            glad_glDepthFunc = g_CacheOriginalDepthFunc;
+            glad_glDepthRange = g_CacheOriginalDepthRange;
+            glad_glCullFace = g_CacheOriginalCullFace;
+            glad_glAlphaFunc = g_CacheOriginalAlphaFunc;
+            glad_glUseProgram = g_CacheOriginalUseProgram;
+        }
+    };
+
     class StudioOptimizationMaterialSource : public StudioMaterialSourceFixture
     {
     public:
@@ -734,4 +868,230 @@ TEST_F(StudioOptimizationGlTest, CoplanarMeshesKeepAuthoredSurfaceForLessAndLequ
     glDeleteTextures(2, textures);
     glDeleteProgram(program.prog);
     EXPECT_EQ(glGetError(), GLenum(GL_NO_ERROR));
+}
+
+TEST_F(StudioOptimizationGlTest, StateCacheSkipsRepeatedSettersAndKeepsPacketWork)
+{
+    performance_test::Core performance;
+    render::StudioMaterialRuntime runtime(
+        program_source_.manager,
+        material_source_.catalog,
+        material_source_.cache,
+        performance.monitor
+    );
+    render::StudioGlSubmission sink(
+        render::GetResources().device,
+        runtime,
+        {ObserveCachedBaseTexture, nullptr},
+        performance.monitor,
+        performance.mapper,
+        performance.studio_depth
+    );
+    ASSERT_TRUE(sink.EnsureBones());
+
+    render::StudioDrawPacket packet = MakePacket(runtime, performance.monitor);
+    packet.meshes.resize(2, packet.meshes[0]);
+    packet.meshes[1].skin = 1;
+    packet.meshes[1].index_offset = 12;
+    PreparePacketImages(runtime, packet);
+
+    SubmissionStateObservers observers;
+    sink.Begin();
+    sink.Draw(packet);
+
+    packet.bones[0] = 0.25f;
+    sink.Draw(packet);
+
+    for (GLenum cap : {GL_BLEND, GL_DEPTH_TEST, GL_CULL_FACE, GL_ALPHA_TEST})
+    {
+        EXPECT_EQ(
+            std::count(g_SubmissionStateCalls.capabilities.begin(), g_SubmissionStateCalls.capabilities.end(), cap),
+            1
+        ) << cap;
+    }
+
+    EXPECT_EQ(g_SubmissionStateCalls.blend_functions, 1);
+    EXPECT_EQ(g_SubmissionStateCalls.blend_equations, 1);
+    EXPECT_EQ(g_SubmissionStateCalls.depth_masks, 1);
+    EXPECT_EQ(g_SubmissionStateCalls.depth_functions, 1);
+    EXPECT_EQ(g_SubmissionStateCalls.depth_ranges, 1);
+    EXPECT_EQ(g_SubmissionStateCalls.cull_faces, 1);
+    EXPECT_EQ(g_SubmissionStateCalls.alpha_functions, 0);
+    EXPECT_EQ(g_SubmissionStateCalls.base_textures, (std::vector<unsigned int>{0}));
+    EXPECT_EQ(g_SubmissionStateCalls.program_binds, 2);
+    EXPECT_EQ(g_UploadSizes, (std::vector<GLsizeiptr>{48, 48}));
+    EXPECT_EQ(g_DrawOffsets, (std::vector<uintptr_t>{0, 12, 0, 12}));
+
+    sink.End();
+    EXPECT_EQ(g_SubmissionStateCalls.base_textures.size(), 2u);
+    ExpectOriginalBindings();
+}
+
+TEST_F(StudioOptimizationGlTest, StateCacheAppliesChangedRasterAndResetsAtScopeBoundary)
+{
+    performance_test::Core performance;
+    render::StudioMaterialRuntime runtime(
+        program_source_.manager,
+        material_source_.catalog,
+        material_source_.cache,
+        performance.monitor
+    );
+    render::StudioGlSubmission sink(
+        render::GetResources().device,
+        runtime,
+        {ObserveCachedBaseTexture, nullptr},
+        performance.monitor,
+        performance.mapper,
+        performance.studio_depth
+    );
+    ASSERT_TRUE(sink.EnsureBones());
+
+    render::StudioDrawPacket packet = MakePacket(runtime, performance.monitor);
+    PreparePacketImages(runtime, packet);
+
+    SubmissionStateObservers observers;
+    sink.Begin();
+    sink.Draw(packet);
+
+    packet.raster.blend = true;
+    packet.raster.blend_src_rgb = GL_SRC_ALPHA;
+    packet.raster.blend_dst_rgb = GL_ONE_MINUS_SRC_ALPHA;
+    packet.raster.blend_src_alpha = GL_ZERO;
+    packet.raster.blend_dst_alpha = GL_ONE;
+    packet.raster.blend_equation_rgb = GL_FUNC_REVERSE_SUBTRACT;
+    packet.raster.blend_equation_alpha = GL_FUNC_SUBTRACT;
+    packet.raster.depth_test = true;
+    packet.raster.depth_write = !packet.raster.depth_write;
+    packet.raster.depth_func = GL_GREATER;
+    packet.raster.depth_range[0] = 0.8;
+    packet.raster.depth_range[1] = 0.2;
+    packet.flipped = true;
+
+    sink.Draw(packet);
+
+    render::StudioDrawPacket applied;
+    render::Studio_CaptureRasterState(applied, performance.monitor);
+
+    EXPECT_TRUE(applied.raster.blend);
+    EXPECT_EQ(applied.raster.blend_src_rgb, GL_SRC_ALPHA);
+    EXPECT_EQ(applied.raster.blend_dst_rgb, GL_ONE_MINUS_SRC_ALPHA);
+    EXPECT_EQ(applied.raster.blend_src_alpha, GL_ZERO);
+    EXPECT_EQ(applied.raster.blend_dst_alpha, GL_ONE);
+    EXPECT_EQ(applied.raster.blend_equation_rgb, GL_FUNC_REVERSE_SUBTRACT);
+    EXPECT_EQ(applied.raster.blend_equation_alpha, GL_FUNC_SUBTRACT);
+    EXPECT_TRUE(applied.raster.depth_test);
+    EXPECT_EQ(applied.raster.depth_write, packet.raster.depth_write);
+    EXPECT_EQ(applied.raster.depth_func, GL_GREATER);
+    EXPECT_NEAR(applied.raster.depth_range[0], 0.8, 1e-6);
+    EXPECT_NEAR(applied.raster.depth_range[1], 0.2, 1e-6);
+    EXPECT_FALSE(applied.raster.cull);
+    EXPECT_EQ(g_SubmissionStateCalls.blend_functions, 2);
+    EXPECT_EQ(g_SubmissionStateCalls.blend_equations, 2);
+    EXPECT_EQ(g_SubmissionStateCalls.depth_functions, 2);
+    EXPECT_EQ(g_SubmissionStateCalls.depth_ranges, 2);
+
+    sink.End();
+    ExpectOriginalBindings();
+
+    sink.Begin();
+    sink.Draw(packet);
+
+    EXPECT_EQ(g_SubmissionStateCalls.blend_functions, 3);
+    EXPECT_EQ(g_SubmissionStateCalls.blend_equations, 3);
+    EXPECT_EQ(g_SubmissionStateCalls.depth_functions, 3);
+    EXPECT_EQ(g_SubmissionStateCalls.depth_ranges, 3);
+    EXPECT_EQ(g_SubmissionStateCalls.cull_faces, 2);
+    EXPECT_EQ(g_SubmissionStateCalls.base_textures.size(), 3u);
+
+    sink.End();
+    ExpectOriginalBindings();
+}
+
+TEST_F(StudioOptimizationGlTest, StateCacheTracksMaskedAndAdditiveOverrides)
+{
+    performance_test::Core performance;
+    render::StudioMaterialRuntime runtime(
+        program_source_.manager,
+        material_source_.catalog,
+        material_source_.cache,
+        performance.monitor
+    );
+    render::StudioGlSubmission sink(
+        render::GetResources().device,
+        runtime,
+        {ObserveCachedBaseTexture, nullptr},
+        performance.monitor,
+        performance.mapper,
+        performance.studio_depth
+    );
+    ASSERT_TRUE(sink.EnsureBones());
+
+    render::StudioDrawPacket packet = MakePacket(runtime, performance.monitor);
+    packet.raster.blend = false;
+    packet.raster.depth_write = false;
+    packet.meshes.resize(4, packet.meshes[0]);
+
+    for (size_t i = 0; i < packet.meshes.size(); ++i)
+    {
+        packet.meshes[i].index_offset = i * 12;
+    }
+
+    packet.meshes[0].masked = true;
+    packet.meshes[1].additive = true;
+    packet.meshes[2].masked = true;
+    PreparePacketImages(runtime, packet);
+
+    SubmissionStateObservers observers;
+    sink.Begin();
+    sink.Draw(packet);
+
+    EXPECT_EQ(g_DrawOffsets, (std::vector<uintptr_t>{0, 12, 24, 36}));
+    EXPECT_EQ(g_DrawBlends, (std::vector<bool>{false, true, false, false}));
+    EXPECT_EQ(g_DrawDepthWrites, (std::vector<bool>{true, false, true, false}));
+    EXPECT_EQ(g_SubmissionStateCalls.alpha_functions, 1);
+
+    sink.End();
+}
+
+TEST_F(StudioOptimizationGlTest, StateCachePreservesBaseTextureAcrossMaterialSamplerWork)
+{
+    performance_test::Core performance;
+    render::StudioMaterialRuntime runtime(
+        program_source_.manager,
+        material_source_.catalog,
+        material_source_.cache,
+        performance.monitor
+    );
+    render::StudioGlSubmission sink(
+        render::GetResources().device,
+        runtime,
+        {ObserveCachedBaseTexture, nullptr},
+        performance.monitor,
+        performance.mapper,
+        performance.studio_depth
+    );
+    ASSERT_TRUE(sink.EnsureBones());
+
+    render::StudioDrawPacket packet = MakePacket(runtime, performance.monitor);
+    packet.meshes[0].material.emplace();
+    packet.meshes[0].material->program = "custom";
+    runtime.PrepareBindings(bindings_, *packet.meshes[0].program, &*packet.meshes[0].material);
+    PreparePacketImages(runtime, packet);
+
+    SubmissionStateObservers observers;
+    sink.Begin();
+    sink.Draw(packet);
+    sink.Draw(packet);
+
+    GLint active = 0;
+    GLint bound = -1;
+    glGetIntegerv(GL_ACTIVE_TEXTURE, &active);
+    glGetIntegerv(GL_TEXTURE_BINDING_2D, &bound);
+
+    EXPECT_EQ(active, GL_TEXTURE0);
+    EXPECT_EQ(bound, 0);
+    EXPECT_EQ(g_SubmissionStateCalls.base_textures, (std::vector<unsigned int>{0}));
+
+    sink.End();
+    ExpectOriginalBindings();
 }

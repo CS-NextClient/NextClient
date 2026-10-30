@@ -64,6 +64,11 @@ namespace render
         GLint previous_texture_{};
         StudioMaterialState material_state_;
         unsigned int bound_vao_{};
+        StudioRasterState applied_raster_;
+        bool raster_valid_{};
+        std::optional<bool> alpha_test_;
+        bool alpha_func_set_{};
+        std::optional<unsigned int> bound_texture_;
         std::vector<GLsizei> counts_;
         std::vector<const void*> offsets_;
 
@@ -81,6 +86,13 @@ namespace render
         void Begin() override;
         void Draw(const StudioDrawPacket& packet) override;
         void End() override;
+
+    private:
+        void ResetStateCache();
+        void ApplyRasterState(const StudioDrawPacket& packet);
+        void ApplyBlend(bool enabled, int src_rgb, int dst_rgb, int src_alpha, int dst_alpha);
+        void ApplyDepthWrite(bool enabled);
+        void ApplyAlphaTest(bool enabled);
     };
 
     void Studio_CaptureRasterState(StudioDrawPacket& packet, performance::PerformanceMonitor& monitor);

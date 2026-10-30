@@ -17,9 +17,11 @@ The first command enables shader submission when an OpenGL 3.3 compatibility con
 
 `r_studio_queue` defaults to `1` and shares one GL state scope across consecutive eligible Studio packets in each opaque or transparent entity traversal. `r_studio_queue 0` keeps shader rendering with immediate packet submission. Use it to compare queue overhead and for custom studio callbacks issuing raw OpenGL without explicit queue barriers. Engine remap skins always use immediate submission.
 
+Within each submission series, the renderer caches blend enable/factors/equations, depth test/write/function/range, cull enable/face, alpha test/function, and the base unit-0 texture binding. Packet defaults and masked/additive overrides update the same cache. Every series starts with unknown cached values. Caller restoration remains unconditional, and each packet keeps its program bind, uniforms, matrices, and bone upload.
+
 `r_studio_info` prints the last captured studio model, converted geometry counts, observed submission counts and the rejection status of the most recent submission attempt. A submission is one intercepted `StudioDrawPoints` call, normally for a body part. The command also prints packet count, maximum run length, studio program binds and nonempty flushes by reason: brush, fallback, client, stage_end, capacity, resource, immediate and remap. Interception and shader-acceptance counts accumulate while the module runs. Queue statistics start at the latest opaque traversal and include the subsequent transparent traversal and immediate submissions until the next opaque traversal.
 
-Program binds exclude restoration of the caller's program and unrelated shader work. A run of equal-program packets can have one bind while retaining several MultiDraw calls and independent poses.
+Program binds exclude restoration of the caller's program and unrelated shader work. Each packet retains its first program bind for compatibility drivers, along with its independent uniforms and bone upload.
 
 Compare a stationary scene with many visible opaque Studio models, such as the north room of `studio_test`, with `r_studio_queue 0` and `1`. Keep the view, shader/material settings, and monitor configuration unchanged. Check packet/run counts and studio program binds, then compare CPU/GPU time. A remap flush submits the queue before a model with a mutable skin. A resource flush submits it before resources change.
 
