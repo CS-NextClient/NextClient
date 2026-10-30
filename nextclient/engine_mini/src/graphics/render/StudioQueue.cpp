@@ -112,7 +112,7 @@ namespace render
         assert(packets_.empty());
         stats_ = StudioQueueStats{};
         deferred_ = enabled;
-        opaque_ = true;
+        pass_active_ = true;
         queue_enabled_ = enabled;
     }
 
@@ -120,7 +120,22 @@ namespace render
     {
         Flush(StudioFlushReason::StageEnd);
         deferred_ = false;
-        opaque_ = false;
+        pass_active_ = false;
+    }
+
+    void StudioDrawQueue::BeginTransparentPass(bool enabled)
+    {
+        assert(packets_.empty());
+        deferred_ = enabled;
+        pass_active_ = true;
+        queue_enabled_ = enabled;
+    }
+
+    void StudioDrawQueue::EndTransparentPass()
+    {
+        Flush(StudioFlushReason::StageEnd);
+        deferred_ = false;
+        pass_active_ = false;
     }
 
     std::vector<StudioQueuedMesh> StudioDrawQueue::AcquireMeshStorage()
@@ -164,7 +179,7 @@ namespace render
                 {
                     reason = StudioImmediateReason::MutableSkin;
                 }
-                else if (!opaque_)
+                else if (!pass_active_)
                 {
                     reason = StudioImmediateReason::OutsideOpaque;
                 }
@@ -215,7 +230,7 @@ namespace render
         packets_.clear();
         mesh_storage_.Clear();
         deferred_ = false;
-        opaque_ = false;
+        pass_active_ = false;
         queue_enabled_ = false;
     }
 

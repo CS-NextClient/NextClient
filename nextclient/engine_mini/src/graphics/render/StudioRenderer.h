@@ -121,6 +121,8 @@ namespace render
         bool TryDraw(const StudioModelInputs& inputs);
         void BeginOpaquePass(bool enabled);
         void EndOpaquePass();
+        void BeginTransparentPass(bool enabled);
+        void EndTransparentPass();
         void EndModel();
         void Flush(StudioFlushReason reason);
         const StudioQueueStats& get_queue_stats() const;

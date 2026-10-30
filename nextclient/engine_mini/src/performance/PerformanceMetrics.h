@@ -718,7 +718,7 @@ namespace performance
         },
         CounterDescriptor{
             PerfCounterId::StudioImmediateOutsideOpaque,
-            "Studio immediate outside opaque",
+            "Studio immediate outside entity pass",
             MetricUnit::Count,
             CounterSource::AcceptedFrameDelta,
             CounterReduction::SumAcceptedFrames

@@ -165,6 +165,16 @@ namespace render
     {
         GetRendererState().studio.EndOpaquePass();
     }
+    void Studio_BeginTransparentPass()
+    {
+        Studio_BindEngine();
+        RendererState& state = GetRendererState();
+        state.studio.BeginTransparentPass(state.studio_engine.CaptureView().queue_enabled);
+    }
+    void Studio_EndTransparentPass()
+    {
+        GetRendererState().studio.EndTransparentPass();
+    }
     void Studio_EndModel()
     {
         GetRendererState().studio.EndModel();

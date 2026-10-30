@@ -23,11 +23,27 @@ namespace
 {
     PFNGLBUFFERSUBDATAPROC g_OriginalUpload{};
     PFNGLMULTIDRAWELEMENTSPROC g_OriginalDraw{};
+    PFNGLPUSHATTRIBPROC g_OriginalStateSave{};
+    PFNGLPOPATTRIBPROC g_OriginalStateRestore{};
+    int g_StateSaves{};
+    int g_StateRestores{};
     std::vector<GLsizeiptr> g_UploadSizes;
     std::vector<float> g_UploadTails;
     std::vector<uintptr_t> g_DrawOffsets;
     std::vector<bool> g_DrawBlends;
     std::vector<bool> g_DrawDepthWrites;
+
+    void APIENTRY ObserveStateSave(GLbitfield mask)
+    {
+        g_StateSaves++;
+        g_OriginalStateSave(mask);
+    }
+
+    void APIENTRY ObserveStateRestore()
+    {
+        g_StateRestores++;
+        g_OriginalStateRestore();
+    }
 
     void APIENTRY ObserveUpload(GLenum target, GLintptr offset, GLsizeiptr size, const void* data)
     {
@@ -139,6 +155,10 @@ namespace
             initialized_ = true;
             g_OriginalUpload = glad_glBufferSubData;
             g_OriginalDraw = glad_glMultiDrawElements;
+            g_OriginalStateSave = glad_glPushAttrib;
+            g_OriginalStateRestore = glad_glPopAttrib;
+            glad_glPushAttrib = ObserveStateSave;
+            glad_glPopAttrib = ObserveStateRestore;
             g_UploadSizes.clear();
             g_UploadTails.clear();
             g_DrawOffsets.clear();
@@ -220,6 +240,8 @@ namespace
             }
             glad_glBufferSubData = g_OriginalUpload;
             glad_glMultiDrawElements = g_OriginalDraw;
+            glad_glPushAttrib = g_OriginalStateSave;
+            glad_glPopAttrib = g_OriginalStateRestore;
             glBindBufferBase(GL_UNIFORM_BUFFER, render::kStudioBonesBinding, 0);
             glDeleteBuffers(2, buffers_);
             glDeleteVertexArrays(1, &vao_);
@@ -505,40 +527,72 @@ TEST_F(StudioOptimizationGlTest, AlphaBlendedMeshesKeepTheirPixelsInImmediateAnd
         ASSERT_TRUE(sink.EnsureBones());
         render::StudioDrawQueue queue(sink);
 
-        for (bool deferred : {false, true})
+        for (bool additive : {false, true})
         {
-            render::StudioDrawPacket packet = MakePacket(runtime, runtime_performance.monitor);
-            packet.raster.blend = true;
-            packet.raster.blend_src_rgb = GL_SRC_ALPHA;
-            packet.raster.blend_dst_rgb = GL_ONE_MINUS_SRC_ALPHA;
-            packet.raster.blend_src_alpha = GL_ONE;
-            packet.raster.blend_dst_alpha = GL_ZERO;
-            packet.raster.blend_equation_rgb = GL_FUNC_ADD;
-            packet.raster.blend_equation_alpha = GL_FUNC_ADD;
-            packet.raster.depth_write = false;
-            packet.meshes.resize(2, packet.meshes[0]);
-            runtime.PrepareBindings(bindings_, program, nullptr);
-
-            for (size_t index = 0; index < packet.meshes.size(); ++index)
+            for (bool deferred : {false, true})
             {
-                packet.meshes[index].program = &program;
-                packet.meshes[index].material_bindings = &bindings_;
-                packet.meshes[index].skin = 2 - static_cast<int>(index);
-                packet.meshes[index].texture = textures[index];
-                packet.meshes[index].index_offset = index * 12;
+                render::StudioDrawPacket packet = MakePacket(runtime, runtime_performance.monitor);
+                packet.raster.blend = true;
+                packet.raster.blend_src_rgb = GL_SRC_ALPHA;
+                packet.raster.blend_dst_rgb = GL_ONE_MINUS_SRC_ALPHA;
+                packet.raster.blend_src_alpha = GL_ONE;
+                packet.raster.blend_dst_alpha = GL_ZERO;
+                packet.raster.blend_equation_rgb = GL_FUNC_ADD;
+                packet.raster.blend_equation_alpha = GL_FUNC_ADD;
+                packet.raster.depth_write = false;
+                runtime.PrepareBindings(bindings_, program, nullptr);
+
+                std::array<render::StudioDrawPacket, 3> packets = {packet, packet, packet};
+                for (size_t index = 0; index < packets.size(); ++index)
+                {
+                    render::StudioQueuedMesh& mesh = packets[index].meshes[0];
+                    mesh.program = &program;
+                    mesh.material_bindings = &bindings_;
+                    mesh.skin = static_cast<int>(index % 2);
+                    mesh.texture = textures[index % 2];
+                    mesh.index_offset = index * 12;
+                    mesh.additive = additive && index == 1;
+                    PreparePacketImages(runtime, packets[index]);
+                }
+
+                glClear(GL_COLOR_BUFFER_BIT);
+                g_StateSaves = 0;
+                g_StateRestores = 0;
+                GLint original_program = 0;
+                GLint original_texture = 0;
+                GLint original_vao = 0;
+                glGetIntegerv(GL_CURRENT_PROGRAM, &original_program);
+                glGetIntegerv(GL_TEXTURE_BINDING_2D, &original_texture);
+                glGetIntegerv(GL_VERTEX_ARRAY_BINDING, &original_vao);
+                bool original_blend = glIsEnabled(GL_BLEND) != GL_FALSE;
+
+                queue.BeginTransparentPass(deferred);
+                for (render::StudioDrawPacket& item : packets)
+                {
+                    queue.Submit(std::move(item));
+                    GLint preparing_program = -1;
+                    glGetIntegerv(GL_CURRENT_PROGRAM, &preparing_program);
+                    EXPECT_EQ(preparing_program, original_program);
+                }
+                queue.EndTransparentPass();
+
+                EXPECT_EQ(g_StateSaves, deferred ? 1 : 3);
+                EXPECT_EQ(g_StateRestores, deferred ? 1 : 3);
+                GLint restored = -1;
+                glGetIntegerv(GL_CURRENT_PROGRAM, &restored);
+                EXPECT_EQ(restored, original_program);
+                glGetIntegerv(GL_TEXTURE_BINDING_2D, &restored);
+                EXPECT_EQ(restored, original_texture);
+                glGetIntegerv(GL_VERTEX_ARRAY_BINDING, &restored);
+                EXPECT_EQ(restored, original_vao);
+                EXPECT_EQ(glIsEnabled(GL_BLEND) != GL_FALSE, original_blend);
+
+                std::array<uint8_t, 4> pixel{};
+                glReadPixels(16, 8, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, pixel.data());
+                EXPECT_NEAR(pixel[0], additive ? 192 : 160, 1) << "deferred=" << deferred;
+                EXPECT_EQ(pixel[1], 0) << "deferred=" << deferred;
+                EXPECT_NEAR(pixel[2], additive ? 127 : 64, 1) << "deferred=" << deferred;
             }
-
-            glClear(GL_COLOR_BUFFER_BIT);
-            queue.BeginOpaquePass(deferred);
-            PreparePacketImages(runtime, packet);
-            queue.Submit(std::move(packet));
-            queue.EndOpaquePass();
-
-            std::array<uint8_t, 4> pixel{};
-            glReadPixels(16, 8, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, pixel.data());
-            EXPECT_NEAR(pixel[0], 64, 1) << "deferred=" << deferred;
-            EXPECT_EQ(pixel[1], 0) << "deferred=" << deferred;
-            EXPECT_NEAR(pixel[2], 128, 1) << "deferred=" << deferred;
         }
     }
 

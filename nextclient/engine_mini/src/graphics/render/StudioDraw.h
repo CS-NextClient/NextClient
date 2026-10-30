@@ -50,6 +50,8 @@ namespace render
     void Studio_BindEngine();
     void Studio_BeginOpaquePass();
     void Studio_EndOpaquePass();
+    void Studio_BeginTransparentPass();
+    void Studio_EndTransparentPass();
     void Studio_EndModel();
     void Studio_Flush(StudioFlushReason reason);
     const StudioQueueStats& Studio_QueueStats();

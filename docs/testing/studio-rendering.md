@@ -18,6 +18,7 @@ Use `studio_test` for the flag, shell, remap, lighting, and repeated-model cases
 | Carried weapon and FOLLOW | First-person and carried `p_` models retain the correct header, parent pose, attachments, and material source. |
 | Remap skin | Engine and shader paths select the same remapped base texture for the chosen `colormap`. Remap models submit immediately. |
 | Opaque ordering | Studio/brush/Studio order remains correct with `r_studio_queue 0` and `1`. |
+| Transparent ordering and shared GL state | Compare overlapping alpha/additive Studio models with `r_studio_queue 0` and `1`, including interleaved sprite, brush and alias objects. Preserve object and mesh order, remap skins, client events and caller GL state. Eligible consecutive packets share state save/restore; external draws and pass exit drain the queue. Replay the same demo segment three times per build with matching settings and Tracy disconnected. |
 | Direct-drawing boundaries | Queued packets are submitted to GL before Studio events, debug drawing, and triangle callbacks. Custom callbacks that call GL directly also flush the queue before drawing or use immediate mode. |
 | Transparency | Transparent objects, masked/additive meshes, and first-person weapons retain pass ordering and GL state. |
 | Materials | With the editor closed, the client selects a server binding, then a model document, then a built-in material. An active edit session temporarily overrides the selected material for its target. Values for different entities remain independent. |

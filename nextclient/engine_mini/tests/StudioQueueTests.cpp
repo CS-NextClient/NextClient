@@ -46,6 +46,34 @@ namespace
         }
     };
 
+    class StudioQueuePassTest : public testing::TestWithParam<bool>
+    {
+    protected:
+        void BeginPass(render::StudioDrawQueue& queue, bool enabled)
+        {
+            if (GetParam())
+            {
+                queue.BeginTransparentPass(enabled);
+            }
+            else
+            {
+                queue.BeginOpaquePass(enabled);
+            }
+        }
+
+        void EndPass(render::StudioDrawQueue& queue)
+        {
+            if (GetParam())
+            {
+                queue.EndTransparentPass();
+            }
+            else
+            {
+                queue.EndOpaquePass();
+            }
+        }
+    };
+
     render::StudioDrawPacket MakePacket(unsigned int vao, float bone)
     {
         render::StudioDrawPacket packet;
@@ -58,11 +86,11 @@ namespace
     }
 } // namespace
 
-TEST(StudioQueueTest, ConsecutiveModelsShareScopeAndPreserveBrushBoundary)
+TEST_P(StudioQueuePassTest, ConsecutiveModelsShareScopeAndPreserveBrushBoundary)
 {
     RecordingStudioSink sink;
     render::StudioDrawQueue queue(sink);
-    queue.BeginOpaquePass(true);
+    BeginPass(queue, true);
     queue.Submit(MakePacket(1, 10));
     queue.Submit(MakePacket(2, 20));
     EXPECT_TRUE(sink.draws.empty());
@@ -76,7 +104,7 @@ TEST(StudioQueueTest, ConsecutiveModelsShareScopeAndPreserveBrushBoundary)
 
     queue.Submit(MakePacket(3, 30));
     queue.Submit(MakePacket(4, 40));
-    queue.EndOpaquePass();
+    EndPass(queue);
     ASSERT_EQ(sink.draws.size(), 4u);
     EXPECT_EQ(sink.draws[2].vao, 3u);
     EXPECT_EQ(sink.draws[3].vao, 4u);
@@ -84,11 +112,11 @@ TEST(StudioQueueTest, ConsecutiveModelsShareScopeAndPreserveBrushBoundary)
     EXPECT_EQ(queue.stats().flushes[static_cast<size_t>(render::StudioFlushReason::Brush)], 1u);
 }
 
-TEST(StudioQueueTest, PacketsOwnPoseMaterialsAndRasterInputs)
+TEST_P(StudioQueuePassTest, PacketsOwnPoseMaterialsAndRasterInputs)
 {
     RecordingStudioSink sink;
     render::StudioDrawQueue queue(sink);
-    queue.BeginOpaquePass(true);
+    BeginPass(queue, true);
     render::StudioDrawPacket first = MakePacket(1, 11);
     first.lighting.ambient = 10;
     first.blend = 0.5f;
@@ -105,7 +133,7 @@ TEST(StudioQueueTest, PacketsOwnPoseMaterialsAndRasterInputs)
     first.meshes[0].texture = 456;
     first.meshes[0].material->program = "second";
     queue.Submit(std::move(first));
-    queue.EndOpaquePass();
+    EndPass(queue);
 
     ASSERT_EQ(sink.draws.size(), 2u);
     EXPECT_EQ(sink.draws[0].bones[0], 11);
@@ -117,11 +145,11 @@ TEST(StudioQueueTest, PacketsOwnPoseMaterialsAndRasterInputs)
     EXPECT_EQ(sink.draws[0].meshes[0].material->program, "first");
 }
 
-TEST(StudioQueueTest, BaseShellAndNextEntityRetainSubmissionOrder)
+TEST_P(StudioQueuePassTest, BaseShellAndNextEntityRetainSubmissionOrder)
 {
     RecordingStudioSink sink;
     render::StudioDrawQueue queue(sink);
-    queue.BeginOpaquePass(true);
+    BeginPass(queue, true);
     render::StudioDrawPacket base = MakePacket(1, 1);
     render::StudioDrawPacket shell = MakePacket(1, 1);
     shell.glow_scale = 3;
@@ -129,7 +157,7 @@ TEST(StudioQueueTest, BaseShellAndNextEntityRetainSubmissionOrder)
     queue.Submit(std::move(base));
     queue.Submit(std::move(shell));
     queue.Submit(MakePacket(2, 2));
-    queue.EndOpaquePass();
+    EndPass(queue);
 
     ASSERT_EQ(sink.draws.size(), 3u);
     EXPECT_EQ(sink.draws[0].glow_scale, 0);
@@ -138,33 +166,33 @@ TEST(StudioQueueTest, BaseShellAndNextEntityRetainSubmissionOrder)
     EXPECT_EQ(sink.draws[2].vao, 2u);
 }
 
-TEST(StudioQueueTest, OutsideOpaqueAndDisabledQueueSubmitImmediately)
+TEST_P(StudioQueuePassTest, OutsideOpaqueAndDisabledQueueSubmitImmediately)
 {
     RecordingStudioSink sink;
     render::StudioDrawQueue queue(sink);
     queue.Submit(MakePacket(1, 1));
-    queue.BeginOpaquePass(false);
+    BeginPass(queue, false);
     queue.Submit(MakePacket(2, 2));
     queue.Submit(MakePacket(3, 3));
-    queue.EndOpaquePass();
+    EndPass(queue);
     queue.Submit(MakePacket(4, 4));
     EXPECT_EQ(sink.draws.size(), 4u);
     EXPECT_EQ(sink.begins, 4);
     EXPECT_EQ(sink.ends, 4);
 }
 
-TEST(StudioQueueTest, CapacityFlushesBeforeNextPacketWithoutReordering)
+TEST_P(StudioQueuePassTest, CapacityFlushesBeforeNextPacketWithoutReordering)
 {
     RecordingStudioSink sink;
     render::StudioDrawQueue queue(sink);
-    queue.BeginOpaquePass(true);
+    BeginPass(queue, true);
     for (unsigned int i = 0; i < render::kMaxStudioPackets + 1; i++)
     {
         queue.Submit(MakePacket(i, static_cast<float>(i)));
     }
 
     EXPECT_EQ(sink.draws.size(), render::kMaxStudioPackets);
-    queue.EndOpaquePass();
+    EndPass(queue);
     ASSERT_EQ(sink.draws.size(), render::kMaxStudioPackets + 1);
     for (unsigned int i = 0; i < sink.draws.size(); i++)
     {
@@ -173,11 +201,11 @@ TEST(StudioQueueTest, CapacityFlushesBeforeNextPacketWithoutReordering)
     EXPECT_EQ(sink.begins, 2);
 }
 
-TEST(StudioQueueTest, EveryBarrierDrainsAndEmptyFlushDoesNotOpenScope)
+TEST_P(StudioQueuePassTest, EveryBarrierDrainsAndEmptyFlushDoesNotOpenScope)
 {
     RecordingStudioSink sink;
     render::StudioDrawQueue queue(sink);
-    queue.BeginOpaquePass(true);
+    BeginPass(queue, true);
     for (size_t i = 0; i < static_cast<size_t>(render::StudioFlushReason::Count); i++)
     {
         render::StudioFlushReason reason = static_cast<render::StudioFlushReason>(i);
@@ -187,14 +215,14 @@ TEST(StudioQueueTest, EveryBarrierDrainsAndEmptyFlushDoesNotOpenScope)
         EXPECT_EQ(sink.draws.size(), i + 1);
         EXPECT_EQ(sink.begins, i + 1);
     }
-    queue.EndOpaquePass();
+    EndPass(queue);
 }
 
-TEST(StudioQueueTest, ResetDiscardsResourcesAndDisablesDeferralWithoutDrawing)
+TEST_P(StudioQueuePassTest, ResetDiscardsResourcesAndDisablesDeferralWithoutDrawing)
 {
     RecordingStudioSink sink;
     render::StudioDrawQueue queue(sink);
-    queue.BeginOpaquePass(true);
+    BeginPass(queue, true);
     queue.Submit(MakePacket(1, 1));
     queue.Reset();
     queue.Flush(render::StudioFlushReason::Resource);
@@ -205,11 +233,11 @@ TEST(StudioQueueTest, ResetDiscardsResourcesAndDisablesDeferralWithoutDrawing)
     EXPECT_EQ(sink.draws[0].vao, 2u);
 }
 
-TEST(StudioQueueTest, ClientCallbackPausesDeferralUntilItsOwnDrawingFinishes)
+TEST_P(StudioQueuePassTest, ClientCallbackPausesDeferralUntilItsOwnDrawingFinishes)
 {
     RecordingStudioSink sink;
     render::StudioDrawQueue queue(sink);
-    queue.BeginOpaquePass(true);
+    BeginPass(queue, true);
     queue.Submit(MakePacket(1, 1));
     bool deferred = queue.Pause();
     ASSERT_EQ(sink.draws.size(), 1u);
@@ -218,32 +246,32 @@ TEST(StudioQueueTest, ClientCallbackPausesDeferralUntilItsOwnDrawingFinishes)
     queue.Resume(deferred);
     queue.Submit(MakePacket(3, 3));
     EXPECT_EQ(sink.draws.size(), 2u);
-    queue.EndOpaquePass();
+    EndPass(queue);
     ASSERT_EQ(sink.draws.size(), 3u);
     EXPECT_EQ(sink.begins, 3);
 }
 
-TEST(StudioQueueTest, MutableSkinPacketIsIsolatedFromDeferredPackets)
+TEST_P(StudioQueuePassTest, MutableSkinPacketIsIsolatedFromDeferredPackets)
 {
     RecordingStudioSink sink;
     render::StudioDrawQueue queue(sink);
-    queue.BeginOpaquePass(true);
+    BeginPass(queue, true);
     queue.Submit(MakePacket(1, 1));
     queue.Submit(MakePacket(2, 2), false);
     ASSERT_EQ(sink.draws.size(), 2u);
     EXPECT_EQ(sink.begins, 2);
     queue.Submit(MakePacket(3, 3));
     EXPECT_EQ(sink.draws.size(), 2u);
-    queue.EndOpaquePass();
+    EndPass(queue);
     EXPECT_EQ(sink.draws.size(), 3u);
 }
 
-TEST(StudioQueueTest, ObserverCountsOnlySubmittedRunsAndClassifiesImmediatePackets)
+TEST_P(StudioQueuePassTest, ObserverCountsOnlySubmittedRunsAndClassifiesImmediatePackets)
 {
     RecordingStudioSink sink;
     QueueObservations observed;
     render::StudioDrawQueue queue(sink, {&observed, ObserveFlush, ObserveImmediate});
-    queue.BeginOpaquePass(true);
+    BeginPass(queue, true);
     queue.Submit(MakePacket(1, 1));
     queue.Submit(MakePacket(2, 2));
     EXPECT_TRUE(observed.flushes.empty());
@@ -256,15 +284,15 @@ TEST(StudioQueueTest, ObserverCountsOnlySubmittedRunsAndClassifiesImmediatePacke
     EXPECT_EQ(observed.flushes.size(), 1u);
 
     queue.Submit(MakePacket(4, 4));
-    queue.BeginOpaquePass(false);
+    BeginPass(queue, false);
     queue.Submit(MakePacket(5, 5));
-    queue.EndOpaquePass();
-    queue.BeginOpaquePass(true);
+    EndPass(queue);
+    BeginPass(queue, true);
     bool deferred = queue.Pause();
     queue.Submit(MakePacket(6, 6));
     queue.Resume(deferred);
     queue.Submit(MakePacket(7, 7), false);
-    queue.EndOpaquePass();
+    EndPass(queue);
     EXPECT_EQ(
         observed.immediate,
         (std::vector<render::StudioImmediateReason>{
@@ -278,11 +306,11 @@ TEST(StudioQueueTest, ObserverCountsOnlySubmittedRunsAndClassifiesImmediatePacke
     EXPECT_EQ(observed.flushes.back().second, 1u);
 }
 
-TEST(StudioQueueTest, RecyclesMeshStorageOnlyAfterItsDrawsComplete)
+TEST_P(StudioQueuePassTest, RecyclesMeshStorageOnlyAfterItsDrawsComplete)
 {
     RecordingStudioSink sink;
     render::StudioDrawQueue queue(sink);
-    queue.BeginOpaquePass(true);
+    BeginPass(queue, true);
     render::StudioDrawPacket packet = MakePacket(7, 12);
     packet.meshes.reserve(32);
     packet.meshes[0].material.emplace();
@@ -291,7 +319,7 @@ TEST(StudioQueueTest, RecyclesMeshStorageOnlyAfterItsDrawsComplete)
     queue.Submit(std::move(packet));
     EXPECT_EQ(queue.AcquireMeshStorage().capacity(), 0u);
 
-    queue.EndOpaquePass();
+    EndPass(queue);
     ASSERT_EQ(sink.draws.size(), 1u);
     EXPECT_EQ(sink.draws[0].meshes[0].material->program, "owned");
     std::vector<render::StudioQueuedMesh> recycled = queue.AcquireMeshStorage();
@@ -305,7 +333,7 @@ TEST(StudioQueueTest, RecyclesMeshStorageOnlyAfterItsDrawsComplete)
     EXPECT_EQ(recycled[0].texture, 0u);
 }
 
-TEST(StudioQueueTest, ResetReleasesRecycledMeshStorageAndDiscardsPendingDraws)
+TEST_P(StudioQueuePassTest, ResetReleasesRecycledMeshStorageAndDiscardsPendingDraws)
 {
     RecordingStudioSink sink;
     render::StudioDrawQueue queue(sink);
@@ -316,14 +344,14 @@ TEST(StudioQueueTest, ResetReleasesRecycledMeshStorageAndDiscardsPendingDraws)
     render::StudioDrawPacket packet;
     packet.meshes = std::move(recycled);
     queue.Submit(std::move(packet));
-    queue.BeginOpaquePass(true);
+    BeginPass(queue, true);
     queue.Submit(MakePacket(2, 2));
     queue.Reset();
     EXPECT_EQ(queue.AcquireMeshStorage().capacity(), 0u);
     EXPECT_EQ(sink.draws.size(), 2u);
 }
 
-TEST(StudioQueueTest, OversizedMeshStorageDoesNotRemainInTheReusePool)
+TEST_P(StudioQueuePassTest, OversizedMeshStorageDoesNotRemainInTheReusePool)
 {
     RecordingStudioSink sink;
     render::StudioDrawQueue queue(sink);
@@ -334,18 +362,18 @@ TEST(StudioQueueTest, OversizedMeshStorageDoesNotRemainInTheReusePool)
     EXPECT_EQ(queue.AcquireMeshStorage().capacity(), 0u);
 }
 
-TEST(StudioQueueTest, BoundsTheCombinedCapacityOfRecycledMeshStorage)
+TEST_P(StudioQueuePassTest, BoundsTheCombinedCapacityOfRecycledMeshStorage)
 {
     RecordingStudioSink sink;
     render::StudioDrawQueue queue(sink);
-    queue.BeginOpaquePass(true);
+    BeginPass(queue, true);
     for (int index = 0; index < 128; ++index)
     {
         render::StudioDrawPacket packet = MakePacket(1, 1);
         packet.meshes.reserve(256);
         queue.Submit(std::move(packet));
     }
-    queue.EndOpaquePass();
+    EndPass(queue);
     size_t bytes = 0;
     size_t reused = 0;
     for (;;)
@@ -386,7 +414,7 @@ namespace
     }
 } // namespace
 
-TEST(StudioQueueTest, LiveMaterialStorageReusesNestedCapacitiesAndOwnsEveryPublishedValue)
+TEST_P(StudioQueuePassTest, LiveMaterialStorageReusesNestedCapacitiesAndOwnsEveryPublishedValue)
 {
     RecordingStudioSink sink;
     render::StudioDrawQueue queue(sink);
@@ -424,7 +452,7 @@ TEST(StudioQueueTest, LiveMaterialStorageReusesNestedCapacitiesAndOwnsEveryPubli
     EXPECT_EQ(sink.draws[0].meshes[0].material->params[0].value.texture_ref, std::string(200, 't'));
 }
 
-TEST(StudioQueueTest, MeshPayloadBudgetIncludesInactiveStringsAndReaccountsChangedCapacities)
+TEST_P(StudioQueuePassTest, MeshPayloadBudgetIncludesInactiveStringsAndReaccountsChangedCapacities)
 {
     render::StudioMeshStorage storage(1024 * 1024);
     std::vector<render::StudioQueuedMesh> meshes(1);
@@ -449,7 +477,7 @@ TEST(StudioQueueTest, MeshPayloadBudgetIncludesInactiveStringsAndReaccountsChang
     EXPECT_EQ(storage.Acquire().capacity(), 0u);
 }
 
-TEST(StudioQueueTest, RetirementCannotBeAcquiredFromAnySubmissionOrFlushCallback)
+TEST_P(StudioQueuePassTest, RetirementCannotBeAcquiredFromAnySubmissionOrFlushCallback)
 {
     struct Sink : RecordingStudioSink
     {
@@ -482,3 +510,32 @@ TEST(StudioQueueTest, RetirementCannotBeAcquiredFromAnySubmissionOrFlushCallback
     queue.Submit(MakePacket(1, 1));
     EXPECT_GT(queue.AcquireMeshStorage().capacity(), 0u);
 }
+
+TEST(StudioQueueTest, TransparentPassKeepsViewCountersAndEndsBeforeViewmodel)
+{
+    RecordingStudioSink sink;
+    render::StudioDrawQueue queue(sink);
+    queue.BeginOpaquePass(true);
+    queue.Submit(MakePacket(1, 1));
+    queue.EndOpaquePass();
+
+    queue.BeginTransparentPass(true);
+    queue.Submit(MakePacket(2, 2));
+    queue.Submit(MakePacket(3, 3));
+    EXPECT_EQ(sink.draws.size(), 1u);
+    queue.EndTransparentPass();
+
+    ASSERT_EQ(sink.draws.size(), 3u);
+    EXPECT_EQ(sink.draws[1].vao, 2u);
+    EXPECT_EQ(sink.draws[2].vao, 3u);
+    EXPECT_EQ(queue.stats().packets, 3u);
+    EXPECT_EQ(sink.begins, 2);
+    EXPECT_EQ(sink.ends, 2);
+
+    queue.Submit(MakePacket(4, 4));
+    ASSERT_EQ(sink.draws.size(), 4u);
+    EXPECT_EQ(sink.draws.back().vao, 4u);
+    EXPECT_EQ(sink.begins, 3);
+}
+
+INSTANTIATE_TEST_SUITE_P(EntityPasses, StudioQueuePassTest, testing::Bool());

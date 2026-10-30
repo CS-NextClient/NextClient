@@ -340,6 +340,8 @@ void R_DrawTEntitiesOnList(goldsrc::qboolean clientOnly)
 
     if (clientOnly == false)
     {
+        render::Studio_BeginTransparentPass();
+
         for (int i = 0; i < *p_numTransObjs; ++i)
         {
             goldsrc::cl_entity_t* ent = (*p_transObjects)[i].pEnt;
@@ -358,6 +360,7 @@ void R_DrawTEntitiesOnList(goldsrc::qboolean clientOnly)
                 switch (ent->model->type)
                 {
                     case goldsrc::mod_sprite:
+                        render::Studio_Flush(render::StudioFlushReason::Client);
                         R_SetupAttachmentPoint(ent);
 
                         if (ent->curstate.rendermode == goldsrc::kRenderGlow)
@@ -377,6 +380,7 @@ void R_DrawTEntitiesOnList(goldsrc::qboolean clientOnly)
                         break;
 
                     case goldsrc::mod_brush:
+                        render::Studio_Flush(render::StudioFlushReason::Brush);
                         if (*p_g_bUserFogOn)
                         {
                             if (ent->curstate.rendermode != goldsrc::kRenderGlow && ent->curstate.rendermode != goldsrc::kRenderTransAdd)
@@ -386,6 +390,7 @@ void R_DrawTEntitiesOnList(goldsrc::qboolean clientOnly)
                         break;
 
                     case goldsrc::mod_alias:
+                        render::Studio_Flush(render::StudioFlushReason::Client);
                         R_DrawAliasModel(ent);
                         break;
 
@@ -401,6 +406,8 @@ void R_DrawTEntitiesOnList(goldsrc::qboolean clientOnly)
                 }
             }
         }
+
+        render::Studio_EndTransparentPass();
     }
 
     GL_DisableMultitexture();

@@ -7,9 +7,7 @@ The studio renderer replaces geometry submission while GoldSrc owns the surround
 - `StudioInterceptState` patches the studio API before the client copies it. Keep the installed
   interceptor entry points callable after shutdown and forward them to the original API:
   the client retains its copied pointers.
-- Defer independent packets only in the opaque entity traversal. Capture bones, matrices,
-  lighting, raster inputs, materials and the result of `StudioSetupSkin` while the original
-  entity and forced flags are current. Submission must not read a live entity or shared pose.
+- Defer independent packets only in the opaque and transparent entity traversals, preserving their existing list order. Capture bones, matrices, lighting, raster inputs, materials and the result of `StudioSetupSkin` while the original entity and forced flags are current. Submission must not read a live entity or shared pose.
 - Preparation is keyed by model draw serial, header and entity. Share the bone capture and
   texture-header resolution across body parts, but never across different poses. Capture
   into reused storage must initialize every consumed field, including normal-pass shell color.
@@ -28,9 +26,7 @@ The studio renderer replaces geometry submission while GoldSrc owns the surround
   renderer uses MultiDraw for one range too; monitoring's Single classifies range count.
   Rendering owners issue GL calls and own their CPU/GPU scopes; diagnostics receive numeric
   results and never submit geometry.
-- Drain before brush, stock fallback/shadow, studio debug drawing, triangle Begin, actual
-  studio event callbacks, resource mutation and opaque pass end. Pause deferral throughout
-  event callbacks. No studio shader may stay active during arbitrary client preparation.
+- Drain before sprite, brush, alias, stock fallback/shadow, studio debug drawing, triangle Begin, actual studio event callbacks, resource mutation and each entity pass end. End transparent deferral before fixed-function cleanup and client transparent triangles. Pause deferral throughout event callbacks. No studio shader may stay active during arbitrary client preparation.
 - Engine remap textures can change contents. Keep models with Remap*/DM_Base.bmp skins
   immediate, and retain r_studio_queue 0 for custom raw-GL studio callbacks without barriers.
 - Preserve rejection handling: queued geometry from the rejected submission must not also

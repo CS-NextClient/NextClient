@@ -19,6 +19,8 @@
 #include <glad/glad.h>
 #include <ncl_perf/profiler.h>
 #include <ncl_studio/StudioMesh.h>
+#include <ncl_utils/scope_exit.h>
+#include <goldsrc/engine/video.h>
 #include <next_engine_mini/MaterialEditInterface.h>
 #include <next_engine_mini/render_cvars.h>
 
@@ -55,6 +57,8 @@
 #include "graphics/render/effects/studio_effects.h"
 #include "graphics/render/StudioIntercept.h"
 #include "graphics/render/StudioSubmit.h"
+
+void R_DrawTEntitiesOnList(goldsrc::qboolean client_only);
 
 namespace
 {
@@ -538,6 +542,12 @@ namespace
     };
 
     CaptureState g_Capture;
+    std::function<int(int)> g_TransparentModelDraw;
+
+    int DrawTransparentCaptureModel(int flags)
+    {
+        return g_TransparentModelDraw(flags);
+    }
     PFNGLMULTIDRAWELEMENTSPROC g_OriginalMultiDraw{};
     PFNGLBUFFERSUBDATAPROC g_OriginalBoneUpload{};
 
@@ -1029,6 +1039,142 @@ namespace
     };
 #endif
 } // namespace
+
+TEST_F(StudioCaptureGlTest, TransparentTraversalDrainsBeforeExternalDrawsAndClientCleanup)
+{
+    CaptureModel first("models/transparent_first.mdl", {1});
+    CaptureModel second("models/transparent_second.mdl", {1});
+    first.model.type = goldsrc::mod_studio;
+    second.model.type = goldsrc::mod_studio;
+    goldsrc::cl_entity_t entities[5]{};
+    goldsrc::model_t external_models[3]{};
+    const goldsrc::modtype_t external_types[] = {goldsrc::mod_sprite, goldsrc::mod_brush, goldsrc::mod_alias};
+    entities[0].model = &first.model;
+    entities[1].model = &second.model;
+    for (int index = 0; index < 5; index++)
+    {
+        entities[index].index = index + 1;
+        entities[index].curstate.renderamt = 255;
+    }
+    for (int index = 0; index < 3; index++)
+    {
+        external_models[index].type = external_types[index];
+        entities[index + 2].model = &external_models[index];
+    }
+    const int order[] = {0, 1, 2, 0, 1, 3, 0, 1, 4, 0, 1};
+    goldsrc::transObjRef objects[11]{};
+    for (size_t index = 0; index < std::size(order); index++)
+    {
+        objects[index].pEnt = &entities[order[index]];
+    }
+
+    studio_test::Chain<int, goldsrc::cl_entity_t*> blend_chain;
+    studio_test::Hook<int, goldsrc::cl_entity_t*> blend_hook;
+    blend_hook.callback = [](goldsrc::cl_entity_t*) { return 255; };
+    studio_test::Chain<void, goldsrc::cl_entity_t*> external_chain;
+    studio_test::Hook<void, goldsrc::cl_entity_t*> external_hook;
+    int external_draws = 0;
+    external_hook.callback = [&](goldsrc::cl_entity_t* entity) {
+        external_draws++;
+        EXPECT_EQ(entity, &entities[external_draws + 1]);
+        EXPECT_EQ(g_Capture.draws.size(), static_cast<size_t>(external_draws * 2));
+        GLint program = -1;
+        glGetIntegerv(GL_CURRENT_PROGRAM, &program);
+        EXPECT_EQ(program, 0);
+    };
+    studio_test::Chain<void> triangles_chain;
+    studio_test::Hook<void> triangles_hook;
+    bool client_called = false;
+    triangles_hook.callback = [&] {
+        client_called = true;
+        EXPECT_EQ(g_Capture.draws.size(), 8u);
+        EXPECT_TRUE(glIsEnabled(GL_ALPHA_TEST));
+        GLint environment = 0;
+        glGetTexEnviv(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, &environment);
+        EXPECT_EQ(environment, GL_MODULATE);
+    };
+    nitroapi::EngineData* engine = get_engine().GetEngineData();
+    engine->CL_FxBlend.SetChain(&blend_chain);
+    engine->CL_FxBlend.SetHook(&blend_hook);
+    engine->R_DrawSpriteModel.SetChain(&external_chain);
+    engine->R_DrawSpriteModel.SetHook(&external_hook);
+    engine->R_DrawBrushModel.SetChain(&external_chain);
+    engine->R_DrawBrushModel.SetHook(&external_hook);
+    engine->R_DrawAliasModel.SetChain(&external_chain);
+    engine->R_DrawAliasModel.SetHook(&external_hook);
+    engine->ClientDLL_DrawTransparentTriangles.SetChain(&triangles_chain);
+    engine->ClientDLL_DrawTransparentTriangles.SetHook(&triangles_hook);
+
+    goldsrc::r_studio_interface_t studio{1, DrawTransparentCaptureModel, nullptr};
+    goldsrc::cl_entity_t* current = nullptr;
+    goldsrc::transObjRef* object_list = objects;
+    int object_count = 11;
+    float blend = 1;
+    vec3_t origin{};
+    goldsrc::qboolean fog = false;
+    goldsrc::qboolean multitexture = false;
+    goldsrc::cvar_t draw_entities{};
+    draw_entities.value = 1;
+    goldsrc::r_studio_interface_t* old_studio = pStudioAPI;
+    goldsrc::cl_entity_t** old_current = p_currententity;
+    goldsrc::transObjRef** old_objects = p_transObjects;
+    int* old_count = p_numTransObjs;
+    float* old_blend = p_r_blend;
+    vec3_t* old_origin = p_r_entorigin;
+    goldsrc::qboolean* old_fog = p_g_bUserFogOn;
+    goldsrc::qboolean* old_multitexture = p_mtexenabled;
+    goldsrc::cvar_t* old_draw_entities = r_drawentities;
+    PFNGLDISABLEPROC old_disable = qglDisable;
+    PFNGLENABLEPROC old_enable = qglEnable;
+    PFNGLTEXENVFPROC old_texture_environment = qglTexEnvf;
+    auto restore = ncl_utils::MakeScopeExit([&] {
+        pStudioAPI = old_studio;
+        p_currententity = old_current;
+        p_transObjects = old_objects;
+        p_numTransObjs = old_count;
+        p_r_blend = old_blend;
+        p_r_entorigin = old_origin;
+        p_g_bUserFogOn = old_fog;
+        p_mtexenabled = old_multitexture;
+        r_drawentities = old_draw_entities;
+        qglDisable = old_disable;
+        qglEnable = old_enable;
+        qglTexEnvf = old_texture_environment;
+        g_TransparentModelDraw = {};
+    });
+    pStudioAPI = &studio;
+    p_currententity = &current;
+    p_transObjects = &object_list;
+    p_numTransObjs = &object_count;
+    p_r_blend = &blend;
+    p_r_entorigin = &origin;
+    p_g_bUserFogOn = &fog;
+    p_mtexenabled = &multitexture;
+    r_drawentities = &draw_entities;
+    qglDisable = glad_glDisable;
+    qglEnable = glad_glEnable;
+    qglTexEnvf = glad_glTexEnvf;
+    g_TransparentModelDraw = [&](int flags) {
+        EXPECT_EQ(flags, goldsrc::STUDIO_RENDER | goldsrc::STUDIO_EVENTS);
+        EXPECT_EQ(g_Capture.draws.size(), static_cast<size_t>(external_draws * 2));
+        BeginModel(current == &entities[0] ? first : second, *current, current == &entities[0] ? -0.5f : 0.5f);
+        DrawPart(0);
+        EndModel();
+        return 1;
+    };
+
+    R_DrawTEntitiesOnList(false);
+
+    EXPECT_EQ(external_draws, 3);
+    EXPECT_TRUE(client_called);
+    EXPECT_EQ(object_count, 0);
+    EXPECT_EQ(blend, 1.0f);
+    ASSERT_EQ(g_Capture.draws.size(), 8u);
+    for (size_t index = 0; index < g_Capture.draws.size(); index++)
+    {
+        EXPECT_EQ(g_Capture.draws[index].bone_x, index % 2 == 0 ? -0.5f : 0.5f);
+    }
+}
 
 TEST_F(StudioCaptureGlTest, CapturesTwoModelsBeforeTheirEntitySkinAndPoseChange)
 {

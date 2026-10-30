@@ -181,13 +181,15 @@ namespace render
         StudioMeshStorage mesh_storage_{1024 * 1024};
         StudioQueueStats stats_;
         bool deferred_{};
-        bool opaque_{};
+        bool pass_active_{};
         bool queue_enabled_{};
 
     public:
         explicit StudioDrawQueue(StudioSubmissionSink& sink, StudioQueueCallbacks callbacks = {});
         void BeginOpaquePass(bool enabled);
         void EndOpaquePass();
+        void BeginTransparentPass(bool enabled);
+        void EndTransparentPass();
         std::vector<StudioQueuedMesh> AcquireMeshStorage();
         void Submit(const StudioDrawPacket& packet, bool allow_deferred = true);
         void Submit(StudioDrawPacket&& packet, bool allow_deferred = true);

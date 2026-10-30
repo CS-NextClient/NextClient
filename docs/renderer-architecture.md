@@ -12,7 +12,7 @@ The implementation has these properties:
 |---|---|
 | Geometry storage | All parts of one model file occupy one vertex/index buffer pair. Mesh boundaries remain intact. |
 | Mesh batching | Meshes from the selected body parts of one model are grouped and submitted through `glMultiDrawElements`. |
-| Repeated models | Instances share cached geometry when possible and consecutive opaque packets share a GL state scope. Each pose retains its own draws. |
+| Repeated models | Instances share cached geometry when possible and consecutive eligible packets within either entity traversal share a GL state scope. Each pose retains its own draws. |
 | Group key | Equal program, skin, captured texture and all consumed mesh/material inputs within one packet. |
 | Program selection | The program changes when the next group requires it. Many modes of one program are selected through uniforms. |
 | Requirements and default | `r_studio_shader` defaults to `1`. The studio path requires OpenGL 3.3. |
@@ -87,7 +87,7 @@ flowchart TD
     C --> D{Studio_TryDraw accepts submission}
     D -->|yes| E[Cached geometry and mesh queue]
     E --> F[Capture independent draw packet]
-    F --> Q{Defer opaque packet}
+    F --> Q{Defer entity packet}
     Q -->|yes| R[Queue packets in scene order]
     Q -->|no| G[One GL scope submits ordered packets]
     R -->|brush fallback direct draw or stage end| G
@@ -145,7 +145,7 @@ Resource draining precedes selective interception invalidation during model load
 
 `StudioSetupSkin` runs during capture, while current entity, remap colors and forced face flags still describe that submission. The later GL submission uses the captured unit-0 binding. Forced chrome therefore retains the shell sprite the client selected. Skin selection is reused for equal skin indices within a packet.
 
-Completed packets from the first opaque traversal enter `render::StudioDrawQueue` in order. A base pass precedes its shell pass, and both precede the next entity. The full `cl_visedicts` remains available for FOLLOW parent preparation. The queue holds at most 128 packets; when it fills, the preceding run is submitted before the next packet is added. Body-part mesh storage grows until the current submission ends. On rejection, only that submission's appended meshes are removed.
+Completed packets from the opaque traversal and then the transparent traversal enter `render::StudioDrawQueue` in their existing list order. A base pass precedes its shell pass, and both precede the next entity. The full `cl_visedicts` remains available for FOLLOW parent preparation. The queue holds at most 128 packets; when it fills, the preceding run is submitted before the next packet is added. Body-part mesh storage grows until the current submission ends. On rejection, only that submission's appended meshes are removed.
 
 Previously accepted parts drain before stock drawing; later parts of the same draw remain on the stock path. Collected meshes can be assembled into a packet when switching models or renderers because all required inputs have already been copied.
 
@@ -153,9 +153,9 @@ Each packet retains the captured model bone count. The bone UBO holds 6144 bytes
 
 Mesh vectors and their complete material values remain owned until submission and its flush callback finish. Queue retirement then admits live mesh storage under its retained payload budget. Temporary count and offset arrays use the existing 32 MiB scratch arena for built-in draws when space is available. Packets with nonlegacy material programs and insufficient-space cases use reusable owned arrays. Image preparation and submission use the shared scratch arena in separate phases.
 
-Brush drawing, stock submission/shadow, studio debug drawing, `TriAPI::Begin`, actual `HUD_StudioEvent` callbacks, resource replacement and opaque pass end are flush barriers. Deferral is paused throughout a studio event callback. Transparency, first-person weapons and ordinary previews submit immediately. Models with `Remap*` or `DM_Base.bmp` textures also submit immediately: the engine can replace their texture contents for new colors. This isolates mutable remap resources while ordinary small models can share a run.
+Sprite, brush and alias drawing, stock submission/shadow, studio debug drawing, `TriAPI::Begin`, actual `HUD_StudioEvent` callbacks, resource replacement and each entity pass end are flush barriers. Transparent deferral ends before fixed-function cleanup and client transparent triangles. Deferral is paused throughout a studio event callback. First-person weapons and ordinary previews submit immediately. Models with `Remap*` or `DM_Base.bmp` textures also submit immediately: the engine can replace their texture contents for new colors. This isolates mutable remap resources while ordinary small models can share a run.
 
-`r_studio_queue 1` enables consecutive opaque packets; its default is `1`. A custom studio renderer issuing raw OpenGL inside `StudioDrawModel`/`StudioDrawPlayer` must use `render::Studio_Flush`/`render::StudioQueuePause` at its direct-drawing boundary or set `r_studio_queue 0`. The intercepted Studio API calls, `TriAPI::Begin`, and event callbacks provide the supported queue-submission boundaries.
+`r_studio_queue 1` enables consecutive eligible packets in opaque and transparent entity traversals; its default is `1`. A custom studio renderer issuing raw OpenGL inside `StudioDrawModel`/`StudioDrawPlayer` must use `render::Studio_Flush`/`render::StudioQueuePause` at its direct-drawing boundary or set `r_studio_queue 0`. The intercepted Studio API calls, `TriAPI::Begin`, and event callbacks provide the supported queue-submission boundaries.
 
 Queue discard during disconnect, API teardown, fatal shutdown, and context loss performs no GL calls. Geometry replacement drains valid packets before deleting referenced geometry. Each packet owns copies of its material values.
 
@@ -220,7 +220,7 @@ Base skins use texture unit 0. Material samplers start at 3, in manifest declara
 | OpenGL 3.3 compatibility | GoldSrc fixed-function stages continue using the same context. The shaders also consume `gl_ModelViewProjectionMatrix`. |
 | Static buffers and GPU skinning | Model geometry stays constant while its pose changes. A separate UBO transfers transforms instead of CPU-transformed vertices. |
 | Collect all body parts | A texture can recur across different body parts. Collecting the model allows those ranges to share a submission. |
-| Own each packet's mutable inputs | Skin selection and pose are copied while the engine processes the corresponding entity. The queue can therefore hold packets from consecutive opaque models. |
+| Own each packet's mutable inputs | Skin selection and pose are copied while the engine processes the corresponding entity. The queue can therefore hold packets from consecutive models within either entity traversal. |
 | MultiDraw over existing ranges | Nonadjacent ranges of one buffer can share an API call without rebuilding geometry every frame. |
 | Preserve authored mesh order | Equal-depth opaque surfaces and additive surfaces depend on submission order. Only adjacent compatible meshes share a group. |
 | Compact vertices and released CPU arrays | Bone indices occupy bytes; the shell normal uses normalized signed bytes. This reduces vertex data and memory use in the 32-bit process. |

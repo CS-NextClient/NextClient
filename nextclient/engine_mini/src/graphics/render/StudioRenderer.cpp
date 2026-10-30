@@ -568,6 +568,18 @@ namespace render
         performance::reporting::StudioQueuePeak(monitor_, queue_.stats().max_run);
     }
 
+    void StudioRenderer::BeginTransparentPass(bool enabled)
+    {
+        FlushPending();
+        queue_.BeginTransparentPass(enabled);
+    }
+
+    void StudioRenderer::EndTransparentPass()
+    {
+        FlushPending();
+        queue_.EndTransparentPass();
+    }
+
     void StudioRenderer::EndModel()
     {
         FlushPending();

@@ -35,7 +35,7 @@ flowchart TD
     H --> I["Restore GL state"]
 ```
 
-Each model pass produces a packet containing copies of its pose, lighting, selected skins, material values, and effective engine fog state. The built-in Studio shaders apply linear, exponential, or squared-exponential fog using eye-space depth while preserving surface alpha. Consecutive opaque packets share one GL state save/restore cycle and can reuse geometry bindings. Each packet explicitly binds its first program. Each packet uploads its own pose and issues its own geometry calls. Transparent models, the first-person weapon, and mutable remap skins submit immediately.
+Each model pass produces a packet containing copies of its pose, lighting, selected skins, material values, and effective engine fog state. The built-in Studio shaders apply linear, exponential, or squared-exponential fog using eye-space depth while preserving surface alpha. Consecutive eligible packets within each opaque or transparent entity traversal share one GL state save/restore cycle and can reuse geometry bindings. Each packet explicitly binds its first program. Each packet uploads its own pose and issues its own geometry calls. Transparent traversal retains its object order and drains before sprites, brush/alias models, and client transparent triangles. The first-person weapon and mutable remap skins submit immediately.
 
 Compatible mesh ranges within one packet share a MultiDraw call. The queue preserves entity order; grouping operates within each packet. Unsupported submissions use the stock engine path.
 
@@ -53,7 +53,7 @@ Shader sources and program manifests are embedded in the engine module. Programs
 
 Specialized coverage, picking alpha, and effects share the validated `studio_effects_v1` manifest contract. The renderer owns semantic roles; embedded manifests retain editor presentation. `ServerMaterials` owns network authorization and writes zero overrides for restricted activations, including omitted values whose embedded defaults are positive. Contract support alone does not authorize activation.
 
-The shader path requires an OpenGL 3.3 compatibility context. `r_studio_shader 1` enables it; the default is `1`. `r_studio_queue 1` enables opaque deferral, and `r_studio_materials 1` enables authored materials. Both settings default to `1`.
+The shader path requires an OpenGL 3.3 compatibility context. `r_studio_shader 1` enables it; the default is `1`. `r_studio_queue 1` enables ordered deferral in opaque and transparent entity traversals, and `r_studio_materials 1` enables authored materials. Both settings default to `1`.
 
 ## Renderer lifetime
 
