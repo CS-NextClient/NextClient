@@ -12,8 +12,7 @@ A material specifies a shader program, parameter values, and texture references.
 4. Set `uWearMap` to a threshold map from the shipped collection. Set `uUnderlay` to an image from `materials/surfaces/` and adjust `uUnderlayTint`.
 5. Adjust `uWear` and `uWearSoftness` to inspect the exposed layer and its transition.
 6. Adjust `uSpecular` and `uGloss` for the scene-light highlight. Use `uSphereMap` and `uReflectivity` for a matcap reflection, sampled from an image of a lit sphere according to the surface normal and camera position. Select a reflection mask through `uReflectMask`. Use `uReflectMaskTransform` to place it and `uReflectTint` to multiply the colors of both the scene-light highlight and the matcap reflection.
-7. Use the panel's sweep control to inspect the full ranges of `uWear` and `uLayerMix`. A server can change these values per entity.
-8. Stop the sweep, set the `uWear` and `uLayerMix` values to save, and save the document as `models/v_ak47.mat`.
+7. Set the `uWear` and `uLayerMix` values to save, and save the document as `models/v_ak47.mat`.
 
 The coating wears away in dark regions of the wear map before it wears away in light regions. A reflection mask multiplies highlight strength: white reflects fully, black suppresses it. Use masks from `materials/masks/reflect/` for this purpose. `uReflectWear` controls how highlights follow exposed areas: `1` restricts them to exposed areas, `-1` restricts them to the remaining coating, and `0` uses the reflection mask alone. Keep wear thresholds and reflection strength in separate maps when authoring both properties.
 

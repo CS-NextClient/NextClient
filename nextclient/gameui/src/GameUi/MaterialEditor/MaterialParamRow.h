@@ -48,7 +48,6 @@ private:
     std::string m_Hint;
     render::MaterialEditParamType m_Type;
     render::MaterialEditParamWidget m_Widget;
-    bool m_Instance;
     bool m_HasRange;
     float m_Min;
     float m_Max;
@@ -94,11 +93,6 @@ public:
     const std::string& get_name() const
     {
         return m_Name;
-    }
-
-    bool is_instance() const
-    {
-        return m_Instance;
     }
 
     bool is_color() const

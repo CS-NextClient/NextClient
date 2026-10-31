@@ -147,7 +147,6 @@ CMaterialParamRow::CMaterialParamRow(
     m_Hint = param.hint != nullptr ? param.hint : "";
     m_Type = param.type;
     m_Widget = param.widget;
-    m_Instance = param.instance;
     m_HasRange = param.has_range;
     m_Min = param.min_value;
     m_Max = param.max_value;

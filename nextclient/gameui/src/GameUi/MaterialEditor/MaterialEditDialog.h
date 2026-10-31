@@ -97,7 +97,6 @@ private:
     std::array<vgui2::CheckButton*, 2> m_SiblingTargets{};
     std::vector<std::string> m_RelatedModels;
 
-    vgui2::Button* m_pSweep{};
     vgui2::Button* m_pSave{};
     vgui2::Button* m_pStub{};
 
@@ -136,8 +135,6 @@ private:
     std::string m_Model;
     std::string m_Texture;
     std::string m_Program;
-    bool m_Sweeping{};
-    float m_SweepPhase{};
 
 public:
     CMaterialEditDialog(
@@ -200,7 +197,6 @@ private:
     void UpdateValidation();
     std::vector<SaveFailure> Save() override;
     void RenderSaveResult(const std::vector<SaveFailure>& failures);
-    void StepSweep();
     void ShowBrowser(const char* param);
     void CloseBrowser(bool accept = false);
     void ScanBrowserFolders();

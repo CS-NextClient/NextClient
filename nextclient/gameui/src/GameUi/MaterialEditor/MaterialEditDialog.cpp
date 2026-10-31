@@ -1,7 +1,6 @@
 #include "GameUi/MaterialEditor/MaterialEditDialog.h"
 
 #include <algorithm>
-#include <cmath>
 #include <utility>
 
 #include <FileSystem.h>
@@ -116,10 +115,6 @@ namespace
         }
     };
 
-    // One full pass of every instance parameter over its range, in seconds. Slow enough to
-    // watch, short enough that an author does not walk away.
-    constexpr float kSweepSeconds = 6.0f;
-
     const char* SourceToken(render::MaterialEditSource source)
     {
         switch (source)
@@ -204,9 +199,6 @@ CMaterialEditDialog::CMaterialEditDialog(
     m_ResourceSource(filesystem),
     m_ResourceCatalog(m_ResourceSource)
 {
-    m_Sweeping = false;
-    m_SweepPhase = 0.0f;
-
     SetTitle("#GameUI_MatEdit_Title", true);
     SetSizeable(false);
     SetDeleteSelfOnClose(true);
@@ -272,7 +264,6 @@ CMaterialEditDialog::CMaterialEditDialog(
         m_SiblingTargets[index] = new CheckButton(m_pControls, name, "");
     }
 
-    m_pSweep = new Button(m_pControls, "Sweep", "#GameUI_MatEdit_Sweep", this, "sweep");
     m_pSave = new Button(m_pControls, "Save", "#GameUI_MatEdit_Save", this, "save");
     m_pStub = new Button(m_pControls, "Stub", "#GameUI_MatEdit_Stub", this, "stub");
 
@@ -544,9 +535,8 @@ void CMaterialEditDialog::PerformLayout()
         m_SiblingTargets[index]->SetBounds(10, siblings_y + 22 + static_cast<int>(index) * 20, wide - 20, 20);
     }
 
-    m_pSweep->SetBounds(10, buttons_y, kButtonWide, 24);
-    m_pStub->SetBounds(10 + (kButtonWide + kButtonGap), buttons_y, kButtonWide, 24);
-    m_pSave->SetBounds(10 + 2 * (kButtonWide + kButtonGap), buttons_y, kButtonWide, 24);
+    m_pStub->SetBounds(10, buttons_y, kButtonWide, 24);
+    m_pSave->SetBounds(10 + (kButtonWide + kButtonGap), buttons_y, kButtonWide, 24);
 
     m_pLighting->SetBounds(10, kPageTop, wide - 20, tall - kPageTop - 44);
     // Wherever the page it is shown over leaves room for it.
@@ -560,7 +550,7 @@ void CMaterialEditDialog::PerformLayout()
             m_pState->SetBounds(10, tall - 40, kButtonWide, 24);
             break;
         default:
-            m_pState->SetBounds(10 + 3 * (kButtonWide + kButtonGap), buttons_y, kButtonWide, 24);
+            m_pState->SetBounds(10 + 2 * (kButtonWide + kButtonGap), buttons_y, kButtonWide, 24);
             break;
     }
 
@@ -598,7 +588,6 @@ void CMaterialEditDialog::ShowPage(Page page)
         m_pRows,
         m_pValidation,
         m_pCompare,
-        m_pSweep,
         m_pSave,
         m_pStub,
         m_pSkin,
@@ -1124,7 +1113,6 @@ void CMaterialEditDialog::BeginEditing()
         return;
     }
 
-    m_Sweeping = false;
     m_Editor.End();
 
     if (!m_Model.empty() && !m_Texture.empty() && m_Editor.Begin(m_Model.c_str(), m_Texture.c_str(), 0))
@@ -1560,22 +1548,6 @@ void CMaterialEditDialog::OnCommand(const char* command)
         return;
     }
 
-    if (V_stricmp(command, "sweep") == 0)
-    {
-        m_Sweeping = !m_Sweeping;
-        m_SweepPhase = 0.0f;
-
-        if (!m_Sweeping)
-        {
-            for (CMaterialParamRow* row : m_Rows)
-            {
-                row->Refresh();
-            }
-        }
-
-        return;
-    }
-
     if (V_stricmp(command, "save") == 0)
     {
         RenderSaveResult(Save());
@@ -1671,40 +1643,6 @@ void CMaterialEditDialog::RenderSaveResult(const std::vector<SaveFailure>& save_
     box->DoModal();
 }
 
-void CMaterialEditDialog::StepSweep()
-{
-    if (!m_Editor.is_editing())
-    {
-        return;
-    }
-
-    const char* program = m_Editor.get_edited_program();
-
-    for (int i = 0; i < m_Editor.GetParamCount(program); i++)
-    {
-        render::MaterialEditParam param;
-
-        if (!m_Editor.GetParam(program, i, &param) || !param.instance || !param.has_range)
-        {
-            continue;
-        }
-
-        // A triangle rather than a saw: the way back is as informative as the way out, and
-        // a jump from full wear to none reads as a glitch rather than as a new pass.
-        float t = m_SweepPhase > 1.0f ? 2.0f - m_SweepPhase : m_SweepPhase;
-
-        m_Editor.SetScalar(param.name, param.min_value + (param.max_value - param.min_value) * t);
-    }
-
-    for (CMaterialParamRow* row : m_Rows)
-    {
-        if (row->is_instance())
-        {
-            row->Refresh();
-        }
-    }
-}
-
 void CMaterialEditDialog::OnThink()
 {
     if (m_Closing)
@@ -1730,13 +1668,6 @@ void CMaterialEditDialog::OnThink()
     if (IsVisible() && input()->GetAppModalSurface() == 0 && !GameConsole().IsConsoleVisible())
     {
         input()->SetAppModalSurface(GetVPanel());
-    }
-
-    if (m_Sweeping && !m_Transitions.is_pending())
-    {
-        m_SweepPhase = std::fmod(m_SweepPhase + m_PreviewState.get_elapsed() / kSweepSeconds, 2.0f);
-        StepSweep();
-        MarkMaterialChanged();
     }
 }
 
@@ -1884,7 +1815,6 @@ void CMaterialEditDialog::ApplyTransition(const TransitionRequest& request)
 
         m_Editor.End();
 
-        m_Sweeping = false;
         m_Model = model;
         m_Texture.clear();
         m_PreviewState.SetModel(model.c_str(), info);
