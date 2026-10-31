@@ -3,6 +3,7 @@
 #include <utility>
 #include <vector>
 
+#include "StudioTestPose.h"
 #include "graphics/render/StudioQueue.h"
 
 namespace
@@ -76,9 +77,9 @@ namespace
 
     render::StudioDrawPacket MakePacket(unsigned int vao, float bone)
     {
-        render::StudioDrawPacket packet;
+        render::StudioDrawPacket packet{.bones = CapturePose()};
         packet.vao = vao;
-        packet.bones[0] = bone;
+        packet.bones = CapturePose({{0, bone}}, packet.bones);
         packet.meshes.emplace_back();
         packet.meshes.back().index_count = 3;
 
@@ -126,7 +127,7 @@ TEST_P(StudioQueuePassTest, PacketsOwnPoseMaterialsAndRasterInputs)
     first.meshes[0].material->program = "first";
     queue.Submit(first);
 
-    first.bones[0] = 22;
+    first.bones = CapturePose({{0, 22.0f}}, first.bones);
     first.lighting.ambient = 20;
     first.blend = 1;
     first.modelview[12] = 8;
@@ -341,7 +342,7 @@ TEST_P(StudioQueuePassTest, ResetReleasesRecycledMeshStorageAndDiscardsPendingDr
     std::vector<render::StudioQueuedMesh> recycled = queue.AcquireMeshStorage();
     ASSERT_GT(recycled.capacity(), 0u);
     recycled.emplace_back();
-    render::StudioDrawPacket packet;
+    render::StudioDrawPacket packet{.bones = CapturePose()};
     packet.meshes = std::move(recycled);
     queue.Submit(std::move(packet));
     BeginPass(queue, true);

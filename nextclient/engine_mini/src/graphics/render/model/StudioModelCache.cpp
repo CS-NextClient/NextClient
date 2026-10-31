@@ -200,7 +200,8 @@ namespace render
         const goldsrc::studiohdr_t* texture_header,
         int texture_index,
         const goldsrc::model_t* texture_model,
-        StudioModelBarrier barrier
+        StudioModelBarrier barrier,
+        ncl_material::MaterialOrigin* origin
     )
     {
         if (!PrepareMetadata(model, header, texture_header, texture_model, barrier))
@@ -209,7 +210,7 @@ namespace render
         }
 
         Entry* entry = Observe(model, header, barrier);
-        return entry != nullptr ? entry->materials.Resolve(entry->name, texture_index) : nullptr;
+        return entry != nullptr ? entry->materials.Resolve(entry->name, texture_index, origin) : nullptr;
     }
 
     const ncl_material::Material* StudioModelCache::ResolveMaterialByName(

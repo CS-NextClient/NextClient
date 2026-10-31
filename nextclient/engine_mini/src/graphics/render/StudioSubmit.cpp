@@ -2,7 +2,10 @@
 
 #include <algorithm>
 #include <cassert>
+#include <cmath>
+#include <cstring>
 #include <span>
+#include <type_traits>
 #include <vector>
 
 #include <ncl_gl/program.h>
@@ -10,6 +13,7 @@
 
 #include "common/memory/ScratchArena.h"
 #include "common/memory/g_scratch_allocator.h"
+#include "graphics/render/StudioPhaseCapture.h"
 #include "performance/PerformanceMapper.h"
 #include "performance/PerformanceMonitor.h"
 #include "performance/performance_scopes.h"
@@ -20,6 +24,162 @@ namespace render
     {
         static_assert(kStudioTouchedTextureUnits <= 16);
         constexpr size_t kDrawScratchPadding = 2 * (ScratchAllocator::kAlignment - 1);
+
+        template <typename T>
+        bool IsFiniteValue(T value)
+        {
+            return std::isfinite(value);
+        }
+
+        template <typename T, size_t N>
+        bool IsFiniteValue(const T (&values)[N])
+        {
+            return std::all_of(values, values + N, [](T value) { return IsFiniteValue(value); });
+        }
+
+        template <typename T, size_t N>
+        bool IsFiniteValue(const std::array<T, N>& values)
+        {
+            return std::all_of(values.begin(), values.end(), [](T value) { return IsFiniteValue(value); });
+        }
+
+        bool IsFiniteValue(const ncl_math::Vector3& value)
+        {
+            return IsFiniteValue(value.x) && IsFiniteValue(value.y) && IsFiniteValue(value.z);
+        }
+
+        bool IsSharedStateFinite(const StudioDrawPacket& packet)
+        {
+            return IsFiniteValue(packet.modelview) &&
+                   IsFiniteValue(packet.projection) &&
+                   IsFiniteValue(packet.raster.depth_range) &&
+                   IsFiniteValue(packet.fog.color) &&
+                   IsFiniteValue(packet.fog.density) &&
+                   IsFiniteValue(packet.fog.start) &&
+                   IsFiniteValue(packet.fog.end) &&
+                   IsFiniteValue(packet.lighting.ambient) &&
+                   IsFiniteValue(packet.lighting.shade) &&
+                   IsFiniteValue(packet.lighting.color) &&
+                   IsFiniteValue(packet.lighting.light_vec) &&
+                   IsFiniteValue(packet.chrome_origin) &&
+                   IsFiniteValue(packet.view_right) &&
+                   IsFiniteValue(packet.glow_scale) &&
+                   IsFiniteValue(packet.bone_scale) &&
+                   IsFiniteValue(packet.shell_color) &&
+                   IsFiniteValue(packet.gamma) &&
+                   IsFiniteValue(packet.effect_time);
+        }
+
+        template <typename T>
+        bool AreValidatedValuesEqual(const T& left, const T& right)
+        {
+            if constexpr (std::is_floating_point_v<T>)
+            {
+                return std::memcmp(&left, &right, sizeof(T)) == 0;
+            }
+            else
+            {
+                return left == right;
+            }
+        }
+
+        template <typename T, size_t N>
+        bool AreValidatedValuesEqual(const T (&left)[N], const T (&right)[N])
+        {
+            for (size_t index = 0; index < N; ++index)
+            {
+                if (!AreValidatedValuesEqual(left[index], right[index]))
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        template <typename T, size_t N>
+        bool AreValidatedValuesEqual(const std::array<T, N>& left, const std::array<T, N>& right)
+        {
+            for (size_t index = 0; index < N; ++index)
+            {
+                if (!AreValidatedValuesEqual(left[index], right[index]))
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        bool AreValidatedValuesEqual(const ncl_math::Vector3& left, const ncl_math::Vector3& right)
+        {
+            return AreValidatedValuesEqual(left.x, right.x) && AreValidatedValuesEqual(left.y, right.y) &&
+                   AreValidatedValuesEqual(left.z, right.z);
+        }
+
+        bool AreValidatedStatesEqual(const StudioDrawPacket& left, const StudioDrawPacket& right)
+        {
+            return AreValidatedValuesEqual(left.modelview, right.modelview) &&
+                   AreValidatedValuesEqual(left.projection, right.projection) &&
+                   AreValidatedValuesEqual(left.viewport, right.viewport) &&
+                   AreValidatedValuesEqual(left.texture_revision, right.texture_revision) &&
+                   AreValidatedValuesEqual(left.raster.blend, right.raster.blend) &&
+                   AreValidatedValuesEqual(left.raster.blend_src_rgb, right.raster.blend_src_rgb) &&
+                   AreValidatedValuesEqual(left.raster.blend_dst_rgb, right.raster.blend_dst_rgb) &&
+                   AreValidatedValuesEqual(left.raster.blend_src_alpha, right.raster.blend_src_alpha) &&
+                   AreValidatedValuesEqual(left.raster.blend_dst_alpha, right.raster.blend_dst_alpha) &&
+                   AreValidatedValuesEqual(left.raster.blend_equation_rgb, right.raster.blend_equation_rgb) &&
+                   AreValidatedValuesEqual(left.raster.blend_equation_alpha, right.raster.blend_equation_alpha) &&
+                   AreValidatedValuesEqual(left.raster.cull, right.raster.cull) &&
+                   AreValidatedValuesEqual(left.raster.cull_face, right.raster.cull_face) &&
+                   AreValidatedValuesEqual(left.raster.front_face, right.raster.front_face) &&
+                   AreValidatedValuesEqual(left.raster.depth_test, right.raster.depth_test) &&
+                   AreValidatedValuesEqual(left.raster.depth_write, right.raster.depth_write) &&
+                   AreValidatedValuesEqual(left.raster.depth_func, right.raster.depth_func) &&
+                   AreValidatedValuesEqual(left.raster.depth_range, right.raster.depth_range) &&
+                   AreValidatedValuesEqual(left.fog.mode, right.fog.mode) &&
+                   AreValidatedValuesEqual(left.fog.color, right.fog.color) &&
+                   AreValidatedValuesEqual(left.fog.density, right.fog.density) &&
+                   AreValidatedValuesEqual(left.fog.start, right.fog.start) &&
+                   AreValidatedValuesEqual(left.fog.end, right.fog.end) &&
+                   AreValidatedValuesEqual(left.lighting.ambient, right.lighting.ambient) &&
+                   AreValidatedValuesEqual(left.lighting.shade, right.lighting.shade) &&
+                   AreValidatedValuesEqual(left.lighting.color, right.lighting.color) &&
+                   AreValidatedValuesEqual(left.lighting.light_vec, right.lighting.light_vec) &&
+                   AreValidatedValuesEqual(left.chrome_origin, right.chrome_origin) &&
+                   AreValidatedValuesEqual(left.view_right, right.view_right) &&
+                   AreValidatedValuesEqual(left.flipped, right.flipped) &&
+                   AreValidatedValuesEqual(left.glow_scale, right.glow_scale) &&
+                   AreValidatedValuesEqual(left.bone_scale, right.bone_scale) &&
+                   AreValidatedValuesEqual(left.shell_color, right.shell_color) &&
+                   AreValidatedValuesEqual(left.light_count, right.light_count) &&
+                   AreValidatedValuesEqual(left.gamma, right.gamma) &&
+                   AreValidatedValuesEqual(left.effect_time, right.effect_time);
+        }
+
+        bool AreRigidMeshesCompatible(const StudioDrawPacket& left, const StudioDrawPacket& right)
+        {
+            const StudioQueuedMesh& a = left.meshes[0];
+            const StudioQueuedMesh& b = right.meshes[0];
+
+            return left.vao == right.vao &&
+                   left.rigid_vao == right.rigid_vao &&
+                   left.rigid_bindings == right.rigid_bindings &&
+                   left.rigid_index_count == right.rigid_index_count &&
+                   a.program == b.program &&
+                   a.material_bindings == b.material_bindings &&
+                   a.texture == b.texture &&
+                   a.skin == b.skin &&
+                   AreValidatedValuesEqual(a.texel_scale, b.texel_scale) &&
+                   a.masked == b.masked &&
+                   a.additive == b.additive &&
+                   a.shade_mode == b.shade_mode &&
+                   a.images.manifest == b.images.manifest &&
+                   a.images.material == b.images.material &&
+                   a.images.material_count == b.images.material_count &&
+                   a.images.coverage_dissolve_map == b.images.coverage_dissolve_map &&
+                   AreValidatedStatesEqual(left, right);
+        }
 
         void SetEnabled(GLenum capability, bool enabled)
         {
@@ -80,12 +240,15 @@ namespace render
         StudioSubmissionCallbacks callbacks,
         performance::PerformanceMonitor& monitor,
         performance::PerformanceMapper& mapper,
-        unsigned int& studio_depth
+        unsigned int& studio_depth,
+        StudioPhaseCapture* phase_capture
     ) :
         monitor_(monitor),
         mapper_(mapper),
         studio_depth_(studio_depth),
+        phase_capture_(phase_capture),
         bones_(device),
+        instances_(device),
         material_runtime_(material_runtime),
         callbacks_(callbacks)
     {}
@@ -93,6 +256,7 @@ namespace render
     void StudioGlSubmission::Release()
     {
         bones_.Destroy();
+        instances_.Destroy();
         cpu_scope_.reset();
         bound_vao_ = 0;
         material_state_ = StudioMaterialState{};
@@ -124,6 +288,219 @@ namespace render
     bool StudioGlSubmission::EnsureBones()
     {
         return bones_.is_valid() || bones_.Create(GL_UNIFORM_BUFFER, nullptr, kStudioBoneFloats * sizeof(float), GL_DYNAMIC_DRAW);
+    }
+
+    bool StudioGlSubmission::EnsureInstances()
+    {
+        static_assert(sizeof(InstanceRecord) == 64);
+        static_assert(offsetof(InstanceRecord, first_vertex) == 48);
+        static_assert(offsetof(InstanceRecord, end_vertex) == 52);
+        static_assert(offsetof(InstanceRecord, blend_bits) == 56);
+        static_assert(offsetof(InstanceRecord, padding) == 60);
+
+        return instances_.is_valid() || instances_.Create(GL_ARRAY_BUFFER, nullptr, sizeof(instance_records_), GL_DYNAMIC_DRAW);
+    }
+
+    void StudioGlSubmission::ResetStats()
+    {
+        stats_ = StudioSubmissionStats{};
+    }
+
+    bool StudioGlSubmission::IsRigidEligible(const StudioDrawPacket& packet) const
+    {
+        if (packet.rigid_vao == 0 || packet.rigid_bindings == nullptr || packet.rigid_bindings->program == nullptr ||
+            packet.rigid_bindings->generation != material_runtime_.get_shader_generation() ||
+            packet.texture_revision != material_runtime_.get_texture_revision() || packet.meshes.size() != 1 || packet.flipped ||
+            !std::isfinite(packet.blend) || packet.bone_scale != 1.0f || packet.glow_scale != 0.0f || packet.light_count != 0 ||
+            packet.bone_count <= 0 || packet.bone_count > goldsrc::MAXSTUDIOBONES ||
+            packet.rigid_range.bone >= static_cast<uint32_t>(packet.bone_count) || packet.rigid_index_count == 0 ||
+            packet.rigid_range.first_vertex >= packet.rigid_range.end_vertex)
+        {
+            return false;
+        }
+
+        const StudioQueuedMesh& mesh = packet.meshes[0];
+
+        if (mesh.material || mesh.chrome || mesh.shade_mode == kShadeGlowShell || mesh.material_bindings == nullptr ||
+            mesh.material_bindings->generation != packet.rigid_bindings->generation ||
+            mesh.index_count != static_cast<int>(packet.rigid_range.index_count) ||
+            mesh.index_offset != static_cast<uintptr_t>(packet.rigid_range.first_index) * sizeof(uint32_t) ||
+            !IsFiniteValue(mesh.texel_scale) || !IsSharedStateFinite(packet))
+        {
+            return false;
+        }
+
+        const float* rows = packet.bones.data() + packet.rigid_range.bone * 12;
+
+        return std::all_of(rows, rows + 12, [](float value) { return std::isfinite(value); });
+    }
+
+    void StudioGlSubmission::BindInstances(const StudioDrawPacket& packet, size_t first)
+    {
+        performance::LocalCpuScope cpu(monitor_.get_studio_detail_monitor(), performance::PerfStage::StudioBufferBind);
+
+        if (bound_vao_ != packet.rigid_vao)
+        {
+            glBindVertexArray(packet.rigid_vao);
+            bound_vao_ = packet.rigid_vao;
+        }
+
+        glBindBuffer(GL_ARRAY_BUFFER, instances_.get_name());
+        const uintptr_t base = first * sizeof(InstanceRecord);
+
+        for (GLuint row = 0; row < kStudioInstanceMatrixRows; ++row)
+        {
+            glVertexAttribPointer(
+                kStudioInstanceMatrixSlot + row,
+                4,
+                GL_FLOAT,
+                GL_FALSE,
+                sizeof(InstanceRecord),
+                reinterpret_cast<const void*>(base + row * 16)
+            );
+        }
+
+        glVertexAttribIPointer(
+            kStudioInstanceRangeSlot,
+            3,
+            GL_UNSIGNED_INT,
+            sizeof(InstanceRecord),
+            reinterpret_cast<const void*>(base + offsetof(InstanceRecord, first_vertex))
+        );
+    }
+
+    void StudioGlSubmission::DrawRun(std::span<const StudioDrawPacket> packets)
+    {
+        if (!instances_.is_valid())
+        {
+            stats_.fallbacks[static_cast<size_t>(StudioRigidFallback::Resource)] += packets.size();
+            StudioSubmissionSink::DrawRun(packets);
+
+            return;
+        }
+
+        if (glIsEnabled(GL_PRIMITIVE_RESTART) != GL_FALSE)
+        {
+            stats_.fallbacks[static_cast<size_t>(StudioRigidFallback::PrimitiveRestart)] += packets.size();
+            StudioSubmissionSink::DrawRun(packets);
+
+            return;
+        }
+
+        assert(packets.size() <= kMaxStudioPackets);
+
+        std::array<size_t, kMaxStudioPackets> lengths{};
+        bool has_batch = false;
+
+        {
+            performance::LocalCpuScope cpu(monitor_.get_studio_detail_monitor(), performance::PerfStage::StudioInstancePlan);
+
+            enum class Eligibility : uint8_t
+            {
+                Unchecked,
+                Ineligible,
+                Eligible
+            };
+
+            std::array<Eligibility, kMaxStudioPackets> eligibility{};
+            const auto is_eligible = [&](size_t index) {
+                Eligibility& result = eligibility[index];
+
+                if (result == Eligibility::Unchecked)
+                {
+                    result = IsRigidEligible(packets[index]) ? Eligibility::Eligible : Eligibility::Ineligible;
+                }
+
+                return result == Eligibility::Eligible;
+            };
+
+            for (size_t first = 0; first < packets.size();)
+            {
+                if (!is_eligible(first))
+                {
+                    ++stats_.fallbacks[static_cast<size_t>(StudioRigidFallback::Ineligible)];
+                    ++first;
+
+                    continue;
+                }
+
+                size_t end = first + 1;
+                while (end < packets.size() && is_eligible(end) && AreRigidMeshesCompatible(packets[first], packets[end]))
+                {
+                    ++end;
+                }
+
+                if (end - first >= 2)
+                {
+                    lengths[first] = end - first;
+                    has_batch = true;
+                }
+                else
+                {
+                    ++stats_.fallbacks[static_cast<size_t>(
+                        end < packets.size() ? StudioRigidFallback::SharedState : StudioRigidFallback::Singleton
+                    )];
+                }
+
+                first = end;
+            }
+
+            if (has_batch)
+            {
+                std::fill_n(instance_records_.begin(), packets.size(), InstanceRecord{});
+
+                for (size_t first = 0; first < packets.size(); ++first)
+                {
+                    for (size_t index = first; index < first + lengths[first]; ++index)
+                    {
+                        const StudioDrawPacket& packet = packets[index];
+                        InstanceRecord& record = instance_records_[index];
+
+                        std::copy_n(packet.bones.data() + packet.rigid_range.bone * 12, 12, record.rows);
+                        record.first_vertex = packet.rigid_range.first_vertex;
+                        record.end_vertex = packet.rigid_range.end_vertex;
+                        std::memcpy(&record.blend_bits, &packet.blend, sizeof(record.blend_bits));
+                    }
+                }
+            }
+        }
+
+        if (!has_batch)
+        {
+            StudioSubmissionSink::DrawRun(packets);
+
+            return;
+        }
+
+        glBindBuffer(GL_ARRAY_BUFFER, instances_.get_name());
+        const GLsizeiptr bytes = static_cast<GLsizeiptr>(packets.size() * sizeof(InstanceRecord));
+
+        {
+            performance::LocalCpuScope cpu(monitor_.get_studio_detail_monitor(), performance::PerfStage::StudioInstanceUpload);
+            glBufferSubData(GL_ARRAY_BUFFER, 0, bytes, instance_records_.data());
+        }
+
+        ++stats_.instance_uploads;
+        stats_.instance_bytes += bytes;
+
+        for (size_t first = 0; first < packets.size();)
+        {
+            const size_t count = lengths[first];
+
+            if (count < 2)
+            {
+                Draw(packets[first++]);
+
+                continue;
+            }
+
+            BindInstances(packets[first], first);
+            DrawPacket(packets[first], count);
+
+            ++stats_.instance_batches;
+            stats_.saved_calls += count - 1;
+            first += count;
+        }
     }
 
     void Studio_CaptureRasterState(StudioDrawPacket& packet, performance::PerformanceMonitor& monitor)
@@ -312,11 +689,17 @@ namespace render
 
     void StudioGlSubmission::Draw(const StudioDrawPacket& packet)
     {
+        DrawPacket(packet, 0);
+    }
+
+    void StudioGlSubmission::DrawPacket(const StudioDrawPacket& packet, size_t instances)
+    {
         if (packet.texture_revision != material_runtime_.get_texture_revision())
         {
             return;
         }
         assert(packet.bone_count > 0 && packet.bone_count <= goldsrc::MAXSTUDIOBONES);
+
         bool has_material =
             std::any_of(packet.meshes.begin(), packet.meshes.end(), [](const StudioQueuedMesh& mesh) { return mesh.material.has_value(); });
         // Authored shaders may consume bone entries beyond the model's vertex indices.
@@ -330,12 +713,13 @@ namespace render
             glLoadMatrixf(packet.projection.data());
         }
 
+        if (instances == 0)
         {
             performance::LocalCpuScope cpu(monitor_.get_studio_detail_monitor(), performance::PerfStage::StudioBoneUpload);
             glBufferSubData(GL_UNIFORM_BUFFER, 0, static_cast<GLsizeiptr>(bone_floats * sizeof(float)), packet.bones.data());
         }
 
-        if (bound_vao_ != packet.vao)
+        if (instances == 0 && bound_vao_ != packet.vao)
         {
             performance::LocalCpuScope cpu(monitor_.get_studio_detail_monitor(), performance::PerfStage::StudioBufferBind);
             glBindVertexArray(packet.vao);
@@ -371,16 +755,17 @@ namespace render
         for (size_t start = 0; start < mesh_count;)
         {
             const StudioQueuedMesh& head = packet.meshes[start];
-            const ncl_gl::Program& program = *head.program;
+            const StudioMaterialBindings& bindings = instances != 0 ? *packet.rigid_bindings : *head.material_bindings;
+            const ncl_gl::Program& program = *bindings.program;
 
-            if (bound_program != head.program)
+            if (bound_program != &program)
             {
                 {
                     performance::LocalCpuScope cpu(monitor_.get_studio_detail_monitor(), performance::PerfStage::StudioProgramBind);
                     glUseProgram(program.prog);
                 }
 
-                bound_program = head.program;
+                bound_program = &program;
 
                 if (callbacks_.note_program_bind != nullptr)
                 {
@@ -389,7 +774,7 @@ namespace render
 
                 performance::LocalCpuScope cpu(monitor_.get_studio_detail_monitor(), performance::PerfStage::StudioUniformSetup);
 
-                material_runtime_.ConfigureProgram(*head.material_bindings);
+                material_runtime_.ConfigureProgram(bindings);
 
                 glUniform1f(program.loc[kUniformAmbient], packet.lighting.ambient);
                 glUniform1f(program.loc[kUniformShade], packet.lighting.shade);
@@ -489,11 +874,50 @@ namespace render
             {
                 performance::LocalCpuScope cpu(monitor, performance::PerfStage::StudioShader);
                 performance::LocalGpuScope gpu(monitor, performance::PerfStage::StudioShader);
-                glMultiDrawElements(GL_TRIANGLES, counts.data(), GL_UNSIGNED_INT, offsets.data(), static_cast<GLsizei>(group_count));
+                if (instances != 0)
+                {
+                    performance::LocalCpuScope submit(monitor_.get_studio_detail_monitor(), performance::PerfStage::StudioInstanceSubmit);
+                    glDrawElementsInstanced(
+                        GL_TRIANGLES,
+                        static_cast<GLsizei>(packet.rigid_index_count),
+                        GL_UNSIGNED_INT,
+                        nullptr,
+                        static_cast<GLsizei>(instances)
+                    );
+                }
+                else
+                {
+                    glMultiDrawElements(GL_TRIANGLES, counts.data(), GL_UNSIGNED_INT, offsets.data(), static_cast<GLsizei>(group_count));
+                }
             }
 
-            performance::reporting::ReportDraw(monitor_, group_indices, group_count);
-            mapper_.AddShaderTriangles(group_indices / 3);
+            const uint64_t logical_indices = group_indices * (instances != 0 ? instances : 1);
+            const uint64_t submitted_indices = instances != 0 ? packet.rigid_index_count * instances : logical_indices;
+            ++stats_.physical_draws;
+            stats_.logical_groups += instances != 0 ? instances : 1;
+            stats_.logical_triangles += logical_indices / 3;
+            stats_.submitted_triangles += submitted_indices / 3;
+
+            if (instances != 0)
+            {
+                monitor_.AddCounter(performance::PerfCounterId::StudioDrawCalls, 1);
+                monitor_.AddCounter(performance::PerfCounterId::StudioConstituentDraws, instances);
+                monitor_.AddCounter(performance::PerfCounterId::StudioTriangles, logical_indices / 3);
+                monitor_.AddCounter(performance::PerfCounterId::StudioSingleMeshes, instances);
+            }
+            else
+            {
+                performance::reporting::ReportDraw(monitor_, logical_indices, group_count);
+            }
+
+            if (phase_capture_ != nullptr && phase_capture_->is_active())
+            {
+                phase_capture_->NotePhysicalDraw(submitted_indices / 3);
+                phase_capture_->NoteGroup(
+                    instances != 0 ? instances : 1, group_count * (instances != 0 ? instances : 1), logical_indices / 3
+                );
+            }
+            mapper_.AddShaderTriangles(logical_indices / 3);
 
             {
                 performance::LocalCpuScope cpu(monitor_.get_studio_detail_monitor(), performance::PerfStage::StudioTextureSetup);

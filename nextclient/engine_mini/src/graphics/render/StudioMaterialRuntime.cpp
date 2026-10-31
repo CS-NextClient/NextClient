@@ -3,14 +3,28 @@
 #include <algorithm>
 #include <cassert>
 
-#include <ncl_material/ProgramManifest.h>
 #include <ncl_material/MaterialResolve.h>
+#include <ncl_material/ProgramManifest.h>
 
 #include "performance/PerformanceMonitor.h"
 #include "performance/performance_scopes.h"
 
 namespace render
 {
+    namespace
+    {
+        const std::string kRigidDefines = std::string(kStudioShadeDefines) + "\n#define STUDIO_RIGID_INSTANCING 1\n";
+        const ProgramDesc kRigidProgram{
+            "studio.vert",
+            "studio_legacy.frag",
+            kRigidDefines.c_str(),
+            kStudioUniformNames,
+            kUniformCount,
+            nullptr,
+            0,
+        };
+    } // namespace
+
     static_assert(kStudioMaterialUnits == ncl_material::kMaxSchemaTextures);
     static_assert(kStudioMaterialUnits <= sizeof(uint32_t) * 8);
 
@@ -127,6 +141,24 @@ namespace render
         }
 
         return entry.program;
+    }
+
+    const StudioMaterialBindings* StudioMaterialRuntime::PrepareRigidBindings()
+    {
+        if (rigid_generation_ != programs_.get_generation())
+        {
+            rigid_generation_ = programs_.get_generation();
+            rigid_program_ = programs_.Get(kRigidProgram);
+        }
+
+        if (rigid_program_ == nullptr)
+        {
+            return nullptr;
+        }
+
+        PrepareBindings(rigid_bindings_, *rigid_program_);
+
+        return &rigid_bindings_;
     }
 
     void StudioMaterialRuntime::PrepareBindings(
@@ -353,6 +385,9 @@ namespace render
         builtin_program_ = nullptr;
         builtin_generation_ = 0;
         builtin_bindings_.generation = 0;
+        rigid_program_ = nullptr;
+        rigid_generation_ = 0;
+        rigid_bindings_.generation = 0;
         configured_program_ = 0;
         configured_generation_ = 0;
         configured_gamma_revision_ = 0;

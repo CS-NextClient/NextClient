@@ -10,11 +10,11 @@
 #include <ncl_material/ProgramManifest.h>
 
 #include "graphics/render/ShaderManager.h"
+#include "graphics/render/StudioBindings.h"
+#include "graphics/render/StudioShaderInterface.h"
 #include "graphics/render/material/MaterialManifestCatalog.h"
 #include "graphics/render/material/MaterialTextureCache.h"
-#include "graphics/render/StudioBindings.h"
 #include "graphics/render/material/StudioMeshImages.h"
-#include "graphics/render/StudioShaderInterface.h"
 
 namespace performance
 {
@@ -68,6 +68,9 @@ namespace render
         const ncl_gl::Program* builtin_program_{};
         uint32_t builtin_generation_{};
         StudioMaterialBindings builtin_bindings_;
+        const ncl_gl::Program* rigid_program_{};
+        uint32_t rigid_generation_{};
+        StudioMaterialBindings rigid_bindings_;
         GLuint configured_program_{};
         uint32_t configured_generation_{};
         uint64_t configured_gamma_revision_{};
@@ -84,6 +87,11 @@ namespace render
         );
 
         const ncl_gl::Program* ProgramFor(const ncl_material::Material* material, const StudioMaterialBindings** bindings = nullptr);
+        const StudioMaterialBindings* PrepareRigidBindings();
+        uint32_t get_shader_generation() const
+        {
+            return programs_.get_generation();
+        }
         void PrepareBindings(StudioMaterialBindings& bindings, const ncl_gl::Program& program, const ncl_material::Material* material);
         void ConfigureProgram(const StudioMaterialBindings& bindings);
         bool PrepareImages(

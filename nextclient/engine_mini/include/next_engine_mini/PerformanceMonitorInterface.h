@@ -63,6 +63,9 @@ namespace performance
         constexpr ncl_perf::PerfScopeId_t StudioStateApply = 82;
         constexpr ncl_perf::PerfScopeId_t StudioUniformSetup = 83;
         constexpr ncl_perf::PerfScopeId_t StudioTextureSetup = 84;
+        constexpr ncl_perf::PerfScopeId_t StudioInstancePlan = 85;
+        constexpr ncl_perf::PerfScopeId_t StudioInstanceUpload = 86;
+        constexpr ncl_perf::PerfScopeId_t StudioInstanceSubmit = 87;
     } // namespace PerfStage
 
     // All methods belong to the main engine/frame owner thread, including const reads and ReportWorker.

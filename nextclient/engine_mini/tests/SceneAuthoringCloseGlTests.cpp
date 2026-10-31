@@ -11,6 +11,7 @@
 
 #include "RadarGlContext.h"
 #include "StudioModelTestSupport.h"
+#include "StudioTestPose.h"
 #include "engine.h"
 #include "PreviewTestOwners.h"
 #include "StudioMaterialProviders.h"
@@ -100,10 +101,10 @@ namespace
 
     render::StudioDrawPacket PickPacket(const GeometryNames& names, GLuint texture)
     {
-        render::StudioDrawPacket packet{};
+        render::StudioDrawPacket packet{.bones = CapturePose()};
         packet.vao = names.vao;
         packet.bone_count = 1;
-        packet.bones[0] = packet.bones[5] = packet.bones[10] = 1;
+        packet.bones = CapturePose({{0, 1.0f}, {5, 1.0f}, {10, 1.0f}}, packet.bones);
         packet.modelview = packet.projection = {1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1};
         packet.raster.depth_range[0] = 0;
         packet.raster.depth_range[1] = 1;
@@ -474,7 +475,7 @@ TEST_F(SceneAuthoringCloseGlTest, SuppliedSceneOwnersCloseOnlyTheirGeometryAndIm
 
 TEST_F(SceneAuthoringCloseGlTest, ModelRendererUsesOneResolutionPerDrawAndObservesReloadedHeaders)
 {
-    render::StudioDrawPacket packet{};
+    render::StudioDrawPacket packet{.bones = CapturePose()};
     PreviewBackendScope engine(model_, &block_.header, packet);
     preview_test::Owners owner;
     preview_test::BindEngine(owner.state);
@@ -893,7 +894,7 @@ namespace
 
 TEST_F(SceneAuthoringCloseGlTest, PreviewLossFromImagePreparationStopsNativeAndSceneContinuations)
 {
-    render::StudioDrawPacket packet;
+    render::StudioDrawPacket packet{.bones = CapturePose()};
     PreviewBackendScope backend(model_, &block_.header, packet);
     renderer_test::Owners owners;
     preview_test::BindEngine(owners.state);
@@ -946,7 +947,7 @@ TEST_F(SceneAuthoringCloseGlTest, PreviewLossFromImagePreparationStopsNativeAndS
 
 TEST_F(SceneAuthoringCloseGlTest, PreviewSessionResetStopsFollowingModelsWithoutLosingContext)
 {
-    render::StudioDrawPacket packet;
+    render::StudioDrawPacket packet{.bones = CapturePose()};
     PreviewBackendScope backend(model_, &block_.header, packet);
     renderer_test::Owners owners;
     preview_test::BindEngine(owners.state);
@@ -997,7 +998,7 @@ TEST_F(SceneAuthoringCloseGlTest, PreviewSessionResetStopsFollowingModelsWithout
 
 TEST_F(SceneAuthoringCloseGlTest, PendingColdLoadLossStopsScenePreludeAndPreviewContextBeforeGl)
 {
-    render::StudioDrawPacket packet;
+    render::StudioDrawPacket packet{.bones = CapturePose()};
     PreviewBackendScope backend(model_, &block_.header, packet);
     for (bool scene_entry : {true, false})
     {
@@ -1068,7 +1069,7 @@ namespace
 
 TEST_F(SceneAuthoringCloseGlTest, ModelPreparationLossStopsBeforeCameraAndNativeDraw)
 {
-    render::StudioDrawPacket packet;
+    render::StudioDrawPacket packet{.bones = CapturePose()};
     PreviewBackendScope backend(model_, &block_.header, packet);
     renderer_test::Owners owners;
     preview_test::BindEngine(owners.state);
@@ -1119,7 +1120,7 @@ namespace
 
 TEST_F(SceneAuthoringCloseGlTest, LiveSessionCancellationPreservesReplacementValuesInTheSameEngineSlots)
 {
-    render::StudioDrawPacket packet;
+    render::StudioDrawPacket packet{.bones = CapturePose()};
     PreviewBackendScope backend(model_, &block_.header, packet);
     renderer_test::Owners owners;
     preview_test::BindEngine(owners.state);

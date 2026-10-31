@@ -4,6 +4,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <optional>
+#include <span>
 #include <vector>
 
 #include <ncl_material/MaterialDoc.h>
@@ -11,7 +12,9 @@
 #include <goldsrc/format/studio.h>
 
 #include "graphics/render/StudioIntercept.h"
+#include "graphics/render/StudioPose.h"
 #include "graphics/render/material/StudioMeshImages.h"
+#include "graphics/render/model/StudioGeometry.h"
 
 namespace ncl_gl
 {
@@ -23,8 +26,6 @@ namespace render
     struct StudioMaterialBindings;
 
     inline constexpr size_t kMaxStudioPackets = 128;
-    inline constexpr size_t kStudioBoneFloats = goldsrc::MAXSTUDIOBONES * 12;
-
 
     enum class StudioFlushReason
     {
@@ -47,6 +48,8 @@ namespace render
         MutableSkin,
         Count
     };
+
+    struct StudioDrawPacket;
 
     struct StudioQueueCallbacks
     {
@@ -102,8 +105,12 @@ namespace render
 
     struct StudioDrawPacket
     {
-        std::array<float, kStudioBoneFloats> bones{};
+        StudioPose bones;
         int bone_count = goldsrc::MAXSTUDIOBONES;
+        unsigned int rigid_vao{};
+        StudioRigidRange rigid_range;
+        uint32_t rigid_index_count{};
+        const StudioMaterialBindings* rigid_bindings{};
         std::array<float, 16> modelview{};
         std::array<float, 16> projection{};
         std::array<int, 4> viewport{};
@@ -141,6 +148,13 @@ namespace render
         virtual ~StudioSubmissionSink() = default;
         virtual void Begin() = 0;
         virtual void Draw(const StudioDrawPacket& packet) = 0;
+        virtual void DrawRun(std::span<const StudioDrawPacket> packets)
+        {
+            for (const StudioDrawPacket& packet : packets)
+            {
+                Draw(packet);
+            }
+        }
         virtual void End() = 0;
     };
 

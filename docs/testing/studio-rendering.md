@@ -24,8 +24,7 @@ Use `studio_test` for the flag, shell, remap, lighting, and repeated-model cases
 | Materials | With the editor closed, the client selects a server binding, then a model document, then a built-in material. An active edit session temporarily overrides the selected material for its target. Values for different entities remain independent. |
 | Fog | Compare engine and shader paths with the camera submerged in water. Studio models must blend with the same fog as the surrounding world. Record a mismatch separately from lighting and fullbright differences. |
 | Material effects | Check the three outline modes, hidden fill, glow, dissolve, noise, and glitch using the [material scene cases](material-editor-scene.md#material-effect-checks). Repeat in windowed and fullscreen modes with MSAA Off and 4x. |
-| Repeated models | Queue mode preserves each pose and uniform set. Compare packet counts, run lengths, program binds, draw calls, and CPU/GPU times in the same north-room view. |
-| Resource transitions | Replacement of live geometry submits queued packets before deleting its resources. Map replacement and context loss discard pending work; subsequent draws create resources for the new map or context. |
+| Repeated models | Verify adjacent rigid batches and ordinary fallback under matching queue, scene, and material settings using the [rigid procedure](studio-rigid-instancing.md). Preserve poses, uniforms, order, and caller state; compare physical calls, logical groups/triangles, packet/run counts, and measured CPU/GPU time. |
 
 ## Image interpretation
 
@@ -45,9 +44,11 @@ Inspect both the overall differing-pixel fraction and the `--clusters` report. D
 
 | Test group | Coverage |
 |---|---|
+| `StudioPoseTest` (`studio-pose-tests`) | Immutable copies, slot reuse, reset, owner destruction, last release, and warmed allocation behavior. |
+| `StudioPhaseCaptureTest` (`studio-phase-capture-tests`) | Identity, pass times, numeric counts, inclusive frame ranges, nesting, aborts, overflow, and export errors. |
 | `StudioQueueTest` | Packet order, barriers, ownership, capacity, callback pause, and immediate mode. |
 | `StudioSubmissionGlTest` | Pixels for distinct poses/uniforms under one program and GL-state restoration, including additive-to-opaque transitions. |
-| `StudioCaptureGlTest` | Production input capture, rollback after more than 256 meshes, material authority and choice metadata, coverage, and MSAA visibility in all outline modes. |
+| `StudioCaptureGlTest` | Pose sharing between packet/effects capture, retained preview palettes, rigid submission/counters, production input capture, rollback after more than 256 meshes, material authority and choice metadata, coverage, and MSAA visibility in all outline modes. |
 | `StudioCaptureWindowGlTest` | Window-context depth and MSAA visibility in all outline modes. |
 | `StudioEffectsGlTest` | Silhouette and glow selection, hidden fill, mask growth, nearest-surface ownership, reversed depth, coverage, and GL-state restoration. |
 | `MaterialCoverageGlTest` | Production coverage shaders, masked alpha, dissolve/noise coordinates, and vertex/fragment compatibility. |

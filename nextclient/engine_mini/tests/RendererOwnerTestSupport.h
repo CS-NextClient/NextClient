@@ -53,10 +53,42 @@ namespace render
             mesh.material->params.push_back(parameter);
             mesh.material_bindings = &bindings;
         }
+
+        static const StudioPose& get_cached_pose(const StudioRenderer& renderer)
+        {
+            return renderer.model_draw_.bones;
+        }
+
         static size_t QueuedCount(const StudioRenderer& renderer)
         {
             return renderer.queue_.packets_.size();
         }
+
+        static std::vector<StudioDrawPacket>& get_queued_packets(StudioRenderer& renderer)
+        {
+            return renderer.queue_.packets_;
+        }
+
+        static void DrawOrdinaryPackets(StudioRenderer& renderer)
+        {
+            std::vector<StudioDrawPacket>& packets = renderer.queue_.packets_;
+
+            if (packets.empty())
+            {
+                return;
+            }
+
+            renderer.submission_sink_.Begin();
+
+            for (const StudioDrawPacket& packet : packets)
+            {
+                renderer.submission_sink_.Draw(packet);
+            }
+
+            renderer.submission_sink_.End();
+            packets.clear();
+        }
+
         static StudioDrawQueue& Queue(StudioRenderer& renderer)
         {
             return renderer.queue_;

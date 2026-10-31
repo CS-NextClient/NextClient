@@ -13,6 +13,7 @@
 #include "RadarGlContext.h"
 #include "ShaderBindingTrace.h"
 #include "StudioMaterialProviders.h"
+#include "StudioTestPose.h"
 #include "graphics/render/material/MaterialCoverageRuntime.h"
 #include "engine.h"
 #include "common/cvar.h"
@@ -134,7 +135,7 @@ namespace
         GLuint base_{};
 
     protected:
-        render::StudioDrawPacket packet_;
+        render::StudioDrawPacket packet_{.bones = CapturePose()};
         EffectSource source_;
         performance_test::Core coverage_performance_;
         render::MaterialCoverageRuntime coverage_{source_.catalog, source_.cache, coverage_performance_.monitor};
@@ -196,7 +197,7 @@ namespace
             packet_.vao = vao_;
             packet_.viewport = {4, 3, 32, 32};
             packet_.bone_count = 1;
-            packet_.bones[0] = packet_.bones[5] = packet_.bones[10] = 1;
+            packet_.bones = CapturePose({{0, 1.0f}, {5, 1.0f}, {10, 1.0f}}, packet_.bones);
             packet_.modelview[0] = packet_.modelview[5] = packet_.modelview[10] = packet_.modelview[15] = 1;
             packet_.projection = packet_.modelview;
             packet_.blend = 1;
@@ -478,7 +479,7 @@ TEST_F(StudioEffectsGlTest, VisibleNearestSurfaceReceivesNoTintIncludingItsOwnRe
     glClearDepth(.5);
     glClear(GL_DEPTH_BUFFER_BIT);
     Capture();
-    packet_.bones[11] = .5f;
+    packet_.bones = CapturePose({{11, .5f}}, packet_.bones);
     Capture();
     render::StudioEffects_EndView();
     EXPECT_EQ(Pixel(16, 16)[0], 0);
@@ -494,8 +495,8 @@ TEST_F(StudioEffectsGlTest, DistantOccludedSurfaceRetainsFillAndOutline)
     const double wall_depth = (4096.0 / 4092.0) * (1.0 - 4.0 / 2000.0);
     glClearDepth(wall_depth);
     glClear(GL_DEPTH_BUFFER_BIT);
-    packet_.bones[0] = packet_.bones[5] = 2008;
-    packet_.bones[11] = -2008;
+    packet_.bones = CapturePose({{0, 2008.0f}, {5, 2008.0f}}, packet_.bones);
+    packet_.bones = CapturePose({{11, -2008.0f}}, packet_.bones);
     SetScalar("uOutlineWidth", 2);
     Capture();
     render::StudioEffects_EndView();
@@ -643,10 +644,10 @@ TEST_F(StudioEffectsGlTest, NearestMaterialRetainsItsOccludedOnlyModeOverAnAlway
     glClear(GL_DEPTH_BUFFER_BIT);
     SetScalar("uOutlineWidth", 2);
     SetScalar("uOutlineMode", 1);
-    packet_.bones[11] = .3f;
+    packet_.bones = CapturePose({{11, .3f}}, packet_.bones);
     Capture(1, {6, 6, 20, 20});
     SetScalar("uOutlineMode", 0);
-    packet_.bones[11] = 0;
+    packet_.bones = CapturePose({{11, 0.0f}}, packet_.bones);
     Capture(1, {3, 3, 26, 26});
     render::StudioEffects_EndView();
     EXPECT_EQ(Pixel(7, 16)[1], 0);
@@ -695,7 +696,7 @@ TEST_F(StudioEffectsGlTest, LaterNonEffectSurfaceOccludesEarlierEffectAndExpande
 {
     Wall();
     Capture(1, {6, 6, 20, 20});
-    packet_.bones[11] = -.1f;
+    packet_.bones = CapturePose({{11, -.1f}}, packet_.bones);
     SetScalar("uOccludedAmount", 0);
     SetScalar("uOutlineWidth", 0);
     Capture(1, {3, 3, 26, 26});
@@ -709,7 +710,7 @@ TEST_F(StudioEffectsGlTest, CroppedProjectedBoneBoundsAndNearPlaneFallback)
     model.bounds.push_back({0, {-.5f, -.5f, 0}, {.5f, .5f, 0}});
     PrepareCoveragePacket(render::GetRendererState().coverage, packet_);
     EXPECT_EQ(render::StudioEffects_ProjectBounds(model, packet_), (std::array<int, 4>{6, 6, 20, 20}));
-    packet_.bones[11] = -1;
+    packet_.bones = CapturePose({{11, -1.0f}}, packet_.bones);
     PrepareCoveragePacket(render::GetRendererState().coverage, packet_);
     EXPECT_EQ(render::StudioEffects_ProjectBounds(model, packet_), (std::array<int, 4>{0, 0, 32, 32}));
 }
@@ -799,9 +800,9 @@ TEST_F(StudioEffectsGlTest, ReversedDepthRangeComparesInTheCorrectDirection)
 TEST_F(StudioEffectsGlTest, GrowingOneEntityMaskPreservesPreviousBodyPartPixels)
 {
     Wall();
-    packet_.bones[3] = -.3f;
+    packet_.bones = CapturePose({{3, -.3f}}, packet_.bones);
     Capture(1, {1, 5, 22, 22});
-    packet_.bones[3] = .3f;
+    packet_.bones = CapturePose({{3, .3f}}, packet_.bones);
     SetColor("uOccludedColor", {0, 0, 1, 1});
     Capture(1, {9, 5, 22, 22});
     render::StudioEffects_EndView();
@@ -812,9 +813,9 @@ TEST_F(StudioEffectsGlTest, GrowingOneEntityMaskPreservesPreviousBodyPartPixels)
 TEST_F(StudioEffectsGlTest, IndependentEntitiesRetainTheirOwnColors)
 {
     Wall();
-    packet_.bones[3] = -.3f;
+    packet_.bones = CapturePose({{3, -.3f}}, packet_.bones);
     Capture(1, {0, 0, 32, 32});
-    packet_.bones[3] = .3f;
+    packet_.bones = CapturePose({{3, .3f}}, packet_.bones);
     SetColor("uOccludedColor", {0, 0, 1, 1});
     Capture(2, {0, 0, 32, 32});
     render::StudioEffects_EndView();
@@ -900,9 +901,9 @@ TEST_F(StudioEffectsGlTest, MultisampledDrawDepthAndGrowingMasksRetainEarlierBod
     ASSERT_EQ(glCheckFramebufferStatus(GL_FRAMEBUFFER), GLenum(GL_FRAMEBUFFER_COMPLETE));
     glClearDepth(.25);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    packet_.bones[3] = -.3f;
+    packet_.bones = CapturePose({{3, -.3f}}, packet_.bones);
     Capture(1, {1, 5, 22, 22});
-    packet_.bones[3] = .3f;
+    packet_.bones = CapturePose({{3, .3f}}, packet_.bones);
     Capture(1, {9, 5, 22, 22});
     render::StudioEffects_EndView();
     glBindFramebuffer(GL_READ_FRAMEBUFFER, framebuffer);
@@ -924,7 +925,7 @@ TEST_F(StudioEffectsGlTest, EarlierNonEffectParentOccludesItsLaterEffectAttachme
     SetColor("uBaseTint", {1, 1, 1, 0});
     PrepareCoveragePacket(render::GetRendererState().coverage, packet_);
     render::StudioEffects_Capture(1, packet_, {5, 5, 22, 22}, true);
-    packet_.bones[11] = .5f;
+    packet_.bones = CapturePose({{11, .5f}}, packet_.bones);
     SetColor("uBaseTint", {1, 1, 1, 1});
     SetScalar("uOccludedAmount", 1);
     Capture();

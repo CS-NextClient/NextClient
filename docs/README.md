@@ -23,9 +23,8 @@ This index connects the maintained project guides, references, test procedures, 
 
 | Document | Purpose |
 |---|---|
-| [Shader rendering](shader-rendering.md) | Rendering options and shader behavior. |
 | [MSAA](msaa.md) | Multisample antialiasing settings, supported values, and verification. |
-| [Studio renderer](renderer-architecture.md) | Renderer organization and integration contracts. |
+| [Studio renderer architecture](renderer-architecture.md) | Frame diagrams, resource ownership, draw ordering, and shader-path settings. |
 | [Renderer diagnostics](renderer-diagnostics.md) | Capture commands and inspection procedures. |
 | [Weapon material format](weapon-materials.md) | MAT structure, parameters, and resource rules. |
 | [Material authoring](weapon-materials-authoring.md) | Create and edit weapon materials. |

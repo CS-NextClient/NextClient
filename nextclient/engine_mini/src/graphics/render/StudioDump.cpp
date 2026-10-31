@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <cstdlib>
 #include <cstring>
+#include <cstdio>
 #include <filesystem>
 #include <fstream>
 #include <ostream>
@@ -34,6 +35,9 @@ namespace render
 
         // Distinct rejection reasons the summary lists, which is far more than a frame has.
         constexpr int kMaxReasons = 32;
+
+        constexpr const char* kStudioRigidFallbackNames[] = {"primitive_restart", "ineligible", "shared_state", "singleton", "resource"};
+        static_assert(std::size(kStudioRigidFallbackNames) == static_cast<size_t>(StudioRigidFallback::Count));
 
         float CvarValue(const goldsrc::cvar_t* cvar)
         {
@@ -75,6 +79,47 @@ namespace render
             const double seconds = Cmd_Argc() > 1 ? atof(Cmd_Argv(1)) : 10.0;
             GetRendererState().diagnostics.Watch(seconds, Sys_FloatTime());
             Con_Printf("r_studio_elights: watching cl_elights for %.0f seconds\n", seconds);
+        }
+
+        void StudioRigidStats_f()
+        {
+            StudioRenderer& renderer = GetRendererState().studio;
+
+            if (Cmd_Argc() > 1 && V_stricmp(Cmd_Argv(1), "reset") == 0)
+            {
+                renderer.ResetSubmissionStats();
+            }
+
+            const StudioSubmissionStats& stats = renderer.get_submission_stats();
+            char line[512];
+
+            std::snprintf(
+                line,
+                sizeof(line),
+                "studio submission: physical_draws=%llu logical_groups=%llu logical_triangles=%llu submitted_triangles=%llu "
+                "instance_batches=%llu saved_calls=%llu instance_bytes=%llu instance_uploads=%llu\n",
+                static_cast<unsigned long long>(stats.physical_draws),
+                static_cast<unsigned long long>(stats.logical_groups),
+                static_cast<unsigned long long>(stats.logical_triangles),
+                static_cast<unsigned long long>(stats.submitted_triangles),
+                static_cast<unsigned long long>(stats.instance_batches),
+                static_cast<unsigned long long>(stats.saved_calls),
+                static_cast<unsigned long long>(stats.instance_bytes),
+                static_cast<unsigned long long>(stats.instance_uploads)
+            );
+            Con_Printf("%s", line);
+
+            for (size_t index = 0; index < std::size(kStudioRigidFallbackNames); ++index)
+            {
+                std::snprintf(
+                    line,
+                    sizeof(line),
+                    "studio rigid fallback: %s=%llu\n",
+                    kStudioRigidFallbackNames[index],
+                    static_cast<unsigned long long>(stats.fallbacks[index])
+                );
+                Con_Printf("%s", line);
+            }
         }
 
         void StudioDump_f()
@@ -524,7 +569,9 @@ namespace render
 
     void Dump_RegisterCommands()
     {
+        StudioPhase_RegisterCommands();
         Cmd_AddCommand("r_studio_dump", StudioDump_f);
         Cmd_AddCommand("r_studio_elights", StudioElights_f);
+        Cmd_AddCommand("r_studio_rigid_stats", StudioRigidStats_f);
     }
 } // namespace render

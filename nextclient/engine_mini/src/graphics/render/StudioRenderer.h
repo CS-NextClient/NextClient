@@ -3,8 +3,8 @@
 #include "graphics/render/StudioDraw.h"
 #include "graphics/render/StudioDump.h"
 #include "graphics/render/StudioEngineBindings.h"
-#include "graphics/render/model/StudioModelCache.h"
 #include "graphics/render/StudioSubmit.h"
+#include "graphics/render/model/StudioModelCache.h"
 
 namespace render
 {
@@ -45,7 +45,7 @@ namespace render
             const goldsrc::studiohdr_t* texture_header{};
             bool bones_captured{};
             bool stable_skins{};
-            std::array<float, kStudioBoneFloats> bones{};
+            StudioPose bones;
         };
 
         struct PendingModel : StudioDrawPacket
@@ -85,6 +85,7 @@ namespace render
         StudioDiagnostics& diagnostics_;
         StudioMaterialRuntime material_runtime_;
         StudioGlSubmission submission_sink_;
+        StudioPosePool poses_;
         StudioDrawQueue queue_;
         float scaled_bones_[kStudioBoneFloats]{};
         bool light_gamma_ready_{};
@@ -126,6 +127,14 @@ namespace render
         void EndModel();
         void Flush(StudioFlushReason reason);
         const StudioQueueStats& get_queue_stats() const;
+        const StudioSubmissionStats& get_submission_stats() const
+        {
+            return submission_sink_.get_stats();
+        }
+        void ResetSubmissionStats()
+        {
+            submission_sink_.ResetStats();
+        }
         void DiscardPending();
         void InvalidateContextReferences();
         void ReleaseContextResources();

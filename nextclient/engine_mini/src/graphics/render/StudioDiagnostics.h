@@ -6,6 +6,7 @@
 
 #include "graphics/render/StudioDump.h"
 #include "graphics/render/StudioEngineBindings.h"
+#include "graphics/render/StudioPhaseCapture.h"
 
 namespace render
 {
@@ -34,6 +35,7 @@ namespace render
             unsigned int key{};
         };
         StudioEngineBindings& engine_;
+        StudioPhaseCapture phase_capture_;
         bool armed_{};
         bool await_light_{};
         char name_[64] = "studio_dump";
@@ -50,6 +52,12 @@ namespace render
         {
             return armed_;
         }
+
+        StudioPhaseCapture& get_phase_capture()
+        {
+            return phase_capture_;
+        }
+
         bool needs_scene_end() const
         {
             return armed_ || watch_.until != 0.0;

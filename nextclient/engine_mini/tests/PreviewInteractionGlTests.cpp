@@ -12,6 +12,7 @@
 #include "ShaderBindingTrace.h"
 #include "PreviewTestOwners.h"
 #include "StudioMaterialProviders.h"
+#include "StudioTestPose.h"
 #include "graphics/render/shader_includes.h"
 
 namespace
@@ -84,7 +85,7 @@ namespace
         GLuint texture_{};
 
     protected:
-        render::StudioDrawPacket packet_;
+        render::StudioDrawPacket packet_{.bones = CapturePose()};
 
         void SetUp() override
         {
@@ -127,7 +128,7 @@ namespace
             packet_.vao = vao_;
             packet_.blend = 1;
             packet_.bone_count = 1;
-            packet_.bones[0] = packet_.bones[5] = packet_.bones[10] = 1;
+            packet_.bones = CapturePose({{0, 1.0f}, {5, 1.0f}, {10, 1.0f}}, packet_.bones);
             packet_.raster.depth_range[1] = 1;
             for (int index = 0; index < 4; index++)
             {

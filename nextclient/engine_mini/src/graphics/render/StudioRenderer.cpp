@@ -1,32 +1,32 @@
 #include "graphics/render/StudioRenderer.h"
 
 #include <algorithm>
-#include <cstring>
 #include <cmath>
-#include <vector>
+#include <cstring>
 #include <utility>
+#include <vector>
 
 #include <glad/glad.h>
 #include <goldsrc/efx_api.h>
-#include <tier1/strtools.h>
-#include <ncl_math/vec3.h>
-#include <goldsrc/studio_api.h>
 #include <goldsrc/format/studio.h>
+#include <goldsrc/studio_api.h>
+#include <ncl_math/vec3.h>
+#include <ncl_studio/StudioMesh.h>
+#include <tier1/strtools.h>
 
-
-#include "graphics/render/StudioPreviewContext.h"
-#include "graphics/render/model/studio_sub_model.h"
+#include "graphics/preview/PreviewInteraction.h"
+#include "graphics/render/ScopedGlState.h"
+#include "graphics/render/StudioDiagnostics.h"
 #include "graphics/render/StudioDump.h"
+#include "graphics/render/StudioIntercept.h"
+#include "graphics/render/StudioPreviewContext.h"
+#include "graphics/render/StudioSubmit.h"
+#include "graphics/render/effects/StudioEffects.h"
+#include "graphics/render/material/MaterialCoverageRuntime.h"
+#include "graphics/render/material/MaterialEditSession.h"
 #include "graphics/render/material/ServerMaterials.h"
 #include "graphics/render/model/StudioGeometry.h"
-#include "graphics/render/StudioIntercept.h"
-#include "graphics/render/StudioSubmit.h"
-#include "graphics/preview/PreviewInteraction.h"
-#include "graphics/render/material/MaterialEditSession.h"
-#include "graphics/render/effects/StudioEffects.h"
-#include "graphics/render/StudioDiagnostics.h"
-#include "graphics/render/material/MaterialCoverageRuntime.h"
-#include "graphics/render/ScopedGlState.h"
+#include "graphics/render/model/studio_sub_model.h"
 #include "graphics/render/render_context.h"
 #include "performance/PerformanceMonitor.h"
 #include "performance/performance_scopes.h"
@@ -526,6 +526,7 @@ namespace render
             return;
         }
         completed.texture_revision = textures_.get_revision();
+        diagnostics_.get_phase_capture().NotePacket();
         CapturePreviewPacket(completed.entity, completed);
         const uintptr_t identity = completed.effect_identity;
         if (effects_.CheckEnabled(completed) || effects_.Contains(identity) || completed.include_occluders)
@@ -606,10 +607,12 @@ namespace render
         model_draw_ = ModelDrawCache{};
         abandoned_ = false;
         queue_.Reset();
+        poses_.Reset();
     }
 
     void StudioRenderer::InvalidateContextReferences()
     {
+        diagnostics_.get_phase_capture().SessionBoundary("context_invalidated");
         ++preparation_epoch_;
         ++cancellation_epoch_;
         material_runtime_.InvalidatePrograms();
@@ -920,7 +923,7 @@ namespace render
                 bones = ScaleBones(bones, header->numbones, entity->origin, scale);
             }
 
-            std::memcpy(model_draw_.bones.data(), bones, sizeof(model_draw_.bones));
+            model_draw_.bones = poses_.Capture(bones);
 
             model_draw_.bones_captured = true;
         }
@@ -951,8 +954,20 @@ namespace render
                 pending_.seen_parts = 0;
                 pending_.expected_parts = header->numbodyparts;
                 pending_.vao = gpu->vao;
+
+                if (gpu->rigid_vao != 0 && gpu->rigid.count != 0 && range->mesh_count == 1 && submission_sink_.EnsureInstances())
+                {
+                    const uint32_t range_index = static_cast<uint32_t>(range - gpu->mesh->submodels.data());
+
+                    pending_.rigid_vao = gpu->rigid_vao;
+                    pending_.rigid_range = gpu->rigid.ranges[range_index];
+                    pending_.rigid_index_count = gpu->rigid.index_count;
+                    pending_.rigid_bindings = material_runtime_.PrepareRigidBindings();
+                }
+
                 pending_.effect_model = gpu;
                 pending_.effect_identity = preview != nullptr ? preview->draw_identity : reinterpret_cast<uintptr_t>(entity);
+
                 pending_.include_occluders = include_occluders;
                 pending_.lighting = lighting;
                 pending_.flipped = IsFlippedViewModel(entity, view);
@@ -1038,15 +1053,19 @@ namespace render
             // uploaded. Suppressing every source at once is what lets an A/B against the engine
             // mean something on an installation that has material content, and no guard on one
             // source could do that, because a model document sits next to the model itself.
+            ncl_material::MaterialOrigin material_origin = ncl_material::MaterialOrigin::Implicit;
+            const bool check_rigid_material = pending_.rigid_bindings != nullptr;
             const ncl_material::Material* material = materials_enabled ? models_.ResolveMaterial(
                                                                              model,
                                                                              header,
                                                                              texture_header,
                                                                              static_cast<int>(texture - textures_base),
                                                                              model_draw_.texture_model,
-                                                                             get_resource_barrier()
+                                                                             get_resource_barrier(),
+                                                                             check_rigid_material ? &material_origin : nullptr
                                                                          )
                                                                        : nullptr;
+            bool authored_material = material != nullptr && material_origin != ncl_material::MaterialOrigin::Implicit;
 
             if (serial != inputs.live_serial)
             {
@@ -1063,6 +1082,7 @@ namespace render
                 if (const ncl_material::Material* bound = server_materials_.BindingFor(query, engine_.is_network_session()))
                 {
                     material = bound;
+                    authored_material = true;
                     server_bound = true;
 
                     if (recording)
@@ -1082,6 +1102,7 @@ namespace render
                 if (const ncl_material::Material* edited = edits_.FindOverride(model->name, texture->name))
                 {
                     material = edited;
+                    authored_material = true;
                 }
             }
 
@@ -1128,6 +1149,10 @@ namespace render
                 item.images = StudioMeshImages{};
                 item.program = mesh_program;
                 item.material_bindings = bindings;
+                if (check_rigid_material && (authored_material || mesh_program != program))
+                {
+                    pending_.rigid_bindings = nullptr;
+                }
 
                 if (material != nullptr && material->program != ncl_material::kLegacyProgram)
                 {
@@ -1253,7 +1278,15 @@ namespace render
         engine_(engine),
         diagnostics_(diagnostics),
         material_runtime_(shaders, manifests, textures, monitor),
-        submission_sink_(device, material_runtime_, {BindCapturedTexture, NoteProgramBind, this}, monitor, mapper, studio_depth_),
+        submission_sink_(
+            device,
+            material_runtime_,
+            {BindCapturedTexture, NoteProgramBind, this},
+            monitor,
+            mapper,
+            studio_depth_,
+            &diagnostics.get_phase_capture()
+        ),
         queue_(submission_sink_, {this, NoteQueueFlush, NoteImmediate})
     {
         device_.Register(this);
@@ -1272,6 +1305,7 @@ namespace render
     void StudioRenderer::ClearDiagnostics()
     {
         diagnostics_.Clear();
+        diagnostics_.get_phase_capture().SessionBoundary();
     }
 
     void StudioRenderer::OnDeviceLost()

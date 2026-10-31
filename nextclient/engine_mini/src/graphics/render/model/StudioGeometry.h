@@ -1,18 +1,23 @@
 #pragma once
 
+#include <array>
+#include <cstdint>
 #include <memory>
 #include <string>
 #include <vector>
 
-#include <ncl_math/vec3.h>
-#include <ncl_studio/StudioMesh.h>
-
 #include <goldsrc/format/studio.h>
 #include <goldsrc/fwd.h>
+#include <ncl_math/vec3.h>
 
 namespace performance
 {
     class PerformanceMonitor;
+}
+
+namespace ncl_studio
+{
+    struct StudioMesh;
 }
 
 namespace render
@@ -26,6 +31,25 @@ namespace render
         ncl_math::Vector3 maximum{};
     };
 
+    struct StudioRigidRange
+    {
+        uint32_t first_vertex{};
+        uint32_t end_vertex{};
+        uint32_t first_index{};
+        uint32_t index_count{};
+        uint32_t bone{};
+    };
+
+    inline constexpr size_t kStudioRigidMaxRanges = 3;
+    inline constexpr uint32_t kStudioRigidMaxIndices = 180;
+
+    struct StudioRigidCatalog
+    {
+        std::array<StudioRigidRange, kStudioRigidMaxRanges> ranges{};
+        uint32_t count{};
+        uint32_t index_count{};
+    };
+
     // One studio model uploaded to the GPU: the whole model shares a single vertex and
     // index buffer, and every mesh is drawn as a range inside them.
     struct StudioGpuModel
@@ -35,6 +59,8 @@ namespace render
         unsigned int vao;
         const ncl_studio::StudioMesh* mesh;
         std::vector<StudioBoneBounds> bounds;
+        unsigned int rigid_vao{};
+        StudioRigidCatalog rigid;
     };
 
     class StudioGeometry
@@ -54,5 +80,6 @@ namespace render
 
     private:
         bool Upload();
+        void PrepareRigidVao();
     };
 } // namespace render

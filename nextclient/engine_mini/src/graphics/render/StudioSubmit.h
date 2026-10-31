@@ -2,11 +2,10 @@
 
 #include <optional>
 
-#include "performance/PerformanceMonitor.h"
-
 #include "graphics/render/GpuBuffer.h"
 #include "graphics/render/StudioMaterialRuntime.h"
 #include "graphics/render/StudioQueue.h"
+#include "performance/PerformanceMonitor.h"
 
 namespace performance
 {
@@ -15,6 +14,7 @@ namespace performance
 
 namespace render
 {
+    class StudioPhaseCapture;
     void Studio_ApplyFaceCulling(bool flipped);
 
     struct StudioSubmissionCallbacks
@@ -22,6 +22,29 @@ namespace render
         void (*bind_texture)(void*, unsigned int){};
         void (*note_program_bind)(void*){};
         void* user{};
+    };
+
+    enum class StudioRigidFallback
+    {
+        PrimitiveRestart,
+        Ineligible,
+        SharedState,
+        Singleton,
+        Resource,
+        Count
+    };
+
+    struct StudioSubmissionStats
+    {
+        uint64_t physical_draws{};
+        uint64_t logical_groups{};
+        uint64_t logical_triangles{};
+        uint64_t submitted_triangles{};
+        uint64_t instance_batches{};
+        uint64_t saved_calls{};
+        uint64_t instance_bytes{};
+        uint64_t instance_uploads{};
+        std::array<uint64_t, static_cast<size_t>(StudioRigidFallback::Count)> fallbacks{};
     };
 
     class StudioCpuScope
@@ -46,10 +69,23 @@ namespace render
     class StudioGlSubmission : public StudioSubmissionSink
     {
     private:
+        struct InstanceRecord
+        {
+            float rows[12]{};
+            uint32_t first_vertex{};
+            uint32_t end_vertex{};
+            uint32_t blend_bits{};
+            uint32_t padding{};
+        };
+
         performance::PerformanceMonitor& monitor_;
         performance::PerformanceMapper& mapper_;
         unsigned int& studio_depth_;
+        StudioPhaseCapture* phase_capture_{};
         GpuBuffer bones_;
+        GpuBuffer instances_;
+        std::array<InstanceRecord, kMaxStudioPackets> instance_records_{};
+        StudioSubmissionStats stats_;
         StudioMaterialRuntime& material_runtime_;
         StudioSubmissionCallbacks callbacks_;
         std::optional<StudioCpuScope> cpu_scope_;
@@ -79,16 +115,27 @@ namespace render
             StudioSubmissionCallbacks callbacks,
             performance::PerformanceMonitor& monitor,
             performance::PerformanceMapper& mapper,
-            unsigned int& studio_depth
+            unsigned int& studio_depth,
+            StudioPhaseCapture* phase_capture = nullptr
         );
         bool EnsureBones();
+        bool EnsureInstances();
+        const StudioSubmissionStats& get_stats() const
+        {
+            return stats_;
+        }
+        void ResetStats();
         void Release();
         void Begin() override;
         void Draw(const StudioDrawPacket& packet) override;
+        void DrawRun(std::span<const StudioDrawPacket> packets) override;
         void End() override;
 
     private:
         void ResetStateCache();
+        void DrawPacket(const StudioDrawPacket& packet, size_t instances);
+        bool IsRigidEligible(const StudioDrawPacket& packet) const;
+        void BindInstances(const StudioDrawPacket& packet, size_t first);
         void ApplyRasterState(const StudioDrawPacket& packet);
         void ApplyBlend(bool enabled, int src_rgb, int dst_rgb, int src_alpha, int dst_alpha);
         void ApplyDepthWrite(bool enabled);

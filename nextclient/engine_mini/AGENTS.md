@@ -20,7 +20,7 @@
 
 ## Rendering and DLL boundaries
 
-The studio shader renderer has [local rules](src/graphics/render/AGENTS.md) and an [architecture reference](../../docs/renderer-architecture.md). Start with the [system flowcharts](../../docs/shader-rendering.md) for scene order, ownership and lifetime.
+The studio shader renderer has [local rules](src/graphics/render/AGENTS.md). Start with the [architecture guide and diagrams](../../docs/renderer-architecture.md) for scene order, resource ownership, lifetime, and shader-path settings.
 
 - `RendererLifecycle` composes map, disconnect, client-state, context, normal shutdown, and fatal phases. It selects live release only when the tracked native context matches and GL entry points are initialized; loss forgets names without GL calls. Terminal shutdown stops copied studio/preview callbacks before nested disconnect and releases resources before engine services and hooks disappear. Standalone `Draw_Shutdown` releases resources and retains callbacks needed by later context creation. On Windows, terminal cleanup restores the text surface adapter; both live release and loss invalidate its atlas cells while preserving CPU fonts. Static destruction must not call GL or access expired engine objects.
 - Save and restore the GL state actually touched by a draw path, including active texture unit,

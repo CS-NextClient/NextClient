@@ -12,6 +12,7 @@
 
 #include "RadarGlContext.h"
 #include "StudioMaterialProviders.h"
+#include "StudioTestPose.h"
 #include "StudioScopeTrace.h"
 #include "graphics/render/render_device.h"
 #include "graphics/render/StudioSubmit.h"
@@ -253,10 +254,10 @@ TEST(StudioSubmissionGlTest, SameProgramUsesIndependentPosesAndUniformsAndRestor
         ASSERT_TRUE(sink.EnsureBones());
         render::StudioDrawQueue queue(sink);
         StudioScopeTrace trace(runtime_performance.monitor);
-        render::StudioDrawPacket first;
+        render::StudioDrawPacket first{.bones = CapturePose()};
         render::Studio_CaptureRasterState(first, runtime_performance.monitor);
         first.vao = vao;
-        first.bones[0] = -0.5f;
+        first.bones = CapturePose({{0, -0.5f}}, first.bones);
         first.lighting.ambient = 1;
         first.blend = 0;
         first.meshes.emplace_back();
@@ -267,7 +268,7 @@ TEST(StudioSubmissionGlTest, SameProgramUsesIndependentPosesAndUniformsAndRestor
         first.meshes[0].index_count = 3;
         first.meshes[0].additive = true;
         render::StudioDrawPacket second = first;
-        second.bones[0] = 0.5f;
+        second.bones = CapturePose({{0, 0.5f}}, second.bones);
         second.lighting.ambient = 0;
         second.blend = 1;
         second.meshes[0].additive = false;

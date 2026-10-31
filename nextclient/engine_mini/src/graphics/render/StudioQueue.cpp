@@ -203,12 +203,10 @@ namespace render
         }
 
         stats_.flushes[static_cast<size_t>(reason)]++;
+
         sink_.Begin();
 
-        for (const StudioDrawPacket& packet : packets_)
-        {
-            sink_.Draw(packet);
-        }
+        sink_.DrawRun(packets_);
 
         sink_.End();
 

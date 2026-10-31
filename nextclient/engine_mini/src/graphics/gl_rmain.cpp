@@ -23,6 +23,7 @@
 #include "graphics/render/render_test.h"
 #include "graphics/render/StudioDraw.h"
 #include "graphics/render/effects/studio_effects.h"
+#include "graphics/render/StudioPhaseCapture.h"
 #include "graphics/render/StudioDump.h"
 #include "graphics/render/model/studio_model_cache.h"
 #include "graphics/render/RendererLifecycle.h"
@@ -232,7 +233,10 @@ void R_DrawWorld()
 {
     NCL_PROFILE_SCOPE();
 
+    const uint64_t started = render::StudioPhase_BeginWorld();
+
     eng()->R_DrawWorld.InvokeChained();
+    render::StudioPhase_EndWorld(started);
 }
 
 void R_RenderFinalFog()
@@ -341,6 +345,7 @@ void R_DrawTEntitiesOnList(goldsrc::qboolean clientOnly)
     if (clientOnly == false)
     {
         render::Studio_BeginTransparentPass();
+        render::StudioPhase_BeginPass(2);
 
         for (int i = 0; i < *p_numTransObjs; ++i)
         {
@@ -408,6 +413,7 @@ void R_DrawTEntitiesOnList(goldsrc::qboolean clientOnly)
         }
 
         render::Studio_EndTransparentPass();
+        render::StudioPhase_EndPass();
     }
 
     GL_DisableMultitexture();
@@ -431,6 +437,7 @@ void R_DrawEntitiesOnList()
         return;
 
     render::Studio_BeginOpaquePass();
+    render::StudioPhase_BeginPass(1);
 
     for (int i = 0; i < *p_cl_numvisedicts; i++)
     {
@@ -460,6 +467,7 @@ void R_DrawEntitiesOnList()
     }
 
     render::Studio_EndOpaquePass();
+    render::StudioPhase_EndPass();
     *p_r_blend = 1.0;
 
     for (int i = 0; i < *p_cl_numvisedicts; i++)
@@ -553,6 +561,7 @@ void R_RenderView()
         *p_c_alias_polys = 0;
     }
 
+    render::StudioPhase_BeginView();
     *p_mirror = false;
 
     R_Clear();
@@ -592,6 +601,8 @@ void R_RenderView()
             *p_c_brush_polys,
             *p_c_alias_polys);
     }
+
+    render::StudioPhase_EndView();
 }
 
 void R_ForceCVars(goldsrc::qboolean mp)

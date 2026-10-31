@@ -4,6 +4,16 @@ find_package(GTest CONFIG REQUIRED)
 
 include(GoogleTest)
 
+add_executable(studio-pose-tests StudioPoseTests.cpp)
+target_include_directories(studio-pose-tests PRIVATE ../src)
+target_link_libraries(studio-pose-tests PRIVATE GTest::gtest_main goldsrc::abi)
+gtest_discover_tests(studio-pose-tests)
+
+add_executable(studio-phase-capture-tests StudioPhaseCaptureTests.cpp ../src/graphics/render/StudioPhaseCapture.cpp)
+target_include_directories(studio-phase-capture-tests PRIVATE ../src)
+target_link_libraries(studio-phase-capture-tests PRIVATE GTest::gtest_main)
+gtest_discover_tests(studio-phase-capture-tests)
+
 add_executable(renderer-lifecycle-tests
         RendererLifecycleTests.cpp
         ../../client_mini/tests/RadarGlContext.cpp)
@@ -85,6 +95,7 @@ add_executable(performance-gl-tests
         ../src/graphics/render/GpuBuffer.cpp
         ../src/graphics/render/StudioQueue.cpp
         ../src/graphics/render/StudioSubmit.cpp
+        ../src/graphics/render/StudioPhaseCapture.cpp
         ../src/graphics/render/StudioMaterialRuntime.cpp
         PerformanceGpuGlTests.cpp
         PerformanceGlStateTests.cpp

@@ -183,6 +183,45 @@ namespace performance
         StageDescriptor{{PerfStage::StudioGeometry, "Geometry preparation", PerfStage::Studio, ncl_perf::PerfScopeCapability::Cpu}},
         StageDescriptor{{PerfStage::StudioMaterial, "Material preparation", PerfStage::Studio, ncl_perf::PerfScopeCapability::Cpu}},
         StageDescriptor{
+            {
+                PerfStage::StudioInstancePlan,
+                "Instance planning",
+                PerfStage::Studio,
+                ncl_perf::PerfScopeCapability::Cpu
+            },
+            CollectionLevel::StudioDetail,
+            PerfSeries::Count,
+            false,
+            true,
+            true
+        },
+        StageDescriptor{
+            {
+                PerfStage::StudioInstanceUpload,
+                "Instance upload",
+                PerfStage::Studio,
+                ncl_perf::PerfScopeCapability::Cpu
+            },
+            CollectionLevel::StudioDetail,
+            PerfSeries::Count,
+            false,
+            true,
+            true
+        },
+        StageDescriptor{
+            {
+                PerfStage::StudioInstanceSubmit,
+                "Instance submission",
+                PerfStage::StudioShader,
+                ncl_perf::PerfScopeCapability::Cpu
+            },
+            CollectionLevel::StudioDetail,
+            PerfSeries::Count,
+            false,
+            true,
+            false
+        },
+        StageDescriptor{
             {PerfStage::StudioShader, "Shader submission", PerfStage::Studio, ncl_perf::PerfScopeCapability::CpuGpu},
             CollectionLevel::Ordinary,
             PerfSeries::StudioGpu,

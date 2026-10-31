@@ -80,7 +80,10 @@ namespace
         performance::PerfStage::StudioMeshSort,
         performance::PerfStage::StudioStateApply,
         performance::PerfStage::StudioUniformSetup,
-        performance::PerfStage::StudioTextureSetup
+        performance::PerfStage::StudioTextureSetup,
+        performance::PerfStage::StudioInstancePlan,
+        performance::PerfStage::StudioInstanceUpload,
+        performance::PerfStage::StudioInstanceSubmit
     };
 
     constexpr std::array kExpectedStudioCosts = {
@@ -91,6 +94,9 @@ namespace
         performance::PerfStage::StudioProgramBind
     };
     constexpr std::array kExpectedStudioDetails = {
+        performance::PerfStage::StudioInstancePlan,
+        performance::PerfStage::StudioInstanceUpload,
+        performance::PerfStage::StudioInstanceSubmit,
         performance::PerfStage::StudioModelStateCapture,
         performance::PerfStage::StudioBatchStateSave,
         performance::PerfStage::StudioRestoreBindings,
@@ -103,6 +109,8 @@ namespace
         performance::PerfStage::StudioTextureSetup
     };
     constexpr std::array kExpectedStudioOtherCosts = {
+        performance::PerfStage::StudioInstancePlan,
+        performance::PerfStage::StudioInstanceUpload,
         performance::PerfStage::StudioDataPrepare,
         performance::PerfStage::StudioMeshSort,
         performance::PerfStage::StudioStateApply,

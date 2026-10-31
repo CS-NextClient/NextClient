@@ -13,6 +13,7 @@
 
 #include "RadarGlContext.h"
 #include "StudioMaterialProviders.h"
+#include "StudioTestPose.h"
 #include "common/memory/ScratchArena.h"
 #include "common/memory/g_scratch_allocator.h"
 #include "graphics/render/render_device.h"
@@ -389,7 +390,7 @@ namespace
 
         render::StudioDrawPacket MakePacket(render::StudioMaterialRuntime& runtime, performance::PerformanceMonitor& monitor, int bones = 1)
         {
-            render::StudioDrawPacket packet;
+            render::StudioDrawPacket packet{.bones = CapturePose()};
             render::Studio_CaptureRasterState(packet, monitor);
             packet.vao = vao_;
             packet.bone_count = bones;
@@ -443,7 +444,7 @@ TEST_F(StudioOptimizationGlTest, SmallAndLargePosesKeepTheirPixelsAndUploadOnlyT
     for (int bones : {1, 128, 1})
     {
         render::StudioDrawPacket packet = MakePacket(runtime, runtime_performance.monitor, bones);
-        packet.bones[0] = bones == 128 ? 0.5f : -0.5f;
+        packet.bones = CapturePose({{0, bones == 128 ? 0.5f : -0.5f}}, packet.bones);
         glClear(GL_COLOR_BUFFER_BIT);
         size_t before = g_ScratchAllocator.GetOffset();
         PreparePacketImages(runtime, packet);
@@ -476,7 +477,7 @@ TEST_F(StudioOptimizationGlTest, AuthoredMaterialKeepsFullPoseAndRestoresBinding
     );
     ASSERT_TRUE(sink.EnsureBones());
     render::StudioDrawPacket packet = MakePacket(runtime, runtime_performance.monitor);
-    packet.bones.back() = 17;
+    packet.bones = CapturePose({{render::kStudioBoneFloats - 1, 17.0f}}, packet.bones);
     packet.meshes[0].material.emplace();
     packet.meshes[0].material->program = "custom";
     ncl_material::ParamValue image;
@@ -899,7 +900,7 @@ TEST_F(StudioOptimizationGlTest, StateCacheSkipsRepeatedSettersAndKeepsPacketWor
     sink.Begin();
     sink.Draw(packet);
 
-    packet.bones[0] = 0.25f;
+    packet.bones = CapturePose({{0, 0.25f}}, packet.bones);
     sink.Draw(packet);
 
     for (GLenum cap : {GL_BLEND, GL_DEPTH_TEST, GL_CULL_FACE, GL_ALPHA_TEST})
@@ -969,7 +970,7 @@ TEST_F(StudioOptimizationGlTest, StateCacheAppliesChangedRasterAndResetsAtScopeB
 
     sink.Draw(packet);
 
-    render::StudioDrawPacket applied;
+    render::StudioDrawPacket applied{.bones = CapturePose()};
     render::Studio_CaptureRasterState(applied, performance.monitor);
 
     EXPECT_TRUE(applied.raster.blend);

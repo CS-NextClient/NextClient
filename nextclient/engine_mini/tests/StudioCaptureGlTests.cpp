@@ -1,62 +1,68 @@
-#include <gtest/gtest.h>
-
 #include <algorithm>
 #include <array>
+#include <cmath>
 #include <cstdarg>
 #include <cstdio>
 #include <cstring>
 #include <functional>
+#include <limits>
 #include <memory>
+#include <sstream>
 #include <string>
+#include <unordered_map>
 #include <utility>
 #include <vector>
-#include <unordered_map>
 
 #ifdef _WIN32
 #include <Windows.h>
 #endif
 
 #include <glad/glad.h>
+#include <goldsrc/engine/video.h>
+#include <gtest/gtest.h>
+#include <ncl_material/material_parse.h>
 #include <ncl_perf/profiler.h>
 #include <ncl_studio/StudioMesh.h>
 #include <ncl_utils/scope_exit.h>
-#include <goldsrc/engine/video.h>
 #include <next_engine_mini/MaterialEditInterface.h>
 #include <next_engine_mini/render_cvars.h>
 
-#include "RadarGlContext.h"
-#include "StudioScopeTrace.h"
-#include "StudioModelTestSupport.h"
-#include "StudioTextureUploadFixture.h"
-#include "engine.h"
 #include "PreviewTestOwners.h"
+#include "RadarGlContext.h"
 #include "RendererOwnerTestSupport.h"
-#include <ncl_material/material_parse.h>
+#include "StudioModelTestSupport.h"
+#include "StudioScopeTrace.h"
+#include "StudioTestPose.h"
+#include "StudioTextureUploadFixture.h"
+#include "common/common.h"
 #include "common/cvar.h"
 #include "common/filesystem.h"
 #include "common/model.h"
-#include "graphics/gl_local.h"
 #include "console/console.h"
-#include "resource/texture_manager/TextureManager.h"
+#include "engine.h"
+#include "graphics/gl_local.h"
+#include "graphics/preview/PreviewInteraction.h"
+#include "graphics/preview/PreviewSceneTarget.h"
+#include "graphics/render/RenderConfig.h"
+#include "graphics/render/RendererLifecycle.h"
+#include "graphics/render/RendererState.h"
+#include "graphics/render/ScopedGlState.h"
+#include "graphics/render/StudioDraw.h"
+#include "graphics/render/StudioIntercept.h"
+#include "graphics/render/StudioPreviewContext.h"
+#include "graphics/render/StudioSubmit.h"
+#include "graphics/render/effects/studio_effects.h"
+#include "graphics/render/material/ServerMaterials.h"
 #include "graphics/render/material/material_edit.h"
 #include "graphics/render/material/material_manifests.h"
 #include "graphics/render/material/material_textures.h"
-#include "graphics/render/StudioPreviewContext.h"
-#include "graphics/render/RendererState.h"
-#include "graphics/render/RendererLifecycle.h"
-#include "graphics/preview/PreviewInteraction.h"
-#include "graphics/preview/PreviewSceneTarget.h"
-#include "graphics/render/ScopedGlState.h"
-#include "graphics/render/shader_manager.h"
-#include "graphics/render/material/ServerMaterials.h"
-#include "graphics/render/RenderConfig.h"
-#include "graphics/render/render_device.h"
-#include "graphics/render/StudioDraw.h"
 #include "graphics/render/model/StudioGeometry.h"
 #include "graphics/render/model/studio_model_cache.h"
-#include "graphics/render/effects/studio_effects.h"
-#include "graphics/render/StudioIntercept.h"
-#include "graphics/render/StudioSubmit.h"
+#include "graphics/render/render_device.h"
+#include "graphics/render/shader_manager.h"
+#include "performance/PerformanceMetrics.h"
+#include "performance/PerformancePanelLayout.h"
+#include "resource/texture_manager/TextureManager.h"
 
 void R_DrawTEntitiesOnList(goldsrc::qboolean client_only);
 
@@ -142,6 +148,42 @@ namespace
             header->texturedataindex = static_cast<int>(bytes_.size());
             header->length = static_cast<int>(bytes_.size());
             std::strcpy(header->name, name);
+        }
+
+        void SetBodyVariants()
+        {
+            goldsrc::studiohdr_t* header = get_header();
+            const int submodels = At<goldsrc::mstudiobodyparts_t>(header->bodypartindex)[0].modelindex;
+
+            At<goldsrc::mstudiobodyparts_t>(header->bodypartindex)[0].nummodels = 3;
+            header->numbodyparts = 1;
+
+            for (int variant = 0; variant < 3; ++variant)
+            {
+                const float half_width = 0.15f + variant * 0.07f;
+                const float positions[][3] = {
+                    {-half_width, -0.55f, 0},
+                    {0, 0.25f + variant * 0.15f, 0},
+                    {half_width, -0.55f, 0}
+                };
+                const int offset = Append(positions, sizeof(positions));
+                At<goldsrc::mstudiomodel_t>(submodels)[variant].vertindex = offset;
+            }
+
+            get_header()->length = static_cast<int>(bytes_.size());
+            get_header()->texturedataindex = get_header()->length;
+        }
+
+        void SetVertexBones(bool mixed)
+        {
+            get_header()->numbones = 2;
+
+            const goldsrc::mstudiomodel_t* submodel = static_cast<const goldsrc::mstudiomodel_t*>(get_submodel(0));
+            uint8_t* bones = bytes_.data() + submodel->vertinfoindex;
+
+            bones[0] = 1;
+            bones[1] = mixed ? 0 : 1;
+            bones[2] = 1;
         }
 
         void SetSubdividedBoxGeometry()
@@ -395,8 +437,26 @@ namespace
         }
     };
 
+    std::string* g_TextOnlyConsole{};
+
     char* CapturePrint(const char* format, ...)
     {
+        if (g_TextOnlyConsole != nullptr)
+        {
+            if (std::strcmp(format, "%s") != 0)
+            {
+                ADD_FAILURE() << "The engine console boundary accepts preformatted text only";
+                return nullptr;
+            }
+
+            va_list arguments;
+            va_start(arguments, format);
+            g_TextOnlyConsole->append(va_arg(arguments, const char*));
+            va_end(arguments);
+
+            return nullptr;
+        }
+
         va_list arguments;
         va_start(arguments, format);
         std::vfprintf(stderr, format, arguments);
@@ -550,9 +610,43 @@ namespace
     }
     PFNGLMULTIDRAWELEMENTSPROC g_OriginalMultiDraw{};
     PFNGLBUFFERSUBDATAPROC g_OriginalBoneUpload{};
+    StudioScopeTrace* g_RigidTrace{};
+    int g_RigidDraws{};
+    bool g_CheckInstanceLayout{};
+    PFNGLDRAWELEMENTSINSTANCEDPROC g_OriginalInstancedDraw{};
+
+    void APIENTRY ObserveInstancedDraw(GLenum mode, GLsizei count, GLenum type, const void* indices, GLsizei instances)
+    {
+        ++g_RigidDraws;
+
+        if (g_CheckInstanceLayout)
+        {
+            GLint value = 0;
+            glGetVertexAttribiv(8, GL_VERTEX_ATTRIB_ARRAY_SIZE, &value);
+            EXPECT_EQ(value, 3);
+            glGetVertexAttribiv(8, GL_VERTEX_ATTRIB_ARRAY_STRIDE, &value);
+            EXPECT_EQ(value, 64);
+            glGetVertexAttribiv(8, GL_VERTEX_ATTRIB_ARRAY_INTEGER, &value);
+            EXPECT_EQ(value, GL_TRUE);
+            glGetVertexAttribiv(8, GL_VERTEX_ATTRIB_ARRAY_DIVISOR, &value);
+            EXPECT_EQ(value, 1);
+            glGetVertexAttribiv(8, GL_VERTEX_ATTRIB_ARRAY_TYPE, &value);
+            EXPECT_EQ(value, GLint(GL_UNSIGNED_INT));
+        }
+
+        g_OriginalInstancedDraw(mode, count, type, indices, instances);
+    }
 
     void APIENTRY ObserveCapturedBoneUpload(GLenum target, GLintptr offset, GLsizeiptr size, const void* data)
     {
+        if (g_RigidTrace != nullptr)
+        {
+            EXPECT_EQ(
+                g_RigidTrace->current(),
+                target == GL_ARRAY_BUFFER ? performance::PerfStage::StudioInstanceUpload : performance::PerfStage::StudioBoneUpload
+            );
+        }
+
         g_Capture.bone_uploads.push_back(size);
         g_OriginalBoneUpload(target, offset, size, data);
     }
@@ -828,6 +922,15 @@ namespace
     {
         *bodypart = nullptr;
         *submodel = g_Capture.model->get_submodel(part);
+
+        const goldsrc::studiohdr_t* header = g_Capture.model->get_header();
+        const goldsrc::mstudiobodyparts_t* parts =
+            reinterpret_cast<const goldsrc::mstudiobodyparts_t*>(reinterpret_cast<const uint8_t*>(header) + header->bodypartindex);
+
+        if (parts[part].nummodels > 1)
+        {
+            *submodel = static_cast<goldsrc::mstudiomodel_t*>(*submodel) + g_Capture.entity->curstate.body % parts[part].nummodels;
+        }
     }
 
     void CaptureNoop() {}
@@ -1020,11 +1123,117 @@ namespace
             api_.RestoreRenderer();
         }
 
+        void SetLighting(int ambient, int shade)
+        {
+            float direction[] = {0, 0, -1};
+            goldsrc::alight_t light{};
+            light.ambientlight = ambient;
+            light.shadelight = shade;
+            light.color[0] = light.color[1] = light.color[2] = 1;
+            light.plightvec = direction;
+            api_.StudioSetupLighting(&light);
+        }
+
         std::array<uint8_t, 4> ReadPixel(int x)
         {
             std::array<uint8_t, 4> pixel{};
             glReadPixels(x, kImageHeight / 2, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, pixel.data());
             return pixel;
+        }
+
+        std::array<uint8_t, kImageWidth * kImageHeight * 4> DrawSequence(
+            CaptureModel& model,
+            bool ordinary,
+            const std::vector<int>& bodies,
+            const std::function<void(size_t)>& prepare = {},
+            bool transparent = false,
+            const std::function<void(std::span<render::StudioDrawPacket>)>& prepare_packets = {}
+        )
+        {
+            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+            g_Capture.draws.clear();
+            g_Capture.bone_uploads.clear();
+
+            render::GetRendererState().studio.ResetSubmissionStats();
+            g_RigidDraws = 0;
+            g_OriginalInstancedDraw = std::exchange(glad_glDrawElementsInstanced, ObserveInstancedDraw);
+            ncl_utils::ScopeExit restore([] { glad_glDrawElementsInstanced = g_OriginalInstancedDraw; });
+
+            if (transparent)
+            {
+                render::Studio_BeginTransparentPass();
+            }
+            else
+            {
+                render::Studio_BeginOpaquePass();
+            }
+
+            goldsrc::cl_entity_t entity{};
+
+            for (size_t index = 0; index < bodies.size(); ++index)
+            {
+                entity.curstate.body = bodies[index];
+                BeginModel(model, entity, bodies.size() < 8 ? -0.4f + static_cast<float>(index) * 0.2f : 0.0f);
+
+                if (prepare)
+                {
+                    prepare(index);
+                }
+
+                DrawPart(0);
+                EndModel();
+
+                if (ordinary && !prepare_packets)
+                {
+                    render::StudioRendererTestAccess::DrawOrdinaryPackets(render::GetRendererState().studio);
+                }
+            }
+
+            if (prepare_packets)
+            {
+                prepare_packets(render::StudioRendererTestAccess::get_queued_packets(render::GetRendererState().studio));
+            }
+
+            if (ordinary)
+            {
+                render::StudioRendererTestAccess::DrawOrdinaryPackets(render::GetRendererState().studio);
+            }
+
+            if (transparent)
+            {
+                render::Studio_EndTransparentPass();
+            }
+            else
+            {
+                render::Studio_EndOpaquePass();
+            }
+
+            std::array<uint8_t, kImageWidth * kImageHeight * 4> pixels{};
+            glReadPixels(0, 0, kImageWidth, kImageHeight, GL_RGBA, GL_UNSIGNED_BYTE, pixels.data());
+
+            return pixels;
+        }
+
+        std::array<uint8_t, kImageWidth * kImageHeight * 4> DrawRigidSequence(
+            CaptureModel& model,
+            const std::vector<int>& bodies,
+            const std::function<void(size_t)>& prepare = {},
+            bool transparent = false,
+            const std::function<void(std::span<render::StudioDrawPacket>)>& prepare_packets = {}
+        )
+        {
+            return DrawSequence(model, false, bodies, prepare, transparent, prepare_packets);
+        }
+
+        std::array<uint8_t, kImageWidth * kImageHeight * 4> DrawOrdinarySequence(
+            CaptureModel& model,
+            const std::vector<int>& bodies,
+            const std::function<void(size_t)>& prepare = {},
+            bool transparent = false,
+            const std::function<void(std::span<render::StudioDrawPacket>)>& prepare_packets = {}
+        )
+        {
+            return DrawSequence(model, true, bodies, prepare, transparent, prepare_packets);
         }
     };
 
@@ -1762,8 +1971,8 @@ TEST_F(StudioCaptureGlTest, SessionResetRebuildsSameNameAndHeaderStorageWithChan
     DrawPart(0);
     EndModel();
     render::Studio_EndOpaquePass();
-    ASSERT_EQ(g_GeometryUploads, 1);
-    ASSERT_EQ(g_GeometryCreations, 1);
+    ASSERT_EQ(g_GeometryUploads, 2);
+    ASSERT_EQ(g_GeometryCreations, 2);
     const render::StudioGpuModel* first = render::Models_PrepareGeometry(&model.model, model.get_header());
     ASSERT_NE(first, nullptr);
     ASSERT_FALSE(first->bounds.empty());
@@ -1774,8 +1983,8 @@ TEST_F(StudioCaptureGlTest, SessionResetRebuildsSameNameAndHeaderStorageWithChan
     render::Models_ForgetSessionMetadata();
     EXPECT_EQ(render::Models_ModelName(0), nullptr);
     EXPECT_EQ(render::Models_Metadata(model.model.name), nullptr);
-    EXPECT_EQ(g_GeometryUploads, 1);
-    EXPECT_EQ(g_GeometryCreations, 1);
+    EXPECT_EQ(g_GeometryUploads, 2);
+    EXPECT_EQ(g_GeometryCreations, 2);
     EXPECT_TRUE(g_GeometryDeletesAfterDraws.empty());
     EXPECT_EQ(g_GeometryOperations, operations);
 
@@ -1790,9 +1999,9 @@ TEST_F(StudioCaptureGlTest, SessionResetRebuildsSameNameAndHeaderStorageWithChan
     ASSERT_FALSE(replacement->bounds.empty());
     EXPECT_FLOAT_EQ(replacement->bounds[0].minimum.x, -0.8f);
     EXPECT_FLOAT_EQ(replacement->bounds[0].maximum.x, 0.8f);
-    EXPECT_EQ(g_GeometryUploads, 2);
-    EXPECT_EQ(g_GeometryCreations, 2);
-    EXPECT_EQ(g_GeometryDeletesAfterDraws.size(), 1u);
+    EXPECT_EQ(g_GeometryUploads, 3);
+    EXPECT_EQ(g_GeometryCreations, 4);
+    EXPECT_EQ(g_GeometryDeletesAfterDraws.size(), 2u);
     EXPECT_EQ(g_Capture.stock_calls, 0);
 }
 
@@ -1905,7 +2114,7 @@ TEST_F(StudioCaptureGlTest, TextureHeaderReplacementDoesNotRebuildGeometry)
     EXPECT_NE(render::Models_ResolveMaterialByName(model.model.name, "new_texture", nullptr), nullptr);
     EXPECT_EQ(render::Models_PrepareGeometry(&model.model, model.get_header()), geometry);
     EXPECT_EQ(g_GeometryUploads, 1);
-    EXPECT_EQ(g_GeometryCreations, 1);
+    EXPECT_EQ(g_GeometryCreations, 2);
     EXPECT_TRUE(g_GeometryDeletesAfterDraws.empty());
 }
 
@@ -1928,7 +2137,7 @@ TEST_F(StudioCaptureGlTest, CompanionReloadAtSameAddressRefreshesOwnedTextureSta
     ASSERT_EQ(g_Capture.stock_calls, 0) << render::Studio_LastRejection();
     ASSERT_STREQ(render::Models_TextureName(model.model.name, 0), "red");
     ASSERT_EQ(render::Models_SkinFamilyCount(model.model.name), 2);
-    ASSERT_EQ(g_GeometryUploads, 1);
+    ASSERT_EQ(g_GeometryUploads, 2);
     const render::StudioGpuModel* geometry = render::Models_PrepareGeometry(&model.model, model.get_header());
     ASSERT_NE(geometry, nullptr);
     const goldsrc::studiohdr_t* storage = companion.get_header();
@@ -1964,8 +2173,8 @@ TEST_F(StudioCaptureGlTest, CompanionReloadAtSameAddressRefreshesOwnedTextureSta
     EXPECT_FLOAT_EQ(material->FindParam("fullbright")->scalar, 0);
     EXPECT_NE(render::Models_Metadata(retained.model.name), nullptr);
     EXPECT_EQ(render::Models_PrepareGeometry(&model.model, model.get_header()), geometry);
-    EXPECT_EQ(g_GeometryUploads, 1);
-    EXPECT_EQ(g_GeometryCreations, 1);
+    EXPECT_EQ(g_GeometryUploads, 2);
+    EXPECT_EQ(g_GeometryCreations, 2);
     EXPECT_TRUE(g_GeometryDeletesAfterDraws.empty());
     EXPECT_EQ(glGetError(), GLenum(GL_NO_ERROR));
 }
@@ -2009,8 +2218,8 @@ TEST_F(StudioCaptureGlTest, NestedCompanionLoadPreservesCurrentStudioCapture)
     EXPECT_FLOAT_EQ(g_Capture.draws[1].bone_x, 0.25f);
     EXPECT_TRUE(render::Studio_Lighting().valid);
     EXPECT_EQ(render::Models_TextureCount(model.model.name), 2);
-    EXPECT_EQ(g_GeometryUploads, 2);
-    EXPECT_EQ(g_GeometryCreations, 2);
+    EXPECT_EQ(g_GeometryUploads, 3);
+    EXPECT_EQ(g_GeometryCreations, 3);
     EXPECT_EQ(glGetError(), GLenum(GL_NO_ERROR));
 }
 
@@ -2025,28 +2234,28 @@ TEST_F(StudioCaptureGlTest, DeviceLossRetainsMetadataAndRecreatesGeometryOnNextD
     DrawPart(0);
     EndModel();
     render::Studio_EndOpaquePass();
-    ASSERT_EQ(g_GeometryUploads, 1);
+    ASSERT_EQ(g_GeometryUploads, 2);
     const ncl_studio::StudioMetadata* metadata = render::Models_Metadata(model.model.name);
     ASSERT_NE(metadata, nullptr);
     render::Device_OnContextDestroyed();
     EXPECT_EQ(render::Models_Metadata(model.model.name), metadata);
     EXPECT_EQ(render::Models_TextureCount(model.model.name), 2);
     EXPECT_NE(render::Models_ResolveMaterialByName(model.model.name, "red", nullptr), nullptr);
-    EXPECT_EQ(g_GeometryUploads, 1);
+    EXPECT_EQ(g_GeometryUploads, 2);
     EXPECT_TRUE(g_GeometryDeletesAfterDraws.empty());
     EXPECT_EQ(g_GeometryBufferDeletes, 0);
     render::Device_OnContextCreated();
     trace.Attach();
     glad_glMultiDrawElements = ObserveCaptureDraw;
     glad_glBufferSubData = ObserveCapturedBoneUpload;
-    EXPECT_EQ(g_GeometryUploads, 1);
+    EXPECT_EQ(g_GeometryUploads, 2);
     render::Studio_BeginOpaquePass();
     BeginModel(model, entity, 0);
     DrawPart(0);
     EndModel();
     render::Studio_EndOpaquePass();
-    EXPECT_EQ(g_GeometryUploads, 2);
-    EXPECT_EQ(g_GeometryCreations, 2);
+    EXPECT_EQ(g_GeometryUploads, 4);
+    EXPECT_EQ(g_GeometryCreations, 4);
     EXPECT_TRUE(g_GeometryDeletesAfterDraws.empty());
     EXPECT_EQ(g_Capture.stock_calls, 0);
     EXPECT_EQ(g_Capture.draws.size(), 2u);
@@ -2552,11 +2761,11 @@ TEST_F(StudioCaptureGlTest, SelectionUsesCapturedPoseDepthSkinAndMaskedAlpha)
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 
-    render::StudioDrawPacket packet{};
+    render::StudioDrawPacket packet{.bones = CapturePose()};
     packet.vao = vao;
     packet.blend = 1;
     packet.bone_count = 1;
-    packet.bones[0] = packet.bones[5] = packet.bones[10] = 1;
+    packet.bones = CapturePose({{0, 1.0f}, {5, 1.0f}, {10, 1.0f}}, packet.bones);
     packet.raster.depth_range[1] = 1;
 
     for (int index = 0; index < 4; index++)
@@ -2573,7 +2782,7 @@ TEST_F(StudioCaptureGlTest, SelectionUsesCapturedPoseDepthSkinAndMaskedAlpha)
     interaction.BeginModel(2, model);
     PrepareCoveragePacket(render::GetRendererState().coverage, packet);
     interaction.Capture(packet);
-    packet.bones[11] = -0.3f;
+    packet.bones = CapturePose({{11, -0.3f}}, packet.bones);
     packet.meshes[0].skin = 7;
     PrepareCoveragePacket(render::GetRendererState().coverage, packet);
     interaction.Capture(packet);
@@ -2582,11 +2791,11 @@ TEST_F(StudioCaptureGlTest, SelectionUsesCapturedPoseDepthSkinAndMaskedAlpha)
     EXPECT_EQ(hit.texture_index, 7);
 
     interaction.BeginFrame();
-    packet.bones[11] = 0;
+    packet.bones = CapturePose({{11, 0.0f}}, packet.bones);
     packet.meshes[0].skin = 3;
     PrepareCoveragePacket(render::GetRendererState().coverage, packet);
     interaction.Capture(packet);
-    packet.bones[11] = -0.3f;
+    packet.bones = CapturePose({{11, -0.3f}}, packet.bones);
     packet.meshes[0].skin = 7;
     packet.meshes[0].masked = true;
     PrepareCoveragePacket(render::GetRendererState().coverage, packet);
@@ -2604,13 +2813,13 @@ TEST_F(StudioCaptureGlTest, SelectionUsesCapturedPoseDepthSkinAndMaskedAlpha)
         for (float alpha : {0.25f, 0.5f, 1.0f})
         {
             interaction.BeginFrame();
-            packet.bones[11] = 0;
+            packet.bones = CapturePose({{11, 0.0f}}, packet.bones);
             packet.meshes[0].skin = 3;
             packet.meshes[0].masked = false;
             packet.meshes[0].material.reset();
             PrepareCoveragePacket(render::GetRendererState().coverage, packet);
             interaction.Capture(packet);
-            packet.bones[11] = -0.3f;
+            packet.bones = CapturePose({{11, -0.3f}}, packet.bones);
             packet.meshes[0].skin = 7;
             packet.meshes[0].masked = true;
             ncl_material::Material material;
@@ -2635,13 +2844,13 @@ TEST_F(StudioCaptureGlTest, SelectionUsesCapturedPoseDepthSkinAndMaskedAlpha)
             for (float amount : {1.0f, 0.0f})
             {
                 interaction.BeginFrame();
-                packet.bones[11] = 0;
+                packet.bones = CapturePose({{11, 0.0f}}, packet.bones);
                 packet.meshes[0].skin = 3;
                 packet.meshes[0].masked = false;
                 packet.meshes[0].material.reset();
                 PrepareCoveragePacket(render::GetRendererState().coverage, packet);
                 interaction.Capture(packet);
-                packet.bones[11] = -0.3f;
+                packet.bones = CapturePose({{11, -0.3f}}, packet.bones);
                 packet.meshes[0].skin = 7;
                 packet.meshes[0].masked = true;
                 ncl_material::Material material;
@@ -3169,7 +3378,7 @@ void StudioCaptureGlTest::CheckMultisampleVisibility(bool window)
 
 TEST_F(StudioCaptureGlTest, QueuedPacketsKeepIndependentPosesWithoutFog)
 {
-    CaptureModel model("models/capture_queued_poses.mdl", {1});
+    CaptureModel model("models/capture_queued_poses.mdl", {2});
     goldsrc::cl_entity_t entities[3]{};
     const float poses[] = {-0.55f, 0, 0.55f};
     glDisable(GL_FOG);
@@ -3209,8 +3418,8 @@ TEST_F(StudioCaptureGlTest, LifecycleLiveReleaseRetiresQueuedGeometryAndRecreate
     DrawPart(0);
     EndModel();
     ASSERT_TRUE(g_Capture.draws.empty());
-    ASSERT_EQ(g_GeometryUploads, 1);
-    ASSERT_EQ(g_GeometryCreations, 1);
+    ASSERT_EQ(g_GeometryUploads, 2);
+    ASSERT_EQ(g_GeometryCreations, 2);
     const render::StudioGpuModel* geometry = render::Models_PrepareGeometry(&model.model, model.get_header());
     ASSERT_NE(geometry, nullptr);
     GLuint retired_vao = geometry->vao;
@@ -3234,8 +3443,8 @@ TEST_F(StudioCaptureGlTest, LifecycleLiveReleaseRetiresQueuedGeometryAndRecreate
     glad_glBufferSubData = ObserveCapturedBoneUpload;
     render::Studio_EndOpaquePass();
     ASSERT_TRUE(g_Capture.draws.empty());
-    EXPECT_EQ(g_GeometryUploads, 1);
-    EXPECT_EQ(g_GeometryCreations, 1);
+    EXPECT_EQ(g_GeometryUploads, 2);
+    EXPECT_EQ(g_GeometryCreations, 2);
     render::Studio_BeginOpaquePass();
     BeginModel(model, entity, 0);
     DrawPart(0);
@@ -3244,8 +3453,8 @@ TEST_F(StudioCaptureGlTest, LifecycleLiveReleaseRetiresQueuedGeometryAndRecreate
     EXPECT_EQ(g_Capture.stock_calls, 0) << render::Studio_LastRejection();
     ASSERT_EQ(g_Capture.draws.size(), 1u);
     EXPECT_EQ(render::Models_ModelCount(), 1);
-    EXPECT_EQ(g_GeometryUploads, 2);
-    EXPECT_EQ(g_GeometryCreations, 2);
+    EXPECT_EQ(g_GeometryUploads, 4);
+    EXPECT_EQ(g_GeometryCreations, 4);
     const render::StudioGpuModel* recreated = render::Models_PrepareGeometry(&model.model, model.get_header());
     ASSERT_NE(recreated, nullptr);
     EXPECT_TRUE(glIsVertexArray(recreated->vao));
@@ -3411,9 +3620,14 @@ TEST_F(StudioCaptureGlTest, ImagePreparationCancellationKeepsPayloadOwnedAndPubl
             return;
         }
         entered = true;
+        const float* completed_pose = render::StudioRendererTestAccess::get_cached_pose(renderer).data();
+        ASSERT_NE(completed_pose, nullptr);
+        const std::array<float, render::kStudioBoneFloats> expected = g_Capture.bones;
         render::RendererLifecycle lifecycle = preview_test::MakeLifecycle(render::GetRendererState());
         lifecycle.OnClientStateClearing();
         EXPECT_FALSE(guard.is_epoch_current());
+        EXPECT_EQ(render::StudioRendererTestAccess::get_cached_pose(renderer).data(), nullptr);
+        EXPECT_TRUE(std::equal(expected.begin(), expected.end(), completed_pose));
     };
     {
         render::StudioPreviewContext context(render::GetRendererState().studio, &entity, params, request, &capture);
@@ -3550,5 +3764,1216 @@ TEST_F(StudioCaptureGlTest, MapResetFromImagePreparationPreservesExternalBinding
     glDeleteVertexArrays(1, &external_vao);
     glDeleteBuffers(1, &external_buffer);
     glDeleteTextures(1, &external_image);
+    EXPECT_EQ(glGetError(), GLenum(GL_NO_ERROR));
+}
+
+TEST_F(StudioCaptureGlTest, RigidVariantConsumesInstanceMatrixAndRangeWithoutBonesBlock)
+{
+    std::string defines = std::string(render::kStudioShadeDefines) + "\n#define STUDIO_RIGID_INSTANCING 1\n";
+    const render::ProgramDesc desc{
+        "studio.vert",
+        "studio_legacy.frag",
+        defines.c_str(),
+        render::kStudioUniformNames,
+        render::kUniformCount,
+        nullptr,
+        0
+    };
+    const ncl_gl::Program* program = render::Shaders_Get(desc);
+
+    ASSERT_NE(program, nullptr);
+    EXPECT_EQ(glGetAttribLocation(program->prog, "aInstanceRow0"), 5);
+    EXPECT_EQ(glGetAttribLocation(program->prog, "aInstanceRow1"), 6);
+    EXPECT_EQ(glGetAttribLocation(program->prog, "aInstanceRow2"), 7);
+    EXPECT_EQ(glGetAttribLocation(program->prog, "aInstanceRange"), 8);
+    EXPECT_EQ(glGetUniformBlockIndex(program->prog, "Bones"), GL_INVALID_INDEX);
+}
+
+TEST_F(StudioCaptureGlTest, RigidUnionKeepsBodyAndPosePixelsWithOneDrawAndUpload)
+{
+    GeometryTrace geometry_trace;
+    const int built_before = render::GetRendererState().resources.shaders.get_built_from_source();
+
+    CaptureModel model("rigid_variants", {1, 1, 1});
+    model.SetBodyVariants();
+
+    const std::vector<int> bodies{2, 0, 1, 2};
+
+    const std::array<uint8_t, kImageWidth * kImageHeight * 4> ordinary = DrawOrdinarySequence(model, bodies);
+
+    ASSERT_EQ(g_Capture.draws.size(), 4u);
+    EXPECT_EQ(g_GeometryCreations, 2);
+    EXPECT_EQ(g_GeometryUploads, 2);
+    EXPECT_EQ(render::GetRendererState().resources.shaders.get_built_from_source() - built_before, 2);
+
+    EXPECT_EQ(ordinary, DrawRigidSequence(model, bodies));
+
+    EXPECT_TRUE(g_Capture.draws.empty());
+    EXPECT_EQ(g_RigidDraws, 1);
+    EXPECT_EQ(g_Capture.bone_uploads, (std::vector<GLsizeiptr>{4 * 64}));
+    EXPECT_EQ(g_GeometryCreations, 2);
+    EXPECT_EQ(g_GeometryUploads, 2);
+    EXPECT_EQ(render::GetRendererState().resources.shaders.get_built_from_source() - built_before, 2);
+    EXPECT_GT(std::count(ordinary.begin(), ordinary.end(), uint8_t{255}), kImageWidth * kImageHeight);
+    EXPECT_EQ(glGetError(), GLenum(GL_NO_ERROR));
+}
+
+TEST_F(StudioCaptureGlTest, RigidUnionCombinesAdjacentPacketsWithSameAndDifferentBodyRanges)
+{
+    CaptureModel model("rigid_same_range", {1, 1, 1});
+    model.SetBodyVariants();
+
+    const std::vector<int> bodies{2, 2, 0, 0, 1, 2};
+
+    const std::array<uint8_t, kImageWidth * kImageHeight * 4> ordinary = DrawOrdinarySequence(model, bodies);
+
+    EXPECT_EQ(ordinary, DrawRigidSequence(model, bodies));
+
+    const render::StudioSubmissionStats& stats = render::GetRendererState().studio.get_submission_stats();
+
+    EXPECT_EQ(g_RigidDraws, 1);
+    EXPECT_TRUE(g_Capture.draws.empty());
+    EXPECT_EQ(stats.physical_draws, 1u);
+    EXPECT_EQ(stats.logical_groups, 6u);
+    EXPECT_EQ(stats.logical_triangles, 6u);
+    EXPECT_EQ(stats.submitted_triangles, 18u);
+    EXPECT_EQ(stats.saved_calls, 5u);
+    EXPECT_EQ(stats.instance_uploads, 1u);
+    EXPECT_EQ(stats.instance_bytes, 6u * 64);
+}
+
+TEST_F(StudioCaptureGlTest, RigidUnionPreservesSharedFogAndSplitsAtCapturedStateChanges)
+{
+    CaptureModel model("rigid_shared_state", {1, 1, 1});
+    model.SetBodyVariants();
+
+    const std::vector<int> bodies{2, 0, 1, 2, 0};
+
+    const auto prepare = [](size_t index) {
+        glEnable(GL_FOG);
+        glFogi(GL_FOG_MODE, GL_LINEAR);
+
+        const float fog_color[] = {0.2f, 0.4f, 0.6f, 1.0f};
+        glFogfv(GL_FOG_COLOR, fog_color);
+        glFogf(GL_FOG_START, index == 2 ? -0.5f : -1.0f);
+        glFogf(GL_FOG_END, 1.0f);
+    };
+
+    const std::array<uint8_t, kImageWidth * kImageHeight * 4> ordinary = DrawOrdinarySequence(model, bodies, prepare);
+
+    EXPECT_EQ(ordinary, DrawRigidSequence(model, bodies, prepare));
+
+    const render::StudioSubmissionStats& stats = render::GetRendererState().studio.get_submission_stats();
+
+    EXPECT_EQ(g_RigidDraws, 2);
+    EXPECT_EQ(g_Capture.draws.size(), 1u);
+    EXPECT_EQ(stats.physical_draws, 3u);
+    EXPECT_EQ(stats.logical_triangles, 5u);
+    EXPECT_EQ(stats.submitted_triangles, 13u);
+    EXPECT_EQ(stats.instance_uploads, 1u);
+    EXPECT_EQ(stats.instance_bytes, 5u * 64);
+
+    glDisable(GL_FOG);
+}
+
+TEST_F(StudioCaptureGlTest, RigidUnionHandlesCapacityMultipleFlushesRestartAndGeometryRecreation)
+{
+    CaptureModel model("rigid_capacity", {1, 1, 1});
+    model.SetBodyVariants();
+
+    float blend = 1.0f;
+    float* previous_blend = p_r_blend;
+    p_r_blend = &blend;
+    ncl_utils::ScopeExit restore([&] { p_r_blend = previous_blend; });
+
+    const auto prepare = [&](size_t index) { blend = 0.1f + static_cast<float>(index % 9) * 0.1f; };
+
+    for (size_t count : {size_t{127}, size_t{128}, size_t{130}})
+    {
+        std::vector<int> bodies(count);
+
+        for (size_t index = 0; index < count; ++index)
+        {
+            bodies[index] = static_cast<int>(index % 3);
+        }
+
+        const std::array<uint8_t, kImageWidth * kImageHeight * 4> ordinary = DrawOrdinarySequence(model, bodies, prepare);
+
+        EXPECT_EQ(ordinary, DrawRigidSequence(model, bodies, prepare));
+
+        const render::StudioSubmissionStats& stats = render::GetRendererState().studio.get_submission_stats();
+
+        EXPECT_EQ(stats.physical_draws, count > 128 ? 2u : 1u);
+        EXPECT_EQ(stats.instance_uploads, count > 128 ? 2u : 1u);
+        EXPECT_EQ(stats.instance_bytes, count * 64);
+        EXPECT_EQ(stats.logical_triangles, count);
+        EXPECT_EQ(stats.submitted_triangles, count * 3);
+    }
+
+    const std::vector<int> bodies{2, 0, 1, 2};
+    glEnable(GL_PRIMITIVE_RESTART);
+    glPrimitiveRestartIndex(0xffffffff);
+
+    const std::array<uint8_t, kImageWidth * kImageHeight * 4> ordinary = DrawOrdinarySequence(model, bodies);
+
+    EXPECT_EQ(ordinary, DrawRigidSequence(model, bodies));
+
+    EXPECT_EQ(g_RigidDraws, 0);
+    EXPECT_EQ(render::GetRendererState().studio.get_submission_stats().instance_uploads, 0u);
+
+    glDisable(GL_PRIMITIVE_RESTART);
+
+    render::Studio_DiscardPending();
+    render::GetRendererState().models.ReleaseGeometry();
+
+    EXPECT_EQ(ordinary, DrawRigidSequence(model, bodies));
+
+    EXPECT_EQ(g_RigidDraws, 1);
+    EXPECT_EQ(glGetError(), GLenum(GL_NO_ERROR));
+}
+
+TEST_F(StudioCaptureGlTest, RigidUnionPreservesObservableTransparentOrderAndLitGammaPixels)
+{
+    CaptureModel model("rigid_alpha_order", {1, 1, 1});
+    model.SetBodyVariants();
+
+    goldsrc::mstudiotexture_t* textures =
+        reinterpret_cast<goldsrc::mstudiotexture_t*>(reinterpret_cast<uint8_t*>(model.get_header()) + model.get_header()->textureindex);
+    textures[0].flags = 0;
+
+    float blend = 0.45f;
+    float* previous_blend = p_r_blend;
+    p_r_blend = &blend;
+    ncl_utils::ScopeExit restore([&] { p_r_blend = previous_blend; });
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    glDepthMask(GL_FALSE);
+
+    std::vector<int> bodies{2, 0, 1, 2};
+
+    const auto prepare = [&](size_t index) {
+        SetLighting(32, 192);
+
+        const float angle = 0.9f + bodies[index] * 0.25f;
+        g_Capture.bones[0] = std::cos(angle);
+        g_Capture.bones[2] = std::sin(angle);
+        g_Capture.bones[8] = -std::sin(angle);
+        g_Capture.bones[10] = std::cos(angle);
+        g_Capture.bones[3] = 0;
+    };
+
+    const std::array<uint8_t, kImageWidth * kImageHeight * 4> ordinary = DrawOrdinarySequence(model, bodies, prepare, true);
+
+    EXPECT_GT(ordinary[(kImageWidth * (kImageHeight / 2) + kImageWidth / 2) * 4], 0);
+    EXPECT_EQ(ordinary, DrawRigidSequence(model, bodies, prepare, true));
+
+    EXPECT_EQ(g_RigidDraws, 1);
+
+    std::reverse(bodies.begin(), bodies.end());
+    EXPECT_NE(ordinary, DrawOrdinarySequence(model, bodies, prepare, true));
+
+    glDisable(GL_BLEND);
+    glDepthMask(GL_TRUE);
+}
+
+TEST_F(StudioCaptureGlTest, RigidUnionRestoresCallerProgramVaoDivisorsBuffersAndUniformRange)
+{
+    CaptureModel model("rigid_caller_state", {1, 1, 1});
+    model.SetBodyVariants();
+
+    const std::vector<int> bodies{2, 0, 1, 2};
+
+    DrawRigidSequence(model, bodies);
+
+    const ncl_gl::Program* caller_program = render::Shaders_Get(render::kStudioBuiltinProgram);
+
+    ASSERT_NE(caller_program, nullptr);
+
+    GLuint caller_vao = 0;
+    GLuint buffers[3]{};
+    glGenVertexArrays(1, &caller_vao);
+    glGenBuffers(3, buffers);
+
+    GLint alignment = 0;
+    glGetIntegerv(GL_UNIFORM_BUFFER_OFFSET_ALIGNMENT, &alignment);
+    const GLintptr start = std::max(alignment, 16);
+
+    glBindVertexArray(caller_vao);
+    glBindBuffer(GL_ARRAY_BUFFER, buffers[0]);
+    glBufferData(GL_ARRAY_BUFFER, 1024, nullptr, GL_STATIC_DRAW);
+    glVertexAttribPointer(6, 4, GL_FLOAT, GL_FALSE, 32, reinterpret_cast<const void*>(16));
+    glVertexAttribDivisor(6, 7);
+    glEnableVertexAttribArray(6);
+
+    glVertexAttribIPointer(8, 3, GL_UNSIGNED_INT, 28, reinterpret_cast<const void*>(4));
+    glVertexAttribDivisor(8, 9);
+    glEnableVertexAttribArray(8);
+
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, buffers[1]);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, 64, nullptr, GL_STATIC_DRAW);
+
+    glBindBuffer(GL_UNIFORM_BUFFER, buffers[2]);
+    glBufferData(GL_UNIFORM_BUFFER, start + 256, nullptr, GL_DYNAMIC_DRAW);
+    glBindBufferRange(GL_UNIFORM_BUFFER, render::kStudioBonesBinding, buffers[2], start, 256);
+
+    glUseProgram(caller_program->prog);
+
+    for (GLuint slot = 5; slot < 8; ++slot)
+    {
+        glVertexAttrib4f(slot, static_cast<float>(slot), 0.25f, 0.5f, 0.75f);
+    }
+
+    glVertexAttribI4ui(8, 17, 19, 23, 29);
+    glEnable(GL_DEPTH_CLAMP);
+    g_CheckInstanceLayout = true;
+    ncl_utils::ScopeExit reset_layout([] { g_CheckInstanceLayout = false; });
+
+    const std::array<uint8_t, kImageWidth * kImageHeight * 4> ordinary = DrawOrdinarySequence(model, bodies);
+
+    EXPECT_EQ(ordinary, DrawRigidSequence(model, bodies));
+
+    EXPECT_EQ(g_RigidDraws, 1);
+
+    GLint value = 0;
+    GLint64 wide_value = 0;
+
+    glGetIntegerv(GL_CURRENT_PROGRAM, &value);
+    EXPECT_EQ(value, static_cast<GLint>(caller_program->prog));
+    glGetIntegerv(GL_VERTEX_ARRAY_BINDING, &value);
+    EXPECT_EQ(value, static_cast<GLint>(caller_vao));
+
+    glGetVertexAttribiv(6, GL_VERTEX_ATTRIB_ARRAY_DIVISOR, &value);
+    EXPECT_EQ(value, 7);
+    glGetVertexAttribiv(6, GL_VERTEX_ATTRIB_ARRAY_ENABLED, &value);
+    EXPECT_EQ(value, GL_TRUE);
+
+    glGetVertexAttribiv(8, GL_VERTEX_ATTRIB_ARRAY_SIZE, &value);
+    EXPECT_EQ(value, 3);
+    glGetVertexAttribiv(8, GL_VERTEX_ATTRIB_ARRAY_STRIDE, &value);
+    EXPECT_EQ(value, 28);
+    glGetVertexAttribiv(8, GL_VERTEX_ATTRIB_ARRAY_INTEGER, &value);
+    EXPECT_EQ(value, GL_TRUE);
+
+    glGetVertexAttribiv(8, GL_VERTEX_ATTRIB_ARRAY_DIVISOR, &value);
+    EXPECT_EQ(value, 9);
+    glGetVertexAttribiv(8, GL_VERTEX_ATTRIB_ARRAY_TYPE, &value);
+    EXPECT_EQ(value, GLint(GL_UNSIGNED_INT));
+    glGetVertexAttribiv(8, GL_VERTEX_ATTRIB_ARRAY_BUFFER_BINDING, &value);
+    EXPECT_EQ(value, GLint(buffers[0]));
+
+    void* pointer = nullptr;
+    glGetVertexAttribPointerv(8, GL_VERTEX_ATTRIB_ARRAY_POINTER, &pointer);
+    EXPECT_EQ(pointer, reinterpret_cast<void*>(4));
+
+    glGetIntegerv(GL_ARRAY_BUFFER_BINDING, &value);
+    EXPECT_EQ(value, static_cast<GLint>(buffers[0]));
+    glGetIntegerv(GL_ELEMENT_ARRAY_BUFFER_BINDING, &value);
+    EXPECT_EQ(value, static_cast<GLint>(buffers[1]));
+    glGetIntegerv(GL_UNIFORM_BUFFER_BINDING, &value);
+    EXPECT_EQ(value, static_cast<GLint>(buffers[2]));
+
+    glGetInteger64i_v(GL_UNIFORM_BUFFER_START, render::kStudioBonesBinding, &wide_value);
+    EXPECT_EQ(wide_value, start);
+    glGetInteger64i_v(GL_UNIFORM_BUFFER_SIZE, render::kStudioBonesBinding, &wide_value);
+    EXPECT_EQ(wide_value, 256);
+
+    EXPECT_NE(glIsEnabled(GL_DEPTH_CLAMP), GL_FALSE);
+
+    for (GLuint slot = 5; slot < 8; ++slot)
+    {
+        std::array<float, 4> current{};
+        glGetVertexAttribfv(slot, GL_CURRENT_VERTEX_ATTRIB, current.data());
+        EXPECT_EQ(current, (std::array<float, 4>{static_cast<float>(slot), 0.25f, 0.5f, 0.75f}));
+    }
+
+    std::array<GLuint, 4> integer_current{};
+    glGetVertexAttribIuiv(8, GL_CURRENT_VERTEX_ATTRIB, integer_current.data());
+    EXPECT_EQ(integer_current, (std::array<GLuint, 4>{17, 19, 23, 29}));
+
+    glDisable(GL_DEPTH_CLAMP);
+    glUseProgram(0);
+    glBindVertexArray(0);
+    glBindBufferBase(GL_UNIFORM_BUFFER, render::kStudioBonesBinding, 0);
+    glBindBuffer(GL_UNIFORM_BUFFER, 0);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glDeleteBuffers(3, buffers);
+    glDeleteVertexArrays(1, &caller_vao);
+
+    EXPECT_EQ(glGetError(), GLenum(GL_NO_ERROR));
+}
+
+TEST_F(StudioCaptureGlTest, RigidCountersKeepPhysicalCallsSeparateFromLogicalGeometryAndPhaseCapture)
+{
+    CaptureModel multi("rigid_ordinary_multimesh", {2});
+
+    DrawOrdinarySequence(multi, {0, 0});
+
+    const render::StudioSubmissionStats ordinary = render::GetRendererState().studio.get_submission_stats();
+
+    EXPECT_EQ(ordinary.physical_draws, 2u);
+    EXPECT_EQ(ordinary.logical_groups, 2u);
+    EXPECT_EQ(ordinary.logical_triangles, 4u);
+    EXPECT_EQ(ordinary.submitted_triangles, 4u);
+    EXPECT_EQ(ordinary.instance_uploads, 0u);
+
+    CaptureModel model("rigid_phase_capture", {1, 1, 1});
+    model.SetBodyVariants();
+
+    render::StudioPhaseCapture& diagnostics = render::GetRendererState().diagnostics.get_phase_capture();
+    ASSERT_TRUE(diagnostics.Start());
+    ASSERT_TRUE(diagnostics.BeginView({}, 100));
+
+    DrawRigidSequence(model, {2, 0, 1, 2});
+    diagnostics.EndView(200);
+    diagnostics.Stop();
+
+    std::ostringstream phases;
+    std::ostringstream metadata;
+
+    ASSERT_TRUE(diagnostics.Export(phases, metadata));
+
+    EXPECT_NE(phases.str().find(",physical_draws,submitted_triangles\n"), std::string::npos);
+    EXPECT_NE(phases.str().find(",4,4,4,1,1,12\n"), std::string::npos);
+    EXPECT_EQ(g_RigidDraws, 1);
+
+    diagnostics.Reset();
+}
+
+TEST_F(StudioCaptureGlTest, RigidMetadataUsesTheConsumedBoneAndRejectsMixedBones)
+{
+    for (bool mixed : {false, true})
+    {
+        CaptureModel model(mixed ? "rigid_mixed_bones" : "rigid_second_bone", {1, 1, 1});
+        model.SetBodyVariants();
+        model.SetVertexBones(mixed);
+
+        const auto prepare = [](size_t index) {
+            g_Capture.bones[12] = 1;
+            g_Capture.bones[17] = 1;
+            g_Capture.bones[22] = 1;
+            g_Capture.bones[15] = -0.4f + index * 0.2f;
+        };
+
+        const std::array<uint8_t, kImageWidth * kImageHeight * 4> ordinary = DrawOrdinarySequence(model, {2, 0, 1, 2}, prepare);
+
+        EXPECT_EQ(ordinary, DrawRigidSequence(model, {2, 0, 1, 2}, prepare));
+
+        EXPECT_EQ(g_RigidDraws, mixed ? 0 : 1);
+        EXPECT_EQ(render::GetRendererState().studio.get_submission_stats().instance_uploads, mixed ? 0u : 1u);
+    }
+}
+
+TEST_F(StudioCaptureGlTest, RigidUnionKeepsMaskedAndAdditivePixelsWithDepth)
+{
+    GLuint depth = 0;
+    glGenRenderbuffers(1, &depth);
+    glBindRenderbuffer(GL_RENDERBUFFER, depth);
+    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24, kImageWidth, kImageHeight);
+    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, depth);
+    glEnable(GL_DEPTH_TEST);
+    glDepthFunc(GL_LEQUAL);
+
+    const int flags[] = {goldsrc::STUDIO_NF_MASKED, goldsrc::STUDIO_NF_ADDITIVE};
+
+    for (int flag : flags)
+    {
+        CaptureModel model(flag == goldsrc::STUDIO_NF_MASKED ? "rigid_masked" : "rigid_additive", {1, 1, 1});
+        model.SetBodyVariants();
+        model.SetTextureCoordinates();
+
+        goldsrc::mstudiotexture_t* textures =
+            reinterpret_cast<goldsrc::mstudiotexture_t*>(reinterpret_cast<uint8_t*>(model.get_header()) + model.get_header()->textureindex);
+        textures[0].flags = flag | goldsrc::STUDIO_NF_FULLBRIGHT;
+        glBindTexture(GL_TEXTURE_2D, g_Capture.textures[0]);
+        const uint8_t pixels[] = {255, 0, 0, 0, 0, 255, 0, 255, 0, 0, 255, 255, 255, 255, 255, 0};
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, 2, 2, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixels);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+        const std::array<uint8_t, kImageWidth * kImageHeight * 4> ordinary = DrawOrdinarySequence(model, {2, 0, 1, 2});
+
+        EXPECT_EQ(ordinary, DrawRigidSequence(model, {2, 0, 1, 2}));
+
+        EXPECT_EQ(g_RigidDraws, 1);
+    }
+
+    glDisable(GL_DEPTH_TEST);
+    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, 0);
+    glDeleteRenderbuffers(1, &depth);
+
+    EXPECT_EQ(glGetError(), GLenum(GL_NO_ERROR));
+}
+
+TEST_F(StudioCaptureGlTest, RigidSubmissionFallsBackForChromeAndEntityLights)
+{
+    CaptureModel model("rigid_exclusions", {1, 1, 1});
+    model.SetBodyVariants();
+
+    const std::vector<int> bodies{2, 0, 1, 2};
+    g_Capture.forced_flags = goldsrc::STUDIO_NF_CHROME;
+
+    const std::array<uint8_t, kImageWidth * kImageHeight * 4> chrome = DrawOrdinarySequence(model, bodies);
+
+    EXPECT_EQ(chrome, DrawRigidSequence(model, bodies));
+
+    EXPECT_EQ(g_RigidDraws, 0);
+    g_Capture.forced_flags = 0;
+
+    goldsrc::dlight_t lights[kMaxElights]{};
+    lights[0].die = 100;
+    lights[0].radius = 100;
+    lights[0].origin[2] = 10;
+    lights[0].color = {255, 255, 255};
+
+    goldsrc::dlight_t(*previous)[kMaxElights] = p_cl_elights;
+    p_cl_elights = &lights;
+    ncl_utils::ScopeExit restore([&] { p_cl_elights = previous; });
+
+    const std::array<uint8_t, kImageWidth * kImageHeight * 4> lit = DrawOrdinarySequence(model, bodies);
+
+    EXPECT_EQ(lit, DrawRigidSequence(model, bodies));
+
+    EXPECT_EQ(g_RigidDraws, 0);
+    EXPECT_EQ(render::GetRendererState().studio.get_submission_stats().instance_uploads, 0u);
+}
+
+TEST_F(StudioCaptureGlTest, RigidUploadScopeAndDeviceLossPreserveOrdinaryGeometryContract)
+{
+    CaptureModel model("rigid_device_loss", {1, 1, 1});
+    model.SetBodyVariants();
+
+    const std::vector<int> bodies{2, 0, 1, 2};
+    StudioScopeTrace trace(render::GetRendererState().studio.get_monitor());
+    g_RigidTrace = &trace;
+    ncl_utils::ScopeExit restore([] { g_RigidTrace = nullptr; });
+
+    const std::array<uint8_t, kImageWidth * kImageHeight * 4> ordinary = DrawOrdinarySequence(model, bodies);
+
+    EXPECT_EQ(trace.calls[performance::PerfStage::StudioInstanceUpload], 0u);
+    EXPECT_EQ(ordinary, DrawRigidSequence(model, bodies));
+
+    EXPECT_EQ(trace.calls[performance::PerfStage::StudioInstanceUpload], 1u);
+
+    const render::StudioGpuModel* gpu = render::GetRendererState().models.PrepareGeometry(&model.model, model.get_header());
+
+    ASSERT_NE(gpu, nullptr);
+
+    glBindVertexArray(gpu->vao);
+
+    for (GLuint slot = 5; slot <= 8; ++slot)
+    {
+        GLint value = 0;
+        glGetVertexAttribiv(slot, GL_VERTEX_ATTRIB_ARRAY_DIVISOR, &value);
+        EXPECT_EQ(value, 0);
+        glGetVertexAttribiv(slot, GL_VERTEX_ATTRIB_ARRAY_ENABLED, &value);
+        EXPECT_EQ(value, GL_FALSE);
+    }
+
+    glBindVertexArray(0);
+
+    render::Device_OnContextDestroyed();
+    render::Device_OnContextCreated();
+    g_OriginalMultiDraw = std::exchange(glad_glMultiDrawElements, ObserveCaptureDraw);
+    g_OriginalBoneUpload = std::exchange(glad_glBufferSubData, ObserveCapturedBoneUpload);
+
+    EXPECT_EQ(ordinary, DrawRigidSequence(model, bodies));
+
+    EXPECT_EQ(g_RigidDraws, 1);
+    EXPECT_EQ(trace.calls[performance::PerfStage::StudioInstanceUpload], 2u);
+    EXPECT_EQ(glGetError(), GLenum(GL_NO_ERROR));
+}
+
+TEST_F(StudioCaptureGlTest, RigidSubmissionRejectsIncompatibleCapturedPacketsWithoutReordering)
+{
+    CaptureModel model("rigid_strict_fallback", {1, 1, 1});
+    model.SetBodyVariants();
+
+    render::StudioRenderer& renderer = render::GetRendererState().studio;
+    render::StudioMaterialBindings stale;
+    const std::vector<std::pair<const char*, std::function<void(render::StudioDrawPacket&)>>> changes = {
+        {"lighting", [](render::StudioDrawPacket& p) { p.lighting.ambient += 1; }},
+        {"gamma", [](render::StudioDrawPacket& p) { p.gamma[0] += 1; }},
+        {"fog", [](render::StudioDrawPacket& p) { p.fog.color[0] = 0.25f; }},
+        {"texture", [](render::StudioDrawPacket& p) { p.meshes[0].texture = g_Capture.textures[1]; }},
+        {"skin", [](render::StudioDrawPacket& p) { p.meshes[0].skin += 1; }},
+        {"bindings_generation",
+         [&](render::StudioDrawPacket& p) {
+             stale = *p.rigid_bindings;
+             ++stale.generation;
+             p.rigid_bindings = &stale;
+         }},
+        {"nonfinite_bone",
+         [](render::StudioDrawPacket& p) { p.bones = CapturePose({{3, std::numeric_limits<float>::quiet_NaN()}}, p.bones); }},
+        {"nonfinite_blend_nan", [](render::StudioDrawPacket& p) { p.blend = std::numeric_limits<float>::quiet_NaN(); }},
+        {"nonfinite_blend_positive", [](render::StudioDrawPacket& p) { p.blend = std::numeric_limits<float>::infinity(); }},
+        {"nonfinite_blend_negative", [](render::StudioDrawPacket& p) { p.blend = -std::numeric_limits<float>::infinity(); }},
+        {"scale", [](render::StudioDrawPacket& p) { p.bone_scale = 2; }},
+        {"flipped", [](render::StudioDrawPacket& p) { p.flipped = true; }},
+        {"glow", [](render::StudioDrawPacket& p) { p.glow_scale = 1; }},
+        {"lights", [](render::StudioDrawPacket& p) { p.light_count = 1; }},
+        {"chrome", [](render::StudioDrawPacket& p) { p.meshes[0].chrome = true; }},
+        {"authored", [](render::StudioDrawPacket& p) { p.meshes[0].material.emplace(); }},
+        {"mesh_count", [](render::StudioDrawPacket& p) { p.meshes.push_back(p.meshes[0]); }},
+        {"selected_range", [](render::StudioDrawPacket& p) { p.meshes[0].index_offset = 0; }}
+    };
+    g_OriginalInstancedDraw = std::exchange(glad_glDrawElementsInstanced, ObserveInstancedDraw);
+    ncl_utils::ScopeExit restore([] { glad_glDrawElementsInstanced = g_OriginalInstancedDraw; });
+
+    for (const auto& [name, change] : changes)
+    {
+        SCOPED_TRACE(name);
+        g_RigidDraws = 0;
+        g_Capture.draws.clear();
+        g_Capture.bone_uploads.clear();
+        renderer.ResetSubmissionStats();
+
+        render::Studio_BeginOpaquePass();
+        goldsrc::cl_entity_t entity{};
+
+        for (int index = 0; index < 2; ++index)
+        {
+            entity.curstate.body = index;
+            BeginModel(model, entity, index == 0 ? -0.5f : 0.5f);
+            DrawPart(0);
+            EndModel();
+        }
+
+        ASSERT_EQ(render::StudioRendererTestAccess::QueuedCount(renderer), 2u);
+        change(render::StudioRendererTestAccess::get_queued_packets(renderer)[1]);
+
+        render::Studio_EndOpaquePass();
+        EXPECT_EQ(g_RigidDraws, 0);
+        ASSERT_EQ(g_Capture.draws.size(), 2u);
+        EXPECT_FLOAT_EQ(g_Capture.draws[0].bone_x, -0.5f);
+
+        if (std::string_view(name) != "nonfinite_bone")
+        {
+            EXPECT_FLOAT_EQ(g_Capture.draws[1].bone_x, 0.5f);
+        }
+
+        EXPECT_EQ(renderer.get_submission_stats().instance_uploads, 0u);
+
+        EXPECT_EQ(glGetError(), GLenum(GL_NO_ERROR));
+    }
+}
+
+namespace
+{
+    struct RigidFloatingField
+    {
+        const char* name;
+        size_t count;
+        bool shared;
+
+        std::function<void(render::StudioDrawPacket&, size_t, float)> set;
+    };
+
+    const std::vector<RigidFloatingField> kRigidFloatingFields = {
+        {"modelview", 16, true, [](render::StudioDrawPacket& p, size_t i, float v) { p.modelview[i] = v; }},
+        {"projection", 16, true, [](render::StudioDrawPacket& p, size_t i, float v) { p.projection[i] = v; }},
+        {"depth_range", 2, true, [](render::StudioDrawPacket& p, size_t i, float v) { p.raster.depth_range[i] = v; }},
+        {"fog_color", 4, true, [](render::StudioDrawPacket& p, size_t i, float v) { p.fog.color[i] = v; }},
+        {"fog_density", 1, true, [](render::StudioDrawPacket& p, size_t, float v) { p.fog.density = v; }},
+        {"fog_start", 1, true, [](render::StudioDrawPacket& p, size_t, float v) { p.fog.start = v; }},
+        {"fog_end", 1, true, [](render::StudioDrawPacket& p, size_t, float v) { p.fog.end = v; }},
+        {"ambient", 1, true, [](render::StudioDrawPacket& p, size_t, float v) { p.lighting.ambient = v; }},
+        {"shade", 1, true, [](render::StudioDrawPacket& p, size_t, float v) { p.lighting.shade = v; }},
+        {"color", 3, true, [](render::StudioDrawPacket& p, size_t i, float v) { p.lighting.color[i] = v; }},
+        {"light_vec", 3, true, [](render::StudioDrawPacket& p, size_t i, float v) { p.lighting.light_vec[i] = v; }},
+        {"chrome_origin", 3, true, [](render::StudioDrawPacket& p, size_t i, float v) { p.chrome_origin[i] = v; }},
+        {"view_right", 3, true, [](render::StudioDrawPacket& p, size_t i, float v) { p.view_right[i] = v; }},
+        {"glow_scale", 1, true, [](render::StudioDrawPacket& p, size_t, float v) { p.glow_scale = v; }},
+        {"bone_scale", 1, false, [](render::StudioDrawPacket& p, size_t, float v) { p.bone_scale = v; }},
+        {"shell_color", 3, true, [](render::StudioDrawPacket& p, size_t i, float v) { p.shell_color[i] = v; }},
+        {"gamma", 2, true, [](render::StudioDrawPacket& p, size_t i, float v) { p.gamma[i] = v; }},
+        {"effect_time", 1, true, [](render::StudioDrawPacket& p, size_t, float v) { p.effect_time = v; }},
+        {"texel_scale", 2, true, [](render::StudioDrawPacket& p, size_t i, float v) { p.meshes[0].texel_scale[i] = v; }},
+        {"blend", 1, false, [](render::StudioDrawPacket& p, size_t, float v) { p.blend = v; }},
+        {"bone", 12, false, [](render::StudioDrawPacket& p, size_t i, float v) {
+             p.bones = CapturePose({{p.rigid_range.bone * 12 + i, v}}, p.bones);
+         }}
+    };
+} // namespace
+
+TEST_F(StudioCaptureGlTest, RigidNonfiniteCapturedFieldsRetainOrdinaryFallbackAndCounters)
+{
+    CaptureModel model("rigid_nonfinite_fields", {1});
+    const float nonfinite[] = {
+        std::numeric_limits<float>::quiet_NaN(),
+        std::numeric_limits<float>::infinity(),
+        -std::numeric_limits<float>::infinity()
+    };
+
+    for (const RigidFloatingField& field : kRigidFloatingFields)
+    {
+        SCOPED_TRACE(field.name);
+
+        for (size_t component = 0; component < field.count; ++component)
+        {
+            SCOPED_TRACE(component);
+
+            for (float value : nonfinite)
+            {
+                SCOPED_TRACE(value);
+                DrawRigidSequence(model, {0, 0}, {}, false, [&](std::span<render::StudioDrawPacket> packets) {
+                    for (render::StudioDrawPacket& packet : packets)
+                    {
+                        field.set(packet, component, value);
+                    }
+                });
+
+                const render::StudioSubmissionStats& stats = render::GetRendererState().studio.get_submission_stats();
+
+                EXPECT_EQ(g_RigidDraws, 0);
+                EXPECT_EQ(g_Capture.draws.size(), 2u);
+                EXPECT_EQ(stats.physical_draws, 2u);
+                EXPECT_EQ(stats.logical_groups, 2u);
+                EXPECT_EQ(stats.logical_triangles, 2u);
+                EXPECT_EQ(stats.submitted_triangles, 2u);
+                EXPECT_EQ(stats.instance_uploads, 0u);
+                EXPECT_EQ(stats.instance_bytes, 0u);
+                EXPECT_EQ(stats.fallbacks[static_cast<size_t>(render::StudioRigidFallback::Ineligible)], 2u);
+                EXPECT_EQ(stats.fallbacks[static_cast<size_t>(render::StudioRigidFallback::SharedState)], 0u);
+                EXPECT_EQ(stats.fallbacks[static_cast<size_t>(render::StudioRigidFallback::Singleton)], 0u);
+                EXPECT_EQ(glGetError(), GLenum(GL_NO_ERROR));
+            }
+        }
+    }
+}
+
+TEST_F(StudioCaptureGlTest, RigidSignedZeroSharedFieldsKeepExactAdjacentRunBoundaries)
+{
+    CaptureModel model("rigid_signed_zero", {1});
+
+    for (const RigidFloatingField& field : kRigidFloatingFields)
+    {
+        if (!field.shared)
+        {
+            continue;
+        }
+
+        SCOPED_TRACE(field.name);
+
+        for (size_t component = 0; component < field.count; ++component)
+        {
+            SCOPED_TRACE(component);
+
+            const auto prepare_packets = [&](std::span<render::StudioDrawPacket> packets) {
+                for (size_t index = 0; index < packets.size(); ++index)
+                {
+                    field.set(packets[index], component, index < 2 ? 0.0f : -0.0f);
+                }
+            };
+
+            const std::array<uint8_t, kImageWidth * kImageHeight * 4> ordinary =
+                DrawOrdinarySequence(model, {0, 0, 0, 0}, {}, false, prepare_packets);
+
+            EXPECT_EQ(ordinary, DrawRigidSequence(model, {0, 0, 0, 0}, {}, false, prepare_packets));
+
+            const render::StudioSubmissionStats& stats = render::GetRendererState().studio.get_submission_stats();
+
+            EXPECT_EQ(g_RigidDraws, 2);
+            EXPECT_EQ(stats.physical_draws, 2u);
+            EXPECT_EQ(stats.logical_groups, 4u);
+            EXPECT_EQ(stats.logical_triangles, 4u);
+            EXPECT_EQ(stats.submitted_triangles, 4u);
+            EXPECT_EQ(stats.instance_batches, 2u);
+            EXPECT_EQ(stats.saved_calls, 2u);
+            EXPECT_EQ(stats.instance_uploads, 1u);
+            EXPECT_EQ(stats.instance_bytes, 4u * 64u);
+            EXPECT_EQ(stats.fallbacks, (decltype(stats.fallbacks){}));
+            EXPECT_EQ(glGetError(), GLenum(GL_NO_ERROR));
+        }
+    }
+}
+
+TEST_F(StudioCaptureGlTest, RigidIneligibleBoundaryPreservesSeparateRunsAndPacketOrder)
+{
+    CaptureModel model("rigid_ineligible_boundary", {1});
+
+    const auto prepare_packets = [](std::span<render::StudioDrawPacket> packets) { packets[2].meshes[0].chrome = true; };
+
+    const std::array<uint8_t, kImageWidth * kImageHeight * 4> ordinary =
+        DrawOrdinarySequence(model, {0, 0, 0, 0, 0}, {}, false, prepare_packets);
+
+    EXPECT_EQ(ordinary, DrawRigidSequence(model, {0, 0, 0, 0, 0}, {}, false, prepare_packets));
+
+    const render::StudioSubmissionStats& stats = render::GetRendererState().studio.get_submission_stats();
+
+    EXPECT_EQ(g_RigidDraws, 2);
+    ASSERT_EQ(g_Capture.draws.size(), 1u);
+    EXPECT_FLOAT_EQ(g_Capture.draws[0].bone_x, 0.0f);
+    EXPECT_EQ(stats.physical_draws, 3u);
+    EXPECT_EQ(stats.logical_groups, 5u);
+    EXPECT_EQ(stats.logical_triangles, 5u);
+    EXPECT_EQ(stats.submitted_triangles, 5u);
+    EXPECT_EQ(stats.instance_batches, 2u);
+    EXPECT_EQ(stats.saved_calls, 2u);
+    EXPECT_EQ(stats.instance_uploads, 1u);
+    EXPECT_EQ(stats.instance_bytes, 5u * 64u);
+    EXPECT_EQ(stats.fallbacks[static_cast<size_t>(render::StudioRigidFallback::Ineligible)], 1u);
+    EXPECT_EQ(stats.fallbacks[static_cast<size_t>(render::StudioRigidFallback::SharedState)], 0u);
+    EXPECT_EQ(stats.fallbacks[static_cast<size_t>(render::StudioRigidFallback::Singleton)], 0u);
+    EXPECT_EQ(glGetError(), GLenum(GL_NO_ERROR));
+}
+
+TEST(StudioRigidPanelTest, InstancePlanningAndUploadRemainVisibleWithoutAddingNestedSubmitToOther)
+{
+    auto snapshot = std::make_unique<performance::PerfSnapshot>();
+    snapshot->cpu_frame_count = 1;
+    snapshot->cpu_count = 5;
+    const ncl_perf::PerfScopeId_t ids[] = {
+        performance::PerfStage::Studio,
+        performance::PerfStage::StudioInstancePlan,
+        performance::PerfStage::StudioInstanceUpload,
+        performance::PerfStage::StudioShader,
+        performance::PerfStage::StudioInstanceSubmit
+    };
+    const ncl_perf::PerfDuration_t durations[] = {12000000, 2000000, 3000000, 6000000, 5000000};
+
+    for (uint32_t index = 0; index < snapshot->cpu_count; ++index)
+    {
+        ncl_perf::PerfCpuSample& sample = snapshot->cpu_tree[index];
+        sample.scope_id = ids[index];
+        sample.parent_id = index == 4 ? performance::PerfStage::StudioShader : performance::PerfStage::Studio;
+        sample.inclusive_ns = durations[index];
+        sample.self_ns = index == 0 ? 1000000 : durations[index];
+        sample.calls = 1;
+        sample.state = ncl_perf::PerfSampleState::Measured;
+    }
+
+    performance::PerformancePanelLayout layout;
+    layout.Build(*snapshot, 1600, 1200, 0, nullptr, nullptr, 2, snapshot.get());
+
+    std::string text;
+
+    for (const performance::PerfPanelCommand& command : layout.get_commands())
+    {
+        if (command.kind == performance::PerfPanelCommandKind::Text)
+        {
+            text += layout.get_text(command);
+            text += '\n';
+        }
+    }
+
+    EXPECT_NE(text.find("Other Studio: 6.000 ms/frame"), std::string::npos);
+    EXPECT_NE(text.find("Top detail: Instance submission 5.000 ms/frame"), std::string::npos);
+    EXPECT_EQ(performance::Stage(performance::PerfStage::StudioInstanceSubmit)->scope.parent_id, performance::PerfStage::StudioShader);
+}
+
+TEST_F(StudioCaptureGlTest, RigidImplicitLegacyMaterialKeepsInstancesEnabledWithMaterialsOn)
+{
+    goldsrc::cvar_t materials{};
+    materials.value = 1;
+
+    render::g_RenderCfg.studio_materials = &materials;
+    CaptureModel model("models/rigid_implicit.mdl", {1, 1, 1});
+    model.SetBodyVariants();
+
+    const std::vector<int> bodies{2, 2, 0, 0};
+
+    const std::array<uint8_t, kImageWidth * kImageHeight * 4> ordinary = DrawOrdinarySequence(model, bodies);
+    ncl_material::MaterialOrigin origin = ncl_material::MaterialOrigin::ModelDocument;
+    const ncl_material::Material* material = render::GetRendererState().models.ResolveMaterialByName(model.model.name, "red", &origin);
+
+    ASSERT_NE(material, nullptr);
+    EXPECT_EQ(origin, ncl_material::MaterialOrigin::Implicit);
+    EXPECT_EQ(material->program, ncl_material::kLegacyProgram);
+    EXPECT_EQ(ordinary, DrawRigidSequence(model, bodies));
+
+    EXPECT_EQ(g_RigidDraws, 1);
+    EXPECT_TRUE(g_Capture.draws.empty());
+    EXPECT_EQ(g_Capture.bone_uploads, (std::vector<GLsizeiptr>{4 * 64}));
+
+    const render::StudioSubmissionStats& stats = render::GetRendererState().studio.get_submission_stats();
+
+    EXPECT_EQ(stats.physical_draws, 1u);
+    EXPECT_EQ(stats.logical_groups, 4u);
+    EXPECT_EQ(stats.instance_batches, 1u);
+    EXPECT_EQ(stats.saved_calls, 3u);
+    EXPECT_EQ(stats.fallbacks[static_cast<size_t>(render::StudioRigidFallback::Ineligible)], 0u);
+
+    const render::StudioGpuModel* gpu = render::GetRendererState().models.PrepareGeometry(&model.model, model.get_header());
+
+    ASSERT_NE(gpu, nullptr);
+    EXPECT_EQ(gpu->rigid.count, 3u);
+    EXPECT_NE(gpu->rigid_vao, 0u);
+    EXPECT_EQ(glGetError(), GLenum(GL_NO_ERROR));
+}
+
+TEST_F(StudioCaptureGlTest, RigidAuthoredLegacyAndCustomMaterialsKeepOrdinarySubmission)
+{
+    goldsrc::cvar_t materials{};
+    materials.value = 1;
+
+    render::g_RenderCfg.studio_materials = &materials;
+
+    for (const char* program : {"studio_legacy", "studio"})
+    {
+        SCOPED_TRACE(program);
+
+        const std::string name = std::string("models/rigid_authored_") + program;
+        studio_test::g_Files[name + ".mat"] = std::string("{\"version\":1,\"materials\":{\"red\":{\"program\":\"") + program + "\"}}}";
+
+        CaptureModel model((name + ".mdl").c_str(), {1, 1, 1});
+        model.SetBodyVariants();
+
+        const std::vector<int> bodies{2, 2, 0, 0};
+
+        const std::array<uint8_t, kImageWidth * kImageHeight * 4> ordinary = DrawOrdinarySequence(model, bodies);
+        ncl_material::MaterialOrigin origin = ncl_material::MaterialOrigin::Implicit;
+        ASSERT_NE(render::GetRendererState().models.ResolveMaterialByName(model.model.name, "red", &origin), nullptr);
+
+        EXPECT_EQ(origin, ncl_material::MaterialOrigin::ModelDocument);
+        EXPECT_EQ(ordinary, DrawRigidSequence(model, bodies));
+
+        EXPECT_EQ(g_RigidDraws, 0);
+        EXPECT_EQ(g_Capture.draws.size(), 4u);
+        EXPECT_EQ(render::GetRendererState().studio.get_submission_stats().instance_uploads, 0u);
+
+        EXPECT_EQ(glGetError(), GLenum(GL_NO_ERROR));
+    }
+}
+
+TEST_F(StudioCaptureGlTest, RigidStatsPassPreformattedFullWidthCountersToTheEngineConsole)
+{
+    studio_test::Chain<void, const char*, goldsrc::xcommand_t> chain;
+    studio_test::Hook<void, const char*, goldsrc::xcommand_t> hook;
+
+    std::unordered_map<std::string, goldsrc::xcommand_t> commands;
+    hook.callback = [&](const char* name, goldsrc::xcommand_t command) { commands[name] = command; };
+    get_engine().GetEngineData()->Cmd_AddCommand.SetChain(&chain);
+    get_engine().GetEngineData()->Cmd_AddCommand.SetHook(&hook);
+
+    render::Dump_RegisterCommands();
+    ASSERT_TRUE(commands.contains("r_studio_rigid_stats"));
+    int count = 1;
+    int* previous_count = p_cmd_argc;
+    const auto previous_argc = p_g_engdstAddrs->Cmd_Argc;
+    p_cmd_argc = &count;
+    p_g_engdstAddrs->Cmd_Argc = [] {};
+
+    std::string text;
+    g_TextOnlyConsole = &text;
+
+    render::StudioSubmissionStats& stats =
+        const_cast<render::StudioSubmissionStats&>(render::GetRendererState().studio.get_submission_stats());
+    ncl_utils::ScopeExit restore([&] {
+        g_TextOnlyConsole = nullptr;
+        p_cmd_argc = previous_count;
+        p_g_engdstAddrs->Cmd_Argc = previous_argc;
+        stats = {};
+    });
+    stats.physical_draws = 4294967297ull;
+    stats.logical_groups = 4294967298ull;
+    stats.logical_triangles = 4294967299ull;
+    stats.submitted_triangles = 4294967300ull;
+    stats.instance_batches = 4294967301ull;
+    stats.saved_calls = 4294967302ull;
+    stats.instance_bytes = 4294967303ull;
+    stats.instance_uploads = 4294967304ull;
+    stats.fallbacks[0] = std::numeric_limits<uint64_t>::max();
+
+    commands["r_studio_rigid_stats"]();
+
+    EXPECT_NE(
+        text.find(
+            "physical_draws=4294967297 logical_groups=4294967298 logical_triangles=4294967299 submitted_triangles=4294967300 "
+            "instance_batches=4294967301 saved_calls=4294967302 instance_bytes=4294967303 instance_uploads=4294967304\n"
+        ),
+        std::string::npos
+    );
+    EXPECT_NE(text.find("primitive_restart=18446744073709551615\n"), std::string::npos);
+}
+
+TEST_F(StudioCaptureGlTest, RigidPerInstanceBlendPreservesTransparentBodyOrder)
+{
+    CaptureModel model("rigid_instance_alpha", {1, 1, 1});
+    model.SetBodyVariants();
+
+    goldsrc::mstudiotexture_t* textures =
+        reinterpret_cast<goldsrc::mstudiotexture_t*>(reinterpret_cast<uint8_t*>(model.get_header()) + model.get_header()->textureindex);
+    textures[0].flags = 0;
+
+    goldsrc::cvar_t materials{};
+    materials.value = 1;
+
+    render::g_RenderCfg.studio_materials = &materials;
+    float blend = 1;
+    float* previous = p_r_blend;
+    p_r_blend = &blend;
+    ncl_utils::ScopeExit restore([&] { p_r_blend = previous; });
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    glDepthMask(GL_FALSE);
+
+    std::vector<int> bodies{2, 0, 1, 2};
+    std::vector<float> blends{0.15f, 0.8f, 0.4f, 0.6f};
+
+    const auto prepare = [&](size_t index) {
+        blend = blends[index];
+        SetLighting(32, 192);
+
+        const float angle = 0.9f + bodies[index] * 0.25f;
+        g_Capture.bones[0] = std::cos(angle);
+        g_Capture.bones[2] = std::sin(angle);
+        g_Capture.bones[8] = -std::sin(angle);
+        g_Capture.bones[10] = std::cos(angle);
+        g_Capture.bones[3] = 0;
+    };
+
+    const std::array<uint8_t, kImageWidth * kImageHeight * 4> ordinary = DrawOrdinarySequence(model, bodies, prepare, true);
+
+    EXPECT_EQ(ordinary, DrawRigidSequence(model, bodies, prepare, true));
+
+    EXPECT_EQ(g_RigidDraws, 1);
+    EXPECT_EQ(g_Capture.bone_uploads, (std::vector<GLsizeiptr>{256}));
+
+    std::reverse(bodies.begin(), bodies.end());
+    std::reverse(blends.begin(), blends.end());
+
+    const std::array<uint8_t, kImageWidth * kImageHeight * 4> reversed = DrawOrdinarySequence(model, bodies, prepare, true);
+
+    EXPECT_NE(ordinary, reversed);
+    EXPECT_EQ(reversed, DrawRigidSequence(model, bodies, prepare, true));
+
+    EXPECT_EQ(g_RigidDraws, 1);
+
+    glDisable(GL_BLEND);
+    glDepthMask(GL_TRUE);
+}
+
+TEST_F(StudioCaptureGlTest, RigidPerInstanceBlendPreservesSameRangeAlpha)
+{
+    CaptureModel model("rigid_instance_same_alpha", {1, 1, 1});
+    model.SetBodyVariants();
+
+    float blend = 1;
+    float* previous = p_r_blend;
+    p_r_blend = &blend;
+    ncl_utils::ScopeExit restore([&] { p_r_blend = previous; });
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    glDepthMask(GL_FALSE);
+
+    const float blends[] = {0.1f, 0.75f, 0.35f, 0.6f};
+
+    const auto prepare = [&](size_t index) {
+        blend = blends[index];
+        g_Capture.bones[3] = 0;
+    };
+
+    const std::array<uint8_t, kImageWidth * kImageHeight * 4> ordinary = DrawOrdinarySequence(model, {0, 0, 0, 0}, prepare, true);
+
+    EXPECT_EQ(ordinary, DrawRigidSequence(model, {0, 0, 0, 0}, prepare, true));
+
+    EXPECT_EQ(g_RigidDraws, 1);
+    EXPECT_EQ(render::GetRendererState().studio.get_submission_stats().saved_calls, 3u);
+
+    glDisable(GL_BLEND);
+    glDepthMask(GL_TRUE);
+}
+
+TEST_F(StudioCaptureGlTest, RigidPerInstanceBlendPreservesAdditiveAndMaskedAlpha)
+{
+    GLuint depth = 0;
+    glGenRenderbuffers(1, &depth);
+    glBindRenderbuffer(GL_RENDERBUFFER, depth);
+    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24, kImageWidth, kImageHeight);
+    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, depth);
+    glEnable(GL_DEPTH_TEST);
+    glDepthFunc(GL_LEQUAL);
+    glEnable(GL_BLEND);
+    glEnable(GL_FOG);
+    glFogi(GL_FOG_MODE, GL_LINEAR);
+
+    const float fog[] = {0.2f, 0.4f, 0.6f, 1};
+    glFogfv(GL_FOG_COLOR, fog);
+    glFogf(GL_FOG_START, -1);
+    glFogf(GL_FOG_END, 1);
+
+    float blend = 1;
+    float* previous = p_r_blend;
+    p_r_blend = &blend;
+    ncl_utils::ScopeExit restore([&] { p_r_blend = previous; });
+
+    for (bool masked : {false, true})
+    {
+        CaptureModel model(masked ? "rigid_instance_masked" : "rigid_instance_additive", {1, 1, 1});
+        model.SetBodyVariants();
+
+        goldsrc::mstudiotexture_t* textures =
+            reinterpret_cast<goldsrc::mstudiotexture_t*>(reinterpret_cast<uint8_t*>(model.get_header()) + model.get_header()->textureindex);
+        textures[0].flags = goldsrc::STUDIO_NF_FULLBRIGHT | (masked ? goldsrc::STUDIO_NF_MASKED : 0);
+        glBindTexture(GL_TEXTURE_2D, g_Capture.textures[0]);
+        const uint8_t pixel[] = {64, 32, 16, masked ? uint8_t{128} : uint8_t{255}};
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, 1, 1, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixel);
+        glBlendFunc(masked ? GL_SRC_ALPHA : GL_ONE, masked ? GL_ONE_MINUS_SRC_ALPHA : GL_ONE);
+
+        const float masked_blends[] = {0.99f, 1.01f, 0.2f, 1.0f};
+        const float additive_blends[] = {-0.25f, 0.25f, 0.5f, 1.25f};
+
+        const auto prepare = [&](size_t index) {
+            blend = masked ? masked_blends[index] : additive_blends[index];
+            g_Capture.bones[3] = 0;
+            glDepthMask(GL_FALSE);
+            g_Capture.entity->curstate.rendermode = masked ? goldsrc::kRenderNormal : goldsrc::kRenderTransAdd;
+        };
+
+        const std::vector<int> bodies{2, 0, 1, 2};
+        glDepthMask(GL_TRUE);
+
+        const std::array<uint8_t, kImageWidth * kImageHeight * 4> ordinary = DrawOrdinarySequence(model, bodies, prepare, true);
+        std::array<float, kImageWidth * kImageHeight> ordinary_depth{};
+        glReadPixels(0, 0, kImageWidth, kImageHeight, GL_DEPTH_COMPONENT, GL_FLOAT, ordinary_depth.data());
+
+        glDepthMask(GL_TRUE);
+        EXPECT_EQ(ordinary, DrawRigidSequence(model, bodies, prepare, true));
+
+        EXPECT_EQ(g_RigidDraws, 1);
+
+        std::array<float, kImageWidth * kImageHeight> candidate_depth{};
+        glReadPixels(0, 0, kImageWidth, kImageHeight, GL_DEPTH_COMPONENT, GL_FLOAT, candidate_depth.data());
+
+        EXPECT_EQ(ordinary_depth, candidate_depth);
+    }
+
+    glDepthMask(GL_TRUE);
+    glDisable(GL_FOG);
+    glDisable(GL_BLEND);
+    glDisable(GL_DEPTH_TEST);
+    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, 0);
+    glDeleteRenderbuffers(1, &depth);
+
+    EXPECT_EQ(glGetError(), GLenum(GL_NO_ERROR));
+}
+
+TEST_F(StudioCaptureGlTest, RigidPerInstanceBlendPreservesInterruptedRunsAndExplicitFlushes)
+{
+    CaptureModel model("rigid_blend_interruptions", {1, 1, 1});
+    model.SetBodyVariants();
+
+    const std::vector<int> bodies{2, 0, 1, 2, 0, 1, 2};
+    float blend = 1.0f;
+    float* previous_blend = p_r_blend;
+    p_r_blend = &blend;
+    ncl_utils::ScopeExit restore([&] { p_r_blend = previous_blend; });
+
+    const auto prepare = [&](size_t index) {
+        blend = 0.1f + static_cast<float>(index) * 0.1f;
+        glDepthFunc(index == 2 ? GL_LESS : GL_LEQUAL);
+
+        if (index == 3)
+        {
+            render::Studio_Flush(render::StudioFlushReason::Brush);
+        }
+    };
+
+    const std::array<uint8_t, kImageWidth * kImageHeight * 4> ordinary = DrawOrdinarySequence(model, bodies, prepare, true);
+
+    EXPECT_EQ(ordinary, DrawRigidSequence(model, bodies, prepare, true));
+
+    const render::StudioSubmissionStats& stats = render::GetRendererState().studio.get_submission_stats();
+
+    EXPECT_EQ(g_RigidDraws, 2);
+    EXPECT_EQ(g_Capture.draws.size(), 1u);
+    EXPECT_EQ(stats.physical_draws, 3u);
+    EXPECT_EQ(stats.logical_groups, 7u);
+    EXPECT_EQ(stats.saved_calls, 4u);
+    EXPECT_EQ(stats.instance_uploads, 2u);
+    EXPECT_EQ(stats.instance_bytes, 7u * 64);
+
+    glDepthFunc(GL_LESS);
+
+    EXPECT_EQ(glGetError(), GLenum(GL_NO_ERROR));
+}
+
+TEST_F(StudioCaptureGlTest, ScaledAuthoredSnapshotPreservesFullTailAndEnginePalette)
+{
+    render::g_RenderCfg.studio_materials = nullptr;
+    CaptureModel model("models/pose_scaled_tail.mdl", {1});
+    studio_test::g_Files["models/pose_scaled_tail.mat"] = R"({"version":1,"materials":{"red":{"program":"studio"}}})";
+    goldsrc::cl_entity_t entity{};
+    render::preview::PreviewInteraction capture(
+        render::GetRendererState().resources.device, render::GetRendererState().resources.shaders, render::GetRendererState().coverage
+    );
+    PreviewDrawParams params{};
+    params.mode = PreviewRenderMode::MaterialAuthoring;
+    PreviewModel request{};
+    request.scale = 2.0f;
+    std::array<float, render::kStudioBoneFloats> expected{};
+    {
+        render::StudioPreviewContext context(render::GetRendererState().studio, &entity, params, request, &capture);
+        BeginModel(model, entity, 0.25f);
+        for (size_t i = 12; i < g_Capture.bones.size(); ++i)
+        {
+            g_Capture.bones[i] = 17.0f + static_cast<float>(i);
+        }
+        expected = g_Capture.bones;
+        DrawPart(0);
+        EndModel();
+    }
+    using Capture = render::preview::PreviewInteractionTestAccess;
+    ASSERT_EQ(Capture::Count(capture), 1u);
+    const render::StudioDrawPacket& packet = Capture::Packet(capture, 0);
+    ASSERT_TRUE(packet.meshes[0].material.has_value());
+    for (size_t i = 0; i < packet.bones.size(); ++i)
+    {
+        EXPECT_EQ(packet.bones[i], i < 12 ? expected[i] * 2.0f : expected[i]);
+        EXPECT_EQ(g_Capture.bones[i], expected[i]);
+    }
+    EXPECT_NE(
+        std::find(
+            g_Capture.bone_uploads.begin(), g_Capture.bone_uploads.end(), static_cast<GLsizeiptr>(render::kStudioBoneFloats * sizeof(float))
+        ),
+        g_Capture.bone_uploads.end()
+    );
+    EXPECT_EQ(glGetError(), GLenum(GL_NO_ERROR));
+}
+
+TEST_F(StudioCaptureGlTest, PickingSnapshotSurvivesQueueCapacityGrowthAndRendererReset)
+{
+    CaptureModel model("models/pose_retained_pick.mdl", {1});
+    goldsrc::cl_entity_t entity{};
+    render::preview::PreviewInteraction capture(
+        render::GetRendererState().resources.device, render::GetRendererState().resources.shaders, render::GetRendererState().coverage
+    );
+    PreviewDrawParams params{};
+    params.mode = PreviewRenderMode::MaterialAuthoring;
+    PreviewModel request{};
+    std::array<float, render::kStudioBoneFloats> expected{};
+    {
+        render::StudioPreviewContext context(render::GetRendererState().studio, &entity, params, request, &capture);
+        BeginModel(model, entity, 0.25f);
+        for (size_t i = 12; i < g_Capture.bones.size(); ++i)
+        {
+            g_Capture.bones[i] = 100.0f + static_cast<float>(i);
+        }
+        expected = g_Capture.bones;
+        DrawPart(0);
+        EndModel();
+    }
+    using Capture = render::preview::PreviewInteractionTestAccess;
+    ASSERT_EQ(Capture::Count(capture), 1u);
+    const float* retained_address = Capture::Packet(capture, 0).bones.data();
+    render::Studio_BeginOpaquePass();
+    for (int index = 0; index < 400; ++index)
+    {
+        BeginModel(model, entity, static_cast<float>(index));
+        g_Capture.bones.back() = -static_cast<float>(index);
+        DrawPart(0);
+        EndModel();
+    }
+    render::Studio_EndOpaquePass();
+    EXPECT_GE(render::Studio_QueueStats().flushes[static_cast<size_t>(render::StudioFlushReason::Capacity)], 3u);
+    render::Studio_DiscardPending();
+    ASSERT_EQ(Capture::Count(capture), 1u);
+    EXPECT_EQ(Capture::Packet(capture, 0).bones.data(), retained_address);
+    for (size_t i = 0; i < expected.size(); ++i)
+    {
+        EXPECT_EQ(Capture::Packet(capture, 0).bones[i], expected[i]);
+    }
+    capture.DiscardPackets();
+    EXPECT_EQ(Capture::Count(capture), 0u);
     EXPECT_EQ(glGetError(), GLenum(GL_NO_ERROR));
 }

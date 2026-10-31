@@ -5,9 +5,9 @@
 #include <string>
 #include <vector>
 
-#include "graphics/render/render_device.h"
 #include "graphics/render/model/StudioGeometry.h"
 #include "graphics/render/model/StudioModelMaterials.h"
+#include "graphics/render/render_device.h"
 
 namespace render
 {
@@ -87,7 +87,8 @@ namespace render
             const goldsrc::studiohdr_t* texture_header,
             int texture_index,
             const goldsrc::model_t* texture_model,
-            StudioModelBarrier barrier = {}
+            StudioModelBarrier barrier = {},
+            ncl_material::MaterialOrigin* origin = nullptr
         );
         const ncl_material::Material* ResolveMaterialByName(
             const char* model,

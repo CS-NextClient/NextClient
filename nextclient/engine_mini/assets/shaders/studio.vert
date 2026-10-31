@@ -12,10 +12,17 @@ layout(location = 4) in vec3 aShellNormal;
 
 // Three rows per bone, matching the engine's float[3][4] bone transforms, so the array
 // is uploaded verbatim. std140 gives a vec4 the 16 byte stride the rows already have.
+#ifdef STUDIO_RIGID_INSTANCING
+layout(location = 5) in vec4 aInstanceRow0;
+layout(location = 6) in vec4 aInstanceRow1;
+layout(location = 7) in vec4 aInstanceRow2;
+layout(location = 8) in uvec3 aInstanceRange;
+#else
 layout(std140) uniform Bones
 {
     vec4 uBones[384];
 };
+#endif
 
 uniform vec2 uTexelScale;
 
@@ -70,6 +77,9 @@ uniform vec3 uViewRight;
 out vec2 vUv;
 out vec3 vColor;
 out float vFogDepth;
+#ifdef STUDIO_RIGID_INSTANCING
+flat out float vInstanceBlend;
+#endif
 
 #include "studio_transform.glsl"
 
@@ -112,6 +122,7 @@ float ScreenGamma(float linear_value)
 // light is rotated into it, while the vertex and the normal are the ones stored in the
 // file, untransformed. The falloff is radius² / distance³, and the distance the lambert
 // term carries cancels one of those powers.
+#ifndef STUDIO_RIGID_INSTANCING
 vec3 EntityLight(vec3 base)
 {
     uint bone = aBones.x * 3u;
@@ -179,8 +190,25 @@ vec2 ChromeTexel(vec3 bone_translation, vec3 world_normal)
     return vec2((dot(world_normal, right) + 1.0) * 32.0, (dot(world_normal, up) + 1.0) * 32.0);
 }
 
+#endif
+
 void main()
 {
+#ifdef STUDIO_RIGID_INSTANCING
+    vInstanceBlend = 0.0;
+
+    if (uint(gl_VertexID) < aInstanceRange.x || uint(gl_VertexID) >= aInstanceRange.y)
+    {
+        vUv = vec2(0.0);
+        vColor = vec3(0.0);
+        vFogDepth = 0.0;
+        gl_Position = vec4(2.0, 0.0, 0.0, 1.0);
+        return;
+    }
+
+    vInstanceBlend = uintBitsToFloat(aInstanceRange.z);
+#endif
+
     // Bone transforms take the model into world space; the engine's modelview holds the
     // camera, exactly as the fixed function path expects after its CPU skinning.
     vec3 world_position = Transform(aPosition + aShellNormal * uGlowScale, aBones.x, 1.0);
@@ -197,7 +225,11 @@ void main()
     {
         // Additive entity: no lighting and no color mix, the engine writes r_blend into
         // all three channels and lets the texture carry the rest.
+#ifdef STUDIO_RIGID_INSTANCING
+        vColor = vec3(vInstanceBlend);
+#else
         vColor = vec3(uBlend);
+#endif
     }
     else if (uShadeMode == kShadeFullbright)
     {
@@ -215,13 +247,16 @@ void main()
     // Every mode but the shell: the engine runs the entity's lights over whatever color
     // the vertex ended up with, including the flat one an additive entity gets, and the
     // forced chrome pass is the one place it emits no color at all.
+#ifndef STUDIO_RIGID_INSTANCING
     if (uShadeMode != kShadeGlowShell && uEntityLightCount > 0)
     {
         vColor = EntityLight(vColor);
     }
+#endif
 
     vec2 texel = aTexel;
 
+#ifndef STUDIO_RIGID_INSTANCING
     if (uChrome != 0)
     {
         // The normal's bone, matching the engine: chrome is computed per normal. The shell
@@ -237,6 +272,7 @@ void main()
 
         texel = ChromeTexel(bone_translation, chrome_normal);
     }
+#endif
 
     vUv = texel * uTexelScale;
     vFogDepth = abs((gl_ModelViewMatrix * vec4(world_position, 1.0)).z);

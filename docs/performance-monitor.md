@@ -121,12 +121,15 @@ Each newly completed Host frame updates its totals; `CPU live: waiting for frame
 | Studio | GL state apply | Raster settings and matrices applied during model/group submission. |
 | Studio | Uniform setup | Standard model/group uniforms and program configuration. |
 | Studio | Texture setup | Base-skin binding before drawing and unbinding material textures afterward. |
+| Studio | Instance planning | Proof and exact shared-state checks for adjacent rigid packet runs, plus instance record preparation. |
+| Studio | Instance upload | The single actual `glBufferSubData` call for an accepted run's instance records. |
+| Shader submission | Instance submission | The actual `glDrawElementsInstanced` call for one rigid batch. |
 
-The five direct Studio details exclude queue drains, geometry/material preparation, MultiDraw and state save/restore. Authored material uploads keep their separate Material preparation measurement. Unclassified work remains in Studio self.
+Direct Studio details exclude queue drains, geometry/material preparation, draw calls and state save/restore. Authored material uploads keep their separate Material preparation measurement. Unclassified work remains in Studio self.
 
-The compact panel adds only `Top detail`, the largest valid detail total per CPU frame. The complete detailed list stays in `perf_dump`; level 1 does not display it. An explicitly connected external trace continues collecting its instrumented scopes. `Other Studio` adds the five direct Studio detail totals back to the remaining Studio self time. Nested save/restore details are excluded from this sum, and parent/child totals must not be added together. Geometry, material preparation and Shader submission remain separate children in the dump.
+The compact panel adds only `Top detail`, the largest valid detail total per CPU frame. The complete detailed list stays in `perf_dump`; level 1 does not display it. An explicitly connected external trace continues collecting its instrumented scopes. `Other Studio` adds direct Studio detail totals, including Instance planning and Instance upload, back to the remaining Studio self time. Nested save/restore details and Instance submission are excluded from this sum, and parent/child totals must not be added together. Geometry, material preparation and Shader submission remain separate children in the dump. Instance submission is a detail of Shader submission and can appear as Top detail.
 
-Shader submission covers MultiDraw and its accounting. Missing or incomplete measurements show `-`; measured zero remains `0.000`. These are CPU elapsed times, including driver waits and instrumentation cost.
+Shader submission covers MultiDraw, instanced draw calls and their accounting. Missing or incomplete measurements show `-`; measured zero remains `0.000`. These are CPU elapsed times, including driver waits and instrumentation cost.
 
 The dump reports what triggered queue submission or immediate packet submission. It also records batch sizes, program binds, stock renderer calls, and all five CPU stages. Immediate causes count packets; flush reasons count batches and can end a large shared batch. `r_studio_info` uses a separate interval starting at the latest opaque traversal. See [studio diagnostics](renderer-diagnostics.md) for controls and comparisons. The public interface is `PerformanceMonitor001`; rebuild the engine and client together.
 
