@@ -2,13 +2,16 @@
 #include "material_occlusion.glsl"
 uniform sampler2D uShape;
 uniform ivec2 uOrigin;
+uniform ivec2 uObjectDepthOffset;
+uniform ivec2 uMaskSize;
+uniform ivec2 uSeedOrigin;
 uniform float uDepthSign;
 layout(location = 0) out ivec2 outSeed;
 void main()
 {
-    ivec2 p = ivec2(gl_FragCoord.xy);
+    ivec2 p = ivec2(gl_FragCoord.xy) + uSeedOrigin;
     ivec2 local = p - uOrigin;
-    ivec2 size = textureSize(uShape, 0);
+    ivec2 size = uMaskSize;
     outSeed = ivec2(-1);
     if (any(lessThan(local, ivec2(0))) || any(greaterThanEqual(local, size)))
     {
@@ -23,7 +26,7 @@ void main()
     bool visible_only = shape.a > 2.5;
     if (occluded_only || visible_only)
     {
-        bool hidden = MaterialOcclusion_IsHidden(local, p, uDepthSign);
+        bool hidden = MaterialOcclusion_IsHidden(p + uObjectDepthOffset, p, uDepthSign);
         if ((occluded_only && !hidden) || (visible_only && hidden))
         {
             return;

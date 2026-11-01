@@ -46,11 +46,12 @@ Inspect both the overall differing-pixel fraction and the `--clusters` report. D
 |---|---|
 | `StudioPoseTest` (`studio-pose-tests`) | Immutable copies, slot reuse, reset, owner destruction, last release, and warmed allocation behavior. |
 | `StudioPhaseCaptureTest` (`studio-phase-capture-tests`) | Identity, pass times, numeric counts, inclusive frame ranges, nesting, aborts, overflow, and export errors. |
+| `StudioEffectBoundsTest` (`studio-effect-bounds-tests`) | Effect rectangles against the scalar reference, viewport clipping and rounding, empty bounds, full-viewport fallback at the near plane, and NaN/Inf semantics without a game or GL context. |
 | `StudioQueueTest` | Packet order, barriers, ownership, capacity, callback pause, and immediate mode. |
 | `StudioSubmissionGlTest` | Pixels for distinct poses/uniforms under one program and GL-state restoration, including additive-to-opaque transitions. |
-| `StudioCaptureGlTest` | Pose sharing between packet/effects capture, retained preview palettes, rigid submission/counters, production input capture, rollback after more than 256 meshes, material authority and choice metadata, coverage, and MSAA visibility in all outline modes. |
+| `StudioCaptureGlTest` | Pose sharing between packet/effects capture, retained preview palettes, rigid submission/counters, production input capture, effect materialization before geometry/texture mutation and unsafe callbacks, queue-disabled capture, surface reuse across controlled preview models, rollback after more than 256 meshes, material authority and choice metadata, coverage, and MSAA visibility in all outline modes. |
 | `StudioCaptureWindowGlTest` | Window-context depth and MSAA visibility in all outline modes. |
-| `StudioEffectsGlTest` | Silhouette and glow selection, hidden fill, mask growth, nearest-surface ownership, reversed depth, coverage, and GL-state restoration. |
+| `StudioEffectsGlTest` | Direct single-sample/MSAA depth: one scene-depth snapshot, no cropped object-depth storage, active fill/outline pixels, and sample coverage at edges with an offset viewport. Compatible immediate/deferred pools, owned snapshots, independent silhouettes and entity order with interleaved parts, and 64-entity surface reuse across frames. Resource barriers in all open views, late parts, and cancellation. Glow, hidden fill, bounded pass areas, narrow-outline and fill-only paths, mask capacity/growth, nearest-surface ownership, reversed depth, coverage, and GL-state restoration. |
 | `MaterialCoverageGlTest` | Production coverage shaders, masked alpha, dissolve/noise coordinates, and vertex/fragment compatibility. |
 | `RenderPerformanceTest.MultiDrawSeparatesApiCallsAndDraws` | Mocked accounting of API calls, constituent ranges, and triangles. |
 
@@ -58,6 +59,6 @@ These tests run logic without the engine or render synthetic scenes in a separat
 
 ## Automated lifecycle checks
 
-`renderer-lifecycle-tests` compiles the concrete coordinator against recording owner operations. It verifies phase selection, ordering, nested/repeated teardown, terminal state, and generation handling without a game or GL context. Concrete capture/editor tests remain in `material-lifecycle-tests`; performance monitor tests verify GPU deletion/abandonment, stale closures, CPU history, and active-host unwind. Device predicate tests use a native-query stub in `performance-gl-tests`.
+`renderer-lifecycle-tests` compiles the concrete coordinator against recording owner operations. It verifies phase selection, discard before external reentry, ordering, nested/repeated teardown, terminal state, and generation handling without a game or GL context. Concrete capture/editor tests remain in `material-lifecycle-tests`; performance monitor tests verify GPU deletion/abandonment, stale closures, CPU history, and active-host unwind. Device predicate tests use a native-query stub in `performance-gl-tests`.
 
 `studio-capture-gl-tests` verifies actual native identity, live deletion versus loss, shader/submission/texture recreation, and queue-first geometry release. The context fixture exposes its real native handle and can restore a previous WGL/EGL context. `scene-preview-gl-tests` verifies active target restoration and resource recreation after loss. Windows execution establishes WGL behavior; Linux SDL/GLX/EGL behavior requires its own build/run evidence. These checks do not establish installed-engine appearance or performance.

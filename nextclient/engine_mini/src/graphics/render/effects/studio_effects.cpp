@@ -42,6 +42,11 @@ void render::StudioEffects_Capture(
     GetRendererState().effects.Capture(entity, packet, bounds, include_occluders);
 }
 
+void render::StudioEffects_FlushPendingCaptures()
+{
+    GetRendererState().effects.FlushPendingCaptures();
+}
+
 void render::StudioEffects_EndView()
 {
     GetRendererState().effects.EndView();

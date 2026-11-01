@@ -16,6 +16,7 @@
 #include "common/sys_dll.h"
 #include "console/console.h"
 #include "graphics/gl_draw.h"
+#include "graphics/render/effects/studio_effects.h"
 #include "graphics/texture_processing.h"
 #include "resource/palette_manager/PaletteManager.h"
 #include "resource/texture_manager/TextureManager.h"
@@ -284,6 +285,7 @@ namespace tex
 
         if (g_modfuncs.m_pfnTextureLoad)
         {
+            render::StudioEffects_FlushPendingCaptures();
             g_modfuncs.m_pfnTextureLoad(identifier.c_str(), width, height, reinterpret_cast<char*>(const_cast<uint8_t*>(data)));
         }
 

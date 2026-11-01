@@ -71,6 +71,56 @@ namespace
     constexpr int kImageWidth = 32;
     constexpr int kImageHeight = 16;
 
+    class EffectCaptureTrace
+    {
+    private:
+        PFNGLDRAWELEMENTSPROC draw_ = glDrawElements;
+        PFNGLTEXIMAGE2DPROC image_ = glTexImage2D;
+
+        inline static EffectCaptureTrace* active_{};
+
+    public:
+        unsigned int draws{};
+        unsigned int storage{};
+
+        EffectCaptureTrace()
+        {
+            active_ = this;
+            glDrawElements = Draw;
+            glTexImage2D = Image;
+        }
+
+        ~EffectCaptureTrace()
+        {
+            glDrawElements = draw_;
+            glTexImage2D = image_;
+            active_ = nullptr;
+        }
+
+    private:
+        static void APIENTRY Image(
+            GLenum target,
+            GLint level,
+            GLint format,
+            GLsizei wide,
+            GLsizei tall,
+            GLint border,
+            GLenum input,
+            GLenum type,
+            const void* data
+        )
+        {
+            ++active_->storage;
+            active_->image_(target, level, format, wide, tall, border, input, type, data);
+        }
+
+        static void APIENTRY Draw(GLenum mode, GLsizei count, GLenum type, const void* indices)
+        {
+            ++active_->draws;
+            active_->draw_(mode, count, type, indices);
+        }
+    };
+
     class CaptureModel
     {
     private:
@@ -1123,6 +1173,26 @@ namespace
             api_.RestoreRenderer();
         }
 
+        GLuint PrepareEffectScene(const char* material_path)
+        {
+            studio_test::g_Files[material_path] =
+                R"({"version":1,"materials":{"red":{"program":"studio","params":{"uOccludedAmount":1,"uOccludedColor":[0,1,0,1]}}}})";
+            render::g_RenderCfg.studio_materials = nullptr;
+            GLuint depth = 0;
+            glGenRenderbuffers(1, &depth);
+            glBindRenderbuffer(GL_RENDERBUFFER, depth);
+            glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24, kImageWidth, kImageHeight);
+            glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, depth);
+            glEnable(GL_DEPTH_TEST);
+            glDepthMask(GL_TRUE);
+            glDepthFunc(GL_LEQUAL);
+            glClearDepth(.25);
+            glClear(GL_DEPTH_BUFFER_BIT);
+            render::StudioEffects_BeginView();
+
+            return depth;
+        }
+
         void SetLighting(int ambient, int shade)
         {
             float direction[] = {0, 0, -1};
@@ -2007,6 +2077,8 @@ TEST_F(StudioCaptureGlTest, SessionResetRebuildsSameNameAndHeaderStorageWithChan
 
 TEST_F(StudioCaptureGlTest, StudioLoadDrainsQueuedWorkBeforeCacheAllocationAndSelectiveRetirement)
 {
+    const GLuint depth = PrepareEffectScene("models/capture_reload_boundary.mat");
+    EffectCaptureTrace effects;
     GeometryTrace trace;
     CaptureModel model("models/capture_reload_boundary.mdl", {1});
     CaptureModel retained("models/capture_reload_retained.mdl", {1});
@@ -2018,6 +2090,9 @@ TEST_F(StudioCaptureGlTest, StudioLoadDrainsQueuedWorkBeforeCacheAllocationAndSe
     DrawPart(0);
     EndModel();
     ASSERT_TRUE(g_Capture.draws.empty());
+    EXPECT_EQ(effects.draws, 0u);
+    EXPECT_EQ(render::StudioEffects_TargetCount(), 1u);
+
     goldsrc::studiohdr_t replacement{};
     replacement.version = ncl_studio::kStudioVersion;
     replacement.length = sizeof(replacement);
@@ -2027,6 +2102,8 @@ TEST_F(StudioCaptureGlTest, StudioLoadDrainsQueuedWorkBeforeCacheAllocationAndSe
         allocations++;
         EXPECT_EQ(size, sizeof(allocated));
         EXPECT_EQ(g_Capture.draws.size(), 1u);
+        EXPECT_EQ(effects.draws, 2u);
+        EXPECT_EQ(render::StudioEffects_TargetCount(), 1u);
         EXPECT_EQ(render::Models_Metadata(model.model.name), nullptr);
         EXPECT_NE(render::Models_Metadata(retained.model.name), nullptr);
         EXPECT_TRUE(g_GeometryDeletesAfterDraws.empty());
@@ -2042,6 +2119,12 @@ TEST_F(StudioCaptureGlTest, StudioLoadDrainsQueuedWorkBeforeCacheAllocationAndSe
     EXPECT_EQ(render::Models_ModelCount(), 1);
     EXPECT_STREQ(render::Models_ModelName(0), retained.model.name);
     render::Studio_EndOpaquePass();
+    render::StudioEffects_EndView();
+
+    EXPECT_EQ(effects.draws, 2u);
+    EXPECT_GT(ReadPixel(16)[1], 240);
+
+    glDeleteRenderbuffers(1, &depth);
     get_engine().allocation.callback = {};
 }
 
@@ -2056,6 +2139,8 @@ TEST_F(StudioCaptureGlTest, ExistingSlotReuseDrainsQueuedWorkBeforeFreeAndPreser
             mod_numknown = 0;
         }
     } reset;
+    const GLuint depth = PrepareEffectScene("models/capture_slot_reused.mat");
+    EffectCaptureTrace effects;
     GeometryTrace trace;
     CaptureModel model("models/capture_slot_reused.mdl", {1});
     CaptureModel retained("models/capture_slot_retained.mdl", {1});
@@ -2067,6 +2152,9 @@ TEST_F(StudioCaptureGlTest, ExistingSlotReuseDrainsQueuedWorkBeforeFreeAndPreser
     DrawPart(0);
     EndModel();
     ASSERT_TRUE(g_Capture.draws.empty());
+    EXPECT_EQ(effects.draws, 0u);
+    EXPECT_EQ(render::StudioEffects_TargetCount(), 1u);
+
     mod_numknown = goldsrc::MAX_KNOWN_MODELS;
 
     for (int index = 0; index < mod_numknown; index++)
@@ -2083,6 +2171,8 @@ TEST_F(StudioCaptureGlTest, ExistingSlotReuseDrainsQueuedWorkBeforeFreeAndPreser
     get_engine().free.callback = [&](goldsrc::cache_user_t* cache) {
         frees++;
         EXPECT_EQ(g_Capture.draws.size(), 1u);
+        EXPECT_EQ(effects.draws, 2u);
+        EXPECT_EQ(render::StudioEffects_TargetCount(), 1u);
         EXPECT_EQ(render::Models_Metadata(model.model.name), nullptr);
         EXPECT_NE(render::Models_Metadata(retained.model.name), nullptr);
         cache->data = nullptr;
@@ -2094,7 +2184,142 @@ TEST_F(StudioCaptureGlTest, ExistingSlotReuseDrainsQueuedWorkBeforeFreeAndPreser
     EXPECT_EQ(render::Models_ModelCount(), 1);
     EXPECT_STREQ(render::Models_ModelName(0), retained.model.name);
     render::Studio_EndOpaquePass();
+    render::StudioEffects_EndView();
+
+    EXPECT_EQ(effects.draws, 2u);
+    EXPECT_GT(ReadPixel(16)[1], 240);
+
+    glDeleteRenderbuffers(1, &depth);
     get_engine().free.callback = [](goldsrc::cache_user_t* cache) { cache->data = nullptr; };
+}
+
+TEST_F(StudioCaptureGlTest, TextureClearMaterializesEffectsWithAnEmptyGeometryQueue)
+{
+    const GLuint depth = PrepareEffectScene("models/capture_effect_image_barrier.mat");
+    CaptureModel model("models/capture_effect_image_barrier.mdl", {1});
+    goldsrc::cl_entity_t entity{};
+    entity.index = 7;
+    EffectCaptureTrace effects;
+    render::Studio_BeginOpaquePass();
+    BeginModel(model, entity, 0);
+    DrawPart(0);
+    EndModel();
+    render::Studio_EndOpaquePass();
+
+    EXPECT_EQ(effects.draws, 0u);
+
+    render::MaterialTextures_Clear();
+
+    EXPECT_EQ(effects.draws, 2u);
+    EXPECT_EQ(render::StudioEffects_TargetCount(), 1u);
+
+    render::StudioEffects_EndView();
+
+    EXPECT_EQ(effects.draws, 2u);
+    EXPECT_GT(ReadPixel(16)[1], 240);
+
+    glDeleteRenderbuffers(1, &depth);
+}
+
+TEST_F(StudioCaptureGlTest, QueueDisabledAndPauseMaterializeEffectsBeforeUnsafeWork)
+{
+    const GLuint depth = PrepareEffectScene("models/capture_effect_immediate.mat");
+    CaptureModel model("models/capture_effect_immediate.mdl", {1});
+    goldsrc::cl_entity_t entity{};
+    entity.index = 7;
+    EffectCaptureTrace effects;
+    render::Studio_BeginOpaquePass();
+    BeginModel(model, entity, -.3f);
+    DrawPart(0);
+    EndModel();
+
+    EXPECT_EQ(effects.draws, 0u);
+
+    {
+        render::StudioQueuePause pause;
+
+        EXPECT_EQ(effects.draws, 2u);
+
+        BeginModel(model, entity, .3f);
+        DrawPart(0);
+        EndModel();
+
+        EXPECT_EQ(effects.draws, 4u);
+    }
+
+    render::Studio_EndOpaquePass();
+    render::Studio_BeginOpaquePass();
+    goldsrc::cvar_t disabled_queue{};
+    goldsrc::cvar_t* previous_queue = render::g_RenderCfg.studio_queue;
+    render::g_RenderCfg.studio_queue = &disabled_queue;
+    render::Studio_EndOpaquePass();
+    render::Studio_BeginOpaquePass();
+    BeginModel(model, entity, 0);
+    DrawPart(0);
+    EndModel();
+
+    EXPECT_EQ(effects.draws, 6u);
+
+    render::g_RenderCfg.studio_queue = previous_queue;
+    render::Studio_EndOpaquePass();
+    render::StudioEffects_EndView();
+
+    EXPECT_EQ(effects.draws, 6u);
+    EXPECT_GT(ReadPixel(16)[1], 240);
+
+    glDeleteRenderbuffers(1, &depth);
+}
+
+TEST_F(StudioCaptureGlTest, ControlledPreviewContextsStreamSixtyFourModelsWithoutIntermediateCaptures)
+{
+    const GLuint depth = PrepareEffectScene("models/capture_effect_preview_streaming.mat");
+    CaptureModel model("models/capture_effect_preview_streaming.mdl", {1});
+    goldsrc::cl_entity_t entity{};
+    std::array<PreviewModel, 64> requests{};
+    PreviewDrawParams params{};
+    params.mode = PreviewRenderMode::MaterialAuthoring;
+    EffectCaptureTrace effects;
+
+    {
+        render::StudioPreviewContext preview(render::GetRendererState().studio, &entity, params, requests[0]);
+        BeginModel(model, entity, 0);
+        DrawPart(0);
+        EndModel();
+    }
+
+    render::StudioEffects_EndView();
+
+    ASSERT_EQ(effects.draws, 2u);
+
+    for (int frame = 0; frame < 2; ++frame)
+    {
+        effects.draws = 0;
+        effects.storage = 0;
+        glClear(GL_COLOR_BUFFER_BIT);
+        render::StudioEffects_BeginView();
+
+        for (PreviewModel& request : requests)
+        {
+            render::StudioPreviewContext preview(render::GetRendererState().studio, &entity, params, request);
+            BeginModel(model, entity, 0);
+            DrawPart(0);
+            EndModel();
+        }
+
+        EXPECT_EQ(render::StudioEffects_TargetCount(), 64u);
+        EXPECT_EQ(effects.draws, 0u);
+        EXPECT_EQ(effects.storage, 0u);
+
+        render::StudioEffects_EndView();
+
+        EXPECT_EQ(effects.draws, 128u);
+        EXPECT_EQ(effects.storage, 0u);
+        EXPECT_EQ(render::StudioEffects_LastStats().entities, 64u);
+        EXPECT_EQ(render::StudioEffects_LastStats().reused_targets, 64u);
+        EXPECT_GT(ReadPixel(16)[1], 240);
+    }
+
+    glDeleteRenderbuffers(1, &depth);
 }
 
 TEST_F(StudioCaptureGlTest, TextureHeaderReplacementDoesNotRebuildGeometry)

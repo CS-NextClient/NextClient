@@ -208,6 +208,12 @@ namespace render
         void Submit(const StudioDrawPacket& packet, bool allow_deferred = true);
         void Submit(StudioDrawPacket&& packet, bool allow_deferred = true);
         void Flush(StudioFlushReason reason);
+
+        bool is_deferred() const
+        {
+            return deferred_;
+        }
+
         bool Pause();
         void Resume(bool deferred);
         void Reset();

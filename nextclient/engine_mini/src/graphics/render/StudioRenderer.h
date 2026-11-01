@@ -135,6 +135,7 @@ namespace render
         {
             submission_sink_.ResetStats();
         }
+        void FlushPendingEffects();
         void DiscardPending();
         void InvalidateContextReferences();
         void ReleaseContextResources();

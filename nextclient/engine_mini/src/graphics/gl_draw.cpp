@@ -33,6 +33,7 @@
 #include "graphics/render/RenderConfig.h"
 #include "graphics/render/shader_manager.h"
 #include "graphics/render/StudioDraw.h"
+#include "graphics/render/effects/studio_effects.h"
 #include "graphics/render/RendererLifecycle.h"
 #include "graphics/render/StudioDump.h"
 #include "graphics/render/StudioIntercept.h"
@@ -423,6 +424,7 @@ void GL_UnloadTextures()
 {
     NCL_PROFILE_SCOPE();
 
+    render::StudioEffects_FlushPendingCaptures();
     g_TextureManagerGlob.ClearSession();
 }
 
@@ -436,6 +438,7 @@ void GL_UnloadTexture(const char* identifier)
     g_TextureManagerGlob.ForEach([&identifier_new](Texture* texture, TextureHandle handle, TextureLifetime lifetime) {
         if (std::string_view(texture->identifier).starts_with(identifier_new))
         {
+            render::StudioEffects_FlushPendingCaptures();
             g_TextureManagerGlob.Destroy(handle);
             return false;
         }
@@ -479,6 +482,7 @@ int GL_LoadTexture2(
     char identifier_new[TexIdentifierStr::kMaxSize + 1];
     V_sprintf_safe(identifier_new, "%s-%dx%d", identifier, width, height);
 
+    render::StudioEffects_FlushPendingCaptures();
     TextureHandle texture_handle =
         g_TextureManagerGlob.Load(identifier_new, lifetime, (TextureFormat)iType, width, height, data, mipmap, pPal, filter);
 

@@ -25,6 +25,7 @@ namespace render
         const std::array<int, 4>& bounds,
         bool include_occluders = false
     );
+    void StudioEffects_FlushPendingCaptures();
     void StudioEffects_EndView();
     void StudioEffects_Clear();
     size_t StudioEffects_TargetCount();

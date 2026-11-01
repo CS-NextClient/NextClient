@@ -1,5 +1,6 @@
 #pragma once
 
+#include <array>
 #include <cstdint>
 #include <memory>
 #include <vector>
@@ -13,6 +14,18 @@ namespace render
     class StudioEffectTargets
     {
     public:
+        enum class ObjectDepthStorage
+        {
+            Retained,
+            Transient
+        };
+
+        struct ObjectDepthSource
+        {
+            unsigned int image{};
+            std::array<int, 2> offset{};
+        };
+
         class Mask
         {
         private:
@@ -20,6 +33,8 @@ namespace render
 
             uintptr_t entity_{};
             effects::Rect_t rect_{};
+            int capacity_wide_{};
+            int capacity_tall_{};
             unsigned int framebuffer_{};
             unsigned int depth_framebuffer_{};
             unsigned int fill_{};
@@ -27,8 +42,12 @@ namespace render
             unsigned int shape_{};
             unsigned int mask_depth_{};
             unsigned int object_depth_{};
+            ObjectDepthStorage depth_storage_ = ObjectDepthStorage::Retained;
             bool reversed_{};
             int samples_{};
+            float outline_width_{};
+            float influence_{};
+            bool glow_{};
 
         public:
             Mask() = default;
@@ -75,6 +94,11 @@ namespace render
                 return object_depth_;
             }
 
+            ObjectDepthStorage get_depth_storage() const
+            {
+                return depth_storage_;
+            }
+
             bool is_reversed() const
             {
                 return reversed_;
@@ -85,9 +109,26 @@ namespace render
                 return samples_;
             }
 
+            float get_outline_width() const
+            {
+                return outline_width_;
+            }
+
+            float get_influence() const
+            {
+                return influence_;
+            }
+
+            bool has_glow() const
+            {
+                return glow_;
+            }
+
+            void IncludeStyle(float width, float glow_radius, float glow_strength);
+
         private:
             void Reset(const effects::Rect_t& area, bool reverse);
-            bool Allocate(const effects::Rect_t& area, bool reverse, int sample_count);
+            bool Allocate(const effects::Rect_t& area, bool reverse, int sample_count, ObjectDepthStorage depth_storage);
             void Release(bool release_gl);
         };
 
@@ -120,12 +161,23 @@ namespace render
         StudioEffectTargets(const StudioEffectTargets&) = delete;
         StudioEffectTargets& operator=(const StudioEffectTargets&) = delete;
 
-        Mask* AcquireMask(Masks_t& masks, uintptr_t entity, const effects::Rect_t& bounds, bool reversed, int samples, bool& reused);
+        Mask* AcquireMask(
+            Masks_t& masks,
+            uintptr_t entity,
+            const effects::Rect_t& bounds,
+            bool reversed,
+            int samples,
+            bool& reused,
+            ObjectDepthStorage depth_storage = ObjectDepthStorage::Retained
+        );
         void RecycleMasks(Masks_t& masks);
+        void RecycleWorkingMasks(Masks_t& masks);
         void ReleaseMasks(Masks_t& masks, bool release_gl);
         void Clear(bool release_gl);
         void EnsureGeometry();
         bool EnsureCaptureDepth(const effects::Rect_t& viewport, int samples);
+        void ClearCaptureDepth(const Mask& mask, const effects::Rect_t& viewport);
+        ObjectDepthSource ObjectDepthFor(const Mask& mask, const effects::Rect_t& viewport) const;
         bool SnapshotDepth(unsigned int output, const effects::Rect_t& viewport);
         void EnsureSeeds(int wide, int tall);
 
@@ -175,6 +227,7 @@ namespace render
         }
 
     private:
+        void Recycle(Masks_t& masks, size_t budget);
         void PreserveMask(const Mask& source, const Mask& destination);
     };
 } // namespace render

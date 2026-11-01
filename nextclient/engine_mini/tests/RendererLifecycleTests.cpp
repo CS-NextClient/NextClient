@@ -98,6 +98,13 @@ TEST_F(RendererLifecycleTest, MapResetDiscardsAndCancelsBeforeExternalReentry)
     render::StudioDrawPacket packet;
     packet.meshes.emplace_back();
     render::StudioDrawQueue& queue = render::StudioRendererTestAccess::Queue(owners_->state.studio);
+    packet.viewport = {0, 0, 32, 32};
+    packet.texture_revision = owners_->state.coverage.get_texture_revision();
+    owners_->state.effects.BeginView();
+    owners_->state.effects.Capture(1, packet, {0, 0, 32, 32}, true);
+
+    ASSERT_EQ(owners_->state.effects.get_target_count(), 1u);
+
     queue.BeginOpaquePass(true);
     queue.Submit(packet);
     ASSERT_EQ(render::StudioRendererTestAccess::QueuedCount(owners_->state.studio), 1u);
@@ -106,6 +113,7 @@ TEST_F(RendererLifecycleTest, MapResetDiscardsAndCancelsBeforeExternalReentry)
     ASSERT_EQ(render::preview::PreviewInteractionTestAccess::Count(picking), 1u);
     owners_->state.capture.Begin("map", shader, &materials);
     owners_->capture.on_set = [&] {
+        EXPECT_EQ(owners_->state.effects.get_target_count(), 0u);
         EXPECT_EQ(render::StudioRendererTestAccess::QueuedCount(owners_->state.studio), 0u);
         EXPECT_EQ(render::preview::PreviewInteractionTestAccess::Count(picking), 0u);
     };
@@ -130,7 +138,17 @@ TEST_F(RendererLifecycleTest, MapResetDiscardsAndCancelsBeforeExternalReentry)
 TEST_F(RendererLifecycleTest, DisconnectAndClientClearPreserveTheOwningContext)
 {
     const uint32_t generation = owners_->resources.device.get_generation();
+    render::StudioDrawPacket packet;
+    packet.viewport = {0, 0, 32, 32};
+    packet.texture_revision = owners_->state.coverage.get_texture_revision();
+    owners_->state.effects.BeginView();
+    owners_->state.effects.Capture(1, packet, {0, 0, 32, 32}, true);
+
+    ASSERT_EQ(owners_->state.effects.get_target_count(), 1u);
+
     owners_->state.lifecycle.OnDisconnectBegin();
+
+    EXPECT_EQ(owners_->state.effects.get_target_count(), 0u);
     EXPECT_EQ(owners_->state.models.ModelCount(), 1);
     owners_->state.lifecycle.OnClientStateClearing();
     EXPECT_EQ(owners_->state.models.ModelCount(), 0);

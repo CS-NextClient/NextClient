@@ -1,6 +1,7 @@
 #include "graphics/render/effects/StudioEffectTargets.h"
 
 #include <algorithm>
+#include <cassert>
 
 #include <glad/glad.h>
 
@@ -13,6 +14,7 @@
 namespace
 {
     constexpr size_t kMaxRetainedPixels = 512 * 1024;
+    constexpr int kMaskCapacityStep = 16;
     constexpr GLenum kAttachments[] = {GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1, GL_COLOR_ATTACHMENT2};
     constexpr GLfloat kEmptyColor[4]{};
 
@@ -61,6 +63,8 @@ void render::StudioEffectTargets::Mask::Reset(const effects::Rect_t& area, bool 
 {
     rect_ = area;
     reversed_ = reverse;
+    outline_width_ = influence_ = 0;
+    glow_ = false;
 
     glBindFramebuffer(GL_FRAMEBUFFER, framebuffer_);
     glDrawBuffers(3, kAttachments);
@@ -77,20 +81,39 @@ void render::StudioEffectTargets::Mask::Reset(const effects::Rect_t& area, bool 
     glClearDepth(reversed_ ? 0 : 1);
     glClear(GL_DEPTH_BUFFER_BIT);
 
-    glBindFramebuffer(GL_FRAMEBUFFER, depth_framebuffer_);
-    glClear(GL_DEPTH_BUFFER_BIT);
+    if (depth_storage_ == ObjectDepthStorage::Retained)
+    {
+        glBindFramebuffer(GL_FRAMEBUFFER, depth_framebuffer_);
+        glClear(GL_DEPTH_BUFFER_BIT);
+    }
 }
 
-bool render::StudioEffectTargets::Mask::Allocate(const effects::Rect_t& area, bool reverse, int sample_count)
+void render::StudioEffectTargets::Mask::IncludeStyle(float width, float glow_radius, float glow_strength)
+{
+    const float glow = width > 0 && glow_strength > 0 ? glow_radius : 0;
+
+    outline_width_ = std::max(outline_width_, width);
+    influence_ = std::max(influence_, width + glow);
+    glow_ = glow_ || glow > 0;
+}
+
+bool render::StudioEffectTargets::Mask::Allocate(
+    const effects::Rect_t& area,
+    bool reverse,
+    int sample_count,
+    ObjectDepthStorage depth_storage
+)
 {
     rect_ = area;
     reversed_ = reverse;
     samples_ = sample_count;
+    depth_storage_ = depth_storage;
+    capacity_wide_ = (area[2] + kMaskCapacityStep - 1) / kMaskCapacityStep * kMaskCapacityStep;
+    capacity_tall_ = (area[3] + kMaskCapacityStep - 1) / kMaskCapacityStep * kMaskCapacityStep;
 
     glGenFramebuffers(1, &framebuffer_);
-    glGenFramebuffers(1, &depth_framebuffer_);
     GLuint images[5]{};
-    glGenTextures(5, images);
+    glGenTextures(depth_storage_ == ObjectDepthStorage::Retained ? 5 : 4, images);
     fill_ = images[0];
     outline_ = images[1];
     shape_ = images[2];
@@ -100,11 +123,14 @@ bool render::StudioEffectTargets::Mask::Allocate(const effects::Rect_t& area, bo
     glActiveTexture(GL_TEXTURE0);
     for (int index = 0; index < 3; index++)
     {
-        Texture(images[index], GL_RGBA16F, GL_RGBA, GL_FLOAT, rect_[2], rect_[3]);
+        Texture(images[index], GL_RGBA16F, GL_RGBA, GL_FLOAT, capacity_wide_, capacity_tall_);
     }
 
-    Texture(mask_depth_, GL_DEPTH_COMPONENT24, GL_DEPTH_COMPONENT, GL_UNSIGNED_INT, rect_[2], rect_[3]);
-    DepthTexture(object_depth_, GL_DEPTH_COMPONENT24, GL_DEPTH_COMPONENT, GL_UNSIGNED_INT, rect_[2], rect_[3], samples_);
+    Texture(mask_depth_, GL_DEPTH_COMPONENT24, GL_DEPTH_COMPONENT, GL_UNSIGNED_INT, capacity_wide_, capacity_tall_);
+    if (depth_storage_ == ObjectDepthStorage::Retained)
+    {
+        DepthTexture(object_depth_, GL_DEPTH_COMPONENT24, GL_DEPTH_COMPONENT, GL_UNSIGNED_INT, capacity_wide_, capacity_tall_, samples_);
+    }
 
     glBindFramebuffer(GL_FRAMEBUFFER, framebuffer_);
     for (int index = 0; index < 3; index++)
@@ -119,13 +145,17 @@ bool render::StudioEffectTargets::Mask::Allocate(const effects::Rect_t& area, bo
         return false;
     }
 
-    glBindFramebuffer(GL_FRAMEBUFFER, depth_framebuffer_);
-    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, DepthTextureTarget(samples_), object_depth_, 0);
-    glDrawBuffer(GL_NONE);
-    glReadBuffer(GL_NONE);
-    if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+    if (depth_storage_ == ObjectDepthStorage::Retained)
     {
-        return false;
+        glGenFramebuffers(1, &depth_framebuffer_);
+        glBindFramebuffer(GL_FRAMEBUFFER, depth_framebuffer_);
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, DepthTextureTarget(samples_), object_depth_, 0);
+        glDrawBuffer(GL_NONE);
+        glReadBuffer(GL_NONE);
+        if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+        {
+            return false;
+        }
     }
 
     Reset(area, reverse);
@@ -153,13 +183,15 @@ render::StudioEffectTargets::Mask* render::StudioEffectTargets::AcquireMask(
     const effects::Rect_t& bounds,
     bool reversed,
     int samples,
-    bool& reused
+    bool& reused,
+    ObjectDepthStorage depth_storage
 )
 {
     reused = false;
     auto existing =
         std::find_if(masks.begin(), masks.end(), [entity](const std::unique_ptr<Mask>& target) { return target->get_entity() == entity; });
     Mask* target = existing == masks.end() ? nullptr : existing->get();
+    assert(target == nullptr || (target->depth_storage_ == depth_storage && target->samples_ == samples));
     const effects::Rect_t rect = target == nullptr ? bounds : Union(target->get_rect(), bounds);
 
     if (target != nullptr && rect == target->get_rect())
@@ -167,9 +199,24 @@ render::StudioEffectTargets::Mask* render::StudioEffectTargets::AcquireMask(
         return target;
     }
 
-    auto reusable = std::find_if(pool_.begin(), pool_.end(), [&rect, samples](const std::unique_ptr<Mask>& cached) {
-        return cached->get_rect()[2] == rect[2] && cached->get_rect()[3] == rect[3] && cached->get_samples() == samples;
-    });
+    auto reusable = pool_.end();
+    size_t reusable_pixels = 0;
+    for (auto cached = pool_.begin(); cached != pool_.end(); ++cached)
+    {
+        const Mask& candidate = **cached;
+        if (candidate.depth_storage_ != depth_storage || candidate.samples_ != samples || candidate.capacity_wide_ < rect[2] ||
+            candidate.capacity_tall_ < rect[3])
+        {
+            continue;
+        }
+
+        const size_t pixels = static_cast<size_t>(candidate.capacity_wide_) * candidate.capacity_tall_;
+        if (reusable == pool_.end() || pixels < reusable_pixels)
+        {
+            reusable = cached;
+            reusable_pixels = pixels;
+        }
+    }
 
     std::unique_ptr<Mask> replacement;
     if (reusable != pool_.end())
@@ -182,7 +229,7 @@ render::StudioEffectTargets::Mask* render::StudioEffectTargets::AcquireMask(
     else
     {
         replacement = std::make_unique<Mask>();
-        if (!replacement->Allocate(rect, reversed, samples))
+        if (!replacement->Allocate(rect, reversed, samples, depth_storage))
         {
             replacement->Release(device_.IsContextCurrent());
             Con_DPrintf(ConLogType::Warning, "render: material effect target is incomplete\n");
@@ -193,6 +240,9 @@ render::StudioEffectTargets::Mask* render::StudioEffectTargets::AcquireMask(
     replacement->entity_ = entity;
     if (target != nullptr)
     {
+        replacement->outline_width_ = target->outline_width_;
+        replacement->influence_ = target->influence_;
+        replacement->glow_ = target->glow_;
         PreserveMask(*target, *replacement);
         target->Release(device_.IsContextCurrent());
         *existing = std::move(replacement);
@@ -207,6 +257,7 @@ render::StudioEffectTargets::Mask* render::StudioEffectTargets::AcquireMask(
 
 void render::StudioEffectTargets::PreserveMask(const Mask& source, const Mask& destination)
 {
+    assert(source.depth_storage_ == ObjectDepthStorage::Retained && destination.depth_storage_ == ObjectDepthStorage::Retained);
     glBindFramebuffer(GL_READ_FRAMEBUFFER, source.framebuffer_);
     glBindFramebuffer(GL_DRAW_FRAMEBUFFER, destination.framebuffer_);
 
@@ -237,26 +288,41 @@ void render::StudioEffectTargets::PreserveMask(const Mask& source, const Mask& d
 
 void render::StudioEffectTargets::RecycleMasks(Masks_t& masks)
 {
+    Recycle(masks, kMaxRetainedPixels);
+}
+
+void render::StudioEffectTargets::RecycleWorkingMasks(Masks_t& masks)
+{
+    const size_t working_pixels = masks.empty() ? 0 : static_cast<size_t>(masks.front()->capacity_wide_) * masks.front()->capacity_tall_;
+    Recycle(masks, std::max(kMaxRetainedPixels, working_pixels));
+}
+
+void render::StudioEffectTargets::Recycle(Masks_t& masks, size_t budget)
+{
+    Masks_t next_pool;
+    next_pool.reserve(masks.size() + pool_.size());
     size_t retained_pixels = 0;
-    for (const std::unique_ptr<Mask>& cached : pool_)
-    {
-        retained_pixels += static_cast<size_t>(cached->get_rect()[2]) * cached->get_rect()[3];
-    }
+    const bool release_gl = device_.IsContextCurrent();
 
-    for (std::unique_ptr<Mask>& target : masks)
-    {
-        const size_t pixels = static_cast<size_t>(target->get_rect()[2]) * target->get_rect()[3];
+    const auto admit = [&next_pool, &retained_pixels, release_gl, budget](Masks_t& candidates) {
+        for (std::unique_ptr<Mask>& candidate : candidates)
+        {
+            const size_t pixels = static_cast<size_t>(candidate->capacity_wide_) * candidate->capacity_tall_;
+            if (pixels <= budget - retained_pixels)
+            {
+                retained_pixels += pixels;
+                next_pool.push_back(std::move(candidate));
+            }
+            else
+            {
+                candidate->Release(release_gl);
+            }
+        }
+    };
 
-        if (retained_pixels + pixels <= kMaxRetainedPixels)
-        {
-            retained_pixels += pixels;
-            pool_.push_back(std::move(target));
-        }
-        else
-        {
-            target->Release(device_.IsContextCurrent());
-        }
-    }
+    admit(masks);
+    admit(pool_);
+    pool_ = std::move(next_pool);
 
     masks.clear();
 }
@@ -305,6 +371,30 @@ void render::StudioEffectTargets::EnsureGeometry()
         glBufferData(GL_UNIFORM_BUFFER, render::kStudioBoneFloats * sizeof(float), nullptr, GL_STREAM_DRAW);
         glGenVertexArrays(1, &vao_);
     }
+}
+
+void render::StudioEffectTargets::ClearCaptureDepth(const Mask& mask, const effects::Rect_t& viewport)
+{
+    const effects::Rect_t& rect = mask.get_rect();
+    glBindFramebuffer(GL_FRAMEBUFFER, capture_depth_framebuffer_);
+    glEnable(GL_SCISSOR_TEST);
+    glScissor(viewport[0] + rect[0], viewport[1] + rect[1], rect[2], rect[3]);
+    glDepthMask(GL_TRUE);
+    glClearDepth(mask.is_reversed() ? 0 : 1);
+    glClear(GL_DEPTH_BUFFER_BIT);
+}
+
+render::StudioEffectTargets::ObjectDepthSource render::StudioEffectTargets::ObjectDepthFor(
+    const Mask& mask,
+    const effects::Rect_t& viewport
+) const
+{
+    if (mask.get_depth_storage() == ObjectDepthStorage::Transient)
+    {
+        return {capture_depth_image_, {viewport[0], viewport[1]}};
+    }
+
+    return {mask.get_object_depth(), {-mask.get_rect()[0], -mask.get_rect()[1]}};
 }
 
 bool render::StudioEffectTargets::EnsureCaptureDepth(const effects::Rect_t& viewport, int samples)
@@ -437,10 +527,13 @@ void render::StudioEffectTargets::EnsureSeeds(int wide, int tall)
         glGenFramebuffers(2, seed_framebuffers_);
     }
 
-    if (wide == seed_wide_ && tall == seed_tall_)
+    if (wide <= seed_wide_ && tall <= seed_tall_)
     {
         return;
     }
+
+    wide = std::max(wide, seed_wide_);
+    tall = std::max(tall, seed_tall_);
 
     glActiveTexture(GL_TEXTURE0);
     for (int index = 0; index < 2; index++)

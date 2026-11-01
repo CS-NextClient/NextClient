@@ -93,7 +93,7 @@ namespace render
     StudioQueuePause::StudioQueuePause() :
         StudioQueuePause(GetRendererState().studio)
     {}
-    StudioQueuePause::StudioQueuePause(StudioRenderer& renderer) :
+    StudioQueuePause::StudioQueuePause(StudioRenderer& renderer, Mode mode) :
         renderer_(renderer),
         cancellation_epoch_(renderer.get_cancellation_epoch())
     {
@@ -101,6 +101,10 @@ namespace render
         if (cancellation_epoch_ == renderer_.get_cancellation_epoch())
         {
             deferred_ = renderer_.queue_.Pause();
+            if (mode == Mode::Callback)
+            {
+                renderer_.FlushPendingEffects();
+            }
         }
     }
 

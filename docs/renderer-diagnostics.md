@@ -33,6 +33,14 @@ The CPU heading identifies averages: `ms/frame` is the operation's total time di
 
 `perf_dump` independently captures the next complete accepted Host frame and prints automatically after it finishes. Without a connected Tracy viewer, detailed Studio timings are dormant between requests at batching levels 0/1; level 2 keeps them active. CPU-only capture with `cl_perf 0` does not enable GPU queries. Its saved one-frame result remains separate from the continuously updated batching table. Nested save/restore phases and five Studio preparation/submission details are available in the dump. See [Studio batching counts](performance-monitor.md#studio-batching-counts) for units and measurement boundaries.
 
+## Profile effect bounds
+
+A connected Tracy viewer records `ProjectBounds` in a build with `USE_PROFILER=ON`. The zone covers the complete `render::effects::ProjectBounds` calculation, including early returns of the full viewport. Material lookup and effect-radius selection in `StudioEffects::ProjectBounds` occur outside the zone. It has no separate built-in monitor row.
+
+Use a matching profiling module set and Tracy runtime as described in [diagnostic Tracy capture](performance-monitor.md#diagnostic-tracy-capture). Select a scene or demo with material effects and confirm that `ProjectBounds` has recorded calls. A build with `USE_PROFILER=OFF` compiles out the zone.
+
+Keep the diagnostic recording separate from the clean A/B timedemo comparison. Compare production builds with profiling disabled, phase capture disabled, and the same demo, settings, warmup, and run order. Tracy zone durations describe the instrumented run and do not establish the production FPS effect.
+
 ## Record phases during demo playback
 
 `r_studio_phases_start <name> [first_demo_frame last_demo_frame]` arms phase capture for an inclusive demo-frame range. Issue it before `timedemo`, then run `r_studio_phases_stop` and `r_studio_phases_export [name]` after playback. `r_studio_phases_status` reports activity, retained views, and overflow. Loading before the first recorded view keeps capture armed. A session or context reset after recording begins stops capture and preserves its data. An abandoned view has `complete=0`.

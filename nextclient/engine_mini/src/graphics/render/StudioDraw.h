@@ -29,6 +29,13 @@ namespace render
 
     class StudioQueuePause
     {
+    public:
+        enum class Mode
+        {
+            Callback,
+            ControlledPreview
+        };
+
     private:
         StudioRenderer& renderer_;
         bool deferred_{};
@@ -36,7 +43,7 @@ namespace render
 
     public:
         StudioQueuePause();
-        explicit StudioQueuePause(StudioRenderer& renderer);
+        explicit StudioQueuePause(StudioRenderer& renderer, Mode mode = Mode::Callback);
         ~StudioQueuePause();
 
         StudioQueuePause(const StudioQueuePause&) = delete;
@@ -56,7 +63,6 @@ namespace render
     void Studio_Flush(StudioFlushReason reason);
     const StudioQueueStats& Studio_QueueStats();
 
-    // Discards queued work without accessing GL or engine-owned resources.
     void Studio_DiscardPending();
     void Studio_ReleaseContextResources();
     void Studio_InvalidateContextReferences();

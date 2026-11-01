@@ -56,6 +56,7 @@ namespace render
             int scene_depth_ms{};
             int samples{};
             int origin{};
+            int object_offset{};
             int sign{};
             int tolerance{};
         };
@@ -64,12 +65,16 @@ namespace render
         {
             DepthBindings depth;
             int shape{};
+            int size{};
+            int seed_origin{};
         };
 
         struct DistanceBindings
         {
             int step{};
             int seeds{};
+            int size{};
+            int origin{};
         };
 
         struct CompositeBindings
@@ -80,6 +85,10 @@ namespace render
             int shape{};
             int seeds{};
             int output_origin{};
+            int size{};
+            int seed_origin{};
+            int seed_size{};
+            int mode{};
         };
 
         StudioEffectTargets& targets_;
@@ -90,7 +99,9 @@ namespace render
         FixedShaderProgram distance_;
         FixedShaderProgram composite_;
         uint32_t mask_generation_{};
-        uint32_t composition_generation_{};
+        uint32_t seed_generation_{};
+        uint32_t distance_generation_{};
+        uint32_t composite_generation_{};
         MaskBindings mask_bindings_;
         SeedBindings seed_bindings_;
         DistanceBindings distance_bindings_;
@@ -102,12 +113,21 @@ namespace render
         const ncl_gl::Program* PrepareCapture();
         void CaptureMask(const StudioEffectTargets::Mask& target, const StudioDrawPacket& packet, const ncl_gl::Program& mask);
         void CaptureDepth(const StudioEffectTargets::Mask& target, const StudioDrawPacket& packet, const ncl_gl::Program& mask);
-        bool PrepareComposition(const effects::Rect_t& viewport, Composition& composition);
-        void Seed(const StudioEffectTargets::Mask& target, const effects::Rect_t& viewport, const Composition& composition);
-        int PropagateSeeds(const effects::Rect_t& viewport, const Composition& composition);
+        bool PrepareComposition(const effects::Rect_t& viewport, bool outline, bool distance, Composition& composition);
+        void PrepareCompositionState();
+        effects::Rect_t InfluenceRect(const StudioEffectTargets::Mask& target, const effects::Rect_t& viewport) const;
+        void Seed(
+            const StudioEffectTargets::Mask& target,
+            const StudioEffectTargets::ObjectDepthSource& object_depth,
+            const effects::Rect_t& area,
+            const Composition& composition
+        );
+        int PropagateSeeds(const effects::Rect_t& area, const Composition& composition);
         void Composite(
             const StudioEffectTargets::Mask& target,
+            const StudioEffectTargets::ObjectDepthSource& object_depth,
             const effects::Rect_t& viewport,
+            const effects::Rect_t& area,
             int seed_index,
             const Composition& composition
         );

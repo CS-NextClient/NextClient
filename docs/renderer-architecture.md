@@ -51,11 +51,11 @@ Resource loading can synchronously call back into the engine and trigger a reset
 
 ## Shared geometry and resource ownership
 
-Solid arrows show data ownership; dashed arrows show borrowed resources. Packet copies own their parameter values and share the immutable pose. Borrowed GPU resources require a separate release boundary. Effects consume a prepared packet synchronously and retain their own masks.
+Solid arrows show data ownership; dashed arrows show borrowed resources. Packet copies own their parameter values and share the immutable pose. Borrowed GPU resources require a separate release boundary. Effects retain packet snapshots until capture. Immediate capture and resource barriers retain the resulting mask until composition.
 
 ```mermaid
 flowchart LR
-    Consumers["Queue and picking"] --> Packets["Retained packets"]
+    Consumers["Queue, effects, and picking"] --> Packets["Retained packets"]
     Packets --> Values["Owned mesh ranges<br/>and parameter values"]
     Packets -->|shared ownership| Pose["Immutable pose snapshot"]
     Packets -.-> Geometry["GPU geometry:<br/>owned by model cache"]
@@ -88,7 +88,26 @@ State restoration is valid only while the owning native context remains current.
 
 Material selection combines entity server bindings, model documents, and built-in defaults; an active edit session can override its target. The packet copies the chosen values, so editor or server changes affect later preparation independently. A validated manifest supplies the common surface-coverage contract for color rendering, effects, and picking. These passes use the same pose, image inputs, and visibility rules, keeping dissolved fragments and masked holes consistent. Server authorization remains a separate material-owner decision.
 
-Preview scenes reuse Studio preparation and submission with their own camera and interaction state. Each effects view owns its masks; cancellation stops that view without compositing its results or canceling an enclosing view. Preview references must be discarded before releasing the shared Studio resources they borrow. Material formats, effect behavior, editing, and synchronization are described in the [material format](weapon-materials.md), [effects](material-effects.md), [authoring guide](weapon-materials-authoring.md), and [server API](weapon-materials-server-api.md).
+Effects collect owned packet snapshots by entity. Composition follows the order of each entity's first accepted capture, even when its parts arrive interleaved with another entity. At view completion, one final scene-depth snapshot serves all entities. Each entity's parts build an independent silhouette; its effects are composited before the surface is reused for the next entity. Reuse does not merge silhouettes or reorder translucent fill.
+
+```mermaid
+flowchart TD
+    Parts["Prepared parts:<br/>A1, B1, A2"] --> Pending["Owned snapshots:<br/>A = A1 + A2, B = B1"]
+    Pending --> End["View completion:<br/>snapshot final scene depth once"]
+    End --> Capture["Capture next entity with shared object depth<br/>or use its retained mask"]
+    Capture --> Composite["Composite that entity's effects"]
+    Composite -->|next entity| Capture
+    Pending -->|resource mutation| Retain["Capture all pending views<br/>and retain independent masks"]
+    Retain --> End
+```
+
+A resource barrier captures pending packets in all open views before their borrowed geometry or images change. Those masks remain independent until their view completes; the barrier never composites against incomplete scene depth. Mutable skins require immediate capture, and unsafe callback boundaries materialize pending captures before entering the callback. Queue-disabled paths capture immediately unless the renderer controls the preview inputs. Cancellation discards packets and masks before resource owners or external callbacks can invalidate their references.
+
+For an entity with pending packets and no materialized mask, ordinary view completion borrows the shared object-depth capture surface through capture and composition. Object depth is cleared within the final union rectangle once before all parts, and no cropped object-depth image is allocated. This path supports both single-sample and multisample depth. Shared object-depth lookup uses viewport-relative pixels plus the viewport origin; retained object-depth lookup subtracts the mask rectangle origin. Color lookup always uses the cropped mask coordinates. Resource barriers, immediate capture, and parts added to an existing mask use independent object depth. The pool matches storage kind and sample count before reusing a target.
+
+Capture uses scissor clipping to the logical mask rectangle. Screen-space passes use the entity's influence rectangle. Fill-only effects skip seed passes; outlines up to two pixels wide without glow use a local seed search without distance propagation. A retained target may have more capacity than its logical rectangle, but spare pixels cannot affect visibility. During a view, the free-mask budget is the larger of `512 * 1024` capacity pixels and the current working mask's capacity. An oversized working mask is therefore reusable without accumulating previous free surfaces. After the view, free masks retain at most `512 * 1024` capacity pixels.
+
+Preview scenes reuse Studio preparation and submission with their own camera and interaction state. Each effects view owns its pending packets and retained masks; cancellation stops that view without compositing its results or canceling an enclosing view. Preview references must be discarded before releasing the shared Studio resources they borrow. Material formats, effect behavior, editing, and synchronization are described in the [material format](weapon-materials.md), [effects](material-effects.md), [authoring guide](weapon-materials-authoring.md), and [server API](weapon-materials-server-api.md).
 
 ## Reset, context loss, and shutdown
 

@@ -9,6 +9,19 @@ target_include_directories(studio-pose-tests PRIVATE ../src)
 target_link_libraries(studio-pose-tests PRIVATE GTest::gtest_main goldsrc::abi)
 gtest_discover_tests(studio-pose-tests)
 
+add_executable(studio-effect-bounds-tests
+        StudioEffectBoundsTests.cpp
+        ../src/graphics/render/effects/studio_effect_bounds.cpp)
+target_include_directories(studio-effect-bounds-tests PRIVATE ../src)
+target_link_libraries(studio-effect-bounds-tests PRIVATE
+        GTest::gtest_main
+        goldsrc::abi
+        ncl_math::ncl_math
+        ncl_material::ncl_material
+        NextClient::profiling)
+
+gtest_discover_tests(studio-effect-bounds-tests)
+
 add_executable(studio-phase-capture-tests StudioPhaseCaptureTests.cpp ../src/graphics/render/StudioPhaseCapture.cpp)
 target_include_directories(studio-phase-capture-tests PRIVATE ../src)
 target_link_libraries(studio-phase-capture-tests PRIVATE GTest::gtest_main)

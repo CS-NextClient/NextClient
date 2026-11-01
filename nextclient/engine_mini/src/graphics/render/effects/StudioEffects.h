@@ -5,6 +5,7 @@
 
 #include "graphics/render/effects/StudioEffectPasses.h"
 #include "graphics/render/render_device.h"
+#include "graphics/render/StudioQueue.h"
 
 namespace ncl_material
 {
@@ -28,11 +29,24 @@ namespace render
     class StudioEffects final : public IDeviceResource
     {
     private:
+        struct Entity
+        {
+            uintptr_t identity{};
+            effects::Rect_t bounds{};
+            std::vector<StudioDrawPacket> packets;
+            StudioEffectTargets::Masks_t masks;
+            bool outline{};
+            bool distance{};
+        };
+
         struct View
         {
             uint64_t identity{};
-            StudioEffectTargets::Masks_t masks;
+            std::vector<Entity> entities;
             effects::Rect_t viewport{};
+            int output{};
+            int samples{};
+            uint32_t generation{};
             StudioEffectsStats stats{};
         };
 
@@ -56,7 +70,15 @@ namespace render
         uint64_t BeginView();
         void CancelView(uint64_t identity);
         size_t get_view_count() const;
-        void Capture(uintptr_t entity, const StudioDrawPacket& packet, const effects::Rect_t& bounds, bool include_occluders = false);
+        void Capture(
+            uintptr_t entity,
+            const StudioDrawPacket& packet,
+            const effects::Rect_t& bounds,
+            bool include_occluders = false,
+            bool allow_deferred = true
+        );
+        void FlushPendingCaptures();
+        void DiscardCaptures();
         void EndView();
         void Clear();
         bool Contains(uintptr_t entity) const;
@@ -65,6 +87,12 @@ namespace render
         void OnDeviceLost() override;
 
     private:
+        bool CaptureEntity(
+            View& view,
+            Entity& entity,
+            StudioEffectTargets::ObjectDepthStorage depth_storage = StudioEffectTargets::ObjectDepthStorage::Retained
+        );
+        void ReleaseEntities(View& view, bool release_gl);
         void Reset(bool release_gl);
     };
 } // namespace render

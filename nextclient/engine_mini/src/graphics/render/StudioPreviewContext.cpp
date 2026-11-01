@@ -19,7 +19,7 @@ namespace render
         renderer_(renderer),
         previous_(renderer.preview_inputs_),
         cancellation_epoch_(renderer.get_cancellation_epoch()),
-        pause_(renderer)
+        pause_(renderer, StudioQueuePause::Mode::ControlledPreview)
     {
         inputs_.entity = entity;
         inputs_.capture = params.mode == PreviewRenderMode::MaterialAuthoring ? capture : nullptr;

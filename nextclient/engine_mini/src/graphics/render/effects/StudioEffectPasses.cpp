@@ -1,6 +1,7 @@
 #include "graphics/render/effects/StudioEffectPasses.h"
 
 #include <algorithm>
+#include <cmath>
 
 #include <glad/glad.h>
 
@@ -105,6 +106,8 @@ void render::StudioEffectPasses::CaptureMask(
     glBindFramebuffer(GL_FRAMEBUFFER, target.get_framebuffer());
     glDrawBuffers(3, kAttachments);
     glViewport(-rect[0], -rect[1], packet.viewport[2], packet.viewport[3]);
+    glEnable(GL_SCISSOR_TEST);
+    glScissor(0, 0, rect[2], rect[3]);
     glDepthRange(packet.raster.depth_range[0], packet.raster.depth_range[1]);
     glEnable(GL_DEPTH_TEST);
     glDepthFunc(reversed ? GL_GEQUAL : GL_LEQUAL);
@@ -177,17 +180,17 @@ void render::StudioEffectPasses::CaptureDepth(
 )
 {
     const effects::Rect_t& rect = target.get_rect();
-    const bool reversed = packet.raster.depth_range[0] > packet.raster.depth_range[1];
-
     // Depth interpolation must use the main pass window coordinates even though retained masks are cropped.
     glBindFramebuffer(GL_FRAMEBUFFER, targets_.get_capture_depth_framebuffer());
-    glClearDepth(reversed ? 0 : 1);
-    glClear(GL_DEPTH_BUFFER_BIT);
 
-    glBindFramebuffer(GL_READ_FRAMEBUFFER, target.get_depth_framebuffer());
     const int x = packet.viewport[0] + rect[0];
     const int y = packet.viewport[1] + rect[1];
-    glBlitFramebuffer(0, 0, rect[2], rect[3], x, y, x + rect[2], y + rect[3], GL_DEPTH_BUFFER_BIT, GL_NEAREST);
+    if (target.get_depth_storage() == StudioEffectTargets::ObjectDepthStorage::Retained)
+    {
+        glBindFramebuffer(GL_READ_FRAMEBUFFER, target.get_depth_framebuffer());
+        glDisable(GL_SCISSOR_TEST);
+        glBlitFramebuffer(0, 0, rect[2], rect[3], x, y, x + rect[2], y + rect[3], GL_DEPTH_BUFFER_BIT, GL_NEAREST);
+    }
 
     glBindFramebuffer(GL_FRAMEBUFFER, targets_.get_capture_depth_framebuffer());
     glViewport(packet.viewport[0], packet.viewport[1], packet.viewport[2], packet.viewport[3]);
@@ -195,12 +198,15 @@ void render::StudioEffectPasses::CaptureDepth(
     glScissor(x, y, rect[2], rect[3]);
     DrawMeshes(packet, packet.viewport);
 
-    glDisable(GL_SCISSOR_TEST);
-    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, target.get_depth_framebuffer());
-    glBlitFramebuffer(x, y, x + rect[2], y + rect[3], 0, 0, rect[2], rect[3], GL_DEPTH_BUFFER_BIT, GL_NEAREST);
+    if (target.get_depth_storage() == StudioEffectTargets::ObjectDepthStorage::Retained)
+    {
+        glDisable(GL_SCISSOR_TEST);
+        glBindFramebuffer(GL_DRAW_FRAMEBUFFER, target.get_depth_framebuffer());
+        glBlitFramebuffer(x, y, x + rect[2], y + rect[3], 0, 0, rect[2], rect[3], GL_DEPTH_BUFFER_BIT, GL_NEAREST);
+    }
 }
 
-bool render::StudioEffectPasses::PrepareComposition(const effects::Rect_t& viewport, Composition& composition)
+bool render::StudioEffectPasses::PrepareComposition(const effects::Rect_t& viewport, bool outline, bool distance, Composition& composition)
 {
     composition.clipped_ = glIsEnabled(GL_SCISSOR_TEST) != 0;
     glGetIntegerv(GL_SCISSOR_BOX, composition.clip_.data());
@@ -208,31 +214,59 @@ bool render::StudioEffectPasses::PrepareComposition(const effects::Rect_t& viewp
 
     glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
 
-    composition.seed_ = seed_.Get(shaders_, kSeed);
-    composition.distance_ = distance_.Get(shaders_, kDistance);
+    composition.seed_ = outline ? seed_.Get(shaders_, kSeed) : nullptr;
+    composition.distance_ = distance ? distance_.Get(shaders_, kDistance) : nullptr;
     composition.composite_ = composite_.Get(shaders_, kComposite);
-    if (composition.seed_ == nullptr || composition.distance_ == nullptr || composition.composite_ == nullptr ||
+    if ((outline && composition.seed_ == nullptr) || (distance && composition.distance_ == nullptr) || composition.composite_ == nullptr ||
         !targets_.SnapshotDepth(composition.output_, viewport))
     {
         return false;
     }
 
-    if (composition_generation_ != shaders_.get_generation())
+    const uint32_t generation = shaders_.get_generation();
+    if (outline && seed_generation_ != generation)
     {
         seed_bindings_.depth = PrepareDepth(*composition.seed_);
         seed_bindings_.shape = composition.seed_->UniformLocation("uShape");
-        distance_bindings_ = {composition.distance_->UniformLocation("uStep"), composition.distance_->UniformLocation("uSeeds")};
+        seed_bindings_.size = composition.seed_->UniformLocation("uMaskSize");
+        seed_bindings_.seed_origin = composition.seed_->UniformLocation("uSeedOrigin");
+        seed_generation_ = generation;
+    }
+
+    if (distance && distance_generation_ != generation)
+    {
+        distance_bindings_.step = composition.distance_->UniformLocation("uStep");
+        distance_bindings_.seeds = composition.distance_->UniformLocation("uSeeds");
+        distance_bindings_.size = composition.distance_->UniformLocation("uSeedSize");
+        distance_bindings_.origin = composition.distance_->UniformLocation("uSeedOrigin");
+        distance_generation_ = generation;
+    }
+
+    if (composite_generation_ != generation)
+    {
         composite_bindings_.depth = PrepareDepth(*composition.composite_);
         composite_bindings_.fill = composition.composite_->UniformLocation("uFill");
         composite_bindings_.outline = composition.composite_->UniformLocation("uOutline");
         composite_bindings_.shape = composition.composite_->UniformLocation("uShape");
         composite_bindings_.seeds = composition.composite_->UniformLocation("uSeeds");
         composite_bindings_.output_origin = composition.composite_->UniformLocation("uOutputOrigin");
-        composition_generation_ = shaders_.get_generation();
+        composite_bindings_.size = composition.composite_->UniformLocation("uMaskSize");
+        composite_bindings_.seed_origin = composition.composite_->UniformLocation("uSeedOrigin");
+        composite_bindings_.seed_size = composition.composite_->UniformLocation("uSeedSize");
+        composite_bindings_.mode = composition.composite_->UniformLocation("uOutlinePath");
+        composite_generation_ = generation;
     }
 
+    PrepareCompositionState();
+
+    return true;
+}
+
+void render::StudioEffectPasses::PrepareCompositionState()
+{
     glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
     glDisable(GL_DEPTH_TEST);
+    glDepthMask(GL_FALSE);
     glDisable(GL_CULL_FACE);
     glDisable(GL_STENCIL_TEST);
     glDisable(GL_ALPHA_TEST);
@@ -241,43 +275,61 @@ bool render::StudioEffectPasses::PrepareComposition(const effects::Rect_t& viewp
     glDisable(GL_DITHER);
     glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
     glBindVertexArray(targets_.get_vertex_array());
+}
 
-    return true;
+render::effects::Rect_t render::StudioEffectPasses::InfluenceRect(
+    const StudioEffectTargets::Mask& target,
+    const effects::Rect_t& viewport
+) const
+{
+    const effects::Rect_t& rect = target.get_rect();
+    const int radius = target.get_outline_width() > 0 ? static_cast<int>(std::ceil(target.get_influence())) + 1 : 0;
+    const int left = std::clamp(rect[0] - radius, 0, viewport[2]);
+    const int bottom = std::clamp(rect[1] - radius, 0, viewport[3]);
+    const int right = std::clamp(rect[0] + rect[2] + radius, 0, viewport[2]);
+    const int top = std::clamp(rect[1] + rect[3] + radius, 0, viewport[3]);
+
+    return {left, bottom, right - left, top - bottom};
 }
 
 void render::StudioEffectPasses::Seed(
     const StudioEffectTargets::Mask& target,
-    const effects::Rect_t& viewport,
+    const StudioEffectTargets::ObjectDepthSource& object_depth,
+    const effects::Rect_t& area,
     const Composition& composition
 )
 {
     const effects::Rect_t& rect = target.get_rect();
 
-    targets_.EnsureSeeds(viewport[2], viewport[3]);
+    targets_.EnsureSeeds(area[2], area[3]);
     glDisable(GL_BLEND);
     glDisable(GL_SCISSOR_TEST);
     glBindFramebuffer(GL_FRAMEBUFFER, targets_.get_seed_framebuffer(0));
-    glViewport(0, 0, viewport[2], viewport[3]);
+    glViewport(0, 0, area[2], area[3]);
 
     glUseProgram(composition.seed_->prog);
     Bind(seed_bindings_.shape, target.get_shape(), 0);
-    BindDepth(seed_bindings_.depth, target.get_object_depth(), targets_.get_scene_depth(), target.get_samples(), 1, 2);
+    BindDepth(seed_bindings_.depth, object_depth.image, targets_.get_scene_depth(), target.get_samples(), 1, 2);
     glUniform2i(seed_bindings_.depth.origin, rect[0], rect[1]);
+    glUniform2i(seed_bindings_.depth.object_offset, object_depth.offset[0], object_depth.offset[1]);
+    glUniform2i(seed_bindings_.size, rect[2], rect[3]);
+    glUniform2i(seed_bindings_.seed_origin, area[0], area[1]);
     glUniform1f(seed_bindings_.depth.sign, target.is_reversed() ? -1.0f : 1.0f);
     glUniform1f(seed_bindings_.depth.tolerance, targets_.get_depth_tolerance());
 
     glDrawArrays(GL_TRIANGLES, 0, 3);
 }
 
-int render::StudioEffectPasses::PropagateSeeds(const effects::Rect_t& viewport, const Composition& composition)
+int render::StudioEffectPasses::PropagateSeeds(const effects::Rect_t& area, const Composition& composition)
 {
-    const GLint step_location = distance_bindings_.step;
     glUseProgram(composition.distance_->prog);
+    glUniform2i(distance_bindings_.size, area[2], area[3]);
+    glUniform2i(distance_bindings_.origin, area[0], area[1]);
 
     int current = 0;
     int step = 1;
 
-    while (step < std::max(viewport[2], viewport[3]))
+    while (step < std::max(area[2], area[3]))
     {
         step *= 2;
     }
@@ -286,7 +338,7 @@ int render::StudioEffectPasses::PropagateSeeds(const effects::Rect_t& viewport, 
     {
         glBindFramebuffer(GL_FRAMEBUFFER, targets_.get_seed_framebuffer(1 - current));
         Bind(distance_bindings_.seeds, targets_.get_seed_image(current), 0);
-        glUniform1i(step_location, step);
+        glUniform1i(distance_bindings_.step, step);
         glDrawArrays(GL_TRIANGLES, 0, 3);
         current = 1 - current;
     }
@@ -296,7 +348,9 @@ int render::StudioEffectPasses::PropagateSeeds(const effects::Rect_t& viewport, 
 
 void render::StudioEffectPasses::Composite(
     const StudioEffectTargets::Mask& target,
+    const StudioEffectTargets::ObjectDepthSource& object_depth,
     const effects::Rect_t& viewport,
+    const effects::Rect_t& area,
     int seed_index,
     const Composition& composition
 )
@@ -304,16 +358,21 @@ void render::StudioEffectPasses::Composite(
     const effects::Rect_t& rect = target.get_rect();
 
     glBindFramebuffer(GL_DRAW_FRAMEBUFFER, composition.output_);
-    glViewport(viewport[0], viewport[1], viewport[2], viewport[3]);
+    glViewport(viewport[0] + area[0], viewport[1] + area[1], area[2], area[3]);
 
     glUseProgram(composition.composite_->prog);
     Bind(composite_bindings_.fill, target.get_fill(), 0);
     Bind(composite_bindings_.outline, target.get_outline(), 1);
     Bind(composite_bindings_.shape, target.get_shape(), 2);
-    BindDepth(composite_bindings_.depth, target.get_object_depth(), targets_.get_scene_depth(), target.get_samples(), 3, 4);
-    Bind(composite_bindings_.seeds, targets_.get_seed_image(seed_index), 5);
+    BindDepth(composite_bindings_.depth, object_depth.image, targets_.get_scene_depth(), target.get_samples(), 3, 4);
+    Bind(composite_bindings_.seeds, seed_index >= 0 ? targets_.get_seed_image(seed_index) : 0, 5);
     glUniform2i(composite_bindings_.depth.origin, rect[0], rect[1]);
+    glUniform2i(composite_bindings_.depth.object_offset, object_depth.offset[0], object_depth.offset[1]);
     glUniform2i(composite_bindings_.output_origin, viewport[0], viewport[1]);
+    glUniform2i(composite_bindings_.size, rect[2], rect[3]);
+    glUniform2i(composite_bindings_.seed_origin, area[0], area[1]);
+    glUniform2i(composite_bindings_.seed_size, area[2], area[3]);
+    glUniform1i(composite_bindings_.mode, seed_index < 0 ? 0 : (target.get_outline_width() <= 2 && !target.has_glow() ? 1 : 2));
     glUniform1f(composite_bindings_.depth.sign, target.is_reversed() ? -1.0f : 1.0f);
     glUniform1f(composite_bindings_.depth.tolerance, targets_.get_depth_tolerance());
 
@@ -338,6 +397,7 @@ render::StudioEffectPasses::DepthBindings render::StudioEffectPasses::PrepareDep
         program.UniformLocation("uSceneDepthMs"),
         program.UniformLocation("uSamples"),
         program.UniformLocation("uOrigin"),
+        program.UniformLocation("uObjectDepthOffset"),
         program.UniformLocation("uDepthSign"),
         program.UniformLocation("uDepthTolerance")
     };

@@ -531,7 +531,13 @@ namespace render
         const uintptr_t identity = completed.effect_identity;
         if (effects_.CheckEnabled(completed) || effects_.Contains(identity) || completed.include_occluders)
         {
-            effects_.Capture(identity, completed, effects_.ProjectBounds(*completed.effect_model, completed), completed.include_occluders);
+            effects_.Capture(
+                identity,
+                completed,
+                effects_.ProjectBounds(*completed.effect_model, completed),
+                completed.include_occluders,
+                completed.allow_deferred && (queue_.is_deferred() || preview_inputs_ != nullptr)
+            );
         }
         queue_.Submit(std::move(static_cast<StudioDrawPacket&>(completed)), completed.allow_deferred);
     }
@@ -590,6 +596,15 @@ namespace render
     {
         FlushPending();
         queue_.Flush(reason);
+        if (reason == StudioFlushReason::Resource)
+        {
+            effects_.FlushPendingCaptures();
+        }
+    }
+
+    void StudioRenderer::FlushPendingEffects()
+    {
+        effects_.FlushPendingCaptures();
     }
 
     const StudioQueueStats& StudioRenderer::get_queue_stats() const
@@ -603,6 +618,7 @@ namespace render
         ++cancellation_epoch_;
         effect_player_ = nullptr;
         attachment_effects_ = false;
+        effects_.DiscardCaptures();
         pending_ = PendingModel{};
         model_draw_ = ModelDrawCache{};
         abandoned_ = false;
