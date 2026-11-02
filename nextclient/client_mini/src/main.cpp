@@ -11,6 +11,7 @@
 #include <goldsrc/client_api.h>
 #include <goldsrc/cvar.h>
 #include <goldsrc/engine/server_state.h>
+#include <goldsrc/engine/video.h>
 #include <goldsrc/entity.h>
 #include <goldsrc/pmove.h>
 #include <goldsrc/server_api.h>
@@ -127,10 +128,8 @@ static void HUD_InitPost()
 static int HUD_RedrawHandler(float flTime, int iIntermission, HUD_RedrawNext next)
 {
     // The scope mask covers the radar corner, so zoomed frames draw the radar after the stock HUD.
-    goldsrc::SCREENINFO screen;
-    screen.iSize = sizeof(screen);
-    gEngfuncs.pfnGetScreenInfo(&screen);
-    HudTextZone_BeginFrame(screen.iWidth, screen.iHeight);
+    const goldsrc::viddef_t& video = *eng()->vid;
+    HudTextZone_BeginFrame(static_cast<int>(video.width), static_cast<int>(video.height));
 
     HudTextZone_ClearZone();
     bool scoped = gHUD->m_iFOV && *gHUD->m_iFOV > 0 && *gHUD->m_iFOV < 90;

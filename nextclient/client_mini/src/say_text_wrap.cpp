@@ -4,6 +4,8 @@
 #include <string>
 #include <vector>
 
+#include <goldsrc/engine/video.h>
+
 #include "main.h"
 #include "chat_wrap.h"
 #include "say_text_line.h"
@@ -50,12 +52,10 @@ namespace
         int line_width = 0;
         client()->CHudVGUI2Print__GetStringSize(gHUD->m_VGUI2Print, lines[line].m_line, &line_width, client()->line_height);
 
-        goldsrc::SCREENINFO screen{};
-        screen.iSize = sizeof(screen);
-        gEngfuncs.pfnGetScreenInfo(&screen);
+        int screen_width = static_cast<int>(eng()->vid->width);
 
         std::vector<std::wstring> pieces =
-            ChatWrap_Split(lines[line].m_line, screen.iWidth - kLineStart - kRightMargin, CharWidth, kSayTextMaxLines);
+            ChatWrap_Split(lines[line].m_line, screen_width - kLineStart - kRightMargin, CharWidth, kSayTextMaxLines);
         if (pieces.size() < 2)
         {
             return;

@@ -5,6 +5,7 @@
 #include <goldsrc/client_api.h>
 #include <goldsrc/cstrike/game.h>
 #include <goldsrc/cstrike/hud.h>
+#include <goldsrc/engine/video.h>
 #include <strtools.h>
 
 #include "nitroapi/NitroApiHelper.h"
@@ -58,15 +59,14 @@ public:
 		return cl_enginefunc()->pfnSPR_Load(sz);
 	}
 
-	inline void GetScreenResolution(int& w, int& h) {
-		goldsrc::SCREENINFO screen;
-		screen.iSize = sizeof(goldsrc::SCREENINFO);
-		cl_enginefunc()->pfnGetScreenInfo(&screen);
-		w = screen.iWidth;
-		h = screen.iHeight;
-	}
+    inline void GetScreenResolution(int& w, int& h)
+    {
+        const goldsrc::viddef_t& video = *eng()->vid;
+        w = static_cast<int>(video.width);
+        h = static_cast<int>(video.height);
+    }
 
-	void GetAllPlayersInfo() {
+    void GetAllPlayersInfo() {
 		cl()->CHudHealth__GetAllPlayersInfo(gHUD()->m_Health);
 	}
 

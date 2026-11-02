@@ -4,6 +4,7 @@
 #include <data_types/MessageReader.h>
 #include <goldsrc/client_api.h>
 #include <goldsrc/cvar.h>
+#include <goldsrc/engine/video.h>
 #include <mathlib/mathlib.h>
 
 #include <view/view_fov.h>
@@ -25,14 +26,9 @@ float fovLerp;
 
 static float CalcCurrentFov()
 {
-    float w, h;
-    goldsrc::SCREENINFO scr;
-
-    scr.iSize = sizeof(goldsrc::SCREENINFO);
-    gEngfuncs.pfnGetScreenInfo(&scr);
-
-    w = (float)scr.iWidth;
-    h = (float)scr.iHeight;
+    const goldsrc::viddef_t& video = *eng()->vid;
+    float w = static_cast<float>(video.width);
+    float h = static_cast<float>(video.height);
 
     float fovOffset = std::clamp(fov_angle->value, view_fov::kMin, view_fov::kMax) - view_fov::kDefault;
 
