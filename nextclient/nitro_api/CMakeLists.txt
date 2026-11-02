@@ -26,6 +26,7 @@ add_library(nitro_api SHARED
         src/hook/GenericHookVaformatStatic.h
         src/NitroApi.cpp
         src/FrameLifecycle.cpp
+        src/modules/engine/HostAbortAdapter.cpp
         src/modules/sdl2/loaded_sdl_module.cpp
         src/NitroApi.h
         src/HookStorage.h

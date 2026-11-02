@@ -1,6 +1,7 @@
 set(TARGET_NAME "engine_mini-tests")
 
 find_package(GTest CONFIG REQUIRED)
+find_package(xbyak CONFIG REQUIRED)
 
 include(GoogleTest)
 
@@ -70,6 +71,8 @@ add_executable(${TARGET_NAME}
         PerformanceBatchWindowTests.cpp
         PerformanceDumpCaptureTests.cpp
         PerformanceLifecycleTests.cpp
+        ../../nitro_api/src/FrameLifecycle.cpp
+        ../../nitro_api/src/modules/engine/HostAbortAdapter.cpp
         PerformanceRuntimeTests.cpp
         GpuQueryCollectorTests.cpp
         RenderPerformanceTests.cpp
@@ -158,12 +161,14 @@ target_link_libraries(${TARGET_NAME} PRIVATE
         GTest::gmock
         GTest::gmock_main
         engine_mini
+        funchook-static xbyak::xbyak
 )
 
 target_include_directories(${TARGET_NAME} PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/../src
         ${CMAKE_CURRENT_SOURCE_DIR}/../include
         ${CMAKE_CURRENT_SOURCE_DIR}/../../nitro_api/src
+        ${CMAKE_CURRENT_SOURCE_DIR}/../../nitro_api/tests
 )
 
 add_custom_command(TARGET ${TARGET_NAME} POST_BUILD

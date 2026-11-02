@@ -84,6 +84,8 @@ namespace performance
 
     void PerformanceRuntime::UpdateMapper()
     {
+        NCL_PROFILE_NAMED_SCOPE("Monitor update mapper");
+
         UpdateMapperLevel(&perf_map_);
         nitroapi::EngineData* engine = &engine_;
         const goldsrc::client_state_t* client =
@@ -117,6 +119,8 @@ namespace performance
 
     void PerformanceRuntime::UpdateNetwork()
     {
+        NCL_PROFILE_NAMED_SCOPE("Monitor update network");
+
         ncl_perf::PerfTimestamp_t now = Timestamp();
         UpdateNetworkState(now);
         network_.BuildSnapshot(now, 0, network_snapshot_, network_columns_);

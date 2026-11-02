@@ -113,7 +113,7 @@ namespace nitroapi
 
             if (observer)
             {
-                observer->OnHostExit(body_depth_ == 0);
+                observer->OnHostExit(!aborted_ && body_depth_ == 0);
             }
         }
 
@@ -148,6 +148,19 @@ namespace nitroapi
                 frame_.recipients[index].accepted = true;
                 observer->OnFrameAccepted();
             }
+        }
+    }
+
+    void FrameLifecycleInvocation::ReportAbort() noexcept
+    {
+        aborted_ = true;
+    }
+
+    void FrameLifecycleService::ReportAbort() noexcept
+    {
+        if (invocation_)
+        {
+            invocation_->ReportAbort();
         }
     }
 

@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cmath>
 
+#include <ncl_perf/profiler.h>
 #include <strtools.h>
 #include <glad/glad.h>
 #include <vgui/ILocalize.h>
@@ -140,6 +141,8 @@ namespace performance
             PanelGlState(int width, int height, int* current_texture) :
                 current_texture_(current_texture)
             {
+                NCL_PROFILE_NAMED_SCOPE("Monitor save GL state");
+
                 if (glUseProgram)
                 {
                     glGetIntegerv(GL_CURRENT_PROGRAM, &program_);
@@ -235,6 +238,8 @@ namespace performance
 
             ~PanelGlState()
             {
+                NCL_PROFILE_NAMED_SCOPE("Monitor restore GL state");
+
                 if (glActiveTexture)
                 {
                     glActiveTexture(GL_TEXTURE0);
@@ -430,6 +435,8 @@ namespace performance
 #ifdef _WIN32
     void PerformancePanel::PrepareText()
     {
+        NCL_PROFILE_NAMED_SCOPE("Monitor prepare text");
+
         TextRenderInterface* service = &text_;
         bool complete = true;
         bool atlas_changed = text_generation_ != service->Generation();
@@ -569,6 +576,8 @@ namespace performance
         const PerfFrameGraphs* frames
     )
     {
+        NCL_PROFILE_NAMED_SCOPE("Monitor panel draw");
+
         if ((mode <= 0 && !network && !mapper && !batch_level) || width <= 0 || height <= 0)
         {
             return;
@@ -594,6 +603,8 @@ namespace performance
         };
         if (!layout_valid_ || key != layout_key_ || now < layout_time_ || now - layout_time_ >= kLayoutRefreshInterval)
         {
+            NCL_PROFILE_NAMED_SCOPE("Monitor build panel layout");
+
             PerfPanelLabels labels;
             Localize(localization_, "NextClient_Perf_Title", labels.title);
             Localize(localization_, "NextClient_Perf_History", labels.history);
@@ -651,6 +662,8 @@ namespace performance
             PrepareText();
         }
 #endif
+        NCL_PROFILE_NAMED_SCOPE("Monitor submit panel commands");
+
         bool drawing = false;
         for (const PerfPanelCommand& command : layout_.get_commands())
         {

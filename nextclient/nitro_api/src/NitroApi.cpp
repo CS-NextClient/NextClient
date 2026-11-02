@@ -80,7 +80,15 @@ namespace nitroapi
         if (engine_provider != nullptr)
         {
             std::string engine_path = IsWindows() ? "hw.dll" : "hw.so";
-            auto engine_module = std::make_unique<EngineModule>(hook_storage_, engine_provider, this, command_line, file_system, registry);
+            auto engine_module = std::make_unique<EngineModule>(
+                hook_storage_,
+                engine_provider,
+                this,
+                command_line,
+                file_system,
+                registry,
+                FrameLifecycle_GetDefaultService()
+            );
             engine_data_ = engine_module->GetEngineData();
             modules_.emplace_back(engine_path, std::move(engine_module));
         }

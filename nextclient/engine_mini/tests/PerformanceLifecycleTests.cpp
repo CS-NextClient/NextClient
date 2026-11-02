@@ -1,8 +1,12 @@
 #include <gtest/gtest.h>
 
 #include <array>
+#include <csetjmp>
 #include <string>
 
+#include "FrameLifecycle.h"
+#include "FrameAbortTestSupport.h"
+#include "modules/engine/HostAbortAdapter.h"
 #include "performance/performance_dump.h"
 #include "performance/PerformanceMonitor.h"
 #include "performance/PerformanceTraceBackend.h"
@@ -670,4 +674,168 @@ TEST_F(PerformanceLifecycleTest, GpuAbandonmentPreservesCompletedCpuHistoryAndDo
     EXPECT_EQ(after.cpu_frame_id, before.cpu_frame_id);
     EXPECT_EQ(after.cpu_frame_count, before.cpu_frame_count);
     EXPECT_EQ(after.cpu_window_ns, before.cpu_window_ns);
+}
+
+namespace
+{
+    struct InternalMonitorFrame
+    {
+        std::jmp_buf abort;
+        performance::PerformanceMonitor* monitor{};
+        LifecycleClock* clock{};
+        ncl_perf::PerfScopeToken_t cpu{};
+        ncl_perf::PerfScopeToken_t gpu{};
+    };
+
+    InternalMonitorFrame* g_InternalMonitorFrame{};
+
+#ifdef _MSC_VER
+    __declspec(noinline)
+#else
+    __attribute__((noinline))
+#endif
+    void MonitorEndGame(const char*, ...)
+    {
+        frame_abort_test::Abort(g_InternalMonitorFrame->abort, 1);
+    }
+
+    void InternalMonitorHost()
+    {
+#ifdef _MSC_VER
+        int aborted = frame_abort_test::Save(g_InternalMonitorFrame->abort);
+#else
+        int aborted = setjmp(g_InternalMonitorFrame->abort);
+#endif
+
+        if (!aborted)
+        {
+            g_InternalMonitorFrame->cpu = g_InternalMonitorFrame->monitor->BeginCpu(performance::PerfStage::Packets);
+            g_InternalMonitorFrame->gpu = g_InternalMonitorFrame->monitor->BeginGpu(performance::PerfStage::RadarBatch);
+            g_InternalMonitorFrame->clock->time += 100;
+            MonitorEndGame("internal abort %d", 17);
+        }
+    }
+
+    class AbortLifecycleTrace final : public performance::PerformanceTraceBackendInterface
+    {
+    public:
+        uint64_t next{};
+        uint32_t cpu_begins{};
+        uint32_t cpu_ends{};
+        uint32_t gpu_begins{};
+        uint32_t gpu_ends{};
+
+        bool IsConnected() const override
+        {
+            return true;
+        }
+
+        ncl_perf::PerfScopeToken_t BeginCpu(ncl_perf::PerfScopeId_t, std::source_location) override
+        {
+            ++cpu_begins;
+            return ++next;
+        }
+
+        void EndCpu(ncl_perf::PerfScopeToken_t) override
+        {
+            ++cpu_ends;
+        }
+
+        ncl_perf::PerfScopeToken_t BeginGpu(ncl_perf::PerfScopeId_t, std::source_location) override
+        {
+            ++gpu_begins;
+            return ++next;
+        }
+
+        void EndGpu(ncl_perf::PerfScopeToken_t) override
+        {
+            ++gpu_ends;
+        }
+
+        void Collect() override {}
+
+        void RecordCounter(performance::PerfCounterId, uint64_t) override {}
+
+        void RecordGauge(performance::PerfGaugeId, double) override {}
+
+        void MarkFrame(bool, uint64_t) override {}
+    };
+} // namespace
+
+TEST_F(PerformanceLifecycleTest, InternalAbortAdapterDiscardsPartialMonitorFrameAndRetriesDump)
+{
+    nitroapi::FrameLifecycleService service;
+    service.Subscribe(&monitor);
+
+    AbortLifecycleTrace trace;
+    monitor.SetTraceBackend(&trace);
+
+    nitroapi::HostAbortAdapter adapter(service);
+    adapter.Install(reinterpret_cast<void*>(&MonitorEndGame));
+
+    InternalMonitorFrame frame;
+    frame.monitor = &monitor;
+    frame.clock = &clock;
+    g_InternalMonitorFrame = &frame;
+    ASSERT_TRUE(monitor.RequestDumpCapture());
+
+    for (uint32_t index = 0; index < 2 * ncl_perf::kPerfScopeCapacity; ++index)
+    {
+        nitroapi::FrameLifecycle_InvokeHost(service, [&] {
+            service.ReportFilter(1);
+            service.BeginBody();
+            InternalMonitorHost();
+            service.EndBody();
+        });
+
+        EXPECT_NE(frame.cpu, 0u);
+        EXPECT_NE(frame.gpu, 0u);
+        EXPECT_FALSE(monitor.is_inside_host());
+        EXPECT_FALSE(monitor.is_dump_ready());
+        EXPECT_EQ(trace.cpu_ends, trace.cpu_begins);
+        EXPECT_EQ(trace.gpu_ends, trace.gpu_begins);
+
+        uint32_t writes = queries.writes;
+        monitor.EndCpu(frame.cpu);
+        monitor.EndGpu(frame.gpu);
+        EXPECT_EQ(queries.writes, writes);
+        EXPECT_EQ(trace.cpu_ends, trace.cpu_begins);
+        EXPECT_EQ(trace.gpu_ends, trace.gpu_begins);
+
+        performance::PerfSnapshot partial;
+        monitor.GetSnapshot(partial);
+        EXPECT_EQ(partial.record_count, 0u);
+        EXPECT_EQ(partial.cpu_count, 0u);
+
+        queries.ready = true;
+        monitor.PollGpu();
+    }
+
+    nitroapi::FrameLifecycle_InvokeHost(service, [&] {
+        service.ReportFilter(1);
+        ncl_perf::PerfScopeToken_t fresh_cpu = monitor.BeginCpu(performance::PerfStage::Packets);
+        ncl_perf::PerfScopeToken_t fresh_gpu = monitor.BeginGpu(performance::PerfStage::RadarBatch);
+        EXPECT_NE(fresh_cpu, 0u);
+        EXPECT_NE(fresh_gpu, 0u);
+
+        uint32_t writes = queries.writes;
+        monitor.EndCpu(frame.cpu);
+        monitor.EndGpu(frame.gpu);
+        EXPECT_EQ(queries.writes, writes);
+
+        clock.time += 100;
+        monitor.EndGpu(fresh_gpu);
+        monitor.EndCpu(fresh_cpu);
+    });
+
+    EXPECT_TRUE(monitor.is_dump_ready());
+    ASSERT_NE(monitor.get_dump_snapshot(), nullptr);
+    EXPECT_EQ(monitor.get_dump_snapshot()->record_count, 1u);
+    EXPECT_GT(monitor.get_dump_snapshot()->cpu_count, 0u);
+    EXPECT_EQ(trace.cpu_ends, trace.cpu_begins);
+    EXPECT_EQ(trace.gpu_ends, trace.gpu_begins);
+
+    service.Clear();
+    monitor.SetTraceBackend(nullptr);
+    g_InternalMonitorFrame = nullptr;
 }

@@ -254,6 +254,7 @@ namespace nitroapi
 
     const std::unordered_map<std::string, SearchConfig> EngineAddressProvider8684Linux::addresses_str_
     {
+        { "Host_EndGame",                           SearchConfig("Host_EndGame", SearchType::ExportFunc) },
         { "server",                                 SearchConfig("sv", SearchType::ExportFunc) },
         { "server_static",                          SearchConfig("svs", SearchType::ExportFunc) },
         { "client_static",                          SearchConfig("cls", SearchType::ExportFunc) },

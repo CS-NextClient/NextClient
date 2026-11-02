@@ -64,6 +64,46 @@ namespace
     {
     protected:
         QueryBackend backend;
+
+        void Submit(performance::GpuQueryCollector& collector, ncl_perf::PerfScopeId_t scope, uint32_t count)
+        {
+            for (uint32_t index = 0; index < count; ++index)
+            {
+                ncl_perf::PerfScopeToken_t token = collector.Begin(1, 1, scope);
+                ASSERT_NE(token, 0u);
+
+                backend.time += 10;
+                collector.End(token);
+            }
+        }
+
+        std::vector<performance::PerfGpuResult> Collect(performance::GpuQueryCollector& collector)
+        {
+            std::array<performance::PerfGpuResult, 256> results;
+            uint32_t count = collector.Poll(results.data(), uint32_t(results.size()));
+
+            return {results.begin(), results.begin() + count};
+        }
+
+        uint32_t Count(
+            const std::vector<performance::PerfGpuResult>& results,
+            ncl_perf::PerfScopeId_t scope,
+            ncl_perf::PerfSampleState state,
+            performance::PerfSeries series
+        )
+        {
+            uint32_t count = 0;
+
+            for (const performance::PerfGpuResult& result : results)
+            {
+                if (result.scope_id == scope && result.state == state && result.series == series)
+                {
+                    ++count;
+                }
+            }
+
+            return count;
+        }
     };
 } // namespace
 
@@ -144,42 +184,328 @@ TEST_F(GpuQueryCollectorTest, PanelGpuUsesAlreadyStartedOutputWithoutScreen)
     monitor.Shutdown();
 }
 
-TEST_F(GpuQueryCollectorTest, CompletePairReservationProtectsParent)
+TEST_F(GpuQueryCollectorTest, ShaderOverflowPreservesScreenRadarAndMonitor)
 {
     performance::GpuQueryCollector collector(backend, 1, 2);
-    std::array<ncl_perf::PerfScopeToken_t, 128> tokens;
-    tokens[0] = collector.Begin(1, 1, performance::PerfStage::Screen);
-    for (uint32_t index = 1; index < tokens.size(); ++index)
+    ncl_perf::PerfScopeToken_t screen = collector.Begin(1, 1, performance::PerfStage::Screen);
+    ASSERT_NE(screen, 0u);
+
+    uint32_t accepted = 0;
+
+    for (uint32_t index = 0; index < 142; ++index)
     {
-        tokens[index] = collector.Begin(1, 1, performance::PerfStage::StudioShader);
-        ASSERT_NE(tokens[index], 0u);
-    }
-    EXPECT_EQ(collector.Begin(1, 1, performance::PerfStage::RadarBatch), 0u);
-    for (uint32_t index = uint32_t(tokens.size()); index > 0; --index)
-    {
+        ncl_perf::PerfScopeToken_t shader = collector.Begin(1, 1, performance::PerfStage::StudioShader);
+        accepted += shader != 0;
         backend.time += 10;
-        collector.End(tokens[index - 1]);
+        collector.End(shader);
     }
+
+    EXPECT_EQ(accepted, 110u);
+
+    Submit(collector, performance::PerfStage::RadarBatch, 16);
+    Submit(collector, performance::PerfStage::Monitor, 1);
+    collector.End(screen);
+    EXPECT_EQ(collector.dropped_scopes(), 32u);
+    EXPECT_EQ(backend.allocated, 2048u);
     EXPECT_EQ(backend.writes.size(), 256u);
+
     backend.ready.fill(true);
-    std::array<performance::PerfGpuResult, 128> results;
-    EXPECT_EQ(collector.Poll(results.data(), uint32_t(results.size())), 128u);
-    EXPECT_EQ(results[0].state, ncl_perf::PerfSampleState::Incomplete);
+
+    std::vector<performance::PerfGpuResult> results = Collect(collector);
+
+    EXPECT_EQ(results.size(), 129u);
+    EXPECT_EQ(Count(results, performance::PerfStage::Screen, ncl_perf::PerfSampleState::Measured, performance::PerfSeries::RenderGpu), 1u);
+    EXPECT_EQ(
+        Count(results, performance::PerfStage::RadarBatch, ncl_perf::PerfSampleState::Measured, performance::PerfSeries::RadarGpu), 16u
+    );
+    EXPECT_EQ(Count(results, performance::PerfStage::Monitor, ncl_perf::PerfSampleState::Measured, performance::PerfSeries::Count), 1u);
+    EXPECT_EQ(
+        Count(results, performance::PerfStage::StudioShader, ncl_perf::PerfSampleState::Incomplete, performance::PerfSeries::StudioGpu), 1u
+    );
+
+    collector.ReleaseGl();
+}
+
+TEST_F(GpuQueryCollectorTest, NestedDroppedDetailPreservesParentRollup)
+{
+    performance::GpuQueryCollector collector(backend, 1, 2);
+    ncl_perf::PerfScopeToken_t screen = collector.Begin(1, 1, performance::PerfStage::Screen);
+    Submit(collector, performance::PerfStage::StudioShader, 110);
+    ncl_perf::PerfScopeToken_t radar = collector.Begin(1, 1, performance::PerfStage::RadarMapDraw);
+    ASSERT_NE(radar, 0u);
+
+    std::array<ncl_perf::PerfScopeToken_t, 15> children;
+
+    for (ncl_perf::PerfScopeToken_t& child : children)
+    {
+        child = collector.Begin(1, 1, performance::PerfStage::RadarLayer);
+        ASSERT_NE(child, 0u);
+    }
+
+    EXPECT_EQ(collector.Begin(1, 1, performance::PerfStage::RadarLayer), 0u);
+
+    for (uint32_t index = uint32_t(children.size()); index > 0; --index)
+    {
+        collector.End(children[index - 1]);
+    }
+
+    backend.time += 40;
+    collector.End(radar);
+    Submit(collector, performance::PerfStage::Monitor, 1);
+    collector.End(screen);
+    backend.ready.fill(true);
+
+    std::vector<performance::PerfGpuResult> results = Collect(collector);
+
+    EXPECT_EQ(Count(results, performance::PerfStage::Screen, ncl_perf::PerfSampleState::Measured, performance::PerfSeries::RenderGpu), 1u);
+    EXPECT_EQ(
+        Count(results, performance::PerfStage::RadarMapDraw, ncl_perf::PerfSampleState::Measured, performance::PerfSeries::RadarGpu), 1u
+    );
+    EXPECT_EQ(Count(results, performance::PerfStage::RadarLayer, ncl_perf::PerfSampleState::Measured, performance::PerfSeries::Count), 15u);
+    EXPECT_EQ(
+        Count(results, performance::PerfStage::RadarLayer, ncl_perf::PerfSampleState::Incomplete, performance::PerfSeries::Count), 1u
+    );
+
+    collector.ReleaseGl();
+}
+
+TEST_F(GpuQueryCollectorTest, RadarOverflowPreservesLateMonitor)
+{
+    performance::GpuQueryCollector collector(backend, 1, 2);
+    ncl_perf::PerfScopeToken_t screen = collector.Begin(1, 1, performance::PerfStage::Screen);
+    Submit(collector, performance::PerfStage::StudioShader, 1);
+    Submit(collector, performance::PerfStage::RadarBatch, 125);
+    EXPECT_EQ(collector.Begin(1, 1, performance::PerfStage::RadarBatch), 0u);
+
+    Submit(collector, performance::PerfStage::Monitor, 1);
+    collector.End(screen);
+    backend.ready.fill(true);
+
+    std::vector<performance::PerfGpuResult> results = Collect(collector);
+
+    EXPECT_EQ(Count(results, performance::PerfStage::Screen, ncl_perf::PerfSampleState::Measured, performance::PerfSeries::RenderGpu), 1u);
+    EXPECT_EQ(Count(results, performance::PerfStage::Monitor, ncl_perf::PerfSampleState::Measured, performance::PerfSeries::Count), 1u);
+    EXPECT_EQ(
+        Count(results, performance::PerfStage::StudioShader, ncl_perf::PerfSampleState::Measured, performance::PerfSeries::StudioGpu), 1u
+    );
+    EXPECT_EQ(
+        Count(results, performance::PerfStage::RadarBatch, ncl_perf::PerfSampleState::Incomplete, performance::PerfSeries::RadarGpu), 1u
+    );
+
+    collector.ReleaseGl();
+}
+
+TEST_F(GpuQueryCollectorTest, DroppedUnseenScopeIsReported)
+{
+    performance::GpuQueryCollector collector(backend, 3, 4);
+    ncl_perf::PerfScopeToken_t screen = collector.Begin(1, 1, performance::PerfStage::Screen);
+    Submit(collector, performance::PerfStage::RadarBatch, 126);
+    uint32_t writes = uint32_t(backend.writes.size());
+    EXPECT_EQ(collector.Begin(1, 1, performance::PerfStage::RadarLayer), 0u);
+    EXPECT_EQ(backend.writes.size(), writes);
+
+    collector.End(screen);
+    backend.ready.fill(true);
+
+    std::vector<performance::PerfGpuResult> results = Collect(collector);
+
+    ASSERT_EQ(results.size(), 128u);
+
+    const performance::PerfGpuResult& marker = results.back();
+    EXPECT_EQ(marker.scope_id, performance::PerfStage::RadarLayer);
+    EXPECT_EQ(marker.state, ncl_perf::PerfSampleState::Incomplete);
+    EXPECT_EQ(marker.series, performance::PerfSeries::RadarGpu);
+    EXPECT_EQ(marker.duration_ns, 0u);
+    EXPECT_EQ(marker.frame_id, 1u);
+    EXPECT_EQ(marker.output_id, 1u);
+    EXPECT_EQ(marker.collector_generation, 3u);
+    EXPECT_EQ(marker.context_generation, 4u);
+
+    collector.ReleaseGl();
+}
+
+TEST_F(GpuQueryCollectorTest, ReservedScreenAndMonitorSurviveEarlierDetails)
+{
+    performance::GpuQueryCollector collector(backend, 1, 2);
+    ncl_perf::PerfScopeToken_t outer = collector.Begin(1, 1, performance::PerfStage::StudioShader);
+    ASSERT_NE(outer, 0u);
+
+    Submit(collector, performance::PerfStage::StudioShader, 109);
+    EXPECT_EQ(collector.Begin(1, 1, performance::PerfStage::StudioShader), 0u);
+
+    ncl_perf::PerfScopeToken_t screen = collector.Begin(1, 1, performance::PerfStage::Screen);
+    ASSERT_NE(screen, 0u);
+
+    Submit(collector, performance::PerfStage::Monitor, 1);
+    collector.End(screen);
+    collector.End(outer);
+    backend.ready.fill(true);
+
+    std::vector<performance::PerfGpuResult> results = Collect(collector);
+
+    EXPECT_EQ(Count(results, performance::PerfStage::Screen, ncl_perf::PerfSampleState::Measured, performance::PerfSeries::RenderGpu), 1u);
+    EXPECT_EQ(Count(results, performance::PerfStage::Monitor, ncl_perf::PerfSampleState::Measured, performance::PerfSeries::Count), 1u);
+    EXPECT_EQ(
+        Count(results, performance::PerfStage::StudioShader, ncl_perf::PerfSampleState::Incomplete, performance::PerfSeries::Count), 1u
+    );
+
+    collector.ReleaseGl();
+}
+
+TEST_F(GpuQueryCollectorTest, PartialPollRetainsIncompleteMarkers)
+{
+    performance::GpuQueryCollector collector(backend, 1, 2);
+    ncl_perf::PerfScopeToken_t screen = collector.Begin(1, 1, performance::PerfStage::Screen);
+    Submit(collector, performance::PerfStage::RadarBatch, 126);
+    for (uint32_t index = 0; index < 3; ++index)
+    {
+        EXPECT_EQ(collector.Begin(1, 1, performance::PerfStage::RadarLayer), 0u);
+        EXPECT_EQ(collector.Begin(1, 1, performance::PerfStage::RadarMapDraw), 0u);
+    }
+
+    collector.End(screen);
+    for (uint64_t id = 2; id <= 8; ++id)
+    {
+        collector.End(collector.Begin(id, id, performance::PerfStage::Screen));
+    }
+
+    backend.ready.fill(true);
+
+    performance::PerfGpuResult result;
+
+    for (uint32_t index = 0; index < 127; ++index)
+    {
+        ASSERT_EQ(collector.Poll(&result, 1), 1u);
+        EXPECT_EQ(result.output_id, 1u);
+        EXPECT_EQ(result.state, ncl_perf::PerfSampleState::Measured);
+    }
+
+    EXPECT_EQ(collector.Begin(9, 9, performance::PerfStage::Screen), 0u);
+    ASSERT_EQ(collector.Poll(&result, 1), 1u);
+    EXPECT_EQ(result.scope_id, performance::PerfStage::RadarLayer);
+    EXPECT_EQ(result.state, ncl_perf::PerfSampleState::Incomplete);
+    EXPECT_EQ(collector.Begin(9, 9, performance::PerfStage::Screen), 0u);
+    ASSERT_EQ(collector.Poll(&result, 1), 1u);
+    EXPECT_EQ(result.scope_id, performance::PerfStage::RadarMapDraw);
+    EXPECT_EQ(result.state, ncl_perf::PerfSampleState::Incomplete);
+
+    ncl_perf::PerfScopeToken_t fresh = collector.Begin(9, 9, performance::PerfStage::Screen);
+    ASSERT_NE(fresh, 0u);
+
+    for (uint64_t id = 2; id <= 8; ++id)
+    {
+        ASSERT_EQ(collector.Poll(&result, 1), 1u);
+        EXPECT_EQ(result.output_id, id);
+    }
+
+    EXPECT_EQ(collector.Poll(&result, 1), 0u);
+
+    collector.End(fresh);
+    backend.ready.fill(true);
+    EXPECT_EQ(collector.Poll(&result, 1), 1u);
+    EXPECT_EQ(collector.Poll(&result, 1), 0u);
+    EXPECT_EQ(backend.reads, 270u);
+
+    collector.ReleaseGl();
+}
+
+TEST_F(GpuQueryCollectorTest, PendingQueriesNeverReadEvenWithDrops)
+{
+    performance::GpuQueryCollector collector(backend, 1, 2);
+    ncl_perf::PerfScopeToken_t screen = collector.Begin(1, 1, performance::PerfStage::Screen);
+    Submit(collector, performance::PerfStage::StudioShader, 110);
+    EXPECT_EQ(collector.Begin(1, 1, performance::PerfStage::StudioShader), 0u);
+
+    collector.End(screen);
+    backend.ready.fill(true);
+    backend.ready[backend.writes.back()] = false;
+    EXPECT_TRUE(Collect(collector).empty());
+    EXPECT_EQ(backend.reads, 0u);
+
+    backend.ready.fill(true);
+    EXPECT_EQ(Collect(collector).size(), 112u);
+
+    collector.ReleaseGl();
+}
+
+TEST_F(GpuQueryCollectorTest, ResetAndCancelDiscardDropMetadata)
+{
+    for (bool reset : {false, true})
+    {
+        performance::GpuQueryCollector collector(backend, 1, 2);
+        ncl_perf::PerfScopeToken_t screen = collector.Begin(1, 1, performance::PerfStage::Screen);
+        Submit(collector, performance::PerfStage::StudioShader, 110);
+        EXPECT_EQ(collector.Begin(1, 1, performance::PerfStage::StudioShader), 0u);
+
+        if (reset)
+        {
+            collector.Reset(2);
+        }
+        else
+        {
+            collector.CancelOutput(1);
+        }
+
+        collector.End(screen);
+        ncl_perf::PerfScopeToken_t fresh = collector.Begin(2, 2, performance::PerfStage::Screen);
+        collector.End(fresh);
+        backend.ready.fill(true);
+        std::vector<performance::PerfGpuResult> results = Collect(collector);
+
+        ASSERT_EQ(results.size(), 1u);
+        EXPECT_EQ(results[0].output_id, 2u);
+        EXPECT_EQ(results[0].collector_generation, reset ? 2u : 1u);
+        EXPECT_EQ(results[0].state, ncl_perf::PerfSampleState::Measured);
+
+        collector.ReleaseGl();
+    }
+}
+
+TEST_F(GpuQueryCollectorTest, ClosedOutputDoesNotAcceptLateBegins)
+{
+    performance::GpuQueryCollector collector(backend, 1, 2);
+    collector.End(collector.Begin(1, 1, performance::PerfStage::Screen));
+    EXPECT_EQ(collector.Begin(1, 1, performance::PerfStage::Monitor), 0u);
+    EXPECT_EQ(backend.writes.size(), 2u);
+
+    backend.ready.fill(true);
+
+    std::vector<performance::PerfGpuResult> results = Collect(collector);
+
+    EXPECT_EQ(Count(results, performance::PerfStage::Screen, ncl_perf::PerfSampleState::Measured, performance::PerfSeries::RenderGpu), 1u);
+    EXPECT_EQ(Count(results, performance::PerfStage::Monitor, ncl_perf::PerfSampleState::Incomplete, performance::PerfSeries::Count), 1u);
+
     collector.ReleaseGl();
 }
 
 TEST_F(GpuQueryCollectorTest, EightPendingSetsAreNeverReused)
 {
     performance::GpuQueryCollector collector(backend, 1, 2);
+
     for (uint64_t id = 1; id <= 8; ++id)
     {
         ncl_perf::PerfScopeToken_t token = collector.Begin(id, id, performance::PerfStage::Screen);
         ASSERT_NE(token, 0u);
+
         collector.End(token);
     }
+
     EXPECT_EQ(collector.Begin(9, 9, performance::PerfStage::Screen), 0u);
     EXPECT_EQ(backend.writes.size(), 16u);
     EXPECT_EQ(backend.reads, 0u);
+
+    backend.ready.fill(true);
+
+    std::vector<performance::PerfGpuResult> results = Collect(collector);
+
+    ASSERT_EQ(results.size(), 8u);
+
+    for (uint32_t index = 0; index < results.size(); ++index)
+    {
+        EXPECT_EQ(results[index].output_id, index + 1);
+        EXPECT_EQ(results[index].state, ncl_perf::PerfSampleState::Measured);
+    }
+
     collector.ReleaseGl();
 }
 
@@ -467,5 +793,52 @@ TEST_F(GpuQueryCollectorTest, CpuOnlyRadarStageDoesNotEnrollInGpuRollup)
     EXPECT_EQ(result.scope_id, performance::PerfStage::RadarPrepare);
     EXPECT_EQ(result.duration_ns, 100u);
     EXPECT_EQ(result.series, performance::PerfSeries::Count);
+    collector.ReleaseGl();
+}
+
+TEST_F(GpuQueryCollectorTest, DroppedScopeKeepsDistinctEffectiveSeriesKeys)
+{
+    performance::GpuQueryCollector collector(backend, 1, 2);
+    ncl_perf::PerfScopeToken_t screen = collector.Begin(1, 1, performance::PerfStage::Screen);
+    ncl_perf::PerfScopeToken_t shader = collector.Begin(1, 1, performance::PerfStage::StudioShader);
+    Submit(collector, performance::PerfStage::StudioShader, 109);
+    EXPECT_EQ(collector.Begin(1, 1, performance::PerfStage::StudioShader), 0u);
+
+    collector.End(shader);
+    EXPECT_EQ(collector.Begin(1, 1, performance::PerfStage::StudioShader), 0u);
+
+    collector.End(screen);
+    backend.ready.fill(true);
+
+    std::vector<performance::PerfGpuResult> results = Collect(collector);
+
+    EXPECT_EQ(results.size(), 113u);
+    EXPECT_EQ(
+        Count(results, performance::PerfStage::StudioShader, ncl_perf::PerfSampleState::Incomplete, performance::PerfSeries::Count), 1u
+    );
+    EXPECT_EQ(
+        Count(results, performance::PerfStage::StudioShader, ncl_perf::PerfSampleState::Incomplete, performance::PerfSeries::StudioGpu), 1u
+    );
+    EXPECT_EQ(collector.dropped_scopes(), 2u);
+
+    collector.ReleaseGl();
+}
+
+TEST_F(GpuQueryCollectorTest, TimestampWrapUsesTheAdvertisedCounterWidth)
+{
+    backend.bits = 8;
+    backend.time = 250;
+    performance::GpuQueryCollector collector(backend, 1, 2);
+    ncl_perf::PerfScopeToken_t token = collector.Begin(1, 1, performance::PerfStage::Screen);
+    backend.time = 4;
+    collector.End(token);
+    backend.ready.fill(true);
+
+    performance::PerfGpuResult result;
+
+    ASSERT_EQ(collector.Poll(&result, 1), 1u);
+    EXPECT_EQ(result.duration_ns, 10u);
+    EXPECT_EQ(result.state, ncl_perf::PerfSampleState::Measured);
+
     collector.ReleaseGl();
 }

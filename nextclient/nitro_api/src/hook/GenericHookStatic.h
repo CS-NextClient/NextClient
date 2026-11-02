@@ -1,5 +1,6 @@
 #pragma once
 
+#include <functional>
 #include <unordered_map>
 #include <utility>
 #include <funchook.h>
@@ -9,7 +10,6 @@
 #include <nitroapi/hook/StaticHookId.h>
 #include <platform.h>
 #include "../seh_platform.h"
-#include "FrameLifecycle.h"
 
 #if USE_PROFILER
 #include "profiler.h"
@@ -20,6 +20,11 @@ namespace nitroapi
     template<StaticHookId HookId, CallingConventions TConv, class TResult, class... TArgs>
     class GenericHookStatic : public GenericHookInterface<TResult, TArgs...>
     {
+    public:
+        typedef std::function<TResult(TArgs...)> CallbackFunc;
+        typedef std::function<CallbackFunc(CallbackFunc)> CallbackWrapperFunc;
+
+    private:
         typedef TResult (__cdecl *FuncTypeCdecl)(TArgs...);
         typedef TResult (__stdcall *FuncTypeStdcall)(TArgs...);
         typedef TResult (__thiscall *FuncTypeThiscall)(TArgs...);
@@ -32,11 +37,14 @@ namespace nitroapi
         bool hook_created_ = false;
         bool hook_active_ = false;
 
-        static std::function<TResult(TArgs...)> s_callback_;
+        CallbackWrapperFunc callback_wrapper_;
+
+        static CallbackFunc s_callback_;
 
     public:
-        explicit GenericHookStatic(uint32_t hook_address) :
-            hook_address_(hook_address)
+        explicit GenericHookStatic(uint32_t hook_address, CallbackWrapperFunc callback_wrapper = {}) :
+            hook_address_(hook_address),
+            callback_wrapper_(std::move(callback_wrapper))
         {
             int status;
 
@@ -104,30 +112,9 @@ namespace nitroapi
             s_callback_ = std::move(hook_callback);
 #endif
 
-            if constexpr (HookId == StaticHookId::Host_Frame)
+            if (callback_wrapper_)
             {
-                FrameLifecycleService& lifecycle = FrameLifecycle_GetDefaultService();
-                s_callback_ = [&lifecycle, callback = std::move(s_callback_)](TArgs... args) -> TResult {
-                    return FrameLifecycle_InvokeHost(lifecycle, [&] { return callback(std::forward<TArgs>(args)...); });
-                };
-            }
-            else if constexpr (HookId == StaticHookId::Host_FrameInternal)
-            {
-                FrameLifecycleService& lifecycle = FrameLifecycle_GetDefaultService();
-                s_callback_ = [&lifecycle, callback = std::move(s_callback_)](TArgs... args) {
-                    lifecycle.BeginBody();
-                    callback(std::forward<TArgs>(args)...);
-                    lifecycle.EndBody();
-                };
-            }
-            else if constexpr (HookId == StaticHookId::Host_FilterTime)
-            {
-                FrameLifecycleService& lifecycle = FrameLifecycle_GetDefaultService();
-                s_callback_ = [&lifecycle, callback = std::move(s_callback_)](TArgs... args) -> TResult {
-                    TResult result = callback(std::forward<TArgs>(args)...);
-                    lifecycle.ReportFilter(result);
-                    return result;
-                };
+                s_callback_ = callback_wrapper_(std::move(s_callback_));
             }
 
             LOG_IF(hook_active_, WARNING) << "[static hook] Hook callback changed for " << magic_enum::enum_name(HookId);

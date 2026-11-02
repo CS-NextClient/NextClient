@@ -255,6 +255,7 @@ namespace nitroapi
 
     const std::unordered_map<std::string, SearchConfig> EngineAddressProvider8684Windows::addresses_str_
     {
+        { "Host_EndGame",                           SearchConfig(0x55ea0) },
         { "server",                                 SearchConfig(0x808100) },
         { "server_static",                          SearchConfig(0x807580) },
         { "client_static",                          SearchConfig(0x1059AE0) },

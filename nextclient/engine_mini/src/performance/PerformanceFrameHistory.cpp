@@ -3,6 +3,8 @@
 #include <algorithm>
 #include <cstdlib>
 
+#include <ncl_perf/profiler.h>
+
 #include "performance/PerformanceMetrics.h"
 
 namespace performance
@@ -249,6 +251,8 @@ namespace performance
 
     void PerfFrameHistory::BuildSnapshot(ncl_perf::PerfTimestamp_t now, PerfSnapshot& output, PerfGroupedGraphs* groups) const
     {
+        NCL_PROFILE_NAMED_SCOPE("Monitor build history snapshot");
+
         output = {};
 
         if (groups)
@@ -372,6 +376,8 @@ namespace performance
 
     void PerfFrameHistory::BuildFrameGraphs(ncl_perf::PerfTimestamp_t now, uint32_t columns, PerfFrameGraphs& output) const
     {
+        NCL_PROFILE_NAMED_SCOPE("Monitor build frame graphs");
+
         output.captured_at = now;
         output.collector_generation = generation_;
         output.count = 0;

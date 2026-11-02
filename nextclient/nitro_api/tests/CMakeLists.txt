@@ -3,6 +3,11 @@ include(GoogleTest)
 
 add_executable(nitro_api-tests
         FrameLifecycleTests.cpp
+        EngineFrameLifecycleTests.cpp
+        ../src/modules/engine/EngineModule.cpp
+        ../src/modules/engine/enginemsg_utils.cpp
+        HostAbortAdapterTests.cpp
+        ../src/modules/engine/HostAbortAdapter.cpp
         PresentationBoundaryTests.cpp
         ../src/modules/sdl2/loaded_sdl_module.cpp
         ../src/FrameLifecycle.cpp
@@ -18,6 +23,13 @@ target_include_directories(nitro_api-tests PRIVATE ../include ../src ../dep/easy
 target_link_libraries(nitro_api-tests PRIVATE GTest::gtest_main nitro_utils::nitro_utils magic_enum::magic_enum
         funchook-static xbyak::xbyak hl1_source_sdk::hl1_source_sdk NextClient::profiling)
 target_compile_definitions(nitro_api-tests PRIVATE ELPP_THREAD_SAFE ELPP_DISABLE_DEFAULT_CRASH_HANDLING NOMINMAX)
+
+if (WIN32)
+    add_custom_command(TARGET nitro_api-tests POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                    "${NEXTCLIENT_ROOT}/test_support/runtime/tier0.dll" $<TARGET_FILE_DIR:nitro_api-tests>)
+endif ()
+
 gtest_discover_tests(nitro_api-tests)
 
 add_library(performance-test-sdl SHARED FakeSdl.cpp)

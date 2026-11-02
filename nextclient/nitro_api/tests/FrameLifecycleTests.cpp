@@ -2,7 +2,6 @@
 
 #include <algorithm>
 #include <array>
-#include <csetjmp>
 #include <functional>
 #include <memory>
 #include <string>
@@ -29,101 +28,15 @@ namespace nitroapi
 namespace
 {
 #ifdef _MSC_VER
-    // Model the engine's nonlocal frame abort without C++ stack unwinding.
-    __declspec(naked) int SaveFrameAbort(std::jmp_buf)
-    {
-        __asm {
-            mov edx, [esp + 4]
-            mov [edx], ebp
-            mov [edx + 4], ebx
-            mov [edx + 8], edi
-            mov [edx + 12], esi
-            mov [edx + 16], esp
-            mov eax, [esp]
-            mov [edx + 20], eax
-            mov eax, fs:[0]
-            mov [edx + 24], eax
-            xor eax, eax
-            ret
-        }
-    }
-
-    __declspec(naked) void AbortFrame(std::jmp_buf, int)
-    {
-        __asm {
-            mov edx, [esp + 4]
-            mov ebp, [edx]
-            mov ebx, [edx + 4]
-            mov edi, [edx + 8]
-            mov esi, [edx + 12]
-            mov eax, [edx + 24]
-            mov fs:[0], eax
-            mov eax, [esp + 8]
-            mov esp, [edx + 16]
-            add esp, 4
-            jmp dword ptr [edx + 20]
-        }
-    }
-#endif
-
-    int g_FilterCalls{};
-    float g_FilterDelta{};
-    int g_FilterResult = 7;
-
-#ifdef _MSC_VER
     __declspec(noinline)
 #else
     __attribute__((noinline))
 #endif
-    int FilterTime(float delta)
+    int ClientHost(float, int state, int* state_info)
     {
-        ++g_FilterCalls;
-        g_FilterDelta = delta;
-        return g_FilterResult;
+        *state_info = 42;
+        return state;
     }
-
-    std::jmp_buf g_ClientFrameAbort;
-    bool g_AbortClientFrame{};
-
-#ifdef _MSC_VER
-    __declspec(noinline)
-#else
-    __attribute__((noinline))
-#endif
-    void InternalHost(float)
-    {
-        nitroapi::FrameLifecycle_GetDefaultService().ReportFilter(1);
-        if (g_AbortClientFrame)
-        {
-#ifdef _MSC_VER
-            AbortFrame(g_ClientFrameAbort, 1);
-#else
-            std::longjmp(g_ClientFrameAbort, 1);
-#endif
-        }
-    }
-
-#ifdef _MSC_VER
-    __declspec(noinline)
-#else
-    __attribute__((noinline))
-#endif
-    int ClientHost(float delta, int state, int* state_info)
-    {
-        *state_info = 0;
-#ifdef _MSC_VER
-        int aborted = SaveFrameAbort(g_ClientFrameAbort);
-#else
-        int aborted = setjmp(g_ClientFrameAbort);
-#endif
-        if (!aborted)
-        {
-            InternalHost(delta);
-            *state_info = 42;
-        }
-        return state + aborted;
-    }
-
     class Observer : public nitroapi::FrameLifecycleObserverInterface
     {
     private:
@@ -290,55 +203,27 @@ TEST_F(FrameLifecycleTest, NestedInvocationPreservesOuterState)
     EXPECT_EQ(events, (std::vector<std::string>{"host.enter", "host.enter", "filter.accept", "host.exit", "filter.accept", "host.exit"}));
 }
 
-TEST_F(FrameLifecycleTest, ForwardingPreservesResultAndArguments)
+
+TEST_F(FrameLifecycleTest, GenericHostHookDoesNotEmitLifecycleEvents)
 {
-    g_FilterCalls = 0;
-    g_FilterDelta = 0;
-    g_FilterResult = 7;
-    nitroapi::GenericHookStatic<nitroapi::StaticHookId::Host_FilterTime, nitroapi::CallingConventions::Cdecl, int, float> hook(
-        uint32_t(reinterpret_cast<uintptr_t>(&FilterTime))
-    );
-    hook.SetCallbackAndEnableHook([&](float delta) {
-        events.emplace_back("filter.callback");
-        return hook.InvokeOriginal(delta);
-    });
-    ASSERT_TRUE(hook.IsHookActive());
-
-    int result = 0;
-    nitroapi::FrameLifecycle_InvokeHost(nitroapi::FrameLifecycle_GetDefaultService(), [&] { result = hook.Invoke(0.125f); });
-    hook.UnsetCallbackAndDisableHook();
-
-    EXPECT_EQ(g_FilterCalls, 1);
-    EXPECT_FLOAT_EQ(g_FilterDelta, 0.125f);
-    EXPECT_EQ(result, 7);
-    EXPECT_EQ(events, (std::vector<std::string>{"host.enter", "filter.callback", "filter.accept", "host.exit"}));
-}
-
-TEST_F(FrameLifecycleTest, ClientFrameAbortDoesNotLoseSubsequentBoundaries)
-{
-    nitroapi::GenericHookStatic<nitroapi::StaticHookId::Host_FrameInternal, nitroapi::CallingConventions::Cdecl, void, float> inner(
-        uint32_t(reinterpret_cast<uintptr_t>(&InternalHost))
-    );
-    nitroapi::GenericHookStatic<nitroapi::StaticHookId::Host_Frame, nitroapi::CallingConventions::Cdecl, int, float, int, int*> outer(
+    nitroapi::GenericHookStatic<nitroapi::StaticHookId::Host_Frame, nitroapi::CallingConventions::Cdecl, int, float, int, int*> hook(
         uint32_t(reinterpret_cast<uintptr_t>(&ClientHost))
     );
-    inner.SetCallbackAndEnableHook([&](float delta) { inner.InvokeOriginal(delta); });
-    outer.SetCallbackAndEnableHook([&](float delta, int state, int* state_info) { return outer.InvokeOriginal(delta, state, state_info); });
-    ASSERT_TRUE(inner.IsHookActive());
-    ASSERT_TRUE(outer.IsHookActive());
+    hook.SetCallbackAndEnableHook([](float, int state, int* state_info) {
+        *state_info = 42;
+        return state + 1;
+    });
 
-    int state_info = -1;
-    g_AbortClientFrame = true;
-    EXPECT_EQ(outer.Invoke(0.01f, 5, &state_info), 6);
-    EXPECT_EQ(state_info, 0);
-    g_AbortClientFrame = false;
-    EXPECT_EQ(outer.Invoke(0.02f, 7, &state_info), 7);
+    ASSERT_TRUE(hook.IsHookActive());
+
+    int state_info = 0;
+    EXPECT_EQ(hook.Invoke(0.125f, 7, &state_info), 8);
     EXPECT_EQ(state_info, 42);
-    outer.UnsetCallbackAndDisableHook();
-    inner.UnsetCallbackAndDisableHook();
+    EXPECT_TRUE(events.empty());
 
-    EXPECT_EQ(events, (std::vector<std::string>{"host.enter", "filter.accept", "host.abort", "host.enter", "filter.accept", "host.exit"}));
+    hook.UnsetCallbackAndDisableHook();
 }
+
 
 namespace
 {

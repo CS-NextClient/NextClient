@@ -42,7 +42,7 @@ Render covers GPU screen commands through the panel before presentation. Studio 
 
 All three performance modes show `History | last N frames`: tables and plots use the same latest N chronological frame slots. N follows the physical panel-field width and can change with mode, scale, or resolution. CPU/GPU slot order, gaps, and delayed results are described in the [graph reference](performance-graphs.md#frame-columns-and-statistics).
 
-Main numeric summaries refresh every 250 ms. The batching table refreshes for each completed Host frame. Map inspection follows the latest rendered view, and new network data appears at the next presentation. The panel draws at every presentation using the latest values for each section.
+Main numeric summaries and performance history graphs refresh every 250 ms. GPU results enter the history as soon as polling returns them; they appear in these summaries and graphs at the next refresh. Reset and GPU context changes update the published state immediately. The batching table refreshes for each completed Host frame. Map inspection follows the latest rendered view, and new network data appears at the next presentation. The panel draws at every presentation using the latest values for each section.
 
 CPU/GPU `avg`, `p99` and `max` use valid measured samples inside the current N-frame window. Missing, pending and inactive values are excluded. Nearest-rank p99 appears after 100 valid measurements of that series within the window. The retained history is bounded by record count; at low FPS, the N slots can span more than ten seconds. The Monitor CPU footer uses the same N-frame window.
 
@@ -51,6 +51,12 @@ Diagnostic `perf_dump` history summaries and FPS use a separate ten-second windo
 CPU/GPU duration tables show `avg`, `p99`, `max`. Parent measurements include their measured components, so overlaid columns and table rows must not be added to obtain a frame total. The complete rules for the grouped CPU/GPU view, missing data, delayed GPU results and individual plots are described in [Reading performance graphs](performance-graphs.md). The Monitor footer reports average monitor overhead over the same N-frame window; stage trees, GPU passes, counters and worker reports remain available in `perf_dump`.
 
 `Measured` includes valid zero-duration measurements. `Inactive` means the stage did not execute. `Pending` means a GPU result is still outstanding. `Unavailable` means the measurement is unsupported or its start and end points have not been identified in the engine. `Dropped` identifies exhausted collection capacity; `Incomplete` identifies a partial measurement.
+
+The built-in GPU collector owns eight sets of 128 timestamp pairs (2048 GL query names). Each output protects one pair for its first Screen, one for its first Monitor, and 16 pairs for its first Radar GPU scopes. Other scopes use the remaining capacity; closing a scope does not return its pair before the output is collected. Unused protected pairs remain reserved for that output.
+
+A rejected scope increments `GpuDroppedScopes` without issuing a GL timestamp. Successfully recorded scopes remain `Measured`; each omitted scope kind and effective rollup produces one zero-duration `Incomplete` marker. A nested omission marks its detail row incomplete while preserving a measured parent rollup. Standalone omissions also mark their GPU rollup incomplete. These markers do not use GL pairs and survive partial polling. The detail row call count includes one marker per omitted kind and effective rollup; the counter records the exact number of rejected scopes.
+
+When all eight sets are pending, a new output is dropped without changing earlier outputs. Collection checks readiness without waiting and reads timestamps only when the entire closed set is ready.
 
 All performance modes, Studio batching, network statistics, and map inspection share accented section titles, shaded table headers, consistent spacing, and separators before summary or footer rows. History and diagnostic notes use muted text. Series colors identify the same metrics in numeric rows and plots. Numeric mode shows compact `avg`, `p99`, and `max` tables.
 
@@ -163,6 +169,8 @@ cmake --build --preset ninja-profiler-release --target engine_mini
 Use a separate diagnostic game installation containing matching launcher, NitroApi, engine, client, and `TracyClient.dll`. `BUILD_ALL` installs the shared client only when `USE_PROFILER=ON`. The external viewer must match the pinned client version and runs separately from the x86 game. Viewer connection activates on-demand CPU zones, numeric values, and native GPU capture. `cl_perf 0`, `cl_perf_gpu 0`, and `perf_reset` independently control the built-in monitor. `perf_dump` reports `trace=1` while a viewer is connected.
 
 Every available CPU stage from `perf_dump` is a native Tracy zone, including all detailed Studio save/restore, program, buffer, bone-transfer, preparation, sorting, state, uniform, and texture stages. Existing GPU stages use native GPU zones. Host and Output markers correlate simulation and presentation. Connecting Tracy activates this collection automatically.
+
+CPU-only zones prefixed with `Monitor` separate GPU result collection, snapshot and frame-graph preparation, panel layout, text preparation, GL state changes, and panel submission. `Monitor poll GPU` can also run after Swap; attribute each occurrence to its containing CPU interval. These nested zones use Tracy only and allocate no additional GPU queries. Compare their inclusive durations within the same slow frames, and subtract nested intervals before summing costs.
 
 If Host processing aborts, its open CPU zones close in reverse nesting order. The trace then continues with subsequent Host calls.
 

@@ -2418,3 +2418,283 @@ TEST_F(PerformanceMonitorTest, FrameSubscriptionDestructionRemovesOnlyItsOwnId)
     EXPECT_EQ(monitor.get_mode(), 1);
     lifecycle.Unsubscribe(independent);
 }
+
+namespace
+{
+    class ReadyMonitorGpu : public MonitorGpu
+    {
+    public:
+        uint64_t time{};
+        std::array<uint64_t, 2049> timestamps{};
+        bool ready = true;
+
+        void Write(uint32_t name) override
+        {
+            timestamps[name] = ++time * 10;
+        }
+
+        bool IsReady(uint32_t) override
+        {
+            return ready;
+        }
+
+        uint64_t Read(uint32_t name) override
+        {
+            return timestamps[name];
+        }
+    };
+} // namespace
+
+TEST_F(PerformanceMonitorTest, LateGpuResultsPreserveHistoryAndGraphRefreshCadence)
+{
+    ReadyMonitorGpu backend;
+    backend.ready = false;
+    monitor.SetGpuBackend(&backend);
+    monitor.OnContextCreated();
+    Activate();
+
+    monitor.OnHostEntry();
+    monitor.OnFrameAccepted();
+    ncl_perf::PerfScopeToken_t screen = monitor.BeginGpu(performance::PerfStage::Screen);
+    ASSERT_NE(screen, 0u);
+
+    performance::PerfOutputId_t output = monitor.BeginOutput(&window);
+    monitor.CloseRenderGpu();
+    clock.time = 100000000;
+    monitor.EndOutput(output);
+    monitor.EndGpu(screen);
+    monitor.OnHostExit();
+
+    performance::PerfSnapshot snapshot;
+    performance::PerfFrameGraphs frames;
+    uint32_t render_gpu = uint32_t(performance::PerfSeries::RenderGpu);
+    monitor.GetPanelSnapshot(snapshot, nullptr, &frames, 1);
+    ASSERT_EQ(snapshot.captured_at, 100000000u);
+    ASSERT_EQ(frames.count, 1u);
+    ASSERT_EQ(frames.frames.back().values[render_gpu].state, ncl_perf::PerfSampleState::Pending);
+
+    backend.ready = true;
+    for (ncl_perf::PerfTimestamp_t now : {150000000u, 200000000u, 349999999u})
+    {
+        clock.time = now;
+        monitor.PollGpu();
+        monitor.AdvanceSnapshot();
+        monitor.GetPanelSnapshot(snapshot, nullptr, &frames, 1);
+        EXPECT_EQ(snapshot.latest.values[render_gpu].state, ncl_perf::PerfSampleState::Measured);
+        EXPECT_EQ(snapshot.latest.values[render_gpu].duration_ns, 10u);
+        EXPECT_EQ(snapshot.captured_at, 100000000u);
+        EXPECT_EQ(snapshot.summaries[render_gpu].state, ncl_perf::PerfSampleState::Pending);
+        EXPECT_EQ(frames.frames.back().values[render_gpu].state, ncl_perf::PerfSampleState::Pending);
+    }
+
+    clock.time = 350000000;
+    monitor.AdvanceSnapshot();
+    monitor.GetPanelSnapshot(snapshot, nullptr, &frames, 1);
+    EXPECT_EQ(snapshot.captured_at, 350000000u);
+    EXPECT_EQ(snapshot.summaries[render_gpu].state, ncl_perf::PerfSampleState::Measured);
+    EXPECT_EQ(snapshot.summaries[render_gpu].mean_ns, 10u);
+    EXPECT_EQ(frames.frames.back().values[render_gpu].state, ncl_perf::PerfSampleState::Measured);
+    EXPECT_EQ(frames.frames.back().values[render_gpu].duration_ns, 10u);
+
+    monitor.Shutdown();
+}
+
+TEST_F(PerformanceMonitorTest, DumpIncludesLateGpuResultsBeforeHistoryRefresh)
+{
+    ReadyMonitorGpu backend;
+    backend.ready = false;
+    monitor.SetGpuBackend(&backend);
+    monitor.OnContextCreated();
+    Activate();
+
+    monitor.OnHostEntry();
+    monitor.OnFrameAccepted();
+    ncl_perf::PerfScopeToken_t screen = monitor.BeginGpu(performance::PerfStage::Screen);
+    ASSERT_NE(screen, 0u);
+
+    performance::PerfOutputId_t output = monitor.BeginOutput(&window);
+    monitor.CloseRenderGpu();
+    clock.time = 100000000;
+    monitor.EndOutput(output);
+    monitor.EndGpu(screen);
+    monitor.OnHostExit();
+
+    backend.ready = true;
+    clock.time = 150000000;
+    monitor.PollGpu();
+    monitor.AdvanceSnapshot();
+    ASSERT_TRUE(monitor.RequestDumpCapture());
+
+    monitor.OnHostEntry();
+    monitor.OnFrameAccepted();
+    clock.time = 160000000;
+    monitor.OnHostExit();
+
+    performance::PerfSnapshot snapshot;
+    monitor.GetSnapshot(snapshot);
+    EXPECT_EQ(snapshot.captured_at, 100000000u);
+    EXPECT_EQ(snapshot.summaries[uint32_t(performance::PerfSeries::RenderGpu)].state, ncl_perf::PerfSampleState::Pending);
+    ASSERT_TRUE(monitor.TakeDumpCapture(snapshot));
+    EXPECT_EQ(snapshot.captured_at, 160000000u);
+    EXPECT_EQ(snapshot.summaries[uint32_t(performance::PerfSeries::RenderGpu)].state, ncl_perf::PerfSampleState::Measured);
+    EXPECT_EQ(snapshot.summaries[uint32_t(performance::PerfSeries::RenderGpu)].mean_ns, 10u);
+
+    monitor.Shutdown();
+}
+
+TEST_F(PerformanceMonitorTest, ShaderOverflowPreservesScreenRadarAndMonitor)
+{
+    ReadyMonitorGpu backend;
+    monitor.SetGpuBackend(&backend);
+    monitor.OnContextCreated();
+    Activate();
+    ncl_perf::PerfScopeToken_t screen = monitor.BeginGpu(performance::PerfStage::Screen);
+    ASSERT_NE(screen, 0u);
+
+    for (uint32_t index = 0; index < 142; ++index)
+    {
+        monitor.EndGpu(monitor.BeginGpu(performance::PerfStage::StudioShader));
+    }
+
+    for (uint32_t index = 0; index < 16; ++index)
+    {
+        ncl_perf::PerfScopeToken_t radar = monitor.BeginGpu(performance::PerfStage::RadarBatch);
+        ASSERT_NE(radar, 0u);
+
+        monitor.EndGpu(radar);
+    }
+
+    performance::PerfOutputId_t output = monitor.BeginOutput(&window);
+    ncl_perf::PerfScopeToken_t panel = monitor.BeginGpu(performance::PerfStage::Monitor);
+    ASSERT_NE(panel, 0u);
+
+    monitor.EndGpu(panel);
+    monitor.CloseRenderGpu();
+    clock.time = 100000;
+    monitor.EndOutput(output);
+    monitor.EndGpu(screen);
+
+    performance::PerfSnapshot snapshot;
+    performance::PerfFrameGraphs frames;
+    monitor.GetPanelSnapshot(snapshot, nullptr, &frames, 1);
+    EXPECT_EQ(snapshot.latest.values[uint32_t(performance::PerfSeries::RenderGpu)].state, ncl_perf::PerfSampleState::Measured);
+    EXPECT_EQ(snapshot.latest.values[uint32_t(performance::PerfSeries::RadarGpu)].state, ncl_perf::PerfSampleState::Measured);
+    EXPECT_EQ(snapshot.latest.values[uint32_t(performance::PerfSeries::StudioGpu)].state, ncl_perf::PerfSampleState::Incomplete);
+    EXPECT_EQ(snapshot.summaries[uint32_t(performance::PerfSeries::RenderGpu)].count, 1u);
+    EXPECT_EQ(snapshot.summaries[uint32_t(performance::PerfSeries::StudioGpu)].count, 0u);
+    ASSERT_EQ(frames.count, 1u);
+    EXPECT_EQ(frames.frames.back().values[uint32_t(performance::PerfSeries::RenderGpu)].state, ncl_perf::PerfSampleState::Measured);
+
+    uint32_t details = 0;
+
+    for (uint32_t index = 0; index < snapshot.gpu_count; ++index)
+    {
+        const performance::PerfGpuSample& pass = snapshot.gpu_passes[index];
+        if (pass.scope_id == performance::PerfStage::Monitor || pass.scope_id == performance::PerfStage::StudioShader)
+        {
+            ++details;
+            EXPECT_EQ(
+                pass.state,
+                pass.scope_id == performance::PerfStage::Monitor ? ncl_perf::PerfSampleState::Measured
+                                                                 : ncl_perf::PerfSampleState::Incomplete
+            );
+        }
+    }
+
+    EXPECT_EQ(details, 2u);
+    EXPECT_EQ(snapshot.counters[uint32_t(performance::PerfCounterId::GpuDroppedScopes)], 32u);
+
+    monitor.Shutdown();
+}
+
+TEST_F(PerformanceMonitorTest, NestedDroppedGpuDetailPreservesStagedParentRollup)
+{
+    ReadyMonitorGpu backend;
+    monitor.SetGpuBackend(&backend);
+    monitor.OnContextCreated();
+    Activate();
+    ncl_perf::PerfScopeToken_t screen = monitor.BeginGpu(performance::PerfStage::Screen);
+
+    for (uint32_t index = 0; index < 110; ++index)
+    {
+        monitor.EndGpu(monitor.BeginGpu(performance::PerfStage::StudioShader));
+    }
+
+    ncl_perf::PerfScopeToken_t radar = monitor.BeginGpu(performance::PerfStage::RadarMapDraw);
+    ASSERT_NE(radar, 0u);
+
+    for (uint32_t index = 0; index < 15; ++index)
+    {
+        monitor.EndGpu(monitor.BeginGpu(performance::PerfStage::RadarLayer));
+    }
+
+    EXPECT_EQ(monitor.BeginGpu(performance::PerfStage::RadarLayer), 0u);
+
+    monitor.EndGpu(radar);
+    performance::PerfOutputId_t output = monitor.BeginOutput(&window);
+    monitor.CloseRenderGpu();
+    monitor.EndOutput(output);
+    monitor.EndGpu(screen);
+
+    performance::PerfSnapshot snapshot;
+    monitor.GetSnapshot(snapshot);
+    EXPECT_EQ(snapshot.latest.values[uint32_t(performance::PerfSeries::RadarGpu)].state, ncl_perf::PerfSampleState::Measured);
+    EXPECT_EQ(snapshot.latest.values[uint32_t(performance::PerfSeries::RadarGpu)].duration_ns, 310u);
+    EXPECT_EQ(snapshot.latest.values[uint32_t(performance::PerfSeries::RenderGpu)].state, ncl_perf::PerfSampleState::Measured);
+
+    bool found = false;
+
+    for (uint32_t index = 0; index < snapshot.gpu_count; ++index)
+    {
+        if (snapshot.gpu_passes[index].scope_id == performance::PerfStage::RadarLayer)
+        {
+            found = true;
+            EXPECT_EQ(snapshot.gpu_passes[index].state, ncl_perf::PerfSampleState::Incomplete);
+        }
+    }
+
+    EXPECT_TRUE(found);
+
+    monitor.Shutdown();
+}
+
+TEST_F(PerformanceMonitorTest, DroppedUnseenGpuScopeCreatesDetailRow)
+{
+    ReadyMonitorGpu backend;
+    monitor.SetGpuBackend(&backend);
+    monitor.OnContextCreated();
+    Activate();
+    ncl_perf::PerfScopeToken_t screen = monitor.BeginGpu(performance::PerfStage::Screen);
+
+    for (uint32_t index = 0; index < 126; ++index)
+    {
+        monitor.EndGpu(monitor.BeginGpu(performance::PerfStage::RadarBatch));
+    }
+
+    EXPECT_EQ(monitor.BeginGpu(performance::PerfStage::RadarLayer), 0u);
+
+    performance::PerfOutputId_t output = monitor.BeginOutput(&window);
+    monitor.CloseRenderGpu();
+    monitor.EndOutput(output);
+    monitor.EndGpu(screen);
+
+    performance::PerfSnapshot snapshot;
+    monitor.GetSnapshot(snapshot);
+    EXPECT_EQ(snapshot.latest.values[uint32_t(performance::PerfSeries::RadarGpu)].state, ncl_perf::PerfSampleState::Incomplete);
+
+    bool found = false;
+
+    for (uint32_t index = 0; index < snapshot.gpu_count; ++index)
+    {
+        if (snapshot.gpu_passes[index].scope_id == performance::PerfStage::RadarLayer)
+        {
+            found = true;
+            EXPECT_EQ(snapshot.gpu_passes[index].calls, 1u);
+            EXPECT_EQ(snapshot.gpu_passes[index].state, ncl_perf::PerfSampleState::Incomplete);
+        }
+    }
+
+    EXPECT_TRUE(found);
+
+    monitor.Shutdown();
+}

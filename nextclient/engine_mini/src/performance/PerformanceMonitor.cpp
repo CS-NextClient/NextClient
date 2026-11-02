@@ -6,6 +6,8 @@
 #include <cstdio>
 #include <cstring>
 
+#include <ncl_perf/profiler.h>
+
 #include "performance/performance_stages.h"
 #include "performance/PerformanceMapper.h"
 #include "performance/PerformanceMetrics.h"
@@ -235,9 +237,9 @@ namespace performance
         }
 
         uint64_t dropped_before = gpu_->dropped_scopes();
-        ncl_perf::PerfScopeToken_t token = gpu_->Begin(accepted_ ? frame_id_ : 0, reserved_output_, scope_id);
+        PerfSeries series = PerfSeries::Count;
+        ncl_perf::PerfScopeToken_t token = gpu_->Begin(accepted_ ? frame_id_ : 0, reserved_output_, scope_id, &series);
         gpu_dropped_ += gpu_->dropped_scopes() - dropped_before;
-        PerfSeries series = stages::GpuSeries(scope_id);
 
         if (series != PerfSeries::Count)
         {
@@ -1150,10 +1152,14 @@ namespace performance
 
     void PerformanceMonitor::PollGpu()
     {
+        NCL_PROFILE_NAMED_SCOPE("Monitor poll GPU");
+
         CollectionMeasurement measurement(clock_, gpu_poll_ns_, mode_ != 0);
 
         if (trace_backend_)
         {
+            NCL_PROFILE_NAMED_SCOPE("Monitor collect Tracy GPU");
+
             trace_backend_->Collect();
         }
 
@@ -1166,7 +1172,13 @@ namespace performance
         uint32_t count = 0;
         do
         {
-            count = gpu_->Poll(results.data(), uint32_t(results.size()));
+            {
+                NCL_PROFILE_NAMED_SCOPE("Monitor collect GPU results");
+
+                count = gpu_->Poll(results.data(), uint32_t(results.size()));
+            }
+
+            NCL_PROFILE_NAMED_SCOPE("Monitor apply GPU results");
 
             for (uint32_t index = 0; index < count; ++index)
             {
@@ -1194,7 +1206,6 @@ namespace performance
                 else if (history_->ApplyGpu(result))
                 {
                     applied = true;
-                    publisher_->InvalidateHistory();
 
                     if (last_output_.output_id == result.output_id && result.series != PerfSeries::Count)
                     {
@@ -1228,6 +1239,8 @@ namespace performance
 
     void PerformanceMonitor::AdvanceSnapshot(ncl_perf::PerfTimestamp_t now)
     {
+        NCL_PROFILE_NAMED_SCOPE("Monitor advance snapshot");
+
         trace_active_ = trace_backend_ && trace_backend_->IsConnected();
         publisher_->Advance(now, *history_);
     }

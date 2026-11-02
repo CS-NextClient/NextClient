@@ -1,21 +1,43 @@
 #include "EngineModule.h"
-#include "enginemsg_utils.h"
+
+#include <functional>
 #include <utility>
+
 #include <goldsrc/engine/user_msg.h>
+
+#include "FrameLifecycle.h"
+#include "modules/engine/enginemsg_utils.h"
 
 namespace nitroapi
 {
-    EngineModule::EngineModule(std::shared_ptr<HookStorage> hook_storage,
-                               std::shared_ptr<AddressProviderBase> addr_provider,
-                               NitroApiInterface* nitro_api,
-                               ICommandLine* command_line,
-                               IFileSystem* file_system,
-                               IRegistry* registry) :
+    void EngineModule::OnLibraryLoaded(nitro_utils::SysModule module)
+    {
+        ModuleBase::OnLibraryLoaded(module);
+        uint32_t address = addr_provider_->FindAddress(module, "Host_EndGame");
+        abort_adapter_.Install(reinterpret_cast<void*>(static_cast<uintptr_t>(address)));
+    }
+
+    void EngineModule::OnLibraryUnload()
+    {
+        abort_adapter_.Uninstall();
+        ModuleBase::OnLibraryUnload();
+    }
+
+    EngineModule::EngineModule(
+        std::shared_ptr<HookStorage> hook_storage,
+        std::shared_ptr<AddressProviderBase> addr_provider,
+        NitroApiInterface* nitro_api,
+        ICommandLine* command_line,
+        IFileSystem* file_system,
+        IRegistry* registry,
+        FrameLifecycleService& frame_lifecycle
+    ) :
         ModuleBase(std::move(hook_storage), std::move(addr_provider)),
         nitro_api_(nitro_api),
         command_line_(command_line),
         file_system_(file_system),
-        registry_(registry)
+        registry_(registry),
+        abort_adapter_(frame_lifecycle)
     {
         engine_data_ = std::make_shared<EngineData>();
 
@@ -160,9 +182,36 @@ namespace nitroapi
         RegisterFuncVaformat<StaticHookId::Sys_Error>(&engine_data_->Sys_Error);
         RegisterFuncVaformat<StaticHookId::Sys_Printf>(&engine_data_->Sys_Printf);
         RegisterFuncCdecl<StaticHookId::Host_WriteConfiguration>(&engine_data_->Host_WriteConfiguration);
-        RegisterFuncCdecl<StaticHookId::Host_Frame>(&engine_data_->Host_Frame);
-        RegisterFuncCdecl<StaticHookId::Host_FrameInternal>(&engine_data_->Host_FrameInternal);
-        RegisterFuncCdecl<StaticHookId::Host_FilterTime>(&engine_data_->Host_FilterTime);
+        RegisterFuncCdecl<StaticHookId::Host_Frame>(
+            &engine_data_->Host_Frame,
+            [&frame_lifecycle](std::function<int(float, int, int*)> callback) {
+                return [&frame_lifecycle, callback = std::move(callback)](float delta, int state, int* state_info) {
+                    return FrameLifecycle_InvokeHost(frame_lifecycle, [&] { return callback(delta, state, state_info); });
+                };
+            }
+        );
+        RegisterFuncCdecl<StaticHookId::Host_FrameInternal>(
+            &engine_data_->Host_FrameInternal,
+            [&frame_lifecycle](std::function<void(float)> callback) {
+                return [&frame_lifecycle, callback = std::move(callback)](float delta) {
+                    frame_lifecycle.BeginBody();
+                    callback(delta);
+                    frame_lifecycle.EndBody();
+                };
+            }
+        );
+        RegisterFuncCdecl<StaticHookId::Host_FilterTime>(
+            &engine_data_->Host_FilterTime,
+            [&frame_lifecycle](std::function<int(float)> callback) {
+                return [&frame_lifecycle, callback = std::move(callback)](float delta) {
+                    int result = callback(delta);
+
+                    frame_lifecycle.ReportFilter(result);
+
+                    return result;
+                };
+            }
+        );
         RegisterFuncCdecl<StaticHookId::Host_Map_f>(&engine_data_->Host_Map_f);
         RegisterFuncCdecl<StaticHookId::Host_Map>(&engine_data_->Host_Map);
         RegisterFuncCdecl<StaticHookId::Con_MessageMode_f>(&engine_data_->Con_MessageMode_f);

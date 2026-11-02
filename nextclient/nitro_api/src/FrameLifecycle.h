@@ -3,6 +3,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <deque>
+#include <type_traits>
 #include <utility>
 #include <vector>
 
@@ -51,6 +52,7 @@ namespace nitroapi
         void Unsubscribe(FrameLifecycleSubscription_t subscription) override;
         void Clear();
         void ReportFilter(int result);
+        void ReportAbort() noexcept;
         void BeginBody();
         void EndBody();
 
@@ -66,6 +68,7 @@ namespace nitroapi
         FrameLifecycleInvocation* previous_{};
         FrameLifecycleService::InvocationFrame& frame_;
         bool accepted_{};
+        bool aborted_{};
         uint32_t body_depth_{};
 
     public:
@@ -74,6 +77,7 @@ namespace nitroapi
         FrameLifecycleInvocation(const FrameLifecycleInvocation&) = delete;
         FrameLifecycleInvocation& operator=(const FrameLifecycleInvocation&) = delete;
         void ReportFilter(int result);
+        void ReportAbort() noexcept;
         void BeginBody();
         void EndBody();
 
@@ -86,9 +90,10 @@ namespace nitroapi
     void FrameLifecycle_ClearObservers();
 
     template <class TCallable>
-    decltype(auto) FrameLifecycle_InvokeHost(FrameLifecycleService& service, TCallable&& callback)
+    std::invoke_result_t<TCallable> FrameLifecycle_InvokeHost(FrameLifecycleService& service, TCallable&& callback)
     {
         FrameLifecycleInvocation invocation(service);
+
         return std::forward<TCallable>(callback)();
     }
 } // namespace nitroapi
