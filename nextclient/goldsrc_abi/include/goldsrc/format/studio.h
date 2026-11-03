@@ -128,6 +128,14 @@ namespace goldsrc
         int nextseq;
     };
 
+    struct mstudioseqgroup_t
+    {
+        char label[32];
+        char name[64];
+        int unused1;
+        int unused2;
+    };
+
     struct mstudiotexture_t
     {
         char name[64];

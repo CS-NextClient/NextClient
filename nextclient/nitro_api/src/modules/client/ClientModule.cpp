@@ -1,9 +1,13 @@
 #include "ClientModule.h"
+
 #include <utility>
+
 #include <goldsrc/client_api.h>
 #include <goldsrc/cstrike/hud_elements.h>
 #include <goldsrc/fwd.h>
 #include <goldsrc/types.h>
+
+#include "modules/client/studio_animation.h"
 
 namespace nitroapi
 {
@@ -16,8 +20,10 @@ namespace nitroapi
         constexpr uint32 HudOffset(uint32 windows_offset, uint32 linux_offset)
         {
 #ifdef _WIN32
+
             return windows_offset;
 #else
+
             return linux_offset;
 #endif
         }
@@ -28,15 +34,31 @@ namespace nitroapi
         static_assert(sizeof(goldsrc::cstrike::CHudHealth) == 352);
         static_assert(sizeof(goldsrc::cstrike::CHudNightVision) == 32);
 #endif
-    }
+    } // namespace
 
-    ClientModule::ClientModule(std::shared_ptr<HookStorage> hook_storage,
-                               std::shared_ptr<AddressProviderBase> addr_provider) :
+    ClientModule::ClientModule(std::shared_ptr<HookStorage> hook_storage, std::shared_ptr<AddressProviderBase> addr_provider) :
         ModuleBase(std::move(hook_storage), std::move(addr_provider))
     {
         client_data_ = std::make_shared<ClientData>();
         client_data_->gHUD = new gamehud_t();
         memset(client_data_->gHUD, 0, sizeof(gamehud_t));
+
+        StudioAnimation_InitializeAccess(studio_animation_);
+        RegisterVar(&studio_animation_.right_hand, "cl_righthand");
+        RegisterVar(&studio_animation_.shield, "g_bHoldingShield");
+        RegisterVar(&studio_animation_.is_czero, "isCZ");
+        RegisterStudioMethod<StaticHookId::CStudioModelRenderer__StudioSetupBones>(&studio_animation_.StudioSetupBones);
+        RegisterStudioMethod<StaticHookId::CGameStudioModelRenderer__StudioSetupBones>(&studio_animation_.GameStudioSetupBones);
+        RegisterStudioMethod<StaticHookId::CStudioModelRenderer__StudioGetAnim>(&studio_animation_.StudioGetAnim);
+        RegisterStudioMethod<StaticHookId::CStudioModelRenderer__StudioEstimateInterpolant>(&studio_animation_.StudioEstimateInterpolant);
+        RegisterStudioMethod<StaticHookId::CStudioModelRenderer__StudioEstimateFrame>(&studio_animation_.StudioEstimateFrame);
+        RegisterStudioMethod<StaticHookId::CStudioModelRenderer__StudioSlerpBones>(&studio_animation_.StudioSlerpBones);
+        RegisterStudioMethod<StaticHookId::CStudioModelRenderer__StudioCalcBoneAdj>(&studio_animation_.StudioCalcBoneAdj);
+        RegisterStudioMethod<StaticHookId::CStudioModelRenderer__StudioCalcBoneQuaterion>(&studio_animation_.StudioCalcBoneQuaterion);
+        RegisterStudioMethod<StaticHookId::CStudioModelRenderer__StudioCalcBonePosition>(&studio_animation_.StudioCalcBonePosition);
+        RegisterStudioMethod<StaticHookId::CStudioModelRenderer__StudioCalcRotations>(&studio_animation_.StudioCalcRotations);
+        RegisterStudioMethod<StaticHookId::CStudioModelRenderer__StudioSaveBones>(&studio_animation_.StudioSaveBones);
+        RegisterStudioMethod<StaticHookId::CStudioModelRenderer__StudioMergeBones>(&studio_animation_.StudioMergeBones);
 
         RegisterVar(&client_data_->g_iShotsFired, "g_iShotsFired");
         RegisterVar(&client_data_->g_PlayerExtraInfo, "g_PlayerExtraInfo");
@@ -100,23 +122,29 @@ namespace nitroapi
         RegisterFuncCdecl<StaticHookId::HUD_DirectorMessage>(&client_data_->HUD_DirectorMessage);
         RegisterFuncCdecl<StaticHookId::HUD_GetStudioModelInterface>(&client_data_->HUD_GetStudioModelInterface);
 
-        if (IsWindows()) {
+        if (IsWindows())
+        {
             RegisterFuncThiscall<StaticHookId::CHudAmmo__DrawCrosshair>(&client_data_->CHudAmmo__DrawCrosshair);
             RegisterFuncThiscall<StaticHookId::CHudHealth__Draw>(&client_data_->CHudHealth__Draw);
             RegisterFuncThiscall<StaticHookId::CHudHealth__DrawRadar>(&client_data_->CHudHealth__DrawRadar);
             RegisterFuncThiscall<StaticHookId::CHudHealth__GetAllPlayersInfo>(&client_data_->CHudHealth__GetAllPlayersInfo);
             RegisterFuncThiscall<StaticHookId::CHudDeathNotice__Draw>(&client_data_->CHudDeathNotice__Draw);
-            RegisterFuncThiscall<StaticHookId::CHudSayText__EnsureTextFitsInOneLineAndWrapIfHaveTo>(&client_data_->CHudSayText__EnsureTextFitsInOneLineAndWrapIfHaveTo);
+            RegisterFuncThiscall<StaticHookId::CHudSayText__EnsureTextFitsInOneLineAndWrapIfHaveTo>(
+                &client_data_->CHudSayText__EnsureTextFitsInOneLineAndWrapIfHaveTo
+            );
             RegisterFuncThiscall<StaticHookId::SayTextLine__Colorize>(&client_data_->SayTextLine__Colorize);
             RegisterFuncThiscall<StaticHookId::CHudVGUI2Print__GetStringSize>(&client_data_->CHudVGUI2Print__GetStringSize);
         }
-        else {
+        else
+        {
             RegisterFuncCdecl<StaticHookId::CHudAmmo__DrawCrosshair>(&client_data_->CHudAmmo__DrawCrosshair);
             RegisterFuncCdecl<StaticHookId::CHudHealth__Draw>(&client_data_->CHudHealth__Draw);
             RegisterFuncCdecl<StaticHookId::CHudHealth__DrawRadar>(&client_data_->CHudHealth__DrawRadar);
             RegisterFuncCdecl<StaticHookId::CHudHealth__GetAllPlayersInfo>(&client_data_->CHudHealth__GetAllPlayersInfo);
             RegisterFuncCdecl<StaticHookId::CHudDeathNotice__Draw>(&client_data_->CHudDeathNotice__Draw);
-            RegisterFuncCdecl<StaticHookId::CHudSayText__EnsureTextFitsInOneLineAndWrapIfHaveTo>(&client_data_->CHudSayText__EnsureTextFitsInOneLineAndWrapIfHaveTo);
+            RegisterFuncCdecl<StaticHookId::CHudSayText__EnsureTextFitsInOneLineAndWrapIfHaveTo>(
+                &client_data_->CHudSayText__EnsureTextFitsInOneLineAndWrapIfHaveTo
+            );
             RegisterFuncCdecl<StaticHookId::SayTextLine__Colorize>(&client_data_->SayTextLine__Colorize);
             RegisterFuncCdecl<StaticHookId::CHudVGUI2Print__GetStringSize>(&client_data_->CHudVGUI2Print__GetStringSize);
         }
@@ -124,8 +152,12 @@ namespace nitroapi
 
     ClientModule::~ClientModule()
     {
+        client_data_->studio_animation = nullptr;
+
         for (const auto& unsub : unsubscribers_)
+        {
             unsub->Unsubscribe();
+        }
     }
 
     void ClientModule::OnLibraryLoaded(nitro_utils::SysModule hModule)
@@ -149,7 +181,7 @@ namespace nitroapi
         client_data_->gHUD->m_iFOV = (int*)(hud + HudOffset(0x58, 0x54));
         client_data_->gHUD->m_Teamplay = (int*)(hud + HudOffset(0x5C, 0x58));
         client_data_->gHUD->m_iRes = (int*)(hud + HudOffset(0x60, 0x5C));
-        client_data_->gHUD->m_pPlayerFOV = reinterpret_cast<int(*)[64]>(hud + HudOffset(0x6C, 0x68));
+        client_data_->gHUD->m_pPlayerFOV = reinterpret_cast<int (*)[64]>(hud + HudOffset(0x6C, 0x68));
         client_data_->gHUD->m_iFontHeight = (int*)(hud + HudOffset(0x16C, 0x168));
         client_data_->gHUD->m_iFontEngineHeight = (int*)(hud + HudOffset(0x170, 0x16C));
         client_data_->gHUD->m_rghSprites = reinterpret_cast<goldsrc::HSPRITE_t**>(hud + HudOffset(0x178, 0x174));
@@ -162,48 +194,59 @@ namespace nitroapi
         // Commented offsets below confirmed against client.dll (Windows) by disassembly; Linux (client.so) not checked.
         // UNVERIFIED = offset not confirmed by disassembly and likely wrong; verify before enabling.
 
-//        client_data_->gHUD->m_iIntermission = (int*)(hud + 0x6B4C); // UNVERIFIED
+        //        client_data_->gHUD->m_iIntermission = (int*)(hud + 0x6B4C); // UNVERIFIED
         client_data_->gHUD->m_HUD_number_0 = (int*)(hud + HudOffset(0x4754, 0x6B4C));
-//        client_data_->gHUD->m_flCheatCheckTime = (float*)(hud + 0x4758);
-//        client_data_->gHUD->m_flExpensiveCheckTime = (float*)(hud + 0x475C);
-//        client_data_->gHUD->m_bRenderGunSmoke = (bool*)(hud + 0x6B5C); // UNVERIFIED
-//        client_data_->gHUD->m_fGLTEXSORT = (float*)(hud + 0x6B60); // UNVERIFIED
-//        client_data_->gHUD->m_flGLZMAX = (float*)(hud + 0x6B64); // UNVERIFIED
-//        client_data_->gHUD->m_bSoftwaremode = (bool*)(hud + 0x6B68); // UNVERIFIED
-//        client_data_->gHUD->m_bShowTimer = (bool*)(hud + 0x6B69); // UNVERIFIED
-//        client_data_->gHUD->m_autoBuyStringSent = (bool*)(hud + 0x6B6A); // UNVERIFIED
-//        client_data_->gHUD->m_rebuyStringSent = (bool*)(hud + 0x6B6C); // UNVERIFIED
+        //        client_data_->gHUD->m_flCheatCheckTime = (float*)(hud + 0x4758);
+        //        client_data_->gHUD->m_flExpensiveCheckTime = (float*)(hud + 0x475C);
+        //        client_data_->gHUD->m_bRenderGunSmoke = (bool*)(hud + 0x6B5C); // UNVERIFIED
+        //        client_data_->gHUD->m_fGLTEXSORT = (float*)(hud + 0x6B60); // UNVERIFIED
+        //        client_data_->gHUD->m_flGLZMAX = (float*)(hud + 0x6B64); // UNVERIFIED
+        //        client_data_->gHUD->m_bSoftwaremode = (bool*)(hud + 0x6B68); // UNVERIFIED
+        //        client_data_->gHUD->m_bShowTimer = (bool*)(hud + 0x6B69); // UNVERIFIED
+        //        client_data_->gHUD->m_autoBuyStringSent = (bool*)(hud + 0x6B6A); // UNVERIFIED
+        //        client_data_->gHUD->m_rebuyStringSent = (bool*)(hud + 0x6B6C); // UNVERIFIED
         client_data_->gHUD->m_Ammo = (goldsrc::cstrike::CHudAmmo*)(hud + HudOffset(0x184, 0x180));
         client_data_->gHUD->m_Health = (goldsrc::cstrike::CHudHealth*)(hud + HudOffset(0x1F4, 0x1F0));
         client_data_->gHUD->m_Spectator = (goldsrc::cstrike::CHudSpectator*)(hud + HudOffset(0x358, 0x350));
-//        client_data_->gHUD->m_Geiger = (goldsrc::cstrike::CHudGeiger*)(hud + 0x1AC0);
-//        client_data_->gHUD->m_Battery = (goldsrc::cstrike::CHudBattery*)(hud + 0x1AD8);
-//        client_data_->gHUD->m_Train = (goldsrc::cstrike::CHudTrain*)(hud + 0x1B08);
-//        client_data_->gHUD->m_Flash = (goldsrc::cstrike::CHudFlashlight*)(hud + 0x1B24);
-//        client_data_->gHUD->m_Message = (goldsrc::cstrike::CHudMessage*)(hud + 0x1B64);
-//        client_data_->gHUD->m_StatusBar = (goldsrc::cstrike::CHudStatusBar*)(hud + 0x3CCC);
-//        client_data_->gHUD->m_DeathNotice = (goldsrc::cstrike::CHudDeathNotice*)(hud + 0x3E08);
-//        client_data_->gHUD->m_SayText = (goldsrc::cstrike::CHudSayText*)(hud + 0x3E30);
-//        client_data_->gHUD->m_Menu = (goldsrc::cstrike::CHudMenu*)(hud + 0x3E4C);
-//        client_data_->gHUD->m_AmmoSecondary = (goldsrc::cstrike::CHudAmmoSecondary*)(hud + 0x3E70);
-//        client_data_->gHUD->m_TextMessage = (goldsrc::cstrike::CHudTextMessage*)(hud + 0x5E98); // UNVERIFIED
-//        client_data_->gHUD->m_StatusIcons = (goldsrc::cstrike::CHudStatusIcons*)(hud + 0x3E9C);
-//        client_data_->gHUD->m_accountBalance = (goldsrc::cstrike::CHudAccountBalance*)(hud + 0x3EB0);
-//        client_data_->gHUD->m_roundTimer = (goldsrc::cstrike::CHudRoundTimer*)(hud + 0x3FA0);
-//        client_data_->gHUD->m_progressBar = (goldsrc::cstrike::CHudProgressBar*)(hud + 0x3FDC);
+        //        client_data_->gHUD->m_Geiger = (goldsrc::cstrike::CHudGeiger*)(hud + 0x1AC0);
+        //        client_data_->gHUD->m_Battery = (goldsrc::cstrike::CHudBattery*)(hud + 0x1AD8);
+        //        client_data_->gHUD->m_Train = (goldsrc::cstrike::CHudTrain*)(hud + 0x1B08);
+        //        client_data_->gHUD->m_Flash = (goldsrc::cstrike::CHudFlashlight*)(hud + 0x1B24);
+        //        client_data_->gHUD->m_Message = (goldsrc::cstrike::CHudMessage*)(hud + 0x1B64);
+        //        client_data_->gHUD->m_StatusBar = (goldsrc::cstrike::CHudStatusBar*)(hud + 0x3CCC);
+        //        client_data_->gHUD->m_DeathNotice = (goldsrc::cstrike::CHudDeathNotice*)(hud + 0x3E08);
+        //        client_data_->gHUD->m_SayText = (goldsrc::cstrike::CHudSayText*)(hud + 0x3E30);
+        //        client_data_->gHUD->m_Menu = (goldsrc::cstrike::CHudMenu*)(hud + 0x3E4C);
+        //        client_data_->gHUD->m_AmmoSecondary = (goldsrc::cstrike::CHudAmmoSecondary*)(hud + 0x3E70);
+        //        client_data_->gHUD->m_TextMessage = (goldsrc::cstrike::CHudTextMessage*)(hud + 0x5E98); // UNVERIFIED
+        //        client_data_->gHUD->m_StatusIcons = (goldsrc::cstrike::CHudStatusIcons*)(hud + 0x3E9C);
+        //        client_data_->gHUD->m_accountBalance = (goldsrc::cstrike::CHudAccountBalance*)(hud + 0x3EB0);
+        //        client_data_->gHUD->m_roundTimer = (goldsrc::cstrike::CHudRoundTimer*)(hud + 0x3FA0);
+        //        client_data_->gHUD->m_progressBar = (goldsrc::cstrike::CHudProgressBar*)(hud + 0x3FDC);
         client_data_->gHUD->m_NightVision = (goldsrc::cstrike::CHudNightVision*)(hud + HudOffset(0x4048, 0x6040));
-//        client_data_->gHUD->m_careerTaskTimer = (goldsrc::cstrike::CHudCareerTaskTimer*)(hud + 0x400C);
-//        client_data_->gHUD->m_scenarioStatus = (goldsrc::cstrike::CHudScenarioStatus*)(hud + 0x4068);
-//        client_data_->gHUD->m_sniperScope = (goldsrc::cstrike::CHudSniperScope*)(hud + 0x40DC);
+        //        client_data_->gHUD->m_careerTaskTimer = (goldsrc::cstrike::CHudCareerTaskTimer*)(hud + 0x400C);
+        //        client_data_->gHUD->m_scenarioStatus = (goldsrc::cstrike::CHudScenarioStatus*)(hud + 0x4068);
+        //        client_data_->gHUD->m_sniperScope = (goldsrc::cstrike::CHudSniperScope*)(hud + 0x40DC);
         client_data_->gHUD->m_VGUI2Print = (goldsrc::cstrike::CHudVGUI2Print*)(hud + HudOffset(0x4104, 0x60FC));
-//        client_data_->gHUD->m_scrinfo = (goldsrc::SCREENINFO*)(hud + 0x6930); // UNVERIFIED
+        //        client_data_->gHUD->m_scrinfo = (goldsrc::SCREENINFO*)(hud + 0x6930); // UNVERIFIED
+
+        if (StudioAnimation_IsResolved(studio_animation_))
+        {
+            client_data_->studio_animation = &studio_animation_;
+        }
+        else
+        {
+            LOG(WARNING) << "Studio animation bindings could not be resolved.";
+        }
     }
 
     void ClientModule::OnLibraryUnload()
     {
+        client_data_->studio_animation = nullptr;
+
         delete client_data_->gHUD;
         client_data_->gHUD = nullptr;
 
         ModuleBase::OnLibraryUnload();
     }
-}
+} // namespace nitroapi

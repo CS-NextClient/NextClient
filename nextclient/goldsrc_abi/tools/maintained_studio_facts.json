@@ -14,7 +14,9 @@
       "mstudiomodel_t": "79f44",
       "mstudiomesh_t": "7a01d",
       "mstudiobonecontroller_t": "79a9b"
-    }
+    },
+    "stock_client_windows_sha256": "ef7a0f40989cb79ba95d40f528534da36866892ee871147ca82e133b7a5edc3d",
+    "stock_client_linux_sha256": "40283f3e0c4b6bd21f9281304957ab93c04c60ce5f3d2794cdaf58b3c11ab798"
   },
   "constants": {
     "MAXSTUDIOBONES": 128,
@@ -76,6 +78,17 @@
         "rest": 16,
         "index": 20
       }
+    },
+    "mstudioseqgroup_t": {
+      "size": 104,
+      "align": 4,
+      "fields": {
+        "label": 0,
+        "name": 32,
+        "unused1": 96,
+        "unused2": 100
+      },
+      "evidence": "client.so DWARF; client.dll StudioGetAnim confirms stride 104 and name offset 32"
     }
   }
 }

@@ -4,6 +4,7 @@ project(ncl_studio)
 set(CMAKE_CXX_STANDARD 23)
 
 add_library(${PROJECT_NAME} STATIC
+    src/bone_animation.cpp
     src/studio_mesh_builder.cpp
     src/StudioMetadata.cpp
     src/StudioReferencePose.cpp
@@ -21,3 +22,11 @@ target_link_libraries(${PROJECT_NAME} PUBLIC
         ncl_math::ncl_math
         ncl_utils::ncl_utils
 )
+
+set_source_files_properties(src/bone_animation.cpp PROPERTIES
+    COMPILE_OPTIONS "$<IF:$<CXX_COMPILER_ID:MSVC>,/fp:precise,-fno-fast-math;-ffp-contract=off>"
+)
+
+if (NEXTCLIENT_BUILD_TESTS)
+    add_subdirectory(tests)
+endif()

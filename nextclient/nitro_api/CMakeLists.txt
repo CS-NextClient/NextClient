@@ -37,6 +37,8 @@ add_library(nitro_api SHARED
         include/nitroapi/NitroFunction.h
         src/modules/client/ClientModule.cpp
         src/modules/client/ClientModule.h
+        src/modules/client/studio_animation.cpp
+        src/modules/client/studio_animation.h
         src/modules/engine/EngineModule.cpp
         src/modules/engine/EngineModule.h
         src/modules/engine/EngineAddressProvider8684Windows.cpp

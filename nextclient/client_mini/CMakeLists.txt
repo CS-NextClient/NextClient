@@ -184,6 +184,18 @@ add_library(${PROJECT_NAME} SHARED
         src/hud/GameHud.cpp
         src/hud/HudAmmo.h
         src/hud/HudAmmo.cpp
+        src/studio/StudioAnimation.h
+        src/studio/StudioAnimation.cpp
+        src/studio/studio_pose.cpp
+)
+
+set(STUDIO_ANIMATION_SOURCES
+        src/studio/StudioAnimation.cpp
+        src/studio/studio_pose.cpp
+)
+
+set_source_files_properties(${STUDIO_ANIMATION_SOURCES} PROPERTIES
+        COMPILE_OPTIONS "$<IF:$<CXX_COMPILER_ID:MSVC>,/fp:precise,-fno-fast-math;-ffp-contract=off>"
 )
 
 cmrc_add_resource_library(
@@ -210,6 +222,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
         glad::glad
         data_types::data_types
         ncl_math::ncl_math
+        ncl_studio::ncl_studio
         ncl_gl::ncl_gl
         ncl_utils::ncl_utils
         ${PROJECT_NAME}::rc

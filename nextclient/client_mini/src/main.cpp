@@ -1,12 +1,14 @@
 #include "main.h"
 
-#include "hud/radar/integration/Performance.h"
 #include <cstring>
-#include <ranges>
+#include <memory>
 #include <optional>
+#include <ranges>
 #include <thread>
-#include <next_client_mini/client_mini.h>
-#include <next_engine_mini/engine_mini.h>
+
+#include <mathlib/mathlib.h>
+#include <strtools.h>
+
 #include <data_types/MessageReader.h>
 #include <goldsrc/client_api.h>
 #include <goldsrc/cvar.h>
@@ -18,24 +20,25 @@
 #include <goldsrc/studio_api.h>
 #include <goldsrc/usercmd.h>
 #include <goldsrc/view.h>
-#include <mathlib/mathlib.h>
-#include <strtools.h>
-#include <taskcoro/impl/TaskCoroImpl.h>
+#include <next_client_mini/client_mini.h>
+#include <next_engine_mini/engine_mini.h>
 #include <taskcoro/TaskCoro.h>
-
+#include <taskcoro/impl/TaskCoroImpl.h>
 
 #include "camera.h"
-#include "studiorenderer.h"
-#include "view.h"
-#include "fov.h"
 #include "color_chat_in_console.h"
-#include "say_text_wrap.h"
-#include "inspect.h"
 #include "commands.h"
-#include "invert_mouse.h"
-#include "multi_button_binds.h"
+#include "fov.h"
+#include "hud/radar/integration/Performance.h"
 #include "hud/radar/integration/RadarHooks.h"
 #include "hud/radar/render/text/HudTextZone.h"
+#include "inspect.h"
+#include "invert_mouse.h"
+#include "multi_button_binds.h"
+#include "say_text_wrap.h"
+#include "studio/StudioAnimation.h"
+#include "studiorenderer.h"
+#include "view.h"
 
 nitroapi::NitroApiInterface* g_NitroApi;
 
@@ -77,10 +80,14 @@ nitroapi::ClientData* client()
 static void ClearHudTxt()
 {
     if (!gHUD)
+    {
         return;
+    }
 
     if (*gHUD->m_pSpriteList)
+    {
         g_NitroApi->GetEngineData()->Mem_Free(*gHUD->m_pSpriteList);
+    }
 
     *gHUD->m_pSpriteList = nullptr;
     *gHUD->m_iSpriteCountAllRes = 0;
@@ -94,7 +101,7 @@ static void HUD_InitPost()
 #else
         "gameui.so"
 #endif
-        );
+    );
 
     g_GameConsole = (IGameConsole*)(InitializeInterface(GAMECONSOLE_INTERFACE_VERSION_GS, &gameui_factory, 1));
     g_GameConsoleNext = (IGameConsoleNext*)(InitializeInterface(GAMECONSOLE_NEXT_INTERFACE_VERSION, &gameui_factory, 1));
@@ -105,7 +112,6 @@ static void HUD_InitPost()
     gHUD = g_NitroApi->GetClientData()->gHUD;
     sv = g_NitroApi->GetEngineData()->server;
     sv_static = g_NitroApi->GetEngineData()->server_static;
-
 
     ViewInit();
     FovInit();
@@ -121,8 +127,6 @@ static void HUD_InitPost()
     ColorChatInConsolePatch();
 
     RadarHooks_PatchHudText();
-
-
 }
 
 static int HUD_RedrawHandler(float flTime, int iIntermission, HUD_RedrawNext next)
@@ -153,6 +157,7 @@ static int HUD_RedrawHandler(float flTime, int iIntermission, HUD_RedrawNext nex
     RadarHooks_FlushText();
 
     HudTextZone_SetPassthrough(true);
+
     if (hud_draw->value != 0.0)
     {
         if (scoped)
@@ -165,6 +170,7 @@ static int HUD_RedrawHandler(float flTime, int iIntermission, HUD_RedrawNext nex
 
     // Stock HUD updates may recenter the scoreboard, so place it after that pass.
     g_GameHud->UpdateRadarScoreboard(hud_draw->value != 0.0);
+
     return result;
 }
 
@@ -188,7 +194,6 @@ static int HUD_VidInitHandler(HUD_VidInitNext next)
     ViewVidInit();
     g_GameHud->VidInit();
 
-
     return 1;
 }
 
@@ -205,20 +210,24 @@ static void HUD_UpdateClientDataPost(goldsrc::client_data_t* cdata, float flTime
     g_GameHud->Think(flTime);
 }
 
-static void HUD_PostRunCmdPost(goldsrc::local_state_t* from,
-                               goldsrc::local_state_t* to,
-                               goldsrc::usercmd_t* cmd,
-                               int runfuncs,
-                               double time,
-                               unsigned int random_seed)
+static void HUD_PostRunCmdPost(
+    goldsrc::local_state_t* from,
+    goldsrc::local_state_t* to,
+    goldsrc::usercmd_t* cmd,
+    int runfuncs,
+    double time,
+    unsigned int random_seed
+)
 {
     std::memcpy(&g_LastPlayerState, to, sizeof(goldsrc::local_state_t));
 }
 
-static void HUD_GetStudioModelInterfacePost(int version,
-                                            goldsrc::r_studio_interface_t** ppinterface,
-                                            goldsrc::engine_studio_api_t* pstudio,
-                                            int result)
+static void HUD_GetStudioModelInterfacePost(
+    int version,
+    goldsrc::r_studio_interface_t** ppinterface,
+    goldsrc::engine_studio_api_t* pstudio,
+    int result
+)
 {
     std::memcpy(&IEngineStudio, pstudio, sizeof(IEngineStudio));
     std::memcpy(&g_OriginalStudio, *ppinterface, sizeof(g_OriginalStudio));
@@ -245,9 +254,13 @@ static void UserMsg_CurWeaponPost(const char* name, int size, void* data, int re
     int weaponId = reader.ReadChar();
 
     if (weaponId < 1)
+    {
         g_CurrentWeaponId = 0;
+    }
     else if (state)
+    {
         g_CurrentWeaponId = weaponId;
+    }
 }
 
 static void UserMsg_InitHUDPost(const char* name, int size, void* data, int result)
@@ -262,6 +275,7 @@ static int UserMsg_ResetHUDHandler(const char* name, int size, void* data, UserM
     // death marks, objectives) since the one-shot gmsgInitHUD does not repeat.
     int result = next->Invoke(name, size, data);
     g_GameHud->Reset();
+
     return result;
 }
 
@@ -276,15 +290,20 @@ static int UserMsg_TextMsgHandler(const char* name, int size, void* data, UserMs
     MessageReader reader(data, size);
 
     const int destType = reader.ReadByte();
+
     if (destType == 2)
     {
         std::string message = reader.ReadString();
+
         if (message == "#Game_unknown_command")
         {
             // the Linux cs.so sends the bare command, other servers with a newline after it
             std::string command = reader.ReadString();
+
             while (!command.empty() && (command.back() == '\n' || command.back() == '\r'))
+            {
                 command.pop_back();
+            }
 
             if (std::ranges::contains(hiddenServerCmds, command))
             {
@@ -322,28 +341,7 @@ class ClientMini : public ClientMiniInterface
 {
     std::shared_ptr<taskcoro::TaskCoroImpl> task_runtime_;
     std::optional<radar::integration::Performance> radar_performance_;
-
-    void ShutdownHud()
-    {
-        for (const auto& subscription : g_Unsub)
-        {
-            subscription->Unsubscribe();
-        }
-        g_Unsub.clear();
-        RadarHooks_UnpatchHudText();
-        if (g_GameHud)
-        {
-            g_GameHud->Shutdown();
-            g_GameHud.reset();
-        }
-        radar_performance_.reset();
-
-        if (task_runtime_)
-        {
-            taskcoro::TaskCoro::UnInitialize();
-            task_runtime_.reset();
-        }
-    }
+    std::unique_ptr<studio::StudioAnimation> studio_animation_;
 
 public:
     void Init(nitroapi::NitroApiInterface* nitro_api) override
@@ -361,7 +359,17 @@ public:
         g_Unsub.emplace_back(client_data->HUD_UpdateClientData += HUD_UpdateClientDataPost);
         g_Unsub.emplace_back(client_data->V_CalcRefdef |= Hook_V_CalcRefdef);
         g_Unsub.emplace_back(client_data->HUD_PostRunCmd += HUD_PostRunCmdPost);
-        g_Unsub.emplace_back(client_data->HUD_GetStudioModelInterface += HUD_GetStudioModelInterfacePost);
+        g_Unsub.emplace_back(
+            client_data->HUD_GetStudioModelInterface +=
+            [this](int version, goldsrc::r_studio_interface_t** studio_interface, goldsrc::engine_studio_api_t* studio_api, int result) {
+                if (result != 0)
+                {
+                    HUD_GetStudioModelInterfacePost(version, studio_interface, studio_api, result);
+                    InitializeStudioAnimation();
+                }
+            }
+
+        );
         g_Unsub.emplace_back(client_data->HUD_PlayerMoveInit += HUD_PlayerMoveInitPost);
         g_Unsub.emplace_back(client_data->UserMsg_SetFOV |= UserMsg_SetFOVHandler);
         g_Unsub.emplace_back(client_data->HUD_ProcessPlayerState |= HUD_ProcessPlayerStateHandler);
@@ -402,9 +410,11 @@ public:
 
         ResetInvertMouse();
 
-        for (auto& unsubscriber: g_Unsub) {
+        for (auto& unsubscriber : g_Unsub)
+        {
             unsubscriber->Unsubscribe();
         }
+
         g_Unsub.clear();
 
         ShutdownHud();
@@ -424,7 +434,59 @@ public:
     void GetVersion(char* buffer, int size) override
     {
         if (buffer != nullptr)
+        {
             V_strncpy(buffer, CLIENT_MINI_INTERFACE_VERSION ", " __DATE__ " " __TIME__, size);
+        }
+    }
+
+private:
+    void InitializeStudioAnimation()
+    {
+        studio_animation_.reset();
+
+        nitroapi::StudioAnimationData* data = client()->studio_animation;
+
+        if (data == nullptr)
+        {
+            client()->gEngfuncs->Con_Printf("Studio animation bindings are unavailable.\n");
+
+            return;
+        }
+
+        studio_animation_ = std::make_unique<studio::StudioAnimation>(*data, IEngineStudio, *client()->gEngfuncs);
+
+        if (!studio_animation_->Start())
+        {
+            studio_animation_.reset();
+            client()->gEngfuncs->Con_Printf("Studio animation hooks could not be activated.\n");
+        }
+    }
+
+    void ShutdownHud()
+    {
+        studio_animation_.reset();
+
+        for (const auto& subscription : g_Unsub)
+        {
+            subscription->Unsubscribe();
+        }
+
+        g_Unsub.clear();
+        RadarHooks_UnpatchHudText();
+
+        if (g_GameHud)
+        {
+            g_GameHud->Shutdown();
+            g_GameHud.reset();
+        }
+
+        radar_performance_.reset();
+
+        if (task_runtime_)
+        {
+            taskcoro::TaskCoro::UnInitialize();
+            task_runtime_.reset();
+        }
     }
 };
 

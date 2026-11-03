@@ -193,3 +193,23 @@ if (UNIX)
 else()
     gtest_discover_tests(radar-gl-tests PROPERTIES LABELS gl)
 endif()
+
+add_executable(studio-animation-tests
+        StudioPoseTests.cpp
+        ../src/studio/StudioAnimation.cpp
+        ../src/studio/studio_pose.cpp
+)
+target_include_directories(studio-animation-tests PRIVATE ../src)
+target_link_libraries(studio-animation-tests PRIVATE
+        ncl_studio::ncl_studio
+        GTest::gtest_main
+        goldsrc::abi
+        ncl_math::ncl_math
+        nitro_api::nitro_api
+)
+target_compile_options(studio-animation-tests PRIVATE
+        "$<$<CXX_COMPILER_ID:MSVC>:/fp:precise>"
+        "$<$<NOT:$<CXX_COMPILER_ID:MSVC>>:-fno-fast-math;-ffp-contract=off>"
+)
+
+gtest_discover_tests(studio-animation-tests)

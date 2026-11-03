@@ -37,6 +37,8 @@ Tracked headers can also contain maintained additions. In particular, the `OBS_*
 
 [Maintained Studio facts](../nextclient/goldsrc_abi/tools/maintained_studio_facts.json) record source hashes, constants, sizes, alignment, and field offsets for the manually maintained Studio declarations. The generator does not consume this file. The [Studio layout assertions](../nextclient/goldsrc_abi/tests/studio_layout.cpp) check these declarations when the `goldsrc_abi_golden` target is compiled. Keep machine-specific commands and run results in ignored session or build reports.
 
+[studio_renderer.h](../nextclient/goldsrc_abi/include/goldsrc/cstrike/studio_renderer.h) is a maintained header containing opaque stock renderer declarations. It declares no object layout. NitroApi owns the platform-specific access to verified live fields. `ClientData::studio_animation` exposes the borrowed bindings after the required methods and globals are resolved; `ClientModule` owns the table and clears the pointer before unload.
+
 ## Declaration rules
 
 - `goldsrc` contains stock engine facts; `goldsrc::cstrike` contains stock

@@ -37,6 +37,8 @@ python nextclient/goldsrc_abi/tools/library.py check
 
 [Факты Studio](../nextclient/goldsrc_abi/tools/maintained_studio_facts.json) содержат хеши источников, константы, размеры, выравнивание и смещения полей объявлений, поддерживаемых вручную. Генератор не читает этот файл. [Проверки размещения структур Studio](../nextclient/goldsrc_abi/tests/studio_layout.cpp) проверяют объявления при компиляции цели `goldsrc_abi_golden`. Команды с локальными путями и результаты запусков хранятся в игнорируемых отчетах сессии или сборки.
 
+[studio_renderer.h](../nextclient/goldsrc_abi/include/goldsrc/cstrike/studio_renderer.h) поддерживается вручную и содержит непрозрачные объявления штатных renderer без описания расположения полей объекта. NitroApi предоставляет платформенный доступ к подтвержденным живым полям. `ClientData::studio_animation` предоставляет заимствованные привязки после разрешения необходимых методов и глобальных переменных. `ClientModule` владеет таблицей и обнуляет указатель перед выгрузкой.
+
 ## Правила объявлений
 
 - `goldsrc` содержит факты штатного движка, `goldsrc::cstrike` содержит факты

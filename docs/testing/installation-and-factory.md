@@ -22,7 +22,7 @@ This check establishes preflight ordering and platform mappings. It does not est
 
 ## Actual provider factory
 
-`nitro-api-factory-probe` is a standalone executable that uses only the public lifecycle header and the platform loader. It loads the exact absolute provider path, resolves `CreateInterface`, requests `NITRO_FRAME_LIFECYCLE_001`, creates two distinct nonzero numeric subscriptions, and removes both repeatedly before observers disappear or the provider unloads. Missing provider, factory, or interface and invalid subscription IDs fail with a phase diagnostic. It does not initialize NitroApi's engine integration.
+`nitro-api-factory-probe` is a standalone executable that uses the public lifecycle interface header with the platform loader. It loads the exact absolute provider path, resolves `CreateInterface`, requests `NITRO_FRAME_LIFECYCLE_001`, creates two distinct nonzero numeric subscriptions, and removes both repeatedly before observers disappear or the provider unloads. Missing provider, factory, or interface and invalid subscription IDs fail with a phase diagnostic. It does not initialize NitroApi's engine integration.
 
 `verify-nitro-api-factory` builds the probe and the real shared `nitro_api` provider. It prepares `<binaryDir>/nextclient/nitro_api/factory-probe/<config>/`, copies the provider and runtime dependencies, checks copied SHA-256 values, writes `manifest.sha256`, and executes the probe against that prepared provider.
 

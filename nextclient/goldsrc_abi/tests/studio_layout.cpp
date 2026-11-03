@@ -8,6 +8,13 @@ static_assert(sizeof(void*) == 4);
 static_assert(goldsrc::ET_NORMAL == 0);
 static_assert(goldsrc::MAXSTUDIOBONES == 128);
 
+static_assert(sizeof(goldsrc::mstudioseqgroup_t) == 104);
+static_assert(alignof(goldsrc::mstudioseqgroup_t) == 4);
+static_assert(offsetof(goldsrc::mstudioseqgroup_t, label) == 0);
+static_assert(offsetof(goldsrc::mstudioseqgroup_t, name) == 32);
+static_assert(offsetof(goldsrc::mstudioseqgroup_t, unused1) == 96);
+static_assert(offsetof(goldsrc::mstudioseqgroup_t, unused2) == 100);
+
 static_assert(sizeof(goldsrc::mstudiobonecontroller_t) == 24);
 static_assert(alignof(goldsrc::mstudiobonecontroller_t) == 4);
 static_assert(offsetof(goldsrc::mstudiobonecontroller_t, bone) == 0);

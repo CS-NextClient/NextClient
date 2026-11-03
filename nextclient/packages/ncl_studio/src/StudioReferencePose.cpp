@@ -1,9 +1,9 @@
 #include "ncl_studio/StudioReferencePose.h"
 
-#include <cmath>
 #include <string>
 
 #include <goldsrc/format/studio.h>
+#include <ncl_math/trigonometry.h>
 
 #include "HeaderShape.h"
 #include "table_bounds.h"
@@ -14,12 +14,12 @@ namespace ncl_studio
     {
         StudioBoneTransform LocalTransform(const goldsrc::mstudiobone_t& bone)
         {
-            float sx = std::sin(bone.value[3]);
-            float cx = std::cos(bone.value[3]);
-            float sy = std::sin(bone.value[4]);
-            float cy = std::cos(bone.value[4]);
-            float sz = std::sin(bone.value[5]);
-            float cz = std::cos(bone.value[5]);
+            float sx, cx;
+            ncl_math::SinCos(bone.value[3], sx, cx);
+            float sy, cy;
+            ncl_math::SinCos(bone.value[4], sy, cy);
+            float sz, cz;
+            ncl_math::SinCos(bone.value[5], sz, cz);
 
             // GoldSrc bone angles are radians about X, Y, Z, composed as Rz * Ry * Rx.
             return StudioBoneTransform{

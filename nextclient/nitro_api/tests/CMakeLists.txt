@@ -2,6 +2,13 @@ find_package(GTest CONFIG REQUIRED)
 include(GoogleTest)
 
 add_executable(nitro_api-tests
+        StudioAnimationBindingsTests.cpp
+        StudioDirectCallTests.cpp
+        StudioDispatchTests.cpp
+        ../../client_mini/src/studio/StudioAnimation.cpp
+        ../../client_mini/src/studio/studio_pose.cpp
+        ../src/modules/client/studio_animation.cpp
+        ../src/modules/client/ClientModule.cpp
         FrameLifecycleTests.cpp
         EngineFrameLifecycleTests.cpp
         ../src/modules/engine/EngineModule.cpp
@@ -19,9 +26,28 @@ add_executable(nitro_api-tests
         ../src/modules/sdl2/SDL2Module.cpp
         ../dep/easyloggingpp/src/easylogging++.cc
 )
-target_include_directories(nitro_api-tests PRIVATE ../include ../src ../dep/easyloggingpp/src)
-target_link_libraries(nitro_api-tests PRIVATE GTest::gtest_main nitro_utils::nitro_utils magic_enum::magic_enum
-        funchook-static xbyak::xbyak hl1_source_sdk::hl1_source_sdk NextClient::profiling)
+target_include_directories(nitro_api-tests PRIVATE
+        ../include
+        ../src
+        ../dep/easyloggingpp/src
+        ../../client_mini/src
+        ../../client_mini/tests
+)
+target_link_libraries(nitro_api-tests PRIVATE
+        GTest::gtest_main
+        nitro_utils::nitro_utils
+        magic_enum::magic_enum
+        funchook-static
+        xbyak::xbyak
+        hl1_source_sdk::hl1_source_sdk
+        NextClient::profiling
+        ncl_math::ncl_math
+        ncl_studio::ncl_studio
+)
+target_compile_options(nitro_api-tests PRIVATE
+        "$<$<CXX_COMPILER_ID:MSVC>:/fp:precise>"
+        "$<$<NOT:$<CXX_COMPILER_ID:MSVC>>:-fno-fast-math;-ffp-contract=off>"
+)
 target_compile_definitions(nitro_api-tests PRIVATE ELPP_THREAD_SAFE ELPP_DISABLE_DEFAULT_CRASH_HANDLING NOMINMAX)
 
 if (WIN32)

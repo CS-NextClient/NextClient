@@ -1,6 +1,6 @@
 # Studio model geometry
 
-This package converts and validates studio model data without engine or GL dependencies. The shader renderer's ownership and batching are described in [its architecture reference](../../../docs/renderer-architecture.md).
+This package converts and validates Studio model data and evaluates native-compatible bone animation without engine or GL dependencies. The shader renderer's ownership and batching are described in [its architecture reference](../../../docs/renderer-architecture.md).
 
 - Treat offsets, counts, command lists and bone indices as untrusted file data. Bound reads
   by the supplied buffer size, which can end before the header's declared file length when
@@ -20,4 +20,6 @@ This package converts and validates studio model data without engine or GL depen
 - `ReadStudioMetadata` owns bounds, bounded sequence names and timing, body bases, and bounded submodel names. `ReadStudioTextures` owns texture and skin tables. Both accept the supplied cached-block extent without requiring embedded pixels or full geometry validation. Share table-bound arithmetic through the private `table_bounds.h`; preserve widened skin-dimension products. Body-choice limits belong to consumers.
 - `ReadStudioReferencePose` composes default bone values through the parent hierarchy in model space. Bone angles are radians about X, Y, Z, composed as `Rz * Ry * Rx`. Points include translation; normals use only the rotation of their independent normal bone.
 
-Use the affected studio conversion/validation cases in `client_mini-tests` for behavioral changes, then build the affected consumers under the parent package and engine rules.
+The animation helpers accept trusted loaded Studio tables and compressed runs. They preserve native controller selection and compressed-channel sampling. Shared quaternion and matrix types, interpolation, and algebra belong to `ncl_math`; file-buffer validation remains the responsibility of the bounded readers.
+
+Run `ncl_math-tests` for shared math, `ncl_studio-tests` for bone decoding, and `studio-animation-tests` for client pose orchestration. Use the affected studio conversion/validation cases in `client_mini-tests` for behavioral changes, then build the affected consumers under the parent package and engine rules.
