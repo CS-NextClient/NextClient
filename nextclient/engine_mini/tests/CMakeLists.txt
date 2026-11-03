@@ -8,6 +8,17 @@ include(GoogleTest)
 add_executable(studio-pose-tests StudioPoseTests.cpp)
 target_include_directories(studio-pose-tests PRIVATE ../src)
 target_link_libraries(studio-pose-tests PRIVATE GTest::gtest_main goldsrc::abi)
+
+if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+    include(CheckCXXCompilerFlag)
+    check_cxx_compiler_flag("-fno-assume-sane-operators-new-delete" NEXTCLIENT_HAS_NO_ASSUME_SANE_OPERATORS_NEW_DELETE)
+
+    if (NEXTCLIENT_HAS_NO_ASSUME_SANE_OPERATORS_NEW_DELETE)
+        # Allocation counters observe global state modified by replacement new/delete operators.
+        target_compile_options(studio-pose-tests PRIVATE -fno-assume-sane-operators-new-delete)
+    endif ()
+endif ()
+
 gtest_discover_tests(studio-pose-tests)
 
 add_executable(studio-effect-bounds-tests
