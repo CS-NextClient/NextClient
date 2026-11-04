@@ -43,9 +43,9 @@ Use separate Windows and Linux configuration files. Concurrent servers need sepa
 
 ## Hostage identity adapter
 
-On the locked stack, the AMXX native hostage ID can be zero or differ from the ID sent in `HostagePos`. The plugin observes real messages and matches their coordinates to an existing hostage entity. A match is accepted only for one entity within 0.25 units and a wire ID in `1..255`. The observed wire ID takes precedence over the native value.
+With these component versions, the AMXX function can return a zero hostage ID or an ID that differs from the one sent in `HostagePos`. The plugin observes real messages and matches their coordinates to an existing hostage entity. A match is accepted only for one entity within 0.25 units and a wire ID in `1..255`. The observed message ID takes precedence over the value returned by the AMXX function.
 
-The state records the selected `hostage_id`, `native_hostage_id`, and `hostage_id_source`. Gameplay checks require positive, unique IDs and stable identity through round restarts. Ambiguous coordinate matches do not establish an ID. Adapter logic is in [radar.inc](../../test_support/plugins/nextclient_testlab/radar.inc).
+The state records the selected `hostage_id`, `native_hostage_id`, and `hostage_id_source`. Gameplay checks require positive, unique IDs and stable identity through round restarts. Ambiguous coordinate matches do not establish an ID.
 
 ## Meaning of results
 
@@ -59,6 +59,6 @@ The state records the selected `hostage_id`, `native_hostage_id`, and `hostage_i
 
 The headless scenario suites report `operations` separately and leave `pvs`, `visual`, and the aggregate `server` field as `not_run`. In hostage-follow scenes, inside/outside/return checks also remain `not_run` without a real client. A successful operation result does not confirm message delivery to a particular player or correct radar rendering. A message without an identified recipient is reported as `not_confirmed`.
 
-For the moving-hostage case, connected-client acceptance requires a stable viewer, entry into PVS, at least 6 continuous seconds outside PVS with `original_pack=0`, at least 3 periodic `HostagePos` messages for the selected ID to the operator, at least 256 units of accumulated movement from those messages, and a return inside PVS with `original_pack=1`. The developer also checks the radar's coordinate source transitions. Procedures are in the [manual testing guide](../testing/manual-testing.md).
+For the moving-hostage check, connect a client and keep the observing player stationary. Acceptance requires entry into PVS, at least 6 continuous seconds outside PVS with `original_pack=0`, at least 3 periodic `HostagePos` messages for the selected ID to the operator, at least 256 units of accumulated movement from those messages, and a return inside PVS with `original_pack=1`. The developer also checks the radar's coordinate source transitions. Procedures are in the [manual testing guide](../testing/manual-testing.md).
 
 Use the exact run's `report.json`, `events.clean.jsonl`, and `server.clean.log` when sharing evidence. Raw logs and session secrets remain local. Check report completeness and the build, server, and visual statuses independently; `not_run` means the relevant evidence has not been obtained.

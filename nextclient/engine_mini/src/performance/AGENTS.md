@@ -10,4 +10,4 @@ The stable performance core constructs clock, final concrete monitor, and mapper
 
 Reset the mapper session before stock `CL_ClearState` and at map changes. Its private epoch rejects stale outer views without clearing fresh nested snapshots. Preserve synchronous map/connection/world identity checks after the native chain. Native context checks belong at matrix-capture and outline boundaries, not inside model or sampler loops.
 
-The maintained [monitor contract](../../../../docs/performance-monitor.md#developer-api) describes attribution and output semantics. Renderer context and terminal ordering follow the [renderer owner rules](../graphics/render/AGENTS.md). Verify the affected normal and profiler consumers; a static test engine does not verify shipping factory registration.
+The maintained [monitor architecture](../../../../docs/performance-architecture.md) describes measurement types and participating modules. Renderer context and terminal ordering follow the [renderer owner rules](../graphics/render/AGENTS.md). Verify the affected normal and profiler consumers; a static test engine does not verify shipping factory registration.

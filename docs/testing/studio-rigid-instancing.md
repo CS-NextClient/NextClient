@@ -1,21 +1,48 @@
-# Studio rigid submission and verification
+# Verify Studio rigid instancing
 
-[Russian version](studio-rigid-instancing.ru.md).
+[Russian version](studio-rigid-instancing.ru.md) | [Renderer architecture](../renderer-architecture.md) | [Diagnostics](../renderer-diagnostics.md) | [Testing index](README.md)
 
-The Studio renderer combines adjacent eligible rigid packets into instanced draws over the union of their body-part ranges. Geometry preparation creates a separate VAO for instance attributes; packet preparation provides the builtin rigid shader and submission-owned instance buffer. Incompatible packets retain ordinary submission.
+Rigid instancing draws several instances of a model together. Verify that drawing repeated models together preserves the image and reduces OpenGL calls. Models that cannot be combined must still render completely. Compare CPU and GPU time to assess performance; fewer calls alone do not establish a speedup.
 
-Rigid geometry accepts a single body part with one mesh in each of at most three nonempty submodels, equal triangle index counts, contiguous index ranges, disjoint used vertex intervals, and at most 180 union indices. Every consumed position and normal uses one bone per selected range. Each instance carries that captured bone matrix, its selected vertex interval, and the exact float bits of blend in a 64-byte record. Slot 8 reads three unsigned integers at byte 48: the interval endpoints and blend at byte 56. The rigid legacy fragment consumes blend for alpha, and additive RGB uses the same instance value. The geometry owner retains the proof after CPU vertex/index arrays are released.
+## Prepare the comparison
 
-Only adjacent packets from the same geometry and prepared builtin legacy program may batch. Every captured shared state field and consumed mesh input must match exactly. Bone matrices, selected body ranges, and finite blend values may differ. Blend retains its captured value without clamping. Authored materials, chrome, glow shells, entity lights, flipped models, non-unit bone scale, nonfinite consumed values, stale resources, and unsupported geometry use ordinary submission. Mutable remap skins retain their immediate path. Union instancing requires primitive restart disabled. Current renderer passes do not support active transform feedback or primitive-count queries; their timing queries are compatible.
+Use a fixed scene or recorded demo with repeated visible Studio models. Record the source revision, installed modules, GPU/driver, resolution, shader/material/queue settings, and monitor configuration. Prepare content with the [Studio tools](../tools/studio-content.md) and install a matching module/resource set using the [installation procedure](installation-and-factory.md).
 
-Each Flush uploads at most 128 ordered records once, only when a batch exists. Each batch submits one `glDrawElementsInstanced`; its instance attributes belong to a separate geometry VAO. Rejected union vertices receive finite clip coordinates outside an X clip plane, including with depth clamp enabled. Selected vertices use the ordinary shader's shared transform and lighting code. Submission preserves transparent order and restores caller bindings and indexed Bones UBO range.
+Use repeated models with ordinary built-in materials for the batching case, then include authored materials and other fallback cases. The diagnostic counters explain why a scene does not batch. The [renderer architecture](../renderer-architecture.md#engine-integration) describes the compatibility requirement.
 
-`r_studio_rigid_stats reset` clears the cumulative submission counters. `r_studio_rigid_stats` prints physical GL API calls, logical packet groups, logical triangles, submitted triangles, instance batches, saved calls, instance bytes/uploads, and run fallback reasons. A `glMultiDrawElements` invocation counts as one physical call regardless of its subdraw count. Logical triangles describe selected geometry; submitted triangles include the rejected body ranges. `saved_calls` counts ordinary packet calls removed by accepted instance batches. Fallback reasons count packets considered at queued run boundaries.
+## Observe drawing and counters
 
-CPU/Tracy scopes `Instance planning`, `Instance upload`, and `Instance submission` separate planning, the actual `glBufferSubData` call, and instanced draw submission. Detailed Studio collection enables these scopes. The ordinary Bones UBO path remains available.
+1. Enable `r_studio_shader 1` and `r_studio_queue 1`. Keep material settings appropriate to the case.
+2. Run `r_studio_rigid_stats reset` immediately before the fixed segment, then `r_studio_rigid_stats` after it. Save the output with the scene settings.
+3. Repeat the segment with `r_studio_queue 0`. This disables both queuing and combined model drawing. The timing difference reflects both features and does not isolate the effect of combining models.
+4. Compare captures using [image comparison](../tools/image-comparison.md) and inspect the cases below. Repeat timing runs with the same warmup and capture settings.
 
-Capture submission phases with `r_studio_phases_start name first_demo_frame last_demo_frame`. Its `draws` field counts logical packet groups. `physical_draws` counts actual GL calls, while `submitted_triangles` includes clipped union ranges. The [diagnostics guide](../renderer-diagnostics.md#record-phases-during-demo-playback) defines schema 2 and export boundaries.
+| Case | Pass condition |
+|---|---|
+| Repeated eligible models, including different body selections and poses | The counters report groups of instances drawn together and saved calls. Geometry and poses match the result with `r_studio_queue 0`. |
+| Transparent, additive, masked, and fogged models | Order, coverage, color, and depth match the reference. |
+| State change between adjacent models | Models with different drawing settings are not combined in one call. The image matches the reference. |
+| Authored materials or other unsupported inputs | The fallback path renders the complete model without duplicate or missing geometry. |
+| Map reset, context recreation, and return to the scene | Rendering resumes with current resources and correct poses. |
 
-`StudioRenderer` owns a `StudioPosePool`. One immutable complete 6144-byte palette is captured per model draw key and shared by packet/effects handles. Handle copies and moves do not copy the palette. Free slots are reused; retained preview/effects handles survive pool reset or destruction until their last release. Ordinary draws upload the captured palette; rigid records use the consumed captured bone matrix.
+`physical_draws` counts GL API calls; one multidraw call counts once. The group and triangle counters describe the geometry selected for drawing. `submitted_triangles` also includes triangles sent to OpenGL and discarded during instanced drawing. `saved_calls` reports how many drawing calls were avoided by combining models. Compare counts over the same segment after resetting them; these counters are cumulative.
 
-The focused offscreen GL checks are `StudioCaptureGlTest.Rigid*` in `studio-capture-gl-tests`. They cover pose/body pixels, adjacent batches with matching or different selected body ranges, shared fog, transparent order, masked/additive depth behavior, capacity boundaries, primitive restart, caller bindings/divisors/UBO range, bone proof, physical/logical accounting, phase capture, and resource recreation. `StudioPoseTest` in `studio-pose-tests` checks immutable copies, reuse, reset, allocation behavior, and last release. `StudioPhaseCaptureTest` in `studio-phase-capture-tests` checks identities, timing, ranges, nesting, aborts, capacity, and export errors. These tests establish submission and ownership behavior; installed-engine appearance and speed require developer-run observations with matching scenes and settings.
+## Measure the cost
+
+Use `cl_perf_batch 2` for detailed Studio CPU timing. In Tracy, `Instance planning`, `Instance upload`, and `Instance submission` separate the corresponding costs. Record those diagnostics separately from a production timedemo with profiling and phase capture disabled.
+
+For a frame-aligned comparison, capture the same demo-frame range, including both endpoints. Use `r_studio_phases_start <name> <first_demo_frame> <last_demo_frame>`, then stop the capture and export it. The [phase diagnostics](../renderer-diagnostics.md#recording-rendering-stages-during-demo-playback) define the commands, fields, completion marker, and overflow handling. Compare only records with `complete=1` and matching demo-frame numbers. Retain both CPU/GPU measurements and draw counts.
+
+## Automated checks
+
+Configure an x86 test build and build each affected target separately. For the tracked Ninja test preset:
+
+```text
+cmake --preset ninja-tests
+cmake --build --preset ninja-tests-release --target studio-capture-gl-tests
+cmake --build --preset ninja-tests-release --target studio-pose-tests
+cmake --build --preset ninja-tests-release --target studio-phase-capture-tests
+ctest --test-dir build/ninja-tests -C Release -R "^(StudioCaptureGlTest[.]Rigid|StudioPoseTest[.]|StudioPhaseCaptureTest[.])" --output-on-failure
+```
+
+These tests compare appearance, object order, poses, recovery after graphics changes, and capture export. GL checks require OpenGL 3.3 compatibility support. A skipped case does not establish rendering correctness. Record automated results separately from installed-engine appearance and performance.

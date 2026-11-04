@@ -17,9 +17,9 @@ This plugin runs separately from `nextclient_testlab`. It requires an updated Ne
 
 Open the menu with `ncl_fx` or `ncl_fx_menu` in the client console, or type `/ncl_fx` in public or team chat. No administrator flag is required. Every action affects only the player's own target.
 
-The main menu reports API readiness and whether the target's material binding completed. It creates or replaces a leet, AK47 or chicken target, switches between `studio` and `weapon_finish`, cycles through the three outline modes, toggles outside-PVS transmission, opens effect and distance controls, prints status, and removes the target. Creation resets the effects to their documented defaults. Program changes retain scalar values. Material actions require a ready NextClient API; status and removal remain available without readiness.
+The main menu reports API readiness and whether the target's material binding completed. It creates or replaces a leet, AK47 or chicken target, switches between `studio` and `weapon_finish`, cycles through the three outline modes, toggles outside-PVS transmission, opens effect and distance controls, prints status, and removes the target. Creation resets the effects to their documented defaults. Changing the program preserves numeric parameter values. Material actions require a ready NextClient API; status and removal remain available without readiness.
 
-`Edit effect parameters` includes every parameter in the table below. Select a parameter to decrease or increase it, cycle the step size, set its minimum or maximum, or choose `Enter a number`. Numeric input uses the standard message input and accepts `cancel` without applying a value. Reopening the menu or running a console subcommand cancels pending numeric input. Ordinary scalars are stored and sent as finite floats in the listed units. Menu steps control button increments only. Direct numeric input retains float precision. Outline mode accepts only `0`, `1`, or `2`.
+`Edit effect parameters` includes every parameter in the table below. Select a parameter to decrease or increase it, cycle the step size, set its minimum or maximum, or choose `Enter a number`. Numeric input uses the standard message input and accepts `cancel` without applying a value. Reopening the menu or running a console subcommand cancels pending numeric input. Numeric parameters accept finite `float` values in the units listed in the table. `NaN` and infinity are invalid. Menu steps control button increments only. Direct numeric input retains float precision. Outline mode accepts only `0`, `1`, or `2`.
 
 | Parameter | Normal step | Fine step | Coarse step |
 |---|---|---|---|
@@ -30,7 +30,7 @@ The main menu reports API readiness and whether the target's material binding co
 | `glitch_seed`, `noise_seed` | `1` | `1` | `100` |
 | `outline_mode` | `1` | `1` | `1` |
 
-`Move target along view` places the model 64, 160, 256, 512, 1024, 2048, 4096 or 8192 units from the current camera. Placement follows the viewing ray and can cross a wall. Use `ncl_fx move distance` for another distance in the supported range. Submenus have a back action; exiting a menu releases it. Disconnect and plugin shutdown release menus and pending input as well as the target.
+`Move target along view` places the model 64, 160, 256, 512, 1024, 2048, 4096 or 8192 units from the current camera. Placement follows the viewing ray and can cross a wall. Use `ncl_fx move distance` for another distance in the supported range. Each submenu provides a way to go back or close the menu. Disconnecting the player or unloading the plugin closes the menu, cancels pending input, and removes the test model.
 
 ## Commands
 
@@ -42,14 +42,14 @@ Run target commands from a player's client console. Each player controls their o
 | ncl_fx spawn [leet\|ak47\|chick] | Create or replace the player's target 160 units ahead. Default model: leet. fill 0.5, outline 2, glow 1, occluded-only outline mode, outside-PVS transmission enabled. |
 | ncl_fx move [distance] | Place the target ahead of the current camera, 16..8192 units. Placement follows the viewing ray and can cross a wall. |
 | ncl_fx program studio | Use the standard material program on every model texture. |
-| ncl_fx program weapon_finish | Use the weapon-finish program while retaining the current scalar settings. |
+| ncl_fx program weapon_finish | Use the weapon-finish program while retaining the current numeric parameter values. |
 | ncl_fx pvs 0 / ncl_fx pvs 1 | Disable or enable explicit outside-PVS transmission. |
 | ncl_fx set parameter value | Set a parameter using the human-readable values below. The plugin sends finite floats in the parameter's units. |
 | ncl_fx status | Print the entity index, model, program, binding result, transmission flag, readiness and current float parameter values. |
 | ncl_fx remove | Clear and remove the target. |
 | ncl_fx_check_numbers | Check numeric output without a target; read-only. |
 
-`ncl_fx_check_numbers` runs from the server console or a connected player's console. It checks formatting and parsing of seven float values by comparing their bit representations. It requires no target and only reads diagnostic values; materials, entities and menu state stay unchanged. Expected summary: `[NCL FX] number formatting: PASS (7/7)`. Small numbers use scientific notation through the standard JSON module.
+`ncl_fx_check_numbers` runs from the server console or a connected player's console. It checks that seven reference numbers preserve their `float` precision after formatting and parsing. Expected result: `[NCL FX] number formatting: PASS (7/7)`. No test model is required, and plugin state remains unchanged.
 
 | Parameter for set | Range |
 |---|---|
@@ -64,7 +64,7 @@ Glitch includes geometry displacement and RGB separation. Its displacement, band
 
 ## Visual checks
 
-In a network game, only server parameter commands activate fill and outline. Binding a preset without those commands leaves effects disabled. The `pvs` command controls outside-PVS transmission separately from visible effects. Local `.mat` files and `r_mat_bind`/`r_mat_param` cannot activate network highlighting.
+In multiplayer games, fill and outline effects are enabled only by parameter commands received from the server. Binding a preset without those commands leaves effects disabled. The `pvs` command controls outside-PVS transmission separately from visible effects. Local `.mat` files and `r_mat_bind`/`r_mat_param` cannot activate network highlighting.
 
 ```text
 ncl_fx spawn leet
@@ -110,7 +110,7 @@ ncl_fx set glitch_speed 12
 
 `ncl_fx set glitch_speed 0` freezes the pattern. Change `glitch_seed` for a different deformation, or set `glitch 0` to disable it. Test `ncl_fx set dissolve 0.5` and `ncl_fx set noise 0.5` separately, then combine them with fill/outline/glitch. Setting either amount to `1` removes the complete surface and its effect coverage. Repeat with `ncl_fx program weapon_finish`, `ncl_fx spawn ak47` and `ncl_fx spawn chick`.
 
-For outside-PVS checks, leave the target in another room or beyond a map leaf boundary and compare `ncl_fx pvs 1` with `ncl_fx pvs 0`. A second vanilla client should retain normal visibility behavior. GameDLL rejection rules and engine packet capacity remain in force. The GameDLL visibility cache can retain a recently visible entity briefly after disabling the flag. Console status reports the requested transmission flag and material binding result; the visual PVS observation requires connected clients and is not an automated test.
+For outside-PVS checks, leave the target in another room or beyond a map leaf boundary and compare `ncl_fx pvs 1` with `ncl_fx pvs 0`. A second vanilla client should retain normal visibility behavior. GameDLL rejection rules and the engine's maximum number of entities per packet remain in force. The GameDLL visibility cache can retain a recently visible entity briefly after disabling the flag. Console status reports the requested transmission flag and material binding result; the visual PVS observation requires connected clients and is not an automated test.
 
 ## Build
 

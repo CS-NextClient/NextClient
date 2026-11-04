@@ -6,7 +6,7 @@ When drawing a Studio model, the client selects a material by texture name. Outs
 
 ## Model document
 
-The document beside `models/v_glock18.mdl` is `models/v_glock18.mat`. Its `materials` object maps model texture names to materials. Texture-name matching is case-insensitive. Every mesh using a selected texture receives its material, including meshes in other body parts. The selected skin family determines each mesh's texture before the client selects its material.
+Materials for `models/v_glock18.mdl` are defined in `models/v_glock18.mat`. The `materials` section lists model texture names and their assigned materials. Texture names are case-insensitive. A material affects every model part using that texture; the selected skin can change which textures are used.
 
 ```json
 {
@@ -43,15 +43,15 @@ Image paths are relative to the game directory. Use forward slashes and the `.pn
 
 ## Program manifest
 
-A program manifest declares `version`, `program`, and `parameters`. Each parameter declares its type (`scalar`, `vec4`, or `texture`) and may declare a default, bounds, label, hint, or editor widget. A scalar with `instance: true` supports per-entity writes through the [server API](weapon-materials-server-api.md#natives). The server sends a finite `Float:value` in the parameter's units. The client preserves float precision and clamps runtime writes to declared bounds. An ordinary scalar requires no step or value grid.
+A manifest describes the program’s available parameters: names, types, defaults, allowed ranges, and editor controls. Its main fields are `version`, `program`, and `parameters`. A `scalar` parameter with `instance: true` can be changed per entity through the [server API](weapon-materials-server-api.md#natives). Values are floating-point numbers clamped to the specified range. They are not rounded to a slider step.
 
-The optional `render_contract` field is an owned, nonempty string of at most 64 bytes. It remains an extension of manifest version `1`. The material package validates its representation only. An absent field leaves the program parameters generic. The engine publishes a manifest only when its program name matches the requested embedded program, both shader sources are embedded, and the renderer accepts its contract.
+The optional `render_contract` field selects a supported material profile. It must be a nonempty string of at most 64 bytes and is available in manifest version `1`. Without this field, the program uses generic parameters.
 
-The embedded `studio` and `weapon_finish` manifests declare `"render_contract": "studio_effects_v1"`. `render::StudioProgramContract` fixes coverage, base-tint alpha, outline, occlusion, and glow roles, including their types, ranges, defaults, instance declarations. Labels, groups, and editor presentation stay in each manifest. The two restricted activation roles, `uOccludedAmount` and `uOutlineWidth`, may declare any finite default within their fixed range; other semantic defaults must match the profile exactly. Adding another embedded program with this profile requires its shader pair, embedded-resource enrollment, and a compatible manifest declaration. Coverage, picking, effects, and server policy use the profile without additional program-name registration.
+The built-in `studio` and `weapon_finish` programs support the `studio_effects_v1` material profile. Its effect parameters must use the supported types, ranges, and defaults. Use the [effects reference](material-effects.md) for the visible behavior and the shipped manifest for exact parameter definitions.
 
 The schema allows 64 parameters and eight texture parameters. Optional `groups` determine editor sections. Optional `strings` names the localization file. The shipped [`weapon_finish` manifest](../nextclient/engine_mini/assets/shaders/weapon_finish.json) contains the authoritative defaults, bounds, and editor grouping.
 
-A scalar with `widget: "choice"` declares `choices` as an array of localized labels. Values are integer indices: `min: 0`, `max: choices.size()-1`, and an integer `default` in that range. The editor displays a non-editable list. Fractional indices are rejected before clamping; out-of-range integer writes clamp to the range. For example, `uOutlineMode` uses index `0` for occluded-only outline, `1` for the entire silhouette, and `2` for visible-only outline.
+A scalar with `widget: "choice"` declares `choices` as an array of localized labels. Values are integer indices: `min` is `0`, and `max` is one less than the number of choices, and an integer `default` in that range. The editor displays a non-editable list. Fractional indices are rejected before clamping; out-of-range integer writes clamp to the range. For example, `uOutlineMode` uses index `0` for occluded-only outline, `1` for the entire silhouette, and `2` for visible-only outline.
 
 ## `weapon_finish` inputs
 
@@ -70,8 +70,8 @@ A scalar with `widget: "choice"` declares `choices` as an array of localized lab
 | `uSphereMap`, `uReflectivity` | Image of a lit sphere (matcap) and reflection intensity. |
 | `uSpecular`, `uGloss` | Scene-light highlight intensity and exponent. |
 
-UV transforms contain `[scale_u, scale_v, offset_u, offset_v]`. The shader blends the pattern into the base, applies the wear threshold with `smoothstep`, mixes in the underlay, then adds masked highlights to the lit surface. Specular uses direct lighting; matcap reflection uses the total light level.
+A UV transform, `[scale_u, scale_v, offset_u, offset_v]`, sets image scale and offset on the surface. The pattern overlays the base texture. Worn areas reveal the underlying layer. The reflection mask controls shine, and scene lighting affects highlights and matcap reflection.
 
-The parser and validation contracts are implemented in [`ncl_material`](../nextclient/packages/ncl_material/include/ncl_material/MaterialDoc.h). The [renderer reference](renderer-architecture.md) describes texture binding, GL resources, and draw ordering.
+Use [matgen](tools/matgen.md) to validate a document before delivery. The [renderer architecture](renderer-architecture.md) explains the responsibilities of materials and rendering.
 
 [Material effects](material-effects.md)

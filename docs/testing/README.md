@@ -2,7 +2,7 @@
 
 [Russian version](README.ru.md) | [All documentation](../README.md)
 
-Use this index to choose a procedure, prepare its tools and scenes, and record the observed result. A successful build, a unit-test result, a server operation, and a visual observation provide separate evidence.
+Use the tables below to choose a verification procedure. Each procedure describes preparation, actions, and expected results. A successful build, a unit-test result, a server operation, and a visual observation provide separate evidence.
 
 ## Setup and operation
 
@@ -21,10 +21,9 @@ Use this index to choose a procedure, prepare its tools and scenes, and record t
 |---|---|
 | Radar scenarios | [Manual test cases and role/outcome matrix](manual-testing-scenarios.md) |
 | Radar layers | [Verification procedure](radar-layers.md) and [acceptance cases](radar-layer-cases.md) |
-| Studio rendering | [Rendering verification](studio-rendering.md) |
+| Studio rendering | [Rendering verification](studio-rendering.md) and [rigid instancing](studio-rigid-instancing.md) |
 | Material editor | [Scene verification](material-editor-scene.md) |
 | Performance monitor | [Runtime checks](performance-monitor.md) |
-| MSAA | [Settings and verification](../msaa.md) |
 
 ## Diagnostics and automated checks
 
@@ -33,8 +32,8 @@ Use this index to choose a procedure, prepare its tools and scenes, and record t
 | [Renderer diagnostics](../renderer-diagnostics.md) | Capture renderer state and inspect the resulting files. |
 | [Image comparison](../tools/image-comparison.md) | Compare prepared captures and set difference thresholds. |
 | [Matgen regression checks](matgen.md) | Verify material validation, UV output, and edge-wear baking. |
-| [Developer tools verification](../tools/developer-panel.md#verification) | Check command construction, translation, launchers, and small generated outputs. |
-| [Installation and shipping factory checks](installation-and-factory.md) | Verify the maintained installer on temporary destinations and load the real prepared lifecycle provider. |
+| [Developer tools verification](../tools/developer-panel.md#verification) | Check command construction, translation, launch scripts, and files produced by generators in the test cases. |
+| [Installation and NitroApi library checks](installation-and-factory.md) | Verify the maintained installer on temporary destinations and load the built NitroApi library and check its public interface. |
 | [Repository test targets](../../AGENTS.md#tests-and-verification) | Select CMake test targets and the required configuration. |
 
 Record the relevant source revision, build configuration, installed artifacts, selected scenario, and result. Reuse passing evidence for an unchanged source and configuration snapshot; repeat checks when the affected behavior changes or a concrete concern requires it.

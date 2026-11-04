@@ -1,43 +1,17 @@
-# NitroApi for NextClient
+# Working with NitroApi
 
-NitroApi installs hooks in the stock engine and related libraries. Its typed wrappers support chained handlers, observers, and direct calls to the original function. Engine addresses and signatures are maintained under the [NitroApi rules](../nextclient/nitro_api/AGENTS.md).
+[Russian version](nitro-api.ru.md) | [Project architecture](architecture.md) | [Frame lifecycle](performance-architecture.md#frame-lifecycle)
 
-## Getting started
+NitroApi gives NextClient modules access to stock game functions and data. For example, the monitor uses NitroApi to identify the start and end of each frame. Information about supported engine versions is kept here, so individual modules do not have to handle their differences independently.
 
-Link the consuming CMake target to `nitro_api::nitro_api` and include `<nitroapi/NitroApiInterface.h>`. The target supplies the public headers, helper library, compile definitions, and SDK dependencies. Obtain the `NITRO_API_001` interface through the loaded provider's factory. The example below assumes `nitro_api` is an initialized `nitroapi::NitroApiInterface*` and the engine's `Cvar_Set` binding is ready.
+## Before making a change
 
-```cmake
-target_link_libraries(your_target PRIVATE nitro_api::nitro_api)
-```
+Identify which module needs the new feature and which engine data it requires. Check whether NitroApi already provides the necessary access. Changes must account for supported engine versions on Windows and Linux.
 
-## Hook and call examples
+Read the [module rules](../nextclient/nitro_api/AGENTS.md). The [ABI guide](goldsrc-abi.md) describes how to prepare headers for engine compatibility.
 
-```cpp
-nitroapi::EngineData* engine = nitro_api->GetEngineData();
+## Verification
 
-auto handler = engine->Cvar_Set |= [nitro_api](
-    const char* name,
-    const char* value,
-    nitroapi::NextHandlerInterface<void, const char*, const char*>* next)
-{
-    nitro_api->WriteLog("Cvar_Set handler", name);
-    next->Invoke(name, value);
-};
+Build NitroApi and the modules that use the changed interface from the same source revision and with matching build settings. Run the relevant tests in `nitro_api-tests`. When changing a shared interface, follow the [library verification procedure](testing/installation-and-factory.md) to check that the built library loads and provides that interface.
 
-auto observer = engine->Cvar_Set += [nitro_api](const char* name, const char*)
-{
-    nitro_api->WriteLog("Cvar_Set observer", name);
-};
-
-engine->Cvar_Set("cl_minmodels", "0");
-engine->Cvar_Set.InvokeChained("cl_minmodels", "0");
-
-observer->Unsubscribe();
-handler->Unsubscribe();
-```
-
-`|=` installs a handler that controls forwarding through `next`; `+=` subscribes an observer. The direct call invokes the original function. `InvokeChained` runs the handler chain and invokes the registered observers, producing the example log entries.
-
-Keep the returned subscription handles with the owning subsystem. Call `Unsubscribe()` before destroying captured objects or unloading their code, while the provider remains available. Destroying the handle alone does not unsubscribe. The example removes both registrations after demonstrating the calls.
-
-Frame observers use the separate [frame lifecycle contract](frame-lifecycle.md). For exposing an additional engine function or variable, follow [Extending engine access](../nextclient/nitro_api/AGENTS.md#extending-engine-access).
+Builds and tests without the game verify only part of compatibility. The developer checks interaction with the stock engine in the installed game and records that result separately.

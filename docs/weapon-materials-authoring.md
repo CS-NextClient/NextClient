@@ -30,13 +30,13 @@ Controls below the viewport select the view mode, mirror, animation, frame, and 
 
 Hovering outlines the visible parts that use the texture under the pointer. A short left click selects that texture. Moving at least four pixels starts rotation and suppresses selection. Picking selects the nearest surviving surface of the editable model and skips transparent holes. The test occluder does not block texture selection. Changing texture through the scene uses the same Save, Discard, and Cancel choices as the texture field.
 
-The catalog uses a continuous scrollable list with a thumbnail for each row. Filtering searches the whole catalog and scrolls to the first matching model. Images load for visible rows as the list scrolls. Thumbnails show the base skin and default body parts in a rest pose. They do not include authored materials or animation and do not consume engine model-table entries. A failed thumbnail has a red marker; the model remains selectable. Rescan refreshes files and images.
+The catalog lists models with thumbnails. The filter searches the entire catalog and scrolls to the first match. Thumbnails show the model’s original appearance without custom materials or animation. A red marker means a thumbnail could not be created; the model remains selectable. Rescanning refreshes the list and images.
 
 The Lighting tab controls azimuth, elevation, RGB color, ambient strength, and directional strength. Neutral, Ambient lighting only, and Grazing light provide starting values. Show sun and rays displays a colored 3D orientation indicator in the viewport. Its arrows follow light travel; its position stays readable while the camera pans or zooms. The checkbox changes only visibility.
 
 Animate sun rotates the light around the model at a fixed elevation above the horizon. An initial elevation outside 5..80 degrees changes to 35 degrees when rotation starts; elevation remains editable within 5..80 during rotation. Sun speed is independent of model playback and ranges from 0.25x to 4x. One revolution takes 24 seconds at 1x, 96 seconds at 0.25x, and six seconds at 4x. Speed changes take effect during rotation without restarting it. It works while model playback is paused and while the sun indicator is hidden. Turning it off holds the current direction. Angle controls follow the moving light; color, strength, material, and model playback remain independent. Camera, lighting, animation, and comparison changes preserve the working material.
 
-The model catalog (`...`) lists installed `.mdl` files under `models` across game search paths, including download directories. It scans `models` and three nested directory levels and collects at most 16,384 paths before deduplication. The filter matches a case-insensitive substring of the full path. The counters show matching and total models. Refresh rescans the catalog; Remove clears the model. Texture and sequence companion files are excluded using file-header checks. A selected model is validated and prepared before its metadata and textures become available. A failed selection reports an error and retains the current model and working material.
+The model catalog (`...`) finds `.mdl` files under `models`, including download directories and three nested directory levels. Search collects at most 16,384 paths before removing duplicates. The filter matches part of a path without regard to case. Counters show matching and total models. Refresh rescans the catalog; Remove clears the model from the scene. Separate texture and animation files are not listed as models. If a selected model fails to load, the editor reports the error and preserves the current model and material.
 
 Preview loading shares a process budget of 128 new engine model-table entries across the editor and settings preview. A separate texture companion consumes an entry too. Closing the editor or changing video mode retains this accounting. An engine model-table reset clears it. Reaching the limit reports an error; models already in the table remain usable.
 
@@ -91,11 +91,7 @@ The `v_`, `p_`, and `w_` models have separate documents. The Save targets checkb
 
 Outside an edit session, server entity bindings take precedence over model documents. During editing, the working material temporarily overrides that selection. The editor's source label identifies the underlying material source. Use the [server guide](weapon-materials-server-guide.md) to inspect bindings and instance parameters.
 
-## GameUI dependency ownership
 
-CGameUI resolves the editor, scene preview, renderer, filesystem, and VGUI providers at initialization and supplies them to the dialog and its immediate children. The material dialog owns its filesystem resource source, catalog, edit session, and preview state. Developer controls are composed during Start, when the real engine callback table is available; video controls receive the resolved renderer and their shared configuration provider through the options dialog.
-
-Image panels and browser entries retain the exact shared image cache until VGUI actually deletes them. Loading, drawing, and texture deletion use the supplied surface instance. Paint reads the cache and providers directly. Terminal closure rejects posted edits, ends parameter previews and the working session, and releases scene authoring resources before notifying CGameUI. Shutdown blocks new authoring opens and dispatches one final VGUI frame before disconnecting providers, so delayed panel deletion can release its textures.
 
 ## Inspection
 
@@ -104,8 +100,8 @@ Image panels and browser entries retain the exact shared image cache until VGUI 
 | `r_mat_panel` | Open the editor from the disconnected main menu. |
 | `r_mat_edit` | Use console editing through `models`, `textures`, `begin`, `set`, and `save`. |
 | `r_mat_scene_state` | Print the editor target, camera, light, animation, and engine preview diagnostics. |
-| `r_preview_state` | Print studio readiness, device generation, model-entry accounting, and the last loading error. |
+| `r_preview_state` | Print preview status, the loaded-model count, and the last loading error. |
 | `r_studio_materials 0` | Disable authored materials in gameplay. Use Compare in the editor. |
-| `r_studio_dump` | Record the selected backend and material inputs for a scene. |
+| `r_studio_dump` | Record the renderer used and scene material data. |
 
 [Material effects: dissolve, noise, glitch, fill, and outline](material-effects.md)

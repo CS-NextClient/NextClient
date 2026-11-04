@@ -10,8 +10,8 @@ python tools/matgen/tests/reference_pose_test.py out/bin/Release/matgen.exe
 python tools/matgen/tests/output_collision_test.py out/bin/Release/matgen.exe
 ```
 
-The repeat test covers UV and baked-edge coverage at horizontal and vertical repeat seams, barycentric interpolation, negative coordinates, whole-tile translation invariance, and thin triangles spanning signed-short UV limits, including a one-pixel source texture. A separate 2x2 texture case bakes the full signed-short range at 2048x2048 output to bound repeated-coverage work. Each `matgen` invocation within these tests has a 30-second timeout.
+The first test checks horizontal and vertical repetition in UV templates and wear maps, including negative and extreme coordinates and a one-pixel source texture. Moving the UV layout by whole texture repetitions must not change the image. A separate case checks processing time for a 2x2 source texture and a 2048x2048 output. Each `matgen` run has a 30-second limit.
 
-The reference-pose test compares baked pixels for identical model-space geometry encoded with translated bones, rotated bones, a parent hierarchy, and independent position/normal bones. Every result must match the identity-pose image exactly. It also verifies UV and edge output names for plain, unsafe, and empty texture names.
+The second test checks that different skeleton structures produce the same wear map when the model geometry is identical in the reference pose. The output images must match pixel for pixel. It also verifies UV and edge output names for plain, unsafe, and empty texture names.
 
 The output-collision test uses two texture records with separate meshes and skin mappings. It checks sanitized names, ASCII case, empty-name fallbacks, and skipped edge textures. Collisions must return an explicit error before replacing a preexisting output or writing another PNG. Noncolliding edge outputs must both contain geometry.

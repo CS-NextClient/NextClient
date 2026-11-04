@@ -2,77 +2,51 @@
 
 [Russian version](README.ru.md)
 
-This index connects the maintained project guides, references, test procedures, and module instructions. Start with the [project overview and build instructions](../README.md), the [developer tools panel](tools/developer-panel.md), or the [testing index](testing/README.md).
+The [architecture overview](architecture.md) describes project modules and their purpose. The [build instructions](../README.md#building) explain how to prepare a development environment. Other guides are grouped by task below.
 
-## Development and operator tools
+## Architecture
 
-| Document | Purpose |
+These sections describe module responsibilities and interactions.
+
+| Guide | Question answered |
 |---|---|
-| [Project overview](../README.md) | Features, installation, build presets, and IDE setup. |
-| [Developer tools panel](tools/developer-panel.md) | Run repository tools from forms and open their documentation. |
-| [Test server](tools/test-server.md) | Prepare, build, operate, and inspect the dedicated test server. |
-| [Test server compatibility](tools/test-server-compatibility.md) | Supported platforms, components, and limitations. |
-| [Materials test plugin](testing/materials-test-plugin.md) | Prepare material-effect checks and use the in-game controls. |
-| [Studio test content](tools/studio-content.md) | Generate models, labels, materials, and test maps. |
-| [Image comparison](tools/image-comparison.md) | Compare prepared captures and set difference thresholds. |
-| [Material image collection](tools/material-masks.md) | Generate masks, surface textures, and matcaps. |
-| [matgen](tools/matgen.md) | Export UV templates, validate materials, and bake edge wear. |
-| [Matgen regression checks](testing/matgen.md) | Run the command-line tool's regression checks. |
+| [Project architecture](architecture.md) | Which modules make up the project, and what does each one do? |
+| [Studio renderer](renderer-architecture.md) | How is rendering shared between the engine, NextClient, and the material editor? |
+| [Performance monitor](performance-architecture.md) | What does the monitor measure, where does its data come from, and how does it handle skipped and interrupted frames? |
 
-## Rendering and materials
+## Developer tools and workflows
 
-| Document | Purpose |
+These guides cover building, configuration, and diagnostics. The [developer panel](tools/developer-panel.md) provides a graphical interface for running utilities.
+
+| Task | Guide |
 |---|---|
-| [MSAA](msaa.md) | Multisample antialiasing settings, supported values, and verification. |
-| [Studio renderer architecture](renderer-architecture.md) | Frame diagrams, resource ownership, draw ordering, and shader-path settings. |
-| [Renderer diagnostics](renderer-diagnostics.md) | Capture commands and inspection procedures. |
-| [Weapon material format](weapon-materials.md) | MAT structure, parameters, and resource rules. |
-| [Material authoring](weapon-materials-authoring.md) | Create and edit weapon materials. |
-| [Material effects](material-effects.md) | Effect parameters and usage. |
-| [Applying server materials](weapon-materials-server-guide.md) | Configure and apply materials from server plugins. |
-| [Server material API](weapon-materials-server-api.md) | API declarations, messages, and lifecycle. |
+| Build the client and configure an IDE | [Project setup](../README.md#building) |
+| Run content and server tools through forms | [Developer tools panel](tools/developer-panel.md) |
+| Prepare and operate a dedicated test server | [Test server](tools/test-server.md) and [compatibility](tools/test-server-compatibility.md) |
+| Inspect frame cost and capture Tracy traces | [Monitor settings, graphs, and diagnostics](performance-monitor.md) |
+| Inspect map geometry and object properties | [Map inspection](performance-limits.md) |
+| Compare renderers and save images and measurements | [Renderer diagnostics](renderer-diagnostics.md) |
+| Create and edit materials | [Material authoring](weapon-materials-authoring.md) |
+| Export UVs, validate materials, or bake wear | [matgen](tools/matgen.md) |
+| Generate material images or Studio test scenes | [Material images](tools/material-masks.md) and [Studio content](tools/studio-content.md) |
+| Compare reference and candidate captures | [Image comparison](tools/image-comparison.md) |
+| Apply materials from a server plugin | [Server material workflow](weapon-materials-server-guide.md) |
+| Change and verify engine integration | [Using NitroApi](nitro-api.md) |
+| Maintain engine declarations and regenerate headers | [GoldSrc ABI maintenance](goldsrc-abi.md) |
+| Investigate antivirus detections in a release | [False positive reporting](reporting-av-false-positives.md) |
 
-## Performance and radar
+## Formats and behavior references
 
-| Document | Purpose |
+Use these references for exact parameters, file formats, interoperability, and observable behavior.
+
+| Reference | Scope |
 |---|---|
-| [Performance monitor](performance-monitor.md) | Monitor modes, counters, and commands. |
-| [Performance graphs](performance-graphs.md) | Interpret the displayed graphs. |
-| [Map inspection](performance-limits.md) | Inspect map limits and related performance data. |
-| [Radar layer metadata](radar-layers.md) | Define overview layers and transitions. |
+| [Weapon material format](weapon-materials.md) | MAT documents, program manifests, image paths, and limits |
+| [Material effects](material-effects.md) | Effect parameters and their visible behavior |
+| [Server material API](weapon-materials-server-api.md) | Plugin API, synchronization, and client validation |
+| [Radar layers](radar-layers.md) | Layer selection, correction format, and diagnostic fields |
+| [Master server HTTP protocol](master-server-http-protocol.md) | Client/backend request and response contract |
 
-## Protocols, ABI, and distribution
+## Verification
 
-| Document | Purpose |
-|---|---|
-| [Master server HTTP protocol](master-server-http-protocol.md) | Master server request and response format. |
-| [GoldSrc ABI maintenance](goldsrc-abi.md) | Maintain engine declarations and use the ABI tools. |
-| [Linux x86 ABI evidence](goldsrc-abi-linux-facts.md) | Recorded engine facts and their provenance. |
-| [Frame lifecycle](frame-lifecycle.md) | Subscription ownership, notification order, and verification boundaries. |
-| [NitroApi](nitro-api.md) | Hook and address-provider API. |
-| [Antivirus false positives](reporting-av-false-positives.md) | Verify build provenance and submit false positive reports. |
-
-## Testing
-
-The [testing index](testing/README.md) links the manual procedures, acceptance cases, diagnostics, server setup, and automated checks. It includes radar, Studio rendering, material editor scenes, and performance monitor verification.
-
-## Source and module instructions
-
-[Repository instructions](../AGENTS.md) define module boundaries, build and deployment rules, testing, code review, and coding conventions. Read the applicable local instructions before changing a module.
-
-| Area | Local instructions |
-|---|---|
-| Process entry point and updater | [Launcher](../nextclient/launcher/AGENTS.md) |
-| Engine hooks and patches | [Engine](../nextclient/engine_mini/AGENTS.md) |
-| Studio renderer | [Rendering](../nextclient/engine_mini/src/graphics/render/AGENTS.md) |
-| Text rendering | [Text](../nextclient/engine_mini/src/graphics/text/AGENTS.md) |
-| HUD and client code | [Client](../nextclient/client_mini/AGENTS.md) |
-| Radar | [Radar](../nextclient/client_mini/src/hud/radar/AGENTS.md) |
-| VGUI and HTML interface | [GameUI](../nextclient/gameui/AGENTS.md) |
-| Hooks and engine addresses | [NitroApi](../nextclient/nitro_api/AGENTS.md) |
-| Engine ABI declarations | [GoldSrc ABI](../nextclient/goldsrc_abi/AGENTS.md) |
-| Shared libraries | [Packages](../nextclient/packages/AGENTS.md) |
-| Asynchronous tasks | [task_coro](../nextclient/packages/task_coro/AGENTS.md) |
-| Studio model data | [ncl_studio](../nextclient/packages/ncl_studio/AGENTS.md) |
-
-Each translated guide links to its English or Russian counterpart. The master server protocol, NitroApi overview, antivirus reporting guide, and source instructions are available in English.
+The [testing index](testing/README.md) selects procedures and acceptance cases for radar, rendering, the material editor, monitoring, tools, and installation. A procedure defines preparation, actions, and expected results. Results of a particular run belong to its report with the source/build identity and logs.

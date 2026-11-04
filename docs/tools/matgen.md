@@ -2,7 +2,7 @@
 
 [Russian translation](matgen.ru.md) | [Authoring guide](../weapon-materials-authoring.md) | [Material format](../weapon-materials.md)
 
-`matgen` exports model UV templates, validates material files, and bakes model-specific wear maps. The tool uses `ncl_material` and `ncl_studio` and runs outside the game engine.
+`matgen` exports model UV templates, validates material files, and bakes model-specific wear maps. The tool runs without starting the game.
 
 ## Build
 
@@ -21,7 +21,7 @@ The default Windows output is `out/bin/Debug/matgen.exe`. The output path depend
 matgen uv <model.mdl> [--out <dir>] [--size <pixels>] [--skin <family>]
 ```
 
-The command writes a wireframe PNG for every texture record in the model. `--skin` selects the family used to assign mesh triangles to those textures; unused textures receive empty templates. The default family is `0`.
+The command creates a PNG showing the UV layout for each model texture. `--skin` selects the skin family used to produce the templates. Unused textures receive empty templates. The default family is `0`.
 
 Without `--size`, output starts from the source texture dimensions. `--size` scales the longer side. Each output dimension is then clamped to `64..2048` pixels, which can change the aspect ratio at the limits. Files are written beside the model unless `--out` is supplied.
 
@@ -45,19 +45,8 @@ The tool uses the same manifest files as the engine. Runtime GL allocation, comp
 matgen bake edges <model.mdl> [--out <dir>] [--size <pixels>] [--skin <family>]
 ```
 
-The command bakes a wear-threshold map from model geometry for each texture used by triangles in the selected skin family. Unused textures are skipped. Empty texture names produce `_edges.png`; collision checks include only images that will be written. Convex regions wear earlier. Curvature is normalized against the model's distribution, and the result extends beyond UV islands to reduce filtering seams. Assign the result to `uWearMap`.
+The command bakes a wear-threshold map from model geometry for each texture used by triangles in the selected skin family. Unused textures are skipped. Empty texture names produce `_edges.png`; collision checks include only images that will be written. Convex regions wear earlier. Map values are scaled separately for each model; matching brightness across different models does not imply matching curvature. Color padding around UV islands reduces seams caused by texture filtering. Assign the result to `uWearMap`.
 
-Curvature uses the reference pose from each bone's default values and parent hierarchy. Positions and normals are transformed to model space using their respective bone indices before corners are merged. Normal transforms include rotation only. The baked map represents this fixed pose.
+The wear map is baked from the model's reference pose. Inspect joints and other areas whose curvature changes with animation; the baked image remains fixed while the model moves.
 
 `--out`, `--size`, and `--skin` use the directory, sizing, and family rules described for UV export. Choose a final image size within the client's 1,048,576-pixel area limit.
-
-## Source layout
-
-| Source | Responsibility |
-|---|---|
-| `tools/matgen/src/Model.cpp` | Read `.mdl` and its texture companion when needed. |
-| `tools/matgen/src/manifests.cpp` | Provide embedded program manifests. |
-| `tools/matgen/src/Png.cpp` | Write PNG through zlib. |
-| `tools/matgen/src/uv_template.cpp` | Export UV wireframes. |
-| `tools/matgen/src/check.cpp` | Validate documents, presets, and image metadata. |
-| `tools/matgen/src/bake_edges.cpp` | Bake wear-threshold maps. |

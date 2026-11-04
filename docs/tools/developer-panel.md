@@ -6,7 +6,7 @@ This native Tkinter panel runs the repository's operator tools through explicit 
 
 ## Start
 
-Use Python 3.12 or newer with Tkinter. From the repository root, choose one command: the Windows launcher, the POSIX launcher, or direct Python execution.
+Use Python 3.12 or newer with Tkinter. From the repository root, choose one command: the Windows launch script, the POSIX launch script, or the Python command.
 
 ```text
 tools\dev_tools.cmd
@@ -28,11 +28,11 @@ Relative paths in fields resolve from the repository root. Values are kept for t
 
 The header buttons open [Documentation](../README.md), [Testing](../testing/README.md), and this **Panel guide**. Each tool form provides a **Tool guide** button. The server tab also links to the [server guide](test-server.md) and the [materials test plugin](../testing/materials-test-plugin.md).
 
-Buttons open local Markdown files in the operating system's associated application. The current panel language selects the English or Russian document. Documentation remains accessible while a tool runs. A missing file or an unavailable system opener produces an error dialog. A local Markdown association or platform opener is required.
+Buttons open local Markdown files in the operating system's associated application. The current panel language selects the English or Russian document. Documentation remains accessible while a tool runs. The panel displays an error dialog if the file is missing or the operating system cannot open it with the associated application. A local Markdown association or platform opener is required.
 
 ## Tools
 
-Each non-server tab has a tool selector and a form containing its supported inputs. **Run** executes only the selected form. Output files with matching names can be overwritten by the underlying tools.
+Each non-server tab has a tool selector and a form containing its supported inputs. **Run** starts the selected tool with the values entered in its form. Output files with matching names can be overwritten by the underlying tools.
 
 | Tab | Included tools | Inputs and behavior |
 |---|---|---|
@@ -49,7 +49,7 @@ Each non-server tab has a tool selector and a form containing its supported inpu
 
 The **Studio** game-directory field and **Fill paths from the game directory** button fill the related model, WAD, source-map, and preset paths. Select the local installation before filling paths or enter each path explicitly. Fields that depend on an installation start empty; map compilation requires an explicit game directory. See [Studio tools](studio-content.md), [material images](material-masks.md), and [image comparison](image-comparison.md) for content requirements.
 
-The matgen executable is selected explicitly or found in `out/bin/` and configured CMake build outputs under `build/`. The search checks configuration subdirectories, each matching checkout's `CMakeCache.txt`, cached runtime output paths, and the build-local `out/bin/` layout used by Linux, test, and profiler builds. Dependency trees are excluded. Windows selects `matgen.exe`; other platforms select `matgen`. An explicit executable path takes priority. The panel never builds it automatically.
+Select a built matgen executable explicitly or let the panel find it in this checkout's CMake outputs. An explicit path takes priority. Build the required configuration first; the panel does not build matgen. The selected executable determines which version of the tool processes the files.
 
 An empty matgen output folder writes beside the model. An empty size uses the model texture dimensions; skin family defaults to `0`. For `check`, an empty game directory uses the repository root because that is the panel's tool working directory. See [matgen](matgen.md) for sizing, validation, and output limits.
 
@@ -71,7 +71,7 @@ Every public [server command](test-server.md) is available:
 
 The global `--config` option precedes every subcommand. `prepare` and `init` create a missing configuration; `compile-only` can also use defaults without a saved file. Other panel server actions require an existing configuration. Empty API fields use the saved configuration or automatic discovery; literal `auto` requests discovery. API fields apply to preparation. Map/port and smoke fields apply only where the CLI accepts them.
 
-Preparation may download Steam content and dependencies, but does not start the server. Every action requires a button click. Stop always uses the server CLI's process ownership checks; the panel never terminates a server itself. Closing is blocked while a job is running. A remembered running server or unconfirmed start/cleanup requires an explicit leave-running choice when closing. Cancel closing, choose that configuration, and click **Stop** to stop it. **Status** refreshes the selected server; there is no automatic startup query or continuous process monitor.
+Preparation downloads the required Steam files and dependencies, but starting the server requires a button press. Before stopping it, the utility checks that the process belongs to the selected server. The window cannot close while an operation is running. If the server is running or a start or stop result is unconfirmed, closing requires explicit agreement to leave it running. To stop it, cancel closing, select the configuration, and click **Stop**. **Status** requests the current state; the panel does not poll the server automatically.
 
 ## Dependencies and execution
 
@@ -81,9 +81,7 @@ Tkinter and the Python standard library run the panel. Flag generation, labels, 
 python -m pip install Pillow numpy
 ```
 
-One operation runs at a time in a background worker. The log shows the argument list, combined stdout/stderr, and exit result. Windows helper consoles are hidden. Wait for an operation to finish before closing; process cancellation is unavailable. Server timeouts belong to its configuration. The log keeps the latest 200,000 characters; **Save log...** exports the displayed part as UTF-8. A comparison exit code of `1` is reported as an unsuccessful comparison, with its metrics in the log.
-
-Internal modules under `tools/test_server/` (`all_plugins`, `common`, `install`, `profiles`, `report`, `results`, `runtime`, `steam_process`) are accessed through the public server CLI rather than separate buttons. Unit tests are verification code rather than operator tools. No operator script from the groups above is excluded.
+One operation runs at a time in a background worker. The log shows the argument list, combined stdout/stderr, and exit result. Windows helper consoles are hidden. Wait for an operation to finish before closing; process cancellation is unavailable. Server timeouts belong to its configuration. The log keeps the latest 200,000 characters; **Save log...** exports the displayed part as UTF-8. If the comparison tool returns `1`, the panel reports a failed comparison and keeps the measurements in the log.
 
 ## Verification
 
@@ -93,4 +91,4 @@ python -X utf8 tools/dev_tools/dev_tools.py --language en --self-check
 python -X utf8 tools/dev_tools/dev_tools.py --language ru --self-check
 ```
 
-The tests cover commands, processes, window behavior, translation completeness, language switching, launcher exit status, and small temporary generator outputs. GUI tests require a usable desktop and Tcl/Tk file access. The self-check creates and destroys a hidden window without running tools. Tests do not launch a game or real server, access Steam, install dependencies, compile maps, run matgen generation, or regenerate the complete image collection.
+The tests cover commands, processes, window behavior, translation completeness, language switching, launch-script exit status, and files produced by generators in temporary directories for the test cases. GUI tests require a usable desktop and Tcl/Tk file access. The self-check creates and destroys a hidden window without running tools. Tests do not launch a game or real server, access Steam, install dependencies, compile maps, run matgen generation, or regenerate the complete image collection.

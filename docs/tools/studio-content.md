@@ -34,6 +34,6 @@ The WAD must contain a texture for every label on the map. The build script embe
 | North room | A 12-column grid alternating the two performance models, with 48 entities by default. |
 | S-shaped corridor | Limits visibility between the rooms. Use a fixed north-room viewpoint and confirm the visible model set in the diagnostic dump. |
 
-The remap model's sequence bounding box determines its standing height when `--remap-model-file` is supplied. Its `colormap` is zero in the generated map. To inspect other remap colors, set the entity's `colormap` through a server plugin using `top | (bottom << 8)`.
+If `--remap-model-file` is supplied, the generator uses that file to choose the model's placement height. Its `colormap` is zero in the generated map. To inspect other remap colors, set the entity's `colormap` through a server plugin using `top | (bottom << 8)`.
 
 After preparation, use the [Studio test cases](../testing/studio-rendering.md) and [capture procedures](../renderer-diagnostics.md) in the installed game.

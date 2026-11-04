@@ -38,7 +38,7 @@ Server operations, client visibility, and visual acceptance are separate results
    nct_run radar_hostage_follow ct
    ```
 
-   Alternatively, use `nct_menu` to select the role, scenario, and outcome. The menu closes after an action. Menu actions and console commands use the same dispatcher.
+   Alternatively, use `nct_menu` to select the role, scenario, and outcome. The menu closes after an action. A menu selection has the same effect as the corresponding console command.
 
 4. Wait for `ready`, then inspect the prepared scene. Run one step:
 
@@ -83,7 +83,7 @@ The client command `nct_status` prints a short status line. Detailed player, obj
 | Visibility in `data.visibility` | `pvs`, `los`, `los_hit`, and `original_pack` |
 | Following in `data.hostage_follow` | Phase, route, waypoint, confirmed transitions, outside duration, message count, and traveled distance |
 
-LOS is the line of sight to the object. PVS is the set of map regions that the engine considers potentially visible to the client. `original_pack` records whether the original `AddToFullPack` callback included the entity in the client's snapshot. PVS is `unknown` until a real client callback provides evidence.
+LOS is the line of sight to the object. PVS is the set of map regions that the engine considers potentially visible to the client. `original_pack` records whether the stock game included the entity in the client's update. PVS remains `unknown` until an actual client update provides evidence.
 
 Reports can be collected between steps. An unfinished scenario or missing manual assessment is expected in an intermediate report. After another step, collect the report again and refresh the page. The client command `nct_report` records a journal snapshot; the host command `report --run` creates the HTML and JSON files.
 

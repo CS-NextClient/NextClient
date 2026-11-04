@@ -1,10 +1,10 @@
-# Studio renderer diagnostics
+# Model rendering diagnostics
 
-[Russian translation](renderer-diagnostics.ru.md) · [Architecture](renderer-architecture.md) | [Verification cases](testing/studio-rendering.md)
+[Russian version](renderer-diagnostics.ru.md) | [Studio renderer](renderer-architecture.md) | [Test scenarios](testing/studio-rendering.md)
 
-Run these commands manually on a loaded map in the installed game. Before inspecting a new build, prepare and install a matching set of modules and resources using the [installation procedure](testing/installation-and-factory.md).
+These commands compare NextClient rendering with the stock engine, capture images, and measure performance. Run them on a loaded map in the installed game. Before checking a new build, install the required modules and assets using the [installation procedure](testing/installation-and-factory.md).
 
-## Select the path
+## Selecting the renderer
 
 ```text
 r_studio_shader 1
@@ -13,99 +13,85 @@ r_studio_queue 1
 r_studio_info
 ```
 
-The first command enables shader submission when an OpenGL 3.3 compatibility context is available. The second enables authored materials. Both settings default to `1`. Setting `r_studio_materials 0` keeps GPU skinning but suppresses authored materials. Setting `r_studio_shader 0` selects the engine's submission path.
+`r_studio_shader 1` enables NextClient Studio rendering and requires OpenGL 3.3 compatibility support. `0` selects the stock renderer. `r_studio_materials 1` enables custom materials. At `0`, NextClient still renders models, but without those materials. Both settings default to `1`.
 
-`r_studio_queue` defaults to `1` and shares one GL state scope across consecutive eligible Studio packets in each opaque or transparent entity traversal. `r_studio_queue 0` keeps shader rendering with immediate packet submission. Use it to compare queue overhead and for custom studio callbacks issuing raw OpenGL without explicit queue barriers. Engine remap skins always use immediate submission.
+`r_studio_queue 1` allows models to be grouped for rendering. `0` disables the queue for comparison. The queue is enabled by default. Some models are drawn separately regardless of this setting, so evaluate the result using counters and CPU/GPU time.
 
-Within each submission series, the renderer caches blend enable/factors/equations, depth test/write/function/range, cull enable/face, alpha test/function, and the base unit-0 texture binding. Packet defaults and masked/additive overrides update the same cache. Every series starts with unknown cached values. Caller restoration remains unconditional, and ordinary submission keeps each packet's program bind, uniforms, matrices, and bone upload. Eligible rigid batches apply shared state once; see [rigid submission](testing/studio-rigid-instancing.md).
+`r_studio_info` reports the latest model, selected renderer, and model grouping. When the stock engine draws a model, diagnostics help identify the reason. For a repeatable comparison, use one scene, such as the repeated-model room on `studio_test`, and preserve the camera position and settings.
 
-`r_studio_info` prints the last captured studio model, converted geometry counts, observed submission counts and the rejection status of the most recent submission attempt. A submission is one intercepted `StudioDrawPoints` call, normally for a body part. The command also prints packet count, maximum run length, studio program binds and nonempty flushes by reason: brush, fallback, client, stage_end, capacity, resource, immediate and remap. Interception and shader-acceptance counts accumulate while the module runs. Queue statistics start at the latest opaque traversal and include the subsequent transparent traversal and immediate submissions until the next opaque traversal.
+## Measuring performance
 
-Program binds exclude restoration of the caller's program and unrelated shader work. Ordinary submission retains each packet's first program bind for compatibility drivers, along with its independent uniforms and bone upload.
+`cl_perf_batch 1` shows how many drawing operations were combined. `cl_perf_batch 2` also measures CPU operations. The panel works with `cl_perf 0`; `cl_perf_batch 0` hides it. Values are summed over up to eight recent completed frames.
 
-Compare a stationary scene with many visible opaque Studio models, such as the north room of `studio_test`, with `r_studio_queue 0` and `1`. Keep the view, shader/material settings, and monitor configuration unchanged. Check packet/run counts and studio program binds, then compare CPU/GPU time. A remap flush submits the queue before a model with a mutable skin. A resource flush submits it before resources change.
-
-`cl_perf_batch 1` shows grouped/single model draws and mesh ranges plus draw-call savings. It works independently with `cl_perf 0`: only counters are collected, without continuous built-in CPU scopes or GPU queries. The heading marks totals over up to eight recent completed accepted Host frames, including empty frames. `cl_perf_batch 0` hides the block separately.
-
-`cl_perf_batch 2` measures CPU costs continuously and updates the same window of up to eight frames after each completed accepted Host frame, including with `cl_perf 0`.
-
-The CPU heading identifies averages: `ms/frame` is the operation's total time divided by the window frame count; `us/call` is that time divided by the operation call count. `Calls total` is the sum of calls over the window. The level-2 table shows save/restore, program and buffer binds, and bone uploads. `Top detail` identifies the most expensive measured detail when a sample is available.
-
-`perf_dump` independently captures the next complete accepted Host frame and prints automatically after it finishes. Without a connected Tracy viewer, detailed Studio timings are dormant between requests at batching levels 0/1; level 2 keeps them active. CPU-only capture with `cl_perf 0` does not enable GPU queries. Its saved one-frame result remains separate from the continuously updated batching table. Nested save/restore phases and five Studio preparation/submission details are available in the dump. See [Studio batching counts](performance-monitor.md#studio-batching-counts) for units and measurement boundaries.
-
-## Profile effect bounds
-
-A connected Tracy viewer records `ProjectBounds` in a build with `USE_PROFILER=ON`. The zone covers the complete `render::effects::ProjectBounds` calculation, including early returns of the full viewport. Material lookup and effect-radius selection in `StudioEffects::ProjectBounds` occur outside the zone. It has no separate built-in monitor row.
-
-Use a matching profiling module set and Tracy runtime as described in [diagnostic Tracy capture](performance-monitor.md#diagnostic-tracy-capture). Select a scene or demo with material effects and confirm that `ProjectBounds` has recorded calls. A build with `USE_PROFILER=OFF` compiles out the zone.
-
-Keep the diagnostic recording separate from the clean A/B timedemo comparison. Compare production builds with profiling disabled, phase capture disabled, and the same demo, settings, warmup, and run order. Tracy zone durations describe the instrumented run and do not establish the production FPS effect.
-
-## Record phases during demo playback
-
-`r_studio_phases_start <name> [first_demo_frame last_demo_frame]` arms phase capture for an inclusive demo-frame range. Issue it before `timedemo`, then run `r_studio_phases_stop` and `r_studio_phases_export [name]` after playback. `r_studio_phases_status` reports activity, retained views, and overflow. Loading before the first recorded view keeps capture armed. A session or context reset after recording begins stops capture and preserves its data. An abandoned view has `complete=0`.
-
-Capture is off by default. `StudioDiagnostics` owns `StudioPhaseCapture`; renderer and submission supply numeric workload results. Capture preallocates 16384 views by default under a 128 MiB allocation limit. Exhausting view capacity or the eight-level nested-view stack stops capture and records `overflow` and `dropped`. Split long demos into inclusive ranges and exclude incomplete views from comparisons. Measure final timedemo FPS with phase capture disabled.
-
-Export runs outside the measured loop and writes `<gamedir>/studio_diagnostics/<name>.phases.csv` followed by `<name>.phases.metadata.json`. Metadata is the completion marker. Write or publication failure retains the RAM recording for retry; export succeeds before the recording resets.
-
-Phase schema `2` contains `view_id,host_frame,render_frame,output_id,demo_frame,client_time,old_client_time,view_cpu_us,frame_interval_us,opaque_cpu_us,transparent_cpu_us,world_cpu_us,packets,draws,meshes,triangles,complete,physical_draws,submitted_triangles`. Times are microseconds. `frame_interval_us` is the interval between captured view starts; other intervals belong to their native view. Nested views retain separate pass times and counters. `packets` counts published packets; `draws` counts logical packet groups, `meshes` counts their constituent meshes, and `triangles` counts selected geometry. `physical_draws` counts actual GL calls; `submitted_triangles` also includes body ranges rejected by union instancing.
-
-Match runs by demo frame and client time. `view_id` belongs to the recording; `host_frame` and `render_frame` come from engine counters. `output_id=0` means unavailable. Metadata records demo identity, first/last recorded frame and client time, completed views, allocation bounds, overflow, dropped views, and stop reason.
-
-## Capture a frame description
-
-```text
-r_studio_dump render_check
-```
-
-This arms recording for the next scene and writes `<gamedir>/render_check.txt`. The dump records submissions, selected path, fallback reasons, mesh/material counts and lighting/render-mode inputs.
-
-```text
-r_studio_dump render_lights lit
-```
-
-The `lit` form waits for a frame with an entity light so the dump includes its lighting inputs.
-
-## Compare images
-
-Hold the scene still, then run:
-
-```text
-r_studio_ab render_compare
-```
-
-The command captures the engine and shader paths in two frames, writes `render_compare_off.tga` and `render_compare_on.tga` under `<gamedir>`, and restores the saved shader/material settings. Authored materials are disabled for both frames so their appearance does not dominate the comparison. Movement between frames can produce differences unrelated to rendering. The command requires a loaded map and refuses another capture while one is pending.
-
-Account for the shader path's fullbright behavior and skipped stock planar shadows when interpreting an image difference. See the architecture reference for these limits.
-
-`r_studio_rigid_stats [reset]` reports cumulative physical calls, logical packet groups, logical/submitted triangles, batches, saved calls, bytes/uploads, and fallback reasons. Counters retain 64-bit values. Union instancing submits all body ranges and clips unselected ranges; logical triangles count only selected geometry.
-
-## Interpret performance counters
+`ms/frame` shows average operation time per frame, `us/call` shows average time per call, and `Calls total` shows the call count over those frames. `Top detail` identifies the slowest operation with detailed measurements.
 
 ```text
 cl_perf 3
 perf_dump
 ```
 
-The monitor exposes these separate counters:
+`perf_dump` captures detailed measurements of the next completed frame. At batching levels 0 and 1, detailed CPU measurements are enabled only for this request unless Tracy is connected. Level 2 measures them continuously. With the main monitor disabled, the request does not enable GPU measurements.
 
 | Counter | Meaning |
 |---|---|
-| Studio shader submissions | Intercepted body-part submissions accepted by the shader path. |
-| Studio engine submissions | Submissions delegated to the stock engine. |
-| Studio draw calls | Physical calls to `glMultiDrawElements` or `glDrawElementsInstanced`. |
-| Studio constituent draws | Ordinary index ranges or logical instances inside those calls. |
-| Studio triangles | Selected logical index counts divided by three. |
+| Studio shader submissions | Requests for NextClient to draw model parts. |
+| Studio engine submissions | Requests for the stock renderer to draw models. |
+| Studio draw calls | Graphics API draw calls. |
+| Studio constituent draws | Individual model parts or instances combined in those calls. |
+| Studio triangles | Triangles in the selected model parts. |
 
-For a measured sample with nonzero `Studio draw calls`, the ratio of constituent draws to draw calls gives the average number of logical ranges or instances per physical call. A call with 6 and 9 indices counts as one API call, two constituent draws and five triangles.
+`r_studio_rigid_stats [reset]` reports accumulated repeated-model batching counters, data transfer volume, and reasons for drawing models separately. The `reset` argument clears the counters. The [repeated-model test procedure](testing/studio-rigid-instancing.md) describes the comparison.
 
-Studio CPU includes preparation and submission work. Studio GPU timing surrounds shader geometry calls. Counter reductions alone do not establish an FPS improvement. Compare CPU and GPU time under the same scene, materials and monitor configuration.
+Fewer calls do not guarantee higher FPS. Compare CPU/GPU time using the same scene, materials, and monitor settings. The [monitor guide](performance-monitor.md#studio-batching-counters) explains the panel.
 
-Runtime cases and automated coverage are listed in [Studio rendering verification](testing/studio-rendering.md).
+## Measuring effect cost
 
-## Embedded shader preparation
+In a profiling build, Tracy shows `ProjectBounds`: the calculation of the screen area occupied by material effects. The built-in monitor has no separate row for this measurement.
 
-Shader sources, shared GLSL files and manifests are embedded in the module. Programs compile after GL context creation and remain in memory for that context.
+Prepare the build using the [Tracy instructions](performance-monitor.md#recording-with-tracy), connect the viewer, and play a scene with effects. Check that `ProjectBounds` appears in the recording. This measurement is unavailable with `USE_PROFILER=OFF`.
 
-Use the launch argument `-dev` for startup compilation diagnostics. `-noshaderwarmup` defers compilation until a program is first used.
+Profiler recording affects performance. Compare final FPS with profiling and rendering-stage recording disabled, using the same demo and settings and a preliminary run to load resources.
+
+## Recording rendering stages during demo playback
+
+Run `r_studio_phases_start <name> [first_demo_frame last_demo_frame]` before `timedemo`. Both the first and last frame are included in the range. After playback, run `r_studio_phases_stop`, then `r_studio_phases_export [name]`.
+
+`r_studio_phases_status` reports recording activity, the number of saved results, and whether the memory limit has been reached. Map loading before recording begins does not cancel the request. A game session change or graphics restart after recording begins stops collection and preserves the data. A record with `complete=0` contains an incomplete measurement.
+
+Collection stops at the memory limit. Before comparing results, check `overflow`, skipped records, and the stop reason. Record long demos in sections by specifying the first and last frame. Exclude incomplete measurements from comparisons.
+
+Export creates `<gamedir>/studio_diagnostics/<name>.phases.csv` and `<name>.phases.metadata.json`. The metadata file confirms that export completed. A write failure preserves the data in memory so export can be retried. A successful export clears the recording.
+
+CSV version `2` contains stage times, frame numbers, and model, mesh, and triangle counters. Times are in microseconds. `frame_interval_us` measures the interval between the starts of recorded scene renders; other times refer to one render. `physical_draws` counts graphics API calls, `triangles` counts selected triangles, and `submitted_triangles` counts all submitted triangles, including model parts not visible in the selected variant.
+
+Match results by demo frame and client time. `view_id` numbers the records; `output_id=0` means an image presentation number is unavailable. The metadata file contains the demo name, recording range, completed measurement count, memory limits, skips, and stop reason.
+
+## Saving a frame description
+
+```text
+r_studio_dump render_check
+```
+
+The command saves a description of the next scene to `<gamedir>/render_check.txt`: models, selected renderer, materials, and lighting. When NextClient delegates a model to the stock renderer, the dump includes the reason.
+
+```text
+r_studio_dump render_lights lit
+```
+
+The `lit` variant waits for a frame with a model lit by an entity light and records the light parameters.
+
+## Comparing images
+
+Choose a stationary scene and run:
+
+```text
+r_studio_ab render_compare
+```
+
+The command saves two images in the game directory: `render_compare_off.tga` from the stock renderer and `render_compare_on.tga` from NextClient. It then restores the settings. Custom materials are disabled in both captures. A map must be loaded, and a second capture cannot start until the first finishes.
+
+The images come from different frames, so motion and animation can cause differences. Also account for fullbright behavior and the absence of stock planar shadows on NextClient models. See the [Studio checks](testing/studio-rendering.md#image-interpretation) for image analysis.
+
+## Shader compilation diagnostics
+
+The `-dev` launch option enables shader compilation messages. `-noshaderwarmup` postpones compilation until a shader is first used. It can help investigate first-use errors, but compilation during gameplay affects performance measurements.

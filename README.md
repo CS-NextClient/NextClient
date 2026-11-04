@@ -104,7 +104,7 @@ For a ready-to-use client, follow [Installation](#installation). To work on the 
 | hud_radar_bg | 0 | No | Radar background: 0 - black, 1 - blurred game image. |
 | hud_radar_health_size | 1.0 | No | Health bar size. Min: 0.3<br/>Max: 4.0 |
 | hud_radar_name_size | 0.8 | No | Player name size. Min: 0.6<br/>Max: 2.0 |
-| hud_radar_allies | 1 | No | 1 - show teammates revealed by the server, 0 - also require line of sight. |
+| hud_radar_allies | 1 | No | `1`: show teammates whose data was sent by the server; `0`: also require line of sight. |
 
 *Can the server change the value of a cvar using the cvars sandbox feature. </details>
 

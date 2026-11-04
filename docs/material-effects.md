@@ -2,9 +2,9 @@
 
 [Russian translation](material-effects.ru.md) | [Material format](weapon-materials.md) | [Server API](weapon-materials-server-api.md)
 
-Authored `studio` and `weapon_finish` materials support the same coverage and occluded effects. Select either program in Material Editor. The Lighting tab contains **Show test occluder**, which places a depth-writing panel over the left part of the viewport. Compare disables authored effects while preserving the scene controls. Open the editor from the developer menu or with `r_mat_panel`.
+The `studio` and `weapon_finish` materials support transparency, distortion, outlines, and highlights behind walls. Open the editor with `r_mat_panel` and select the program. The lighting tab’s test-obstacle checkbox covers the left side of the model so effects can be checked behind an obstacle. Compare shows the model without material effects and preserves the scene settings.
 
-Shared behavior is declared by the embedded `studio_effects_v1` render contract. Semantic roles and accepted declarations are defined by the renderer; ordinary manifest parameters carry no effect capability. The [material format](weapon-materials.md#program-manifest) describes enrollment and defaults.
+The `studio_effects_v1` material profile defines these effects. Parameter names, types, and allowed values must match the profile. See the [manifest description](weapon-materials.md#program-manifest) for requirements.
 
 ## Dissolve and noise transparency
 
@@ -22,11 +22,11 @@ Shared behavior is declared by the embedded `studio_effects_v1` render contract.
 
 Viewport coordinates start at the lower-left corner of the rendered view and divide both axes by its height. One screen unit therefore spans the viewport height, and noise cells remain square at any aspect ratio. The pattern stays fixed in the view while the model moves. UV coordinates follow the model. Dissolve and noise choose their coordinate spaces independently. Only fragments that survive both tests remain visible. Masked base-skin holes remain holes.
 
-Noise changes coverage rather than adding grain to the surface color. Its seed and captured render time determine the pattern. The surface, occluded effects and mouse picking use the same coverage. Material documents support up to 64 parameters, including values filled from manifest defaults.
+Noise hides individual areas of the surface. `uNoiseSeed` controls the pattern, and `uNoiseSpeed` controls how often it changes. Outlines and mouse selection respect transparent areas. A material can contain up to 64 parameters, including defaults.
 
 ## Geometry glitch and RGB separation
 
-Glitch deforms the model horizontally in viewport pixels and separates the red and blue channels of the base skin. The effect uses deterministic horizontal bands, the captured rendering clock and a seed. It applies to the selected material. Geometry, hit testing and occluded effects use the same transform; source alpha and dissolve/noise coverage remain active. A zero amount disables both components, and zero speed freezes the pattern. Coarse meshes have fewer vertices available for deformation.
+Glitch deforms the model horizontally in viewport pixels and separates the red and blue channels of the base skin. The effect uses deterministic horizontal bands, time and a seed. It applies to the selected material. Geometry, hit testing and occluded effects use the same transform; source alpha and dissolve/noise coverage remain active. A zero amount disables both components, and zero speed freezes the pattern. Coarse meshes have fewer vertices available for deformation.
 
 | Parameter | Range | Default |
 |---|---|---|
@@ -59,11 +59,9 @@ Save writes all selected entries together and preserves unselected entries in th
 
 Select **Outline mode** in the Material tab: **Occluded only** draws the hidden external silhouette, and **Always** draws the complete external silhouette with or without an obstacle. **Visible only** draws only the visible part of the external silhouette. The mode applies to outline and glow. Fill remains restricted to hidden pixels, and the line where a wall crosses the model does not become an outline. Dissolve, noise and masked skin alpha apply in all three modes.
 
-The renderer compares the model's nearest surface with the completed scene depth. With MSAA, both depth buffers retain the same sample count, and corresponding covered samples are compared individually. A pixel is hidden only when all its covered model samples are hidden. Visible surfaces retain their authored appearance, and the outer halo excludes pixels covered by the model's MSAA samples.
+Visible model surfaces retain their material appearance. Outline and glow follow the selected visibility mode, including with MSAA. Check partially covered edges and thin obstacles when comparing antialiasing settings.
 
-The renderer captures masks while the original skin and pose are available. Each selected model includes its ordinary meshes as self-occluders. Server bindings and local materials on attached player weapons identify affected entities before the parent model draws. Mask targets are cropped to conservative bone bounds, expanded by the effect radius and maximum glitch displacement. Boundary propagation and composition run as full-screen passes over the viewport, with bounds checks for the stored mask. Near-plane intersections use the full view. The cache retains at most 512K mask pixels between views. `r_mat_scene_state` includes counters for the last effect view: entities, captured packets, mask pixels, reused targets, depth format and sample count. `r_preview_state` reports the same effect counters in a loaded game.
-
-Material Editor renders its authoring scene, material effects, picking and sun gizmo in one offscreen framebuffer. It then copies color and depth into the caller viewport, restricted by its clip. The scene target preserves the caller color/depth formats and sample count. Scene geometry and mask depth use the same offscreen rasterization path.
+When investigating a problem, save the output of `r_mat_scene_state` in the editor or `r_preview_state` in the game together with a screenshot. These commands report preview status and details of the latest effect rendering.
 
 ## Server control
 
@@ -85,21 +83,9 @@ Create a preset with the required model texture name, deliver it with the existi
 }
 ```
 
-Explicitly enable transmission outside PVS, the potentially visible set, after binding the material:
+To make the effect available beyond the usual visibility area, explicitly enable outside-PVS transmission for the bound entity through the server material API.
 
-```pawn
-ncl_mat_bind(entity, "materials/presets/effects.mat", "highlight");
-ncl_mat_through_walls(entity, true);
-ncl_mat_param_all(entity, "uOccludedAmount", 0.5);
-ncl_mat_param_all(entity, "uOutlineWidth", 2.0);
-ncl_mat_param_all(entity, "uOutlineMode", 2.0);
-ncl_mat_param_all(entity, "uGlowStrength", 1.0);
-ncl_mat_param_all(entity, "uDissolve", 0.25);
-ncl_mat_param_all(entity, "uNoise", 0.5);
-ncl_mat_param_all(entity, "uNoiseSpeed", 4.0);
-```
-
-Enabling transmission requires an active material binding. It applies to ready NextClient 2.6+ recipients and follows the material's rendered owner as a weapon is picked up or dropped. Enabled material synchronization is broadcast; disabling returns it to PAS. Clearing, final unbind, source reuse, owner reuse and map replacement revoke the permission. Ordinary clients retain normal visibility rules. GameDLL rules such as no-draw, missing models, spectators and groups remain authoritative; packet entity capacity still limits transmission. The normal GameDLL visibility cache can retain recently visible entities briefly after disabling. The implementation preserves the [GameDLL's state construction and rule checks](https://github.com/rehlds/ReGameDLL_CS/blob/master/regamedll/dlls/client.cpp).
+Outside-PVS transmission requires an active binding and ready NextClient 2.6+ recipients. The permission follows weapon pickup and drop and ends when the binding or session ends. Ordinary clients retain their normal visibility rules. Server visibility restrictions still apply, and a recently visible entity may remain visible briefly after permission is disabled.
 
 | Instance scalar | Value range |
 |---|---|

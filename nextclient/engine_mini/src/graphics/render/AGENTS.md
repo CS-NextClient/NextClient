@@ -1,6 +1,6 @@
 # Shader rendering
 
-The studio renderer replaces geometry submission while GoldSrc owns the surrounding model draw. Start with the [architecture guide and diagrams](../../../../../docs/renderer-architecture.md) for scene order, ownership, lifetime, and settings; use the [diagnostics guide](../../../../../docs/renderer-diagnostics.md) for runtime inspection. The Russian translations are linked from those documents.
+The studio renderer replaces geometry submission while GoldSrc owns the surrounding model draw. Start with the [architecture guide and diagrams](../../../../../docs/renderer-architecture.md) for engine integration, scene order, materials, and preview; use the [diagnostics guide](../../../../../docs/renderer-diagnostics.md) for runtime inspection. The Russian translations are linked from those documents.
 
 ## Submission and batching
 

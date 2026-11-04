@@ -29,7 +29,7 @@ For each pixel, the script takes the largest absolute difference among its RGB c
 python tools/radar_tests/imgdiff.py "<captures>/golden.tga" "<captures>/check.tga" --clusters --out diff.png
 ```
 
-`--clusters` groups adjacent tiles densely filled with differing pixels. A group with enough differing pixels and a strong common direction in their average RGB change also fails the comparison, even when the overall differing-pixel fraction passes.
+`--clusters` also detects regions where many neighboring pixels are noticeably brighter or darker than the reference. Such a region can fail the comparison even when the overall difference fraction is within the limit. The parameters below control the region size and thresholds.
 
 | Option | Default | Meaning |
 |---|---|---|

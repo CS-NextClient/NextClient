@@ -196,7 +196,7 @@ python tools/test_server/test_server.py smoke --suite lifecycle --map de_dust2 -
 |---|---|
 | `stack` (default) | Loading and pinned component versions |
 | `gameplay` | Player, hostage, and bomb operations on `cs_office` and `de_dust2` |
-| `core` | Reset, callback generations, map epochs, and one-time pending requests |
+| `core` | Reset, map changes, and completion of pending requests |
 | `review` | Repeat after failure, active-profile retention, observer-target selection with GameDLL delay, and outcome preservation through a map change; requires `cs_office` |
 | `hostage` | Eight variants on `cs_office` |
 | `bomb` | Nine variants on `de_dust2` |
@@ -241,7 +241,7 @@ Enter these in the connected client's console after normal team/class selection.
 | `nct_resume` | Consume a valid saved scenario request after a map change |
 | `nct_status` | Print the short status and write full scene state to the journal |
 | `nct_trace on\|off` | Enable or disable detailed message/visibility tracing |
-| `nct_report` | Write a bounded report snapshot to the journal |
+| `nct_report` | Write to the journal a report covering the events recorded when the request is handled |
 | `nct_result pass\|fail\|skip <note>` | Record a human visual assessment for the current or last run |
 | `nct_team ct\|t\|observer` | Change the operator's role |
 | `nct_respawn` | Respawn an operator on CT or T |
@@ -264,7 +264,7 @@ python tools/test_server/test_server.py report --run <run_id>
 python tools/test_server/test_server.py results
 ```
 
-`report` writes `report.json` and `report.html` under `<paths.reports>/<run_id>/`, then updates `index.html`. The CLI returns `html_path` and `index_path`. For the matching active scene, collection requests a bounded journal snapshot. Other scenes and stopped servers use saved events with `live_snapshot=false`.
+`report` writes `report.json` and `report.html` under `<paths.reports>/<run_id>/`, then updates `index.html`. The CLI returns `html_path` and `index_path`. For the matching active scene, the command obtains the log as of the request. Later events appear in the next report. Other scenes and stopped servers use saved events with `live_snapshot=false`.
 
 `results` reads saved files without contacting the game server; no installed server is required. Pages open directly as local files. Corrupt JSON and unsupported schemas are reported as read errors without hiding valid results. HTML presents the saved data; manual assessments must be recorded with `nct_result` and recollected.
 
@@ -291,4 +291,4 @@ python tools/test_server/test_server.py compile-only
 
 The [test-server workflow](../../.github/workflows/test-server.yml) runs unit tests and compilation on Windows and Ubuntu. A manual dispatch with `server_smoke=true` also installs the Valve base and runs `stack`, `gameplay`, and `review`.
 
-To add a scenario, register its name, map, roles, and stages in [core.inc](../../test_support/plugins/nextclient_testlab/core.inc), implement its operations in a dedicated include, and add dispatch in [radar.inc](../../test_support/plugins/nextclient_testlab/radar.inc), a map profile, and server self-tests. Preserve one state owner, generation and `userid` checks, and validation of actual gameplay results. Add the manual acceptance procedure to the [scenario checklist](../testing/manual-testing-scenarios.md).
+Follow the [test plugin instructions](../../test_support/plugins/nextclient_testlab/AGENTS.md) when adding scenarios. Also describe preparation, actions, and expected results in the [manual test checklist](../testing/manual-testing-scenarios.md).

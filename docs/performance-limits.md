@@ -1,6 +1,6 @@
 # Map inspection
 
-[Russian translation](performance-limits.ru.md) | [Panel operation](performance-monitor.md) | [Graph reference](performance-graphs.md)
+[Russian translation](performance-limits.ru.md) | [Panel operation](performance-monitor.md) | [Graphs](performance-monitor.md#reading-graphs)
 
 ## Getting started
 
@@ -22,7 +22,7 @@ For an object's name, properties, and outline, start a local game with `map` and
 | Object origin (level 2) | Current entity origin XYZ, separate from the Look intersection. Worldspawn uses the world coordinate origin, 0 0 0. A missing target displays a dash. |
 | Object (level 2) | Classname and targetname when a unique inline model record identifies the brush entity; otherwise its model name. World surfaces use worldspawn. Studio and sprite model bounds are marked `[bounds]`. |
 
-In level 2, cyan lines outline the selected object in the scene. World geometry highlights only the hit polygon; brush entities highlight their model edges. Studio and sprite objects highlight the same model bounds used for selection. The outline uses the rendered viewport, projection and scene depth, so nearer geometry occludes hidden edges. The largest rendered viewport supplies the main view when a frame also renders a smaller spectator inset. A missing intersection hides the outline and displays `Look: -` and `Object: -`.
+In mode 2, a cyan outline marks the selected object. It outlines the map surface under the crosshair, the edges of a brush object, or the bounds of a Studio model or sprite. Nearby objects hide the outline behind them. When a spectator inset is open, diagnostics use the larger main view. With no object under the crosshair, the outline is hidden and the rows show `Look: -` and `Object: -`.
 
 ## Object properties
 
@@ -36,4 +36,4 @@ Brush picking intersects the actual BSP surface polygons, including visible nons
 
 If the BSP entity lump is unavailable, the Brush entities row shows only the PVS brush count. Before a rendered view is available, view-dependent rows use `-`. A frame with no rendered view, including `r_norefresh`, clears the intersection and outline. The panel refreshes inspection text for the latest captured view independently of the 250 ms CPU/GPU summaries.
 
-Map identity and generation changes, disconnect and `perf_reset` discard cached metadata, geometry and the selected object. After a cache reset, metadata and the world surface acceleration tree are rebuilt when the current map becomes available. The inspector resets polygon counters for each measured view. Runtime acceptance cases are in [Performance monitor verification](testing/performance-monitor.md).
+A map change, disconnection, or `perf_reset` clears diagnostic data and the selected object. The panel shows new data when the next map is loaded. See the [monitor checks](testing/performance-monitor.md) for test scenarios.
