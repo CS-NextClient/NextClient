@@ -34,8 +34,11 @@ namespace
 
     EngineFrame* g_Frame{};
 
+    // Native detours require the ABI instead of inferred register preservation at call sites.
 #ifdef _MSC_VER
     __declspec(noinline)
+#elif defined(__GNUC__) && !defined(__clang__)
+    __attribute__((noipa))
 #else
     __attribute__((noinline))
 #endif
@@ -48,6 +51,8 @@ namespace
 
 #ifdef _MSC_VER
     __declspec(noinline)
+#elif defined(__GNUC__) && !defined(__clang__)
+    __attribute__((noipa))
 #else
     __attribute__((noinline))
 #endif
@@ -58,6 +63,8 @@ namespace
 
 #ifdef _MSC_VER
     __declspec(noinline)
+#elif defined(__GNUC__) && !defined(__clang__)
+    __attribute__((noipa))
 #else
     __attribute__((noinline))
 #endif
@@ -83,6 +90,8 @@ namespace
 
 #ifdef _MSC_VER
     __declspec(noinline)
+#elif defined(__GNUC__) && !defined(__clang__)
+    __attribute__((noipa))
 #else
     __attribute__((noinline))
 #endif
