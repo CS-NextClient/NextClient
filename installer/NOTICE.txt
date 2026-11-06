@@ -1,0 +1,6 @@
+Steam discovery, path validation, copying, migration helpers, and Inno integration
+are adapted from CS16Reconstruction PR 34 by baarsik:
+https://github.com/baarsik/CS16Reconstruction/pull/34
+Source revision: eb44e4d0149fb1f9b512333ae9a24ce030a58aed.
+
+Python and PyInstaller runtime notices are included with the packaged helper.

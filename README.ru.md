@@ -130,6 +130,8 @@ bindlist
 
 ### Windows
 
+Для новой отдельной установки из Steam и обновления существующего NextClient, включая папки из ZIP, используйте [установщик Windows](docs/installation.ru.md). Файл `NextClient-<tag>-setup.exe` находится в файлах выпуска. Для ручной установки из ZIP выполните следующие шаги.
+
 1. NextClient работает только с версией движка 8684. В Steam выберите бета-ветвь "steam_legacy - Pre-25th Anniversary Build". Для установки нужны файлы официальной игры из Steam.
 2. Скопируйте всю папку Counter-Strike 1.6 (Half-Life) в отдельную папку вне Steam.
 3. Скопируйте все файлы NextClient в папку с этой копией игры.

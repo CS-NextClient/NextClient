@@ -4,6 +4,10 @@
 
 The [architecture overview](architecture.md) describes project modules and their purpose. The [build instructions](../README.md#building) explain how to prepare a development environment. Other guides are grouped by task below.
 
+## Installation
+
+[Windows installation](installation.md) explains how to create a game copy, update an existing installation, recover an interrupted operation, and remove the game.
+
 ## Architecture
 
 These sections describe module responsibilities and interactions.
@@ -21,6 +25,7 @@ These guides cover building, configuration, and diagnostics. The [developer pane
 | Task | Guide |
 |---|---|
 | Build the client and configure an IDE | [Project setup](../README.md#building) |
+| Package the Windows release installer | [Installer build](tools/installer.md) |
 | Run content and server tools through forms | [Developer tools panel](tools/developer-panel.md) |
 | Prepare and operate a dedicated test server | [Test server](tools/test-server.md) and [compatibility](tools/test-server-compatibility.md) |
 | Inspect frame cost and capture Tracy traces | [Monitor settings, graphs, and diagnostics](performance-monitor.md) |

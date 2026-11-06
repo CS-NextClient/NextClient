@@ -13,8 +13,77 @@ jobs:
   build:
     uses: ./.github/workflows/build.yml
 
-  publish:
+  installer:
     needs: build
+    runs-on: windows-2022
+    permissions:
+      contents: read
+    defaults:
+      run:
+        shell: pwsh
+    env:
+      TAG: ${{ github.event.release.tag_name }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          architecture: x86
+          cache: pip
+          cache-dependency-path: installer/requirements-build.txt
+
+      - name: Download verified Windows payload
+        uses: actions/download-artifact@v4
+        with:
+          name: NextClient-${{ github.sha }}
+          path: install
+
+      - name: Prepare installer tools
+        run: |
+          python -m pip install -r installer/requirements-build.txt
+          if ($LASTEXITCODE -ne 0) { throw 'Installer dependency installation failed.' }
+          ./tools/installer/install_inno.ps1 -Destination "$env:RUNNER_TEMP\NextClient-Inno-6.7.3"
+
+      - name: Test installer core on x86
+        run: python -m unittest discover -s installer/tests -t .
+
+      - name: Package Windows installer
+        run: |
+          python tools/installer/build_installer.py --payload install --version $env:TAG --revision $env:GITHUB_SHA `
+            --iscc "$env:RUNNER_TEMP\NextClient-Inno-6.7.3\ISCC.exe" --output build/installer-output
+          if ($LASTEXITCODE -ne 0) { throw 'Installer packaging failed.' }
+
+      - name: Exercise real installer with synthetic files
+        run: |
+          $manifest = Get-Content -Raw -LiteralPath "build/installer-output/NextClient-$env:TAG-setup.manifest.json" | ConvertFrom-Json
+          $helper = $manifest.artifacts | Where-Object { [IO.Path]::GetFileName($_.path) -eq 'nextclient-install.exe' }
+          if (-not $helper) { throw 'The build manifest has no installer helper.' }
+          python tools/installer/smoke_installer.py --python (Get-Command python).Source `
+            --iscc "$env:RUNNER_TEMP\NextClient-Inno-6.7.3\ISCC.exe" --helper $helper.path --work-dir build/installer-smoke
+          if ($LASTEXITCODE -ne 0) { throw 'Installer smoke failed.' }
+
+      - name: Upload installer artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: NextClient-installer-${{ github.sha }}
+          path: build/installer-output/
+          if-no-files-found: error
+
+      - name: Upload installer verification evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: NextClient-installer-verification-${{ github.sha }}
+          path: |
+            build/installer-smoke/*.log
+            build/installer-smoke/result.json
+          if-no-files-found: ignore
+
+  publish:
+    needs: [build, installer]
     runs-on: ubuntu-latest
     steps:
       - name: Download build artifact
@@ -35,6 +104,12 @@ jobs:
           name: NextClient-linux-${{ github.sha }}
           path: dist/linux
 
+      - name: Download installer artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: NextClient-installer-${{ github.sha }}
+          path: dist/installer
+
       - name: Package release archives
         env:
           TAG: ${{ github.event.release.tag_name }}
@@ -42,6 +117,7 @@ jobs:
           (cd dist/nextclient && zip -r "$GITHUB_WORKSPACE/NextClient-$TAG.zip" .)
           (cd dist/pdb && zip -r "$GITHUB_WORKSPACE/NextClient-$TAG-pdb.zip" .)
           mv dist/linux/NextClient-linux.tar.gz "NextClient-$TAG-linux.tar.gz"
+          cp dist/installer/* .
 
       - name: Attest build provenance
         uses: actions/attest-build-provenance@v2
@@ -50,9 +126,15 @@ jobs:
             NextClient-${{ github.event.release.tag_name }}.zip
             NextClient-${{ github.event.release.tag_name }}-pdb.zip
             NextClient-${{ github.event.release.tag_name }}-linux.tar.gz
+            NextClient-${{ github.event.release.tag_name }}-setup.exe
+            NextClient-${{ github.event.release.tag_name }}-setup.sha256
+            NextClient-${{ github.event.release.tag_name }}-setup.manifest.json
 
       - name: Upload assets to release
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ github.event.release.tag_name }}
-        run: gh release upload "$TAG" "NextClient-$TAG.zip" "NextClient-$TAG-pdb.zip" "NextClient-$TAG-linux.tar.gz" --clobber --repo "$GITHUB_REPOSITORY"
+        run: >-
+          gh release upload "$TAG" "NextClient-$TAG.zip" "NextClient-$TAG-pdb.zip" "NextClient-$TAG-linux.tar.gz"
+          "NextClient-$TAG-setup.exe" "NextClient-$TAG-setup.sha256" "NextClient-$TAG-setup.manifest.json"
+          --clobber --repo "$GITHUB_REPOSITORY"

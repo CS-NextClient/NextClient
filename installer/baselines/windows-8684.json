@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "platform": "windows-x86",
+  "engine_build": 8684,
+  "branch": "steam_legacy",
+  "anniversary": {
+    "hw.dll": "9ba9a2db5e07598fd59afa35507a98c86162e4e15b3835177b78c11842cd2295",
+    "cstrike/cl_dlls/client.dll": "b434b1c09b10b011be6c42e4154955da0c3ca46e95746988ebea1aa316a2a9f2"
+  },
+  "files": {
+    "hw.dll": "be45f76049a133392423679d334c69c8e1e7e82dc873eebdd229ea0341ba1b10",
+    "cstrike/cl_dlls/client.dll": "ef7a0f40989cb79ba95d40f528534da36866892ee871147ca82e133b7a5edc3d"
+  }
+}

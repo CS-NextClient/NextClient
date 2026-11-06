@@ -60,6 +60,9 @@ jobs:
       - name: Test goldsrc_abi tools
         run: python -m unittest discover -s nextclient/goldsrc_abi/tools -t nextclient/goldsrc_abi/tools -p "test_*.py"
 
+      - name: Test installer core
+        run: python -m unittest discover -s installer/tests -t .
+
       - name: Build
         run: cmake --build --preset ninja-release --target BUILD_ALL --parallel
 
