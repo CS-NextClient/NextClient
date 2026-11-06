@@ -2,16 +2,20 @@
 
 #include <clocale>
 #include <cstdio>
-#include <easylogging++.h>
 #include <filesystem>
 #include <format>
 #include <iostream>
-#include <magic_enum/magic_enum.hpp>
 #include <string>
 #include <thread>
 
 #ifndef _WIN32
-    #include <cstdlib>
+#include <cstdlib>
+#endif
+
+#include <easylogging++.h>
+#include <magic_enum/magic_enum.hpp>
+
+#ifndef _WIN32
     #include <fcntl.h>
     #include <sys/file.h>
     #include <unistd.h>
@@ -29,8 +33,10 @@
 #include <nitroapi/NitroApiInterface.h>
 #include <nitro_utils/config_utils.h>
 #include <nitro_utils/string_utils.h>
+#include <ncl_perf/profiler.h>
 #include <utils/platform.h>
 #include <next_launcher/version.h>
+#include <next_launcher/video_settings.h>
 #include <steam_api_proxy/next_steam_api_proxy.h>
 
 #include "Analytics.h"
@@ -279,7 +285,16 @@ ClientLauncher::EngineSessionResult ClientLauncher::RunEngine()
 
     nitro_api->WriteLog(NITRO_API_LOG_TAG, sentry_init_log_.c_str());
     nitro_api->SetSEHCallback(ExceptionHandler);
-    nitro_api->Initialize(cmd_line_.get(), filesystem, hl_registry_.get());
+    ncl_perf::Profiling_Start();
+
+    CCommandLine engine_command_line;
+    video_settings::PrepareEngineCommandLine(
+        engine_command_line,
+        *cmd_line_,
+        config_provider_->get_value_int(video_settings::kMsaaSamplesKey, video_settings::kDefaultMsaaSamples)
+    );
+
+    nitro_api->Initialize(&engine_command_line, filesystem, hl_registry_.get());
 
     unsubscribers.emplace_back(nitro_api->GetEngineData()->Sys_Error |= [this](const char* error, const auto& next) {
         Sys_ErrorHandler(error);
@@ -328,7 +343,10 @@ ClientLauncher::EngineSessionResult ClientLauncher::RunEngine()
 
     auto [engine, engine_module] = LoadModule<IEngineAPI>(kEngineDll, VENGINE_LAUNCHER_API_VERSION);
     if (engine == nullptr)
+    {
+        ncl_perf::Profiling_Stop();
         return EngineSessionResult::Exit;
+    }
 
     std::string versions = CreateVersionsString(nitro_api, engine_mini, client_mini, gameui_next);
     nitro_api->WriteLog(NITRO_API_LOG_TAG, versions.c_str());
@@ -338,7 +356,7 @@ ClientLauncher::EngineSessionResult ClientLauncher::RunEngine()
 
     EngineCommons::Init(nitro_api, user_info_client_, versions, available_branches_);
 
-    LOG(INFO) << "Engine command line: '" << cmd_line_->GetCmdLine() << "'";
+    LOG(INFO) << "Engine command line: '" << engine_command_line.GetCmdLine() << "'";
 
     LOG(INFO) << "IEngineAPI::Run";
     analytics_->AddBreadcrumb("Info", "IEngineAPI::Run");
@@ -354,10 +372,11 @@ ClientLauncher::EngineSessionResult ClientLauncher::RunEngine()
     EngineRunResult engine_run_result = engine->Run(
         module_instance_,
         base_dir.c_str(),
-        cmd_line_->GetCmdLine(),
+        engine_command_line.GetCmdLine(),
         post_restart_cmd_line,
         Sys_GetFactoryThis(),
-        Sys_GetFactory(filesystem_module));
+        Sys_GetFactory(filesystem_module)
+    );
 
     EngineCommons::Reset();
 
@@ -365,21 +384,23 @@ ClientLauncher::EngineSessionResult ClientLauncher::RunEngine()
     analytics_->AddBreadcrumb("Info", std::format("IEngineAPI::Run done, result: {}", (int)engine_run_result).c_str());
 
     client_mini->Uninitialize();
-    Sys_UnloadModule(client_mini_module);
 
     engine_mini->Uninitialize();
-    Sys_UnloadModule(engine_mini_module);
 
-    Sys_UnloadModule(engine_module);
-    Sys_UnloadModule(gameui_next_module);
 
     filesystem->Unmount();
-    Sys_UnloadModule(filesystem_module);
 
     for (auto& unsub : unsubscribers)
         unsub->Unsubscribe();
 
     nitro_api->UnInitialize();
+    ncl_perf::Profiling_Stop();
+
+    Sys_UnloadModule(client_mini_module);
+    Sys_UnloadModule(engine_mini_module);
+    Sys_UnloadModule(engine_module);
+    Sys_UnloadModule(gameui_next_module);
+    Sys_UnloadModule(filesystem_module);
     Sys_UnloadModule(nitro_api_module);
 
     EngineSessionResult engine_session_result{};

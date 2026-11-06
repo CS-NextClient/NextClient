@@ -40,17 +40,20 @@ private:
     RadarMapMode loaded_mode_ = RadarMapMode::None;
 
 public:
-    ~RadarOverview();
+    explicit RadarOverview(radar::integration::Performance& performance) :
+        layer_renderer_(performance)
+    {}
+    ~RadarOverview() = default;
 
     RadarMapStatus EnsureLoaded(RadarMapMode mode, const RadarMapLayers* layers, bool prepare_only);
     RadarMapStatus EnsureLayerImage(const RadarMapLayers& layers, int layer, uint64_t frame);
     RadarMapStatus EnsureTopImage(RadarMapMode mode, bool prepare_only, const RadarMapLayers* layers = nullptr);
 
-    void ResetLayerImages();
+    void ResetLayerImages(bool release = true);
 
     // Call on level (re)load: the engine rebuilds its textures/lightmaps then, which
     // leaves a previously generated runtime texture stale even on the same map.
-    void Invalidate();
+    void Invalidate(bool release = true);
 
     bool is_valid() const
     {

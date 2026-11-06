@@ -5,6 +5,7 @@
 #include "hook/GenericHookVaformatStatic.h"
 #include <easylogging++.h>
 #include <unordered_map>
+#include <utility>
 
 namespace nitroapi
 {
@@ -28,8 +29,11 @@ namespace nitroapi
             LOG_IF(i > 0, WARNING) << "HookStorage::~HookStorage Auto-removed hooks count: " << i;
         }
 
-        template<StaticHookId HookId, CallingConventions TConv, class TResult, class... TArgs>
-        GenericHookInterface<TResult, TArgs...>* GetStaticHook(uint32_t address)
+        template <StaticHookId HookId, CallingConventions TConv, class TResult, class... TArgs>
+        GenericHookInterface<TResult, TArgs...>* GetStaticHook(
+            uint32_t address,
+            typename GenericHookStatic<HookId, TConv, TResult, TArgs...>::CallbackWrapperFunc callback_wrapper = {}
+        )
         {
             if (address == 0)
                 return nullptr;
@@ -38,7 +42,7 @@ namespace nitroapi
             if (result != hooks_.end())
                 return dynamic_cast<GenericHookInterface<TResult, TArgs...>*>(result->second);
 
-            auto hook = new GenericHookStatic<HookId, TConv, TResult, TArgs...>(address);
+            auto hook = new GenericHookStatic<HookId, TConv, TResult, TArgs...>(address, std::move(callback_wrapper));
             auto empl_result = hooks_.try_emplace(address, hook);
 
             if (!empl_result.second)

@@ -4,6 +4,8 @@ project(ncl_gl)
 set(CMAKE_CXX_STANDARD 23)
 
 add_library(${PROJECT_NAME} STATIC
+    src/capture.cpp
+    src/context.cpp
     src/loader.cpp
     src/program.cpp
 )
@@ -17,7 +19,9 @@ target_link_libraries(${PROJECT_NAME} PUBLIC
         glad::glad
 )
 
-if (NOT WIN32)
+if (WIN32)
+    target_link_libraries(${PROJECT_NAME} PRIVATE opengl32)
+else ()
     find_package(SDL2 REQUIRED)
-    target_link_libraries(${PROJECT_NAME} PRIVATE SDL2::SDL2)
+    target_link_libraries(${PROJECT_NAME} PRIVATE SDL2::SDL2 ${CMAKE_DL_LIBS})
 endif ()

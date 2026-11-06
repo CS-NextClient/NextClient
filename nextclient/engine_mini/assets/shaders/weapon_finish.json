@@ -1,0 +1,126 @@
+{
+  "version": 1,
+  "program": "weapon_finish",
+  "render_contract": "studio_effects_v1",
+  "parameters": {
+    "uGlitchAmount": {"type": "scalar", "default": 0, "min": 0, "max": 1, "instance": true, "label": "#ncl_mat_glitch_amount", "hint": "#ncl_mat_glitch_hint"},
+    "uGlitchDisplacement": {"type": "scalar", "default": 12, "min": 0, "max": 64, "instance": true, "label": "#ncl_mat_glitch_displacement", "hint": "#ncl_mat_glitch_hint"},
+    "uGlitchBands": {"type": "scalar", "default": 24, "min": 1, "max": 128, "instance": true, "label": "#ncl_mat_glitch_bands", "hint": "#ncl_mat_glitch_hint"},
+    "uGlitchRgbSplit": {"type": "scalar", "default": 2, "min": 0, "max": 16, "instance": true, "label": "#ncl_mat_glitch_rgb", "hint": "#ncl_mat_glitch_hint"},
+    "uGlitchSpeed": {"type": "scalar", "default": 12, "min": 0, "max": 60, "instance": true, "label": "#ncl_mat_glitch_speed", "hint": "#ncl_mat_glitch_hint"},
+    "uGlitchSeed": {"type": "scalar", "default": 0, "min": 0, "max": 32767, "instance": true, "label": "#ncl_mat_glitch_seed", "hint": "#ncl_mat_glitch_hint"},
+    "uOccludedAmount": {"type": "scalar", "default": 0, "min": 0, "max": 1, "instance": true, "label": "#ncl_mat_occluded_amount", "hint": "#ncl_mat_occluded_hint"},
+    "uOccludedColor": {"type": "vec4", "default": [1, 0.2, 0.05, 0.5], "min": 0, "max": 1, "widget": "color", "label": "#ncl_mat_occluded_color", "hint": "#ncl_mat_occluded_hint"},
+    "uOutlineMode": {"type": "scalar", "default": 0, "min": 0, "max": 2, "instance": true, "widget": "choice", "choices": ["#ncl_mat_outline_mode_occluded", "#ncl_mat_outline_mode_always", "#ncl_mat_outline_mode_visible"], "label": "#ncl_mat_outline_mode", "hint": "#ncl_mat_outline_mode_hint"},
+    "uOutlineWidth": {"type": "scalar", "default": 0, "min": 0, "max": 16, "instance": true, "label": "#ncl_mat_outline_width", "hint": "#ncl_mat_outline_hint"},
+    "uOutlineColor": {"type": "vec4", "default": [1, 0.5, 0.1, 1], "min": 0, "max": 1, "widget": "color", "label": "#ncl_mat_outline_color", "hint": "#ncl_mat_outline_hint"},
+    "uGlowRadius": {"type": "scalar", "default": 8, "min": 0, "max": 64, "label": "#ncl_mat_glow_radius", "hint": "#ncl_mat_glow_hint"},
+    "uGlowStrength": {"type": "scalar", "default": 0, "min": 0, "max": 4, "instance": true, "label": "#ncl_mat_glow_strength", "hint": "#ncl_mat_glow_hint"},
+
+    "uDissolveMap": {"type": "texture", "label": "#ncl_mat_dissolve_map", "hint": "#ncl_mat_dissolve_map_hint"},
+    "uDissolveTransform": {"type": "vec4", "default": [1.0, 1.0, 0.0, 0.0], "label": "#ncl_mat_dissolve_transform", "hint": "#ncl_mat_placement_hint"},
+    "uDissolveSpace": {"type": "scalar", "default": 0, "min": 0, "max": 1, "label": "#ncl_mat_dissolve_space", "hint": "#ncl_mat_dissolve_space_hint"},
+    "uDissolve": {"type": "scalar", "default": 0, "min": 0, "max": 1, "label": "#ncl_mat_dissolve", "hint": "#ncl_mat_dissolve_hint", "instance": true},
+    "uNoise": {"type": "scalar", "default": 0, "min": 0, "max": 1, "label": "#ncl_mat_noise", "hint": "#ncl_mat_noise_hint", "instance": true},
+    "uNoiseSpace": {"type": "scalar", "default": 0, "min": 0, "max": 1, "label": "#ncl_mat_noise_space", "hint": "#ncl_mat_noise_space_hint"},
+    "uNoiseScale": {"type": "scalar", "default": 256, "min": 1, "max": 1024, "label": "#ncl_mat_noise_scale", "hint": "#ncl_mat_noise_scale_hint"},
+    "uNoiseSeed": {"type": "scalar", "default": 0, "min": 0, "max": 32767, "label": "#ncl_mat_noise_seed", "hint": "#ncl_mat_noise_seed_hint", "instance": true},
+    "uNoiseSpeed": {"type": "scalar", "default": 0, "min": 0, "max": 60, "label": "#ncl_mat_noise_speed", "hint": "#ncl_mat_noise_speed_hint", "instance": true},
+    "uPattern": { "type": "texture", "label": "#ncl_mat_pattern", "hint": "#ncl_mat_pattern_hint" },
+    "uUnderlay": { "type": "texture", "label": "#ncl_mat_underlay", "hint": "#ncl_mat_underlay_hint" },
+    "uWearMap": { "type": "texture", "label": "#ncl_mat_wear_map", "hint": "#ncl_mat_wear_map_hint" },
+    "uSphereMap": { "type": "texture", "label": "#ncl_mat_sphere_map", "hint": "#ncl_mat_sphere_map_hint" },
+    "uReflectMask": { "type": "texture", "label": "#ncl_mat_reflect_mask", "hint": "#ncl_mat_reflect_mask_hint" },
+
+    "uBaseTint": {
+      "type": "vec4", "default": [1.0, 1.0, 1.0, 1.0], "widget": "color", "min": 0.0, "max": 1.0,
+      "label": "#ncl_mat_base_tint", "hint": "#ncl_mat_base_tint_hint"
+    },
+    "uPatternTint": {
+      "type": "vec4", "default": [1.0, 1.0, 1.0, 1.0], "widget": "color", "min": 0.0, "max": 1.0,
+      "label": "#ncl_mat_pattern_tint", "hint": "#ncl_mat_pattern_tint_hint"
+    },
+    "uUnderlayTint": {
+      "type": "vec4", "default": [1.0, 1.0, 1.0, 1.0], "widget": "color", "min": 0.0, "max": 1.0,
+      "label": "#ncl_mat_underlay_tint", "hint": "#ncl_mat_underlay_tint_hint"
+    },
+    "uPatternTransform": {
+      "type": "vec4", "default": [1.0, 1.0, 0.0, 0.0],
+      "label": "#ncl_mat_pattern_transform", "hint": "#ncl_mat_placement_hint"
+    },
+    "uWearMapTransform": {
+      "type": "vec4", "default": [1.0, 1.0, 0.0, 0.0],
+      "label": "#ncl_mat_wear_map_transform", "hint": "#ncl_mat_placement_hint"
+    },
+    "uUnderlayTransform": {
+      "type": "vec4", "default": [1.0, 1.0, 0.0, 0.0],
+      "label": "#ncl_mat_underlay_transform", "hint": "#ncl_mat_placement_hint"
+    },
+    "uReflectTint": {
+      "type": "vec4", "default": [1.0, 1.0, 1.0, 1.0], "widget": "color", "min": 0.0, "max": 1.0,
+      "label": "#ncl_mat_reflect_tint", "hint": "#ncl_mat_reflect_tint_hint"
+    },
+    "uReflectMaskTransform": {
+      "type": "vec4", "default": [1.0, 1.0, 0.0, 0.0],
+      "label": "#ncl_mat_reflect_mask_transform", "hint": "#ncl_mat_placement_hint"
+    },
+
+    "uLayerMix": {
+      "type": "scalar", "instance": true, "default": 0.0, "min": 0.0, "max": 1.0,
+      "label": "#ncl_mat_layer_mix", "hint": "#ncl_mat_layer_mix_hint"
+    },
+    "uWear": {
+      "type": "scalar", "instance": true, "default": 0.0, "min": 0.0, "max": 1.0,
+      "label": "#ncl_mat_wear", "hint": "#ncl_mat_wear_hint"
+    },
+    "uWearSoftness": {
+      "type": "scalar", "default": 0.08, "min": 0.001, "max": 0.5,
+      "label": "#ncl_mat_wear_softness", "hint": "#ncl_mat_wear_softness_hint"
+    },
+    "uReflectivity": {
+      "type": "scalar", "default": 0.0, "min": 0.0, "max": 4.0,
+      "label": "#ncl_mat_reflectivity", "hint": "#ncl_mat_reflectivity_hint"
+    },
+    "uReflectWear": {
+      "type": "scalar", "default": 0.0, "min": -1.0, "max": 1.0,
+      "label": "#ncl_mat_reflect_wear", "hint": "#ncl_mat_reflect_wear_hint"
+    },
+    "uSpecular": {
+      "type": "scalar", "default": 0.0, "min": 0.0, "max": 4.0,
+      "label": "#ncl_mat_specular", "hint": "#ncl_mat_specular_hint"
+    },
+    "uGloss": {
+      "type": "scalar", "default": 32.0, "min": 1.0, "max": 256.0,
+      "label": "#ncl_mat_gloss", "hint": "#ncl_mat_gloss_hint"
+    }
+  },
+  "groups": [
+    {"name": "glitch", "label": "#ncl_mat_group_glitch", "params": ["uGlitchAmount", "uGlitchDisplacement", "uGlitchBands", "uGlitchRgbSplit", "uGlitchSpeed", "uGlitchSeed"]},
+    {"name": "occluded", "label": "#ncl_mat_group_occluded", "params": ["uOccludedAmount", "uOccludedColor"]},
+    {"name": "outline", "label": "#ncl_mat_group_outline", "params": ["uOutlineMode", "uOutlineWidth", "uOutlineColor", "uGlowRadius", "uGlowStrength"]},
+
+    {"name": "dissolve", "label": "#ncl_mat_group_dissolve", "params": ["uDissolveMap", "uDissolveTransform", "uDissolveSpace", "uDissolve"]},
+    {"name": "noise", "label": "#ncl_mat_group_noise", "params": ["uNoise", "uNoiseSpace", "uNoiseScale", "uNoiseSeed", "uNoiseSpeed"]},
+    { "name": "base", "label": "#ncl_mat_group_base", "params": ["uBaseTint"] },
+    {
+      "name": "pattern", "label": "#ncl_mat_group_pattern",
+      "params": ["uPattern", "uPatternTint", "uPatternTransform", "uLayerMix"]
+    },
+    {
+      "name": "wear", "label": "#ncl_mat_group_wear",
+      "params": ["uWearMap", "uWearMapTransform", "uWear", "uWearSoftness"]
+    },
+    {
+      "name": "underlay", "label": "#ncl_mat_group_underlay",
+      "params": ["uUnderlay", "uUnderlayTint", "uUnderlayTransform"]
+    },
+    {
+      "name": "highlight", "label": "#ncl_mat_group_highlight",
+      "params": [
+        "uReflectMask", "uReflectMaskTransform", "uReflectTint", "uReflectWear",
+        "uSpecular", "uGloss", "uSphereMap", "uReflectivity"
+      ]
+    }
+  ],
+  "overlays": { "max": 4 }
+}

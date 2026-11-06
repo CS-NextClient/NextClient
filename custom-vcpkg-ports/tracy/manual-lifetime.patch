@@ -1,0 +1,20 @@
+--- a/public/client/TracyProfiler.cpp
++++ b/public/client/TracyProfiler.cpp
+@@ -1755,6 +1755,17 @@
+         m_broadcast->~UdpBroadcast();
+         tracy_free( m_broadcast );
+     }
++
++#ifdef TRACY_MANUAL_LIFETIME
++    auto threadName = GetThreadNameData().exchange( nullptr, std::memory_order_relaxed );
++    while( threadName )
++    {
++        auto next = threadName->next;
++        tracy_free( const_cast<char*>( threadName->name ) );
++        tracy_free( threadName );
++        threadName = next;
++    }
++#endif
+ 
+     TRACY_ASSERT( s_instance );
+     s_instance = nullptr;

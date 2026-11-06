@@ -6,17 +6,15 @@
 
 #include <goldsrc/client_api.h>
 #include <goldsrc/engine/model.h>
+#include <goldsrc/engine/video.h>
 #include <goldsrc/entity.h>
 #include <goldsrc/triangle_api.h>
 
 void HudSprite::Draw() const
 {
-    goldsrc::SCREENINFO screen;
-    screen.iSize = sizeof(goldsrc::SCREENINFO);
-    gEngfuncs.pfnGetScreenInfo(&screen);
-
-    auto screenWidth = static_cast<float>(screen.iWidth);
-    auto screenHeight = static_cast<float>(screen.iHeight);
+    const goldsrc::viddef_t& video = *eng()->vid;
+    float screen_width = static_cast<float>(video.width);
+    float screen_height = static_cast<float>(video.height);
 
     const auto sprite = gEngfuncs.GetSpritePointer(getSprite());
     if(sprite == nullptr) return;
@@ -31,11 +29,11 @@ void HudSprite::Draw() const
         ta->TexCoord2f(0, 0);
         ta->Vertex3f(0, 0, 0);
         ta->TexCoord2f(0, 1);
-        ta->Vertex3f(0, screenHeight, 0);
+        ta->Vertex3f(0, screen_height, 0);
         ta->TexCoord2f(1, 1);
-        ta->Vertex3f(screenWidth, screenHeight, 0);
+        ta->Vertex3f(screen_width, screen_height, 0);
         ta->TexCoord2f(1, 0);
-        ta->Vertex3f(screenWidth, 0, 0);
+        ta->Vertex3f(screen_width, 0, 0);
         ta->End();
     } else {
         const auto spriteWidth = (getSpriteRect().right - getSpriteRect().left) * getScaleX();
@@ -43,8 +41,8 @@ void HudSprite::Draw() const
         const auto fullSpriteWidth = getFullSpriteWidth() * getScaleX();
         const auto fullSpriteHeight = getFullSpriteHeight() * getScaleY();
 
-        const auto x = XPosition(spriteWidth, screenWidth);
-        const auto y = YPosition(spriteHeight, screenHeight);
+        const auto x = XPosition(spriteWidth, screen_width);
+        const auto y = YPosition(spriteHeight, screen_height);
 
         const auto left = getSpriteRect().left / fullSpriteWidth * getScaleX();
         const auto top = getSpriteRect().top / fullSpriteHeight * getScaleY();

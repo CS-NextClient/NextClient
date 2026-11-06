@@ -2,7 +2,7 @@
 
 #include "common/sys_dll.h"
 
-#include <optick.h>
+#include <ncl_perf/profiler.h>
 
 namespace tex
 {
@@ -19,7 +19,7 @@ namespace tex
 
     uint64_t PaletteManager::HashPalette(const uint8_t* colors)
     {
-        OPTICK_EVENT();
+        NCL_PROFILE_SCOPE();
 
         uint64_t hash = 0xcbf29ce484222325ULL;
 
@@ -34,7 +34,7 @@ namespace tex
 
     PaletteHandle PaletteManager::Load(const uint8_t* colors)
     {
-        OPTICK_EVENT();
+        NCL_PROFILE_SCOPE();
 
         if (!colors)
         {
@@ -69,7 +69,7 @@ namespace tex
 
     Palette* PaletteManager::Get(PaletteHandle handle)
     {
-        OPTICK_EVENT();
+        NCL_PROFILE_SCOPE();
 
         if (!handle.IsValid() || handle.index >= kCapacity)
         {
@@ -88,7 +88,7 @@ namespace tex
 
     void PaletteManager::Release(PaletteHandle handle)
     {
-        OPTICK_EVENT();
+        NCL_PROFILE_SCOPE();
 
         if (!handle.IsValid() || handle.index >= kCapacity)
         {
@@ -115,7 +115,7 @@ namespace tex
 
     uint32_t PaletteManager::AllocateSlot()
     {
-        OPTICK_EVENT();
+        NCL_PROFILE_SCOPE();
 
         if (free_head == -1)
         {
@@ -131,7 +131,7 @@ namespace tex
 
     void PaletteManager::FreeSlot(uint32_t index)
     {
-        OPTICK_EVENT();
+        NCL_PROFILE_SCOPE();
 
         PaletteSlot& slot = slots[index];
 

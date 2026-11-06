@@ -1,5 +1,8 @@
 #pragma once
 
+#include "hud/radar/render/RadarDraw.h"
+#include "hud/radar/integration/Performance.h"
+
 #include <array>
 
 #include "hud/radar/map/MapObjectives.h"
@@ -28,7 +31,14 @@ class ObjectivesLayer
     bool spectating_{};
 
 public:
-    explicit ObjectivesLayer(RadarVisibility& visibility, const RadarPolicy& policy, const RadarBroadcast& broadcast, RadarText& text);
+    explicit ObjectivesLayer(
+        RadarDrawContext& draw,
+        radar::integration::Performance& performance,
+        RadarVisibility& visibility,
+        const RadarPolicy& policy,
+        const RadarBroadcast& broadcast,
+        RadarText& text
+    );
 
     // Refills the entity snapshot the draws read and advances the throttled sight cadence.
     void CollectEntities(const RadarFrame& frame);
@@ -43,6 +53,9 @@ public:
     const RadarMapObjectives& get_map_objectives();
 
 private:
+    RadarDrawContext& draw_;
+    radar::integration::Performance& performance_;
+
     void DrawBomb(const RadarFrame& frame);
     void DrawSites(const RadarFrame& frame);
     void DrawHostages(const RadarFrame& frame);

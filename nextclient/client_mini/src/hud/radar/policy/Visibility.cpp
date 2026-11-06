@@ -5,8 +5,9 @@
 
 #include "main.h"
 
+#include "hud/radar/integration/Performance.h"
+
 #include <ncl_math/vec3.h>
-#include <ncl_utils/scoped_ms_counter.h>
 #include <goldsrc/client_api.h>
 #include <goldsrc/cstrike/hud.h>
 #include <goldsrc/entity.h>
@@ -55,12 +56,18 @@ namespace
         return to.Dot(fwd) / len >= cos_half;
     }
 
-    float TraceFraction(const ncl_math::Vector3& start, const ncl_math::Vector3& end, bool& solid)
+    float TraceFraction(
+        radar::integration::Performance& performance,
+        const ncl_math::Vector3& start,
+        const ncl_math::Vector3& end,
+        bool& solid
+    )
     {
         // Player hulls are skipped so the viewer's own body and clustered teammates
         // never break the line; goldsrc::PM_STUDIO_BOX clips props by their bounding box.
         if (pmove && pmove->PM_PlayerTraceEx)
         {
+            performance.AddCounter(performance::PerfCounterId::RadarVisibilityTraces, 1);
             goldsrc::pmtrace_t trace = pmove->PM_PlayerTraceEx(
                 const_cast<float*>(start.data()),
                 const_cast<float*>(end.data()),
@@ -79,6 +86,7 @@ namespace
         goldsrc::pmtrace_t trace{};
         trace.fraction = 1.0f;
 
+        performance.AddCounter(performance::PerfCounterId::RadarVisibilityTraces, 1);
         gEngfuncs.pEventAPI->EV_PlayerTrace(
             const_cast<float*>(start.data()),
             const_cast<float*>(end.data()),
@@ -93,10 +101,15 @@ namespace
 
     // Tolerates an obstruction within `tolerance` units of the end point: an objective is
     // not a player hull, so the trace stops on its body. Tolerance 0 demands a clear line.
-    bool IsPathClear(const ncl_math::Vector3& start, const ncl_math::Vector3& end, float tolerance)
+    bool IsPathClear(
+        radar::integration::Performance& performance,
+        const ncl_math::Vector3& start,
+        const ncl_math::Vector3& end,
+        float tolerance
+    )
     {
         bool solid = false;
-        float frac = TraceFraction(start, end, solid);
+        float frac = TraceFraction(performance, start, end, solid);
 
         if (solid)
         {
@@ -164,7 +177,7 @@ bool RadarVisibility::AnyViewerSees(const ncl_math::Vector3 (&target_points)[2],
 
         for (const ncl_math::Vector3& point : target_points)
         {
-            if (!IsPathClear(viewer.eye, point, tolerance))
+            if (!IsPathClear(performance_, viewer.eye, point, tolerance))
             {
                 continue;
             }
@@ -288,7 +301,7 @@ void RadarVisibility::SpotEnemies(const SweepContext& ctx, const RadarPolicy& po
 
 void RadarVisibility::Update(int self_player_id, RadarTeam my_team, bool spectating, float time, const RadarPolicy& policy)
 {
-    ncl_utils::ScopedMsCounter counter{traces_ms_};
+    performance::PerformanceCpuScope scope(performance_.get_monitor(), performance::PerfStage::RadarVisibility);
 
     if (spectating || my_team == RadarTeam::Unassigned)
     {
@@ -359,7 +372,7 @@ void RadarVisibility::BeginObjectiveTests()
 
 void RadarVisibility::EndObjectiveTests()
 {
-    ncl_utils::ScopedMsCounter counter{traces_ms_};
+    performance::PerformanceCpuScope scope(performance_.get_monitor(), performance::PerfStage::RadarVisibility);
 
     objective_tests_open_ = false;
 
@@ -374,7 +387,7 @@ void RadarVisibility::EndObjectiveTests()
 
 bool RadarVisibility::CheckPointVisible(const ncl_math::Vector3& origin, float time)
 {
-    ncl_utils::ScopedMsCounter counter{traces_ms_};
+    performance::PerformanceCpuScope scope(performance_.get_monitor(), performance::PerfStage::RadarVisibility);
 
     if (viewer_count_ == 0)
     {

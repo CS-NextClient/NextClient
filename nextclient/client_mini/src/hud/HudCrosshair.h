@@ -38,6 +38,8 @@ public:
     void VidInit() override;
 
 private:
+    int get_center_x() const;
+
     void DrawCrosshair(float flTime, int weaponid);
     int GetWeaponAccuracyFlags(int iWeaponID);
 

@@ -30,6 +30,7 @@ target_include_directories(${TARGET_NAME} PRIVATE
 )
 
 target_link_libraries(${TARGET_NAME} PRIVATE
+        NextClient::profiling
         nitro_api::nitro_api
         NextClient::client_mini
         NextClient::engine_mini
@@ -133,5 +134,6 @@ add_library(next_launcher_export INTERFACE)
 add_library(NextClient::next_launcher ALIAS next_launcher_export)
 
 target_include_directories(next_launcher_export INTERFACE
+        ${NEXT_LAUNCHER_SOURCE_DIR}/include
         ${NEXT_LAUNCHER_SOURCE_DIR}/include/next_launcher
 )

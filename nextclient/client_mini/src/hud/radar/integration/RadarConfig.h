@@ -1,5 +1,7 @@
 #pragma once
 
+class RadarDrawContext;
+
 #include <goldsrc/fwd.h>
 
 // Each field is the cvar hud_radar_<field name>.
@@ -36,4 +38,4 @@ bool RadarConfig_IsAdvancedSelected();
 
 // As RadarConfig_IsAdvancedSelected, but also false when the GL shader path the advanced
 // radar needs is unavailable.
-bool RadarConfig_CheckAdvancedActive();
+bool RadarConfig_CheckAdvancedActive(RadarDrawContext& draw);

@@ -7,6 +7,8 @@
 
 #include "main.h"
 
+#include "hud/radar/integration/Performance.h"
+
 #include "hud/radar/render/RadarDraw.h"
 #include "hud/radar/render/text/RadarLabel.h"
 #include "hud/radar/render/RadarPalette.h"
@@ -35,7 +37,16 @@ namespace
     };
 } // namespace
 
-ObjectivesLayer::ObjectivesLayer(RadarVisibility& visibility, const RadarPolicy& policy, const RadarBroadcast& broadcast, RadarText& text) :
+ObjectivesLayer::ObjectivesLayer(
+    RadarDrawContext& draw,
+    radar::integration::Performance& performance,
+    RadarVisibility& visibility,
+    const RadarPolicy& policy,
+    const RadarBroadcast& broadcast,
+    RadarText& text
+) :
+    draw_(draw),
+    performance_(performance),
     text_(text),
     bomb_(visibility, policy, broadcast),
     hostages_(visibility, policy, broadcast)
@@ -77,11 +88,14 @@ const RadarMapObjectives& ObjectivesLayer::get_map_objectives()
 
 void ObjectivesLayer::CollectEntities(const RadarFrame& frame)
 {
+    performance::PerformanceCpuScope scope(performance_.get_monitor(), performance::PerfStage::RadarObjectives);
+    performance_.AddCounter(performance::PerfCounterId::RadarEntitySweeps, 1);
     objective_entities_.CollectEntities(frame, get_map_objectives());
 }
 
 void ObjectivesLayer::Draw(const RadarFrame& frame)
 {
+    performance::PerformanceCpuScope scope(performance_.get_monitor(), performance::PerfStage::RadarObjectives);
     if (spectating_ != frame.ctx.spectating)
     {
         OnPlayerRespawn();
@@ -137,7 +151,7 @@ void ObjectivesLayer::DrawSites(const RadarFrame& frame)
 
     if (batched)
     {
-        RadarDraw_BeginPrims();
+        draw_.BeginPrims();
     }
 
     // Fall back to the engine font rather than dropping the letters; a single glyph costs nothing.
@@ -187,6 +201,7 @@ void ObjectivesLayer::DrawSites(const RadarFrame& frame)
             gEngfuncs.pfnDrawConsoleStringLen(site.label, &tw, &th);
 
             RadarLabel_Draw(
+                draw_,
                 site.label,
                 (int)s.x - tw / 2,
                 (int)s.y - fallback_h / 2,
@@ -198,21 +213,21 @@ void ObjectivesLayer::DrawSites(const RadarFrame& frame)
 
     if (batched)
     {
-        RadarDraw_EndPrims();
+        draw_.EndPrims();
     }
 
-    RadarDraw_BeginPrims();
+    draw_.BeginPrims();
 
     for (int i = 0; i < objectives_.get_site_count(); i++)
     {
         const SiteJob& job = jobs[i];
 
-        RadarDraw_DrawLayerIndicator(
+        draw_.DrawLayerIndicator(
             job.placement.indicator, job.style.vertical, job.indicator_size, RadarPalette::kGold.WithAlpha((int)(255 * job.style.opacity))
         );
     }
 
-    RadarDraw_EndPrims();
+    draw_.EndPrims();
 }
 
 int ObjectivesLayer::ComputeSiteHeightPx(const RadarFrame& frame)

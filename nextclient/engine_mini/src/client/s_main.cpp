@@ -1,9 +1,9 @@
 #include "../engine.h"
-#include <optick.h>
+#include <ncl_perf/profiler.h>
 
 void S_ExtraUpdate()
 {
-    OPTICK_EVENT();
+    NCL_PROFILE_SCOPE();
 
     eng()->S_ExtraUpdate.InvokeChained();
 }

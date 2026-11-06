@@ -138,7 +138,7 @@ namespace
     {
         for (const RadarDialogCvar& def : kRadarCvars)
         {
-            if (RadarCvarDef_Get(def.cvar).name == nullptr)
+            if (radar::FindCvar(def.cvar).name == nullptr)
             {
                 return false;
             }
@@ -147,14 +147,14 @@ namespace
     }
     static_assert(AllKnown());
 
-    constexpr RadarCvarDef kScaleCvar = RadarCvarDef_Get("hud_radar_scale");
-    constexpr RadarCvarDef kMapScaleCvar = RadarCvarDef_Get("hud_radar_map_scale");
-    constexpr RadarCvarDef kOpacityCvar = RadarCvarDef_Get("hud_radar_opacity");
-    constexpr RadarCvarDef kNameSizeCvar = RadarCvarDef_Get("hud_radar_name_size");
+    constexpr cvars::CvarDefinition kScaleCvar = radar::FindCvar("hud_radar_scale");
+    constexpr cvars::CvarDefinition kMapScaleCvar = radar::FindCvar("hud_radar_map_scale");
+    constexpr cvars::CvarDefinition kOpacityCvar = radar::FindCvar("hud_radar_opacity");
+    constexpr cvars::CvarDefinition kNameSizeCvar = radar::FindCvar("hud_radar_name_size");
 
     float DefaultValue(const char* cvar)
     {
-        return (float)atof(RadarCvarDef_Get(cvar).default_value);
+        return (float)atof(radar::FindCvar(cvar).default_value);
     }
 
     int MapModeRow(float value)

@@ -1,0 +1,325 @@
+{
+    "version": 1,
+    "materials": [
+        {
+            "name": "leet_studio_0",
+            "texture": "Arab_dmbase1.bmp",
+            "material": {
+                "program": "studio",
+                "params": {
+                    "uDissolveMap": {
+                        "texture": "materials/test_nextclient/effects/dissolve.png"
+                    },
+                    "uDissolveTransform": [
+                        1,
+                        1,
+                        0,
+                        0
+                    ],
+                    "uOccludedColor": [
+                        1,
+                        0.18,
+                        0.03,
+                        0.7
+                    ],
+                    "uOutlineColor": [
+                        0.1,
+                        0.65,
+                        1,
+                        1
+                    ],
+                    "uGlowRadius": 10,
+                    "uNoiseScale": 64
+                }
+            }
+        },
+        {
+            "name": "leet_studio_1",
+            "texture": "Chrome3.bmp",
+            "material": {
+                "program": "studio",
+                "params": {
+                    "uDissolveMap": {
+                        "texture": "materials/test_nextclient/effects/dissolve.png"
+                    },
+                    "uDissolveTransform": [
+                        1,
+                        1,
+                        0,
+                        0
+                    ],
+                    "uOccludedColor": [
+                        1,
+                        0.18,
+                        0.03,
+                        0.7
+                    ],
+                    "uOutlineColor": [
+                        0.1,
+                        0.65,
+                        1,
+                        1
+                    ],
+                    "uGlowRadius": 10,
+                    "uNoiseScale": 64
+                }
+            }
+        },
+        {
+            "name": "leet_studio_2",
+            "texture": "Backpack1.BMP",
+            "material": {
+                "program": "studio",
+                "params": {
+                    "uDissolveMap": {
+                        "texture": "materials/test_nextclient/effects/dissolve.png"
+                    },
+                    "uDissolveTransform": [
+                        1,
+                        1,
+                        0,
+                        0
+                    ],
+                    "uOccludedColor": [
+                        1,
+                        0.18,
+                        0.03,
+                        0.7
+                    ],
+                    "uOutlineColor": [
+                        0.1,
+                        0.65,
+                        1,
+                        1
+                    ],
+                    "uGlowRadius": 10,
+                    "uNoiseScale": 64
+                }
+            }
+        },
+        {
+            "name": "leet_weapon_finish_0",
+            "texture": "Arab_dmbase1.bmp",
+            "material": {
+                "program": "weapon_finish",
+                "params": {
+                    "uDissolveMap": {
+                        "texture": "materials/test_nextclient/effects/dissolve.png"
+                    },
+                    "uDissolveTransform": [
+                        1,
+                        1,
+                        0,
+                        0
+                    ],
+                    "uOccludedColor": [
+                        1,
+                        0.18,
+                        0.03,
+                        0.7
+                    ],
+                    "uOutlineColor": [
+                        0.1,
+                        0.65,
+                        1,
+                        1
+                    ],
+                    "uGlowRadius": 10,
+                    "uNoiseScale": 64
+                }
+            }
+        },
+        {
+            "name": "leet_weapon_finish_1",
+            "texture": "Chrome3.bmp",
+            "material": {
+                "program": "weapon_finish",
+                "params": {
+                    "uDissolveMap": {
+                        "texture": "materials/test_nextclient/effects/dissolve.png"
+                    },
+                    "uDissolveTransform": [
+                        1,
+                        1,
+                        0,
+                        0
+                    ],
+                    "uOccludedColor": [
+                        1,
+                        0.18,
+                        0.03,
+                        0.7
+                    ],
+                    "uOutlineColor": [
+                        0.1,
+                        0.65,
+                        1,
+                        1
+                    ],
+                    "uGlowRadius": 10,
+                    "uNoiseScale": 64
+                }
+            }
+        },
+        {
+            "name": "leet_weapon_finish_2",
+            "texture": "Backpack1.BMP",
+            "material": {
+                "program": "weapon_finish",
+                "params": {
+                    "uDissolveMap": {
+                        "texture": "materials/test_nextclient/effects/dissolve.png"
+                    },
+                    "uDissolveTransform": [
+                        1,
+                        1,
+                        0,
+                        0
+                    ],
+                    "uOccludedColor": [
+                        1,
+                        0.18,
+                        0.03,
+                        0.7
+                    ],
+                    "uOutlineColor": [
+                        0.1,
+                        0.65,
+                        1,
+                        1
+                    ],
+                    "uGlowRadius": 10,
+                    "uNoiseScale": 64
+                }
+            }
+        },
+        {
+            "name": "ak47_studio_0",
+            "texture": "ak47_skin.BMP",
+            "material": {
+                "program": "studio",
+                "params": {
+                    "uDissolveMap": {
+                        "texture": "materials/test_nextclient/effects/dissolve.png"
+                    },
+                    "uDissolveTransform": [
+                        1,
+                        1,
+                        0,
+                        0
+                    ],
+                    "uOccludedColor": [
+                        1,
+                        0.18,
+                        0.03,
+                        0.7
+                    ],
+                    "uOutlineColor": [
+                        0.1,
+                        0.65,
+                        1,
+                        1
+                    ],
+                    "uGlowRadius": 10,
+                    "uNoiseScale": 64
+                }
+            }
+        },
+        {
+            "name": "ak47_weapon_finish_0",
+            "texture": "ak47_skin.BMP",
+            "material": {
+                "program": "weapon_finish",
+                "params": {
+                    "uDissolveMap": {
+                        "texture": "materials/test_nextclient/effects/dissolve.png"
+                    },
+                    "uDissolveTransform": [
+                        1,
+                        1,
+                        0,
+                        0
+                    ],
+                    "uOccludedColor": [
+                        1,
+                        0.18,
+                        0.03,
+                        0.7
+                    ],
+                    "uOutlineColor": [
+                        0.1,
+                        0.65,
+                        1,
+                        1
+                    ],
+                    "uGlowRadius": 10,
+                    "uNoiseScale": 64
+                }
+            }
+        },
+        {
+            "name": "chick_studio_0",
+            "texture": "skin.bmp",
+            "material": {
+                "program": "studio",
+                "params": {
+                    "uDissolveMap": {
+                        "texture": "materials/test_nextclient/effects/dissolve.png"
+                    },
+                    "uDissolveTransform": [
+                        1,
+                        1,
+                        0,
+                        0
+                    ],
+                    "uOccludedColor": [
+                        1,
+                        0.18,
+                        0.03,
+                        0.7
+                    ],
+                    "uOutlineColor": [
+                        0.1,
+                        0.65,
+                        1,
+                        1
+                    ],
+                    "uGlowRadius": 10,
+                    "uNoiseScale": 64
+                }
+            }
+        },
+        {
+            "name": "chick_weapon_finish_0",
+            "texture": "skin.bmp",
+            "material": {
+                "program": "weapon_finish",
+                "params": {
+                    "uDissolveMap": {
+                        "texture": "materials/test_nextclient/effects/dissolve.png"
+                    },
+                    "uDissolveTransform": [
+                        1,
+                        1,
+                        0,
+                        0
+                    ],
+                    "uOccludedColor": [
+                        1,
+                        0.18,
+                        0.03,
+                        0.7
+                    ],
+                    "uOutlineColor": [
+                        0.1,
+                        0.65,
+                        1,
+                        1
+                    ],
+                    "uGlowRadius": 10,
+                    "uNoiseScale": 64
+                }
+            }
+        }
+    ]
+}

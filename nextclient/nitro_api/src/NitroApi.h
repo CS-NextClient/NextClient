@@ -19,6 +19,7 @@ namespace nitroapi
         {
             nitro_utils::SysModule module_handle = nullptr;
             std::unique_ptr<ModuleBase> module = nullptr;
+            bool borrowed{};
 
             explicit ModuleHookData(std::unique_ptr<ModuleBase>&& module) :
                 module(std::move(module))
@@ -58,7 +59,6 @@ namespace nitroapi
         void InvokeLibraryLoaded(const std::string& module_path, ModuleHookData& module_hook_data);
         static void InvokeLibraryUnloading(const std::string& module_path, ModuleHookData& module_hook_data);
 
-        void SetupProfiler();
         void RetrieveEngineBuildVersion();
         std::shared_ptr<AddressProviderBase> GetEngineAddressProvider();
         std::shared_ptr<AddressProviderBase> GetClientAddressProvider();

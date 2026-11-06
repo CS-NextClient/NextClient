@@ -1,6 +1,6 @@
 # Radar manual test cases
 
-[Russian version](manual-testing-scenarios.ru.md) | [Operator guide](manual-testing.md) | [Server tool reference](../../tools/test_server/README.md)
+[Russian version](manual-testing-scenarios.ru.md) | [Operator guide](manual-testing.md) | [Server tool reference](../tools/test-server.md)
 
 These cases define acceptance criteria for a connected NextClient client. A case describes what to test; a run records one execution and its observed result. The expected results below are not evidence that testing has been completed.
 
@@ -92,7 +92,7 @@ For H02, enable `hud_radar_fullmap 1` and enter `+showscores` before launch to k
 
 PVS `unknown` does not establish `outside`. Likewise, `original_pack=0` alone does not establish that an object is outside PVS. For visibility cases, inspect `data.visibility` in the latest `state` event for each stage. Check `original_pack` whenever an expectation depends on snapshot inclusion; other server filters can exclude an object inside PVS.
 
-The plugin measures LOS from the operator, while client visibility can also use revealed allies. Before requiring a T hostage marker or a CT bomb marker to disappear, confirm that **all eligible sight sources** have lost the target. Use actor positions in the report's scene state (`actors`) as evidence. If that condition cannot be established, record the limitation instead of reporting a visibility defect.
+The plugin measures LOS from the operator, while client visibility can also use revealed allies. Before treating a hostage marker for T or a bomb marker for CT as a defect, verify that neither the local player nor any teammate included in the radar's visibility check can see the target. Their data is listed in the report's scene state, in `actors`. If this cannot be confirmed, record the limitation.
 
 After all sight sources are lost, the marker retains its last known position and fades. Wait at least two seconds and allow the client to render another frame before assessing disappearance.
 
@@ -506,7 +506,7 @@ In the manual procedures below, replace `<role>` with the variant's original `ct
 
 2. Enter `nct_step` to restart the round.
 
-   **Expected:** The restart hook is confirmed, three plugin-owned actors are available, and no dropped or planted C4 exists. Client markers describe the current live actors; old round data does not remain as permanent markers.
+   **Expected:** The round restart is confirmed, three test actors are available, and no dropped or planted C4 exists. Client markers describe the current live actors; old round data does not remain as permanent markers.
 
 3. Enter `nct_step` to record the map-check instruction.
 
@@ -609,4 +609,4 @@ Check the independent statuses, manual note, expected and actual values, and any
 
 After reset, the compact `nct_status` output exposes the saved ID as `last_run`; loading a map clears it. Without an active run, `nct_result` applies to the last saved run. Once a new run starts, it applies to that new run. Always preserve IDs before transitions and regenerate a run's report after changing its result.
 
-For sharing, copy the selected run directories with `report.json`, `report.html`, and sanitized logs. For a collection, also include `index.html` and retain the relative report subdirectories. Follow the [server tool's sharing guidance](../../tools/test_server/README.md). Do not copy the entire reports directory: it also holds raw logs and secret files. Exclude `*.secret`, `server.raw.log`, `testlab-session.cfg`, and `users.ini`.
+For sharing, copy the selected run directories with `report.json`, `report.html`, and sanitized logs. For a collection, also include `index.html` and retain the relative report subdirectories. Follow the [server tool's sharing guidance](../tools/test-server.md). Do not copy the entire reports directory: it also holds raw logs and secret files. Exclude `*.secret`, `server.raw.log`, `testlab-session.cfg`, and `users.ini`.

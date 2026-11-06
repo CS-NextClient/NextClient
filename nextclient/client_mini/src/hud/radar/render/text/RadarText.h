@@ -1,5 +1,8 @@
 #pragma once
 
+#include "hud/radar/render/RadarDraw.h"
+#include "hud/radar/integration/Performance.h"
+
 #include <array>
 #include <cstdint>
 
@@ -12,6 +15,9 @@ typedef int TextFont_t;
 class RadarText
 {
 private:
+    RadarDrawContext& draw_;
+    radar::integration::Performance& performance_;
+
     struct LaidGlyph
     {
         ncl_math::Aabb2 rect; // relative to the pen origin
@@ -54,9 +60,12 @@ private:
     std::array<SizedFont, kMaxFonts> fonts_{};
     int font_count_{};
 
-    float ms_{};
 
 public:
+    RadarText(RadarDrawContext& draw, radar::integration::Performance& performance) :
+        draw_(draw),
+        performance_(performance)
+    {}
     bool CheckAvailable(int device_px);
 
     // Zero until the scheme font resolves.
@@ -67,15 +76,6 @@ public:
 
     void ResetGl();
 
-    void ResetStats()
-    {
-        ms_ = 0.0f;
-    }
-
-    float get_ms() const
-    {
-        return ms_;
-    }
 
 private:
     TextFont_t ResolveFont(int device_px);

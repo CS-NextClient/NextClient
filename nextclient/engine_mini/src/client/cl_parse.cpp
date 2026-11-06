@@ -1,6 +1,6 @@
 #include "engine.h"
 
-#include <optick.h>
+#include <ncl_perf/profiler.h>
 #include <common/filesystem.h>
 #include <cstdint>
 
@@ -31,28 +31,28 @@
 
 void CL_SendConsistencyInfo(goldsrc::sizebuf_t* msg)
 {
-    OPTICK_EVENT();
+    NCL_PROFILE_SCOPE();
     
     eng()->CL_SendConsistencyInfo.InvokeChained(msg);
 }
 
 void Net_APICheckTimeouts()
 {
-    OPTICK_EVENT();
+    NCL_PROFILE_SCOPE();
     
     eng()->Net_APICheckTimeouts.InvokeChained();
 }
 
 void CL_ReallocateDynamicData(int maxclients)
 {
-    OPTICK_EVENT();
+    NCL_PROFILE_SCOPE();
     
     eng()->CL_ReallocateDynamicData.InvokeChained(maxclients);
 }
 
 void CL_DeallocateDynamicData()
 {
-    OPTICK_EVENT();
+    NCL_PROFILE_SCOPE();
     
     if (*p_cl_entities)
     {
@@ -65,7 +65,7 @@ void CL_DeallocateDynamicData()
 
 void CL_PrecacheBSPModels(char* pfilename)
 {
-    OPTICK_EVENT();
+    NCL_PROFILE_SCOPE();
     
     if (!pfilename)
         return;
@@ -102,7 +102,7 @@ void CL_PrecacheBSPModels(char* pfilename)
 
 void CL_RegisterResources(goldsrc::sizebuf_t* msg)
 {
-    OPTICK_EVENT();
+    NCL_PROFILE_SCOPE();
     
     int mungebuffer[4];
 
@@ -161,14 +161,14 @@ void CL_RegisterResources(goldsrc::sizebuf_t* msg)
 
 void CL_ParseServerMessage(goldsrc::qboolean normal_message)
 {
-    OPTICK_EVENT();
+    NCL_PROFILE_SCOPE();
     
     eng()->CL_ParseServerMessage.InvokeChained(normal_message);
 }
 
 int CL_EstimateNeededResources()
 {
-    OPTICK_EVENT();
+    NCL_PROFILE_SCOPE();
     
     int nTotalSize = 0;
 
@@ -228,7 +228,7 @@ int CL_EstimateNeededResources()
 
 goldsrc::qboolean CL_RequestMissingResources()
 {
-    OPTICK_EVENT();
+    NCL_PROFILE_SCOPE();
     
     if (!cls->dl.doneregistering && (cls->dl.custom || cls->state == goldsrc::ca_uninitialized))
     {
@@ -250,7 +250,7 @@ goldsrc::qboolean CL_RequestMissingResources()
 
 void CL_RegisterCustomization(goldsrc::resource_t* resource)
 {
-    OPTICK_EVENT();
+    NCL_PROFILE_SCOPE();
     
     goldsrc::qboolean bFound = false;
     goldsrc::customization_t* pList;
@@ -279,7 +279,7 @@ void CL_RegisterCustomization(goldsrc::resource_t* resource)
 
 void CL_ProcessFile_0(goldsrc::qboolean successfully_received, const char* filename)
 {
-    OPTICK_EVENT();
+    NCL_PROFILE_SCOPE();
     
     goldsrc::resource_t* pResource;
 
@@ -391,7 +391,7 @@ void CL_ProcessFile_0(goldsrc::qboolean successfully_received, const char* filen
 
 void CL_ReadPackets()
 {
-    OPTICK_EVENT();
+    NCL_PROFILE_SCOPE();
     
     const int kMaxPackets = 250;
 
@@ -541,7 +541,7 @@ void CL_ReadPackets()
  */
 bool CL_CheckFile(goldsrc::sizebuf_t* msg, const ResourceDescriptor& res_descriptor, std::unordered_set<std::string>& dlfile_resources)
 {
-    OPTICK_EVENT();
+    NCL_PROFILE_SCOPE();
     
     if (GetCvarFloat("cl_allowdownload") == 0.0)
     {
@@ -584,7 +584,7 @@ bool CL_CheckFile(goldsrc::sizebuf_t* msg, const ResourceDescriptor& res_descrip
 
 void CL_BatchResourceRequest()
 {
-    OPTICK_EVENT();
+    NCL_PROFILE_SCOPE();
     
     uint8_t data[65536];
     char filename[256];
@@ -705,7 +705,7 @@ void CL_BatchResourceRequest()
 
 void CL_StartResourceDownloading(const char *pszMessage, bool bCustom)
 {
-    OPTICK_EVENT();
+    NCL_PROFILE_SCOPE();
     
     goldsrc::resourceinfo_t ri;
 
@@ -757,7 +757,7 @@ void CL_StartResourceDownloading(const char *pszMessage, bool bCustom)
 
 void CL_ClearResourceLists()
 {
-    OPTICK_EVENT();
+    NCL_PROFILE_SCOPE();
     
     cl->downloadUrl[0] = '\0';
 
@@ -786,7 +786,7 @@ void CL_ClearResourceLists()
 
 void CL_CreateResourceList()
 {
-    OPTICK_EVENT();
+    NCL_PROFILE_SCOPE();
     
     if (cls->state != goldsrc::ca_dedicated)
     {

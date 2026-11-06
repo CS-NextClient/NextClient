@@ -4,7 +4,9 @@
 #include <vector>
 #include <utility>
 #include <tuple>
+
 #include "ArrayStringIdPairsDelta.h"
+#include "ArrayStringIdFloatPairsDelta.h"
 
 namespace ncl_entity
 {
@@ -16,7 +18,9 @@ namespace ncl_entity
             uint32_t,
             float,
             std::vector<std::pair<uint16_t, uint16_t>>,
-            ArrayStringIdPairsDelta
+            ArrayStringIdPairsDelta,
+            std::vector<std::pair<uint16_t, float>>,
+            ArrayStringIdFloatPairsDelta
         > value;
 
         FieldValue() = default;
@@ -26,6 +30,9 @@ namespace ncl_entity
         FieldValue(float v) : value(v) {}
         FieldValue(std::vector<std::pair<uint16_t, uint16_t>> v) : value(std::move(v)) {}
         FieldValue(ArrayStringIdPairsDelta v) : value(std::move(v)) {}
+
+        FieldValue(std::vector<std::pair<uint16_t, float>> v) : value(std::move(v)) {}
+        FieldValue(ArrayStringIdFloatPairsDelta v) : value(std::move(v)) {}
 
         bool operator==(const FieldValue& other) const
         {
@@ -54,6 +61,13 @@ namespace ncl_entity
 
                 case 5:
                     return std::get<ArrayStringIdPairsDelta>(value) == std::get<ArrayStringIdPairsDelta>(other.value);
+
+                case 6:
+                    return std::get<std::vector<std::pair<uint16_t, float>>>(value) ==
+                           std::get<std::vector<std::pair<uint16_t, float>>>(other.value);
+
+                case 7:
+                    return std::get<ArrayStringIdFloatPairsDelta>(value) == std::get<ArrayStringIdFloatPairsDelta>(other.value);
             }
 
             return false;

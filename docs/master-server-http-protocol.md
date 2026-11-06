@@ -14,7 +14,7 @@ BuildVersion: <client version, e.g. 2.5.3>
 {"method": "server_list", "data": {"extended": true}}
 ```
 
-`data.extended` asks for the extended layout below; a backend that does not know the flag answers with the legacy layout, which the client still accepts. Clients built before this document send `"data": "null"` and expect the legacy layout, so the backend must keep answering those with text.
+`data.extended` asks for the extended layout below; a backend that does not know the flag answers with the legacy layout, which the client still accepts. Requests with `"data": "null"` require the legacy text layout.
 
 ## Response
 
@@ -94,7 +94,7 @@ When the master server gave no mode for a server (its entry has no `game_mode`, 
 }
 ```
 
-`default_game_mode` (optional, string) is the identifier of the servers the rules do not name, `Public` in the shipped file; a value of another form, or none, leaves those servers without a mode. Every member of a rule:
+`default_game_mode` (optional, string) is the identifier of the servers the rules do not name, `Public` in the shipped file; a value of another form, or none, leaves those servers without a mode. Rule fields:
 
 - `game_mode` (required, string): the identifier the rule gives, in the form of the response field, normally one from the table above. An empty string makes a rule that leaves the mode of the servers it matches unknown.
 - `priority` (optional, integer): 0 when absent; how priorities decide is described below.
@@ -105,11 +105,9 @@ A rule matches a server when one of its keywords occurs in the game description 
 
 The game description, the server name and the map name are split into words: runs of digits and letters (Latin, Greek, Cyrillic), with a dot between two such characters kept inside the word, so `joingame.kz` stays one word. ASCII letters, the Latin-1 Supplement letters and the Cyrillic letters from U+0400 to U+045F (the Russian, Ukrainian and Belarusian alphabets except `Ґ`) compare in any letter case. A keyword matches whole words, and a keyword of several words matches them in sequence (`death run` matches `Death-Run`). A `*` at the start of a keyword lets its first word end a longer word, and a `*` at its end lets its last word start one (`zombie*` matches `ZombiePlague`).
 
-Only the matching rules of the highest priority decide. When all of them give the same identifier, the server gets that mode; when they give different identifiers, the server takes `default_game_mode`, since none of those rules is worth trusting over the others. A rule that decides alone with an empty identifier leaves its servers without a mode.
+Only the matching rules of the highest priority decide. When all of them give the same identifier, the server gets that mode; when they give different identifiers, the server takes `default_game_mode`, because the matching rules have equal priority. A rule that decides alone with an empty identifier leaves its servers without a mode.
 
 The shipped rules give specific mods the default priority, the general families (`Zombie`, `Deathmatch`) and the modes told by map type (`Awp`, `Aim`, `Knife`) priority -1, and a server that names itself a multi-mod priority 1 with the identifier `Special`. Servers no rule names are `Public` through `default_game_mode`, so the file carries no rule for public servers of its own. A map prefix that several modes use, such as `de_`, `awp_` or `aim_`, gives no mode on its own. A missing file, a file larger than 1 MiB, or one that is not a JSON object with a `rules` array, leaves unknown the modes the master server does not send, and a warning is logged.
-
-The keywords were checked against 2952 Counter-Strike servers listed by a public master server in September 2026, while every mod family still had an identifier of its own: for the 471 of them whose mod plugins publish their cvars, the rules agreed with the plugins on 369 (on 282 exactly, on the rest at the level of the Zombie or CSDM family), left 65 unknown and disagreed on 37, mostly servers that run plugins of two modes. 42% of all servers got no mode. Merging the families into the identifiers above removes a part of those disagreements, since rules of one family no longer name different modes, and `default_game_mode` names the rest.
 
 ## Server country
 

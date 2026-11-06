@@ -22,6 +22,7 @@ void* Mod_Extradata(goldsrc::model_t* mod);
 goldsrc::model_t* Mod_FindName(goldsrc::qboolean trackCRC, const char* name);
 goldsrc::qboolean Mod_ValidateCRC(const char* name, goldsrc::CRC32_t crc);
 void Mod_NeedCRC(const char* name, goldsrc::qboolean needCRC);
+void Mod_LoadStudioModel(goldsrc::model_t* mod, void* buffer, int file_length);
 goldsrc::model_t* Mod_LoadModel(goldsrc::model_t* mod, goldsrc::qboolean crash, goldsrc::qboolean trackCRC);
 goldsrc::model_t* Mod_ForName(const char* name, goldsrc::qboolean crash, goldsrc::qboolean trackCRC);
 void Mod_Print();

@@ -95,8 +95,8 @@ void HostageMarkers::DrawDot(const RadarFrame& frame, ncl_math::Vector3 world, i
     RadarLayerPlacement placement = RadarLayerMarker_Place(frame.shape, frame.t.WorldToScreen({world.x, world.y}), dot, style);
     ncl_math::Color color{0, 220, 220, (int)(alpha * style.opacity)};
 
-    RadarDraw_DrawDisc(placement.marker, (float)dot, color);
-    RadarDraw_DrawLayerIndicator(placement.indicator, style.vertical, dot, color);
+    frame.draw.DrawDisc(placement.marker, (float)dot, color);
+    frame.draw.DrawLayerIndicator(placement.indicator, style.vertical, dot, color);
 }
 
 void HostageMarkers::DrawBySight(const RadarFrame& frame, const ObjectiveEntities& entities, int dot)
@@ -134,7 +134,7 @@ void HostageMarkers::DrawBySight(const RadarFrame& frame, const ObjectiveEntitie
         }
     }
 
-    RadarDraw_BeginPrims();
+    frame.draw.BeginPrims();
 
     // Age expiry, not the PVS pass's drop-on-leave: nothing to fall back on once sight is lost.
     for (Spot& spot : spots_)
@@ -156,7 +156,7 @@ void HostageMarkers::DrawBySight(const RadarFrame& frame, const ObjectiveEntitie
         DrawDot(frame, spot.pos, dot, (int)(255.0f * fade));
     }
 
-    RadarDraw_EndPrims();
+    frame.draw.EndPrims();
 }
 
 void HostageMarkers::DrawRevealed(const RadarFrame& frame, const ObjectiveEntities& entities, int dot)
@@ -188,14 +188,14 @@ void HostageMarkers::DrawRevealed(const RadarFrame& frame, const ObjectiveEntiti
 
     feed_.Update({carried, carried + carried_count}, {broadcast, broadcast + broadcast_count}, frame.time);
 
-    RadarDraw_BeginPrims();
+    frame.draw.BeginPrims();
 
     for (const MarkerFeed::Marker& marker : feed_.get_markers())
     {
         DrawDot(frame, marker.pos, dot, 255);
     }
 
-    RadarDraw_EndPrims();
+    frame.draw.EndPrims();
 }
 
 // The hostage message put to the same use: it expires on its own, since the clearing HostageK may
@@ -228,7 +228,7 @@ void HostageMarkers::DrawServerMarkers(const RadarFrame& frame, int size)
         spots_[slot].visible = true;
     }
 
-    RadarDraw_BeginPrims();
+    frame.draw.BeginPrims();
 
     for (Spot& spot : spots_)
     {
@@ -249,11 +249,11 @@ void HostageMarkers::DrawServerMarkers(const RadarFrame& frame, int size)
             RadarLayerMarker_Place(frame.shape, frame.t.WorldToScreen({spot.pos.x, spot.pos.y}), extent, style, size);
         ncl_math::Color color = RadarPalette::kServerMarker.WithAlpha((int)(255 * style.opacity));
 
-        ServerMarker_DrawShape(placement.marker, size, color);
-        RadarDraw_DrawLayerIndicator(placement.indicator, style.vertical, size, color);
+        ServerMarker_DrawShape(frame.draw, placement.marker, size, color);
+        frame.draw.DrawLayerIndicator(placement.indicator, style.vertical, size, color);
     }
 
-    RadarDraw_EndPrims();
+    frame.draw.EndPrims();
 }
 
 void HostageMarkers::Draw(const RadarFrame& frame, const ObjectiveEntities& entities, int dot)

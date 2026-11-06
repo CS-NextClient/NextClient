@@ -4,7 +4,7 @@
 
 #include <cpr/status_codes.h>
 #include <easylogging++.h>
-#include <optick.h>
+#include <ncl_perf/profiler.h>
 
 #include "service/matchmaking/master/HttpMasterResponse.h"
 
@@ -93,7 +93,7 @@ result<std::vector<MasterServerEntry>> HttpMasterClient::GetServerListAsync(
 
 std::optional<std::vector<MasterServerEntry>> HttpMasterClient_ReadServerList(const Response& response)
 {
-    OPTICK_EVENT();
+    NCL_PROFILE_SCOPE();
 
     if (response.error.code != cpr::ErrorCode::OK)
     {

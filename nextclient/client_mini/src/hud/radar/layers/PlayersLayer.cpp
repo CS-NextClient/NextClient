@@ -8,6 +8,8 @@
 
 #include "main.h"
 
+#include "hud/radar/integration/Performance.h"
+
 #include <strtools.h>
 #include <ncl_math/vec3.h>
 #include <next_client_mini/radar_cvars.h>
@@ -55,10 +57,10 @@ namespace
     // Codepoints, not bytes.
     constexpr int kMaxNameChars = 16;
 
-    constexpr RadarCvarDef kHealthSizeCvar = RadarCvarDef_Get("hud_radar_health_size");
+    constexpr cvars::CvarDefinition kHealthSizeCvar = radar::FindCvar("hud_radar_health_size");
     static_assert(kHealthSizeCvar.name != nullptr);
 
-    constexpr RadarCvarDef kNameSizeCvar = RadarCvarDef_Get("hud_radar_name_size");
+    constexpr cvars::CvarDefinition kNameSizeCvar = radar::FindCvar("hud_radar_name_size");
     static_assert(kNameSizeCvar.name != nullptr);
 
     const char* ResetReasonName(PlayersLayer::ResetReason reason)
@@ -91,7 +93,16 @@ namespace
     }
 } // namespace
 
-PlayersLayer::PlayersLayer(RadarVisibility& visibility, const RadarPolicy& policy, const RadarBroadcast& broadcast, RadarText& text) :
+PlayersLayer::PlayersLayer(
+    RadarDrawContext& draw,
+    radar::integration::Performance& performance,
+    RadarVisibility& visibility,
+    const RadarPolicy& policy,
+    const RadarBroadcast& broadcast,
+    RadarText& text
+) :
+    draw_(draw),
+    performance_(performance),
     visibility_(visibility),
     policy_(policy),
     text_(text),
@@ -118,6 +129,7 @@ void PlayersLayer::BeginFrame(float time)
 
 void PlayersLayer::Draw(const RadarFrame& frame)
 {
+    performance::PerformanceCpuScope scope(performance_.get_monitor(), performance::PerfStage::RadarPlayers);
     if (team_ != frame.ctx.highlight_team || spectating_ != frame.ctx.spectating)
     {
         OnPlayerRespawn(spectating_ != frame.ctx.spectating ? ResetReason::Observer : ResetReason::Team, last_time_, frame.time);
@@ -177,29 +189,29 @@ void PlayersLayer::DrawObserver(const RadarFrame& frame)
     ncl_math::Vector2 pos = placement.marker;
     ncl_math::Color color = RadarPalette::kHighlight.WithAlpha((int)(255 * style.opacity));
 
-    RadarDraw_BeginPrims();
-    
+    draw_.BeginPrims();
+
     if (placement.offscreen)
     {
         DrawEdgeArrow(pos, player_placement.out_dir, dot, color);
     }
     else
     {
-        RadarDraw_DrawCone(pos, dir, dot * 6.5f, ComputeHighlightConeSpread(frame), color, 0.65f * style.opacity);
+        draw_.DrawCone(pos, dir, dot * 6.5f, ComputeHighlightConeSpread(frame), color, 0.65f * style.opacity);
         DrawMarker(pos, dir, dot, color);
     }
-    
-    RadarDraw_DrawLayerIndicator(placement.indicator, style.vertical, dot, color);
-    RadarDraw_EndPrims();
+
+    draw_.DrawLayerIndicator(placement.indicator, style.vertical, dot, color);
+    draw_.EndPrims();
 }
 
 void PlayersLayer::DrawObserverStatus(const RadarFrame& frame)
 {
     PlayerObserverIcon icon = PlayerObserver_BuildStatusIcon(frame.box, frame.shape);
-    RadarDraw_BeginPrims();
-    RadarDraw_DrawDisc(icon.center, icon.radius, {0, 0, 0, 190});
-    RadarDraw_DrawDisconnectedSignal(icon.center, icon.half_extent, icon.line_width * 0.5f, {255, 205, 100, 255});
-    RadarDraw_EndPrims();
+    draw_.BeginPrims();
+    draw_.DrawDisc(icon.center, icon.radius, {0, 0, 0, 190});
+    draw_.DrawDisconnectedSignal(icon.center, icon.half_extent, icon.line_width * 0.5f, {255, 205, 100, 255});
+    draw_.EndPrims();
 }
 
 void PlayersLayer::OnPlayerRespawn(ResetReason reason, float previous_time, float time)
@@ -331,10 +343,10 @@ void PlayersLayer::DrawMarker(ncl_math::Vector2 pos, ncl_math::Vector2 dir, int 
         ncl_math::Vector2 tip = pos + fwd * tip_d;
         ncl_math::Vector2 base_l = pos + fwd.Rotated(spread) * cut;
         ncl_math::Vector2 base_r = pos + fwd.Rotated(-spread) * cut;
-        RadarDraw_DrawTriangle(tip, base_l, base_r, {240, 240, 240, color.a});
+        draw_.DrawTriangle(tip, base_l, base_r, {240, 240, 240, color.a});
     }
 
-    RadarDraw_DrawDisc(pos, (float)size, color);
+    draw_.DrawDisc(pos, (float)size, color);
 }
 
 void PlayersLayer::DrawEdgeArrow(ncl_math::Vector2 pos, ncl_math::Vector2 out_dir, int size, ncl_math::Color color)
@@ -344,7 +356,7 @@ void PlayersLayer::DrawEdgeArrow(ncl_math::Vector2 pos, ncl_math::Vector2 out_di
     // Cannot happen off the rim, but a plain dot beats a zero-area triangle.
     if (!ncl_math::TryNormalize(out_dir, &fwd))
     {
-        RadarDraw_DrawDisc(pos, (float)size, color);
+        draw_.DrawDisc(pos, (float)size, color);
         return;
     }
 
@@ -355,7 +367,7 @@ void PlayersLayer::DrawEdgeArrow(ncl_math::Vector2 pos, ncl_math::Vector2 out_di
     ncl_math::Vector2 base_l = base + perp * (size * RadarPlayerMarkerGeometry::kHalfWidthScale);
     ncl_math::Vector2 base_r = base - perp * (size * RadarPlayerMarkerGeometry::kHalfWidthScale);
 
-    RadarDraw_DrawTriangle(tip, base_l, base_r, color);
+    draw_.DrawTriangle(tip, base_l, base_r, color);
 }
 
 void PlayersLayer::DrawTrack(const RadarFrame& frame, int player, ncl_math::Color color)
@@ -380,7 +392,7 @@ void PlayersLayer::DrawTrack(const RadarFrame& frame, int player, ncl_math::Colo
         {
             if (k - start >= 2)
             {
-                RadarDraw_DrawPolyline({points + start, (size_t)(k - start)}, {alpha + start, (size_t)(k - start)}, color, kTrackWidth);
+                draw_.DrawPolyline({points + start, (size_t)(k - start)}, {alpha + start, (size_t)(k - start)}, color, kTrackWidth);
             }
 
             start = k;
@@ -389,7 +401,7 @@ void PlayersLayer::DrawTrack(const RadarFrame& frame, int player, ncl_math::Colo
 
     if (count - start >= 2)
     {
-        RadarDraw_DrawPolyline({points + start, (size_t)(count - start)}, {alpha + start, (size_t)(count - start)}, color, kTrackWidth);
+        draw_.DrawPolyline({points + start, (size_t)(count - start)}, {alpha + start, (size_t)(count - start)}, color, kTrackWidth);
     }
 }
 
@@ -454,9 +466,9 @@ void PlayersLayer::DrawHealthBar(ncl_math::Vector2 pos, int dot, int sb_health, 
     }
 
     // The shader applies the flashbang wash, so the colors are passed through unfaded.
-    RadarDraw_DrawRect({(float)(bx - 1), (float)(by - 1)}, {(float)(bx + bw + 1), (float)(by + bh + 1)}, {0, 0, 0, (int)(150 * opacity)});
-    RadarDraw_DrawRect({(float)bx, (float)by}, {(float)(bx + bw), (float)(by + bh)}, {30, 30, 30, (int)(200 * opacity)});
-    RadarDraw_DrawRect({(float)bx, (float)by}, {(float)(bx + bw * hp / 100), (float)(by + bh)}, hp_col.WithAlpha((int)(255 * opacity)));
+    draw_.DrawRect({(float)(bx - 1), (float)(by - 1)}, {(float)(bx + bw + 1), (float)(by + bh + 1)}, {0, 0, 0, (int)(150 * opacity)});
+    draw_.DrawRect({(float)bx, (float)by}, {(float)(bx + bw), (float)(by + bh)}, {30, 30, 30, (int)(200 * opacity)});
+    draw_.DrawRect({(float)bx, (float)by}, {(float)(bx + bw * hp / 100), (float)(by + bh)}, hp_col.WithAlpha((int)(255 * opacity)));
 }
 
 void PlayersLayer::DrawPlayers(const RadarFrame& frame)
@@ -473,7 +485,7 @@ void PlayersLayer::DrawPlayers(const RadarFrame& frame)
 
     if (record_diagnostics)
     {
-        before = RadarDraw_GetStats();
+        before = draw_.GetStats();
     }
 
     std::span<const PlayerJob> collected = CollectPlayerJobs(frame, dot, jobs, record_diagnostics);
@@ -481,7 +493,7 @@ void PlayersLayer::DrawPlayers(const RadarFrame& frame)
 
     if (record_diagnostics)
     {
-        RadarDrawStats after = RadarDraw_GetStats();
+        RadarDrawStats after = draw_.GetStats();
         PlayerMarkerHistory::Frame diagnostic{
             .time = frame.time,
             .message = frame.ctx.message_num,
@@ -895,7 +907,7 @@ std::span<const PlayersLayer::PlayerJob> PlayersLayer::CollectPlayerJobs(
 
 void PlayersLayer::DrawPlayerLayers(const RadarFrame& frame, std::span<const PlayerJob> jobs, int dot, float cone_spread)
 {
-    RadarDraw_BeginPrims();
+    draw_.BeginPrims();
     for (const PlayerJob& job : jobs)
     {
         if (!job.cone || job.offscreen)
@@ -911,11 +923,11 @@ void PlayersLayer::DrawPlayerLayers(const RadarFrame& frame, std::span<const Pla
         }
 
         ncl_math::Color light = ncl_math::Lerp(job.col.WithAlpha(job.alpha), ncl_math::Color{255, 255, 255}, 2.0f / 3.0f);
-        RadarDraw_DrawCone(job.pos, fwd, dot * 6.5f, cone_spread, light, 0.65f * (job.alpha / 255.0f));
+        draw_.DrawCone(job.pos, fwd, dot * 6.5f, cone_spread, light, 0.65f * (job.alpha / 255.0f));
     }
-    RadarDraw_EndPrims();
+    draw_.EndPrims();
 
-    RadarDraw_BeginPrims();
+    draw_.BeginPrims();
     for (size_t index = 0; index < jobs.size(); index++)
     {
         size_t first = index;
@@ -936,8 +948,8 @@ void PlayersLayer::DrawPlayerLayers(const RadarFrame& frame, std::span<const Pla
                 previous.fade_weight,
                 previous.offscreen,
             };
-            
-            RadarDraw_DrawPlayerMarkerFade(current_marker, previous_marker, (float)dot, job.col);
+
+            draw_.DrawPlayerMarkerFade(current_marker, previous_marker, (float)dot, job.col);
         }
         else if (job.offscreen)
         {
@@ -953,7 +965,7 @@ void PlayersLayer::DrawPlayerLayers(const RadarFrame& frame, std::span<const Pla
             
             if (carrier.carrier)
             {
-                RadarDraw_DrawRing(
+                draw_.DrawRing(
                     carrier.pos, (float)dot, dot * (1.0f - kCarrierRingWidthScale), RadarPalette::kGold.WithAlpha(carrier.alpha)
                 );
             }
@@ -962,7 +974,7 @@ void PlayersLayer::DrawPlayerLayers(const RadarFrame& frame, std::span<const Pla
 
     for (const PlayerJob& job : jobs)
     {
-        RadarDraw_DrawLayerIndicator(job.indicator, job.vertical, dot, job.col.WithAlpha(job.alpha));
+        draw_.DrawLayerIndicator(job.indicator, job.vertical, dot, job.col.WithAlpha(job.alpha));
     }
 
     for (const PlayerJob& job : jobs)
@@ -972,7 +984,7 @@ void PlayersLayer::DrawPlayerLayers(const RadarFrame& frame, std::span<const Pla
             DrawHealthBar(job.vertical > 0 ? job.indicator : job.pos, dot, job.sb_health, job.alpha / 255.0f);
         }
     }
-    RadarDraw_EndPrims();
+    draw_.EndPrims();
 
     DrawNames(frame, jobs, dot);
 }
@@ -1015,7 +1027,7 @@ void PlayersLayer::DrawNames(const RadarFrame& frame, std::span<const PlayerJob>
 
     if (batched)
     {
-        RadarDraw_BeginPrims();
+        draw_.BeginPrims();
     }
 
     for (const PlayerJob& job : jobs)
@@ -1051,13 +1063,15 @@ void PlayersLayer::DrawNames(const RadarFrame& frame, std::span<const PlayerJob>
         else
         {
             int tw = ComputePlayerNameWidth(job.index, name);
-            RadarLabel_Draw(name, (int)job.pos.x - tw / 2, (int)job.pos.y + dot + 1, job.col.WithAlpha(job.alpha), frame.flash_alpha);
+            RadarLabel_Draw(
+                draw_, name, (int)job.pos.x - tw / 2, (int)job.pos.y + dot + 1, job.col.WithAlpha(job.alpha), frame.flash_alpha
+            );
         }
     }
 
     if (batched)
     {
-        RadarDraw_EndPrims();
+        draw_.EndPrims();
     }
 }
 
@@ -1073,8 +1087,8 @@ void PlayersLayer::DrawLastSeen(const RadarFrame& frame)
     int question_inset = (int)std::ceil(sz + hw);
     int dot = std::max(2, (int)(frame.box.marker_px * kPlayerDotScale));
     int marker_inset = frame.layer_view.enabled ? (int)std::ceil(dot * 2.4f) : dot;
-    
-    RadarDraw_BeginPrims();
+
+    draw_.BeginPrims();
 
     for (const PlayerLastSeen::Mark& mark : last_seen_.get_marks())
     {
@@ -1108,7 +1122,7 @@ void PlayersLayer::DrawLastSeen(const RadarFrame& frame)
 
         if (mark.uncertain)
         {
-            RadarDraw_DrawQuestionMark(pos, sz, hw, color);
+            draw_.DrawQuestionMark(pos, sz, hw, color);
         }
         else if (placement.offscreen)
         {
@@ -1120,13 +1134,13 @@ void PlayersLayer::DrawLastSeen(const RadarFrame& frame)
 
             if (mark.carrier)
             {
-                RadarDraw_DrawRing(pos, (float)dot, dot * (1.0f - kCarrierRingWidthScale), RadarPalette::kGold.WithAlpha(color.a));
+                draw_.DrawRing(pos, (float)dot, dot * (1.0f - kCarrierRingWidthScale), RadarPalette::kGold.WithAlpha(color.a));
             }
         }
-        RadarDraw_DrawLayerIndicator(placement.indicator, style.vertical, indicator_size, color);
+        draw_.DrawLayerIndicator(placement.indicator, style.vertical, indicator_size, color);
     }
 
-    RadarDraw_EndPrims();
+    draw_.EndPrims();
 }
 
 void PlayersLayer::DrawDeaths(const RadarFrame& frame)
@@ -1137,7 +1151,7 @@ void PlayersLayer::DrawDeaths(const RadarFrame& frame)
     float hw = std::max(kMemoryMarkMinHalfWidth, sz * kMemoryMarkWidthScale);
     int inset = (int)std::ceil(sz * std::sqrt(2.0f) + hw);
 
-    RadarDraw_BeginPrims();
+    draw_.BeginPrims();
 
     for (int i = 0; i < n; i++)
     {
@@ -1148,9 +1162,9 @@ void PlayersLayer::DrawDeaths(const RadarFrame& frame)
 
         ncl_math::Color color = marks[i].color.WithAlpha((int)(marks[i].alpha * style.opacity));
 
-        RadarDraw_DrawCross(s, sz, hw, color);
-        RadarDraw_DrawLayerIndicator(placement.indicator, style.vertical, inset, color);
+        draw_.DrawCross(s, sz, hw, color);
+        draw_.DrawLayerIndicator(placement.indicator, style.vertical, inset, color);
     }
 
-    RadarDraw_EndPrims();
+    draw_.EndPrims();
 }

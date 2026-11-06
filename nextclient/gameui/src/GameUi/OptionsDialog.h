@@ -4,6 +4,11 @@
 #include "vgui_controls/KeyRepeat.h"
 #include "utldict.h"
 
+namespace render
+{
+    class ShaderRendererInterface;
+} // namespace render
+
 class COptionsDialog : public vgui2::PropertyDialog
 {
     DECLARE_CLASS_SIMPLE(COptionsDialog, vgui2::PropertyDialog);
@@ -11,7 +16,7 @@ class COptionsDialog : public vgui2::PropertyDialog
     CUtlDict<vgui2::PropertyPage*> m_tabNames;
 
 public:
-    COptionsDialog(vgui2::Panel *parent);
+    COptionsDialog(vgui2::Panel* parent, render::ShaderRendererInterface* renderer);
     ~COptionsDialog(void);
 
     void OnKeyCodeTyped(vgui2::KeyCode code) override;

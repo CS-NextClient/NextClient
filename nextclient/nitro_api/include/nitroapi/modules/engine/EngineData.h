@@ -688,5 +688,7 @@ namespace nitroapi
         NitroFunction<void*, goldsrc::model_t*> Mod_Extradata;
         NitroFunctionVoid<> R_ForceCVars_part;
         NitroFunctionVoid<const char*> Cbuf_AddFilteredText;
+
+        goldsrc::dlight_t (*cl_elights)[64]{};
     };
 }

@@ -1,8 +1,6 @@
 # Shared packages
 
-These libraries serve several DLLs. Keep their contracts independent of a current consumer;
-comments describe the helper's own behavior rather than the HUD, radar or dialog that uses it.
-Coroutine lifetime rules are in [task_coro/AGENTS.md](task_coro/AGENTS.md).
+These libraries serve several DLLs. Keep their contracts independent of a current consumer; comments describe the helper's own behavior rather than the HUD, radar or dialog that uses it. Coroutine lifetime rules are in [task_coro/AGENTS.md](task_coro/AGENTS.md). Studio model conversion has [additional rules](ncl_studio/AGENTS.md).
 
 ## Boundaries
 
@@ -27,11 +25,12 @@ Coroutine lifetime rules are in [task_coro/AGENTS.md](task_coro/AGENTS.md).
 - `ncl_gl` helpers require a live GL context and an initialized function table. Keep ownership of
   returned programs and textures explicit in the caller. Uniform names and stored locations must
   keep the same order; an optimized-out uniform may legitimately have location `-1`.
+- `ncl_gl::Program` owns its named uniform and block lookup caches, including inactive results. A successful in-place relink must call `ResolveLocations` and invalidate consumer configuration. Numeric GL names alone do not identify a program across reloads or context changes.
 
 ## Verification
 
-Build affected consumers, not just the static archive. Public headers can expose new dependencies
-or compile errors only when another DLL includes them. Protocol changes have `data_types-tests`;
-math changes are also exercised by the engine-free client tests. Shared gameplay logic has
-`view-tests`, `crosshair-tests` and `key-binding-tests`. Select checks for the changed
-contract instead of assuming every package has a standalone test target.
+Build affected consumers, not just the static archive. Public headers can expose new dependencies or compile errors only when another DLL includes them. Protocol changes have `data_types-tests`; math changes are also exercised by the engine-free client tests. Shared gameplay logic has `view-tests`, `crosshair-tests` and `key-binding-tests`. Select checks for the changed contract instead of assuming every package has a standalone test target.
+
+## Performance accounting
+
+[`ncl_perf`](ncl_perf/AGENTS.md) owns CPU accounting, shared sample types, capacities and profiling helpers. The engine's frame, output, snapshot, GPU and presentation policy stays in the [performance subsystem](../engine_mini/src/performance/AGENTS.md).

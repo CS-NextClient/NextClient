@@ -50,13 +50,19 @@ namespace nitroapi
             RegisterFunc(nitro_function, std::move(on_lib_loaded), std::string(magic_enum::enum_name(HookId)));
         }
 
-        template<StaticHookId HookId, class TResult, class... TArgs>
-        void RegisterFuncCdecl(NitroFunctionBase<TResult, TArgs...>* nitro_function)
+        template <StaticHookId HookId, class TResult, class... TArgs>
+        void RegisterFuncCdecl(
+            NitroFunctionBase<TResult, TArgs...>* nitro_function,
+            typename GenericHookStatic<HookId, CallingConventions::Cdecl, TResult, TArgs...>::CallbackWrapperFunc callback_wrapper = {}
+        )
         {
-            auto on_lib_loaded = [this, nitro_function](nitro_utils::SysModule hModule) {
-                auto* hook = hook_storage_->GetStaticHook<HookId, CallingConventions::Cdecl, TResult, TArgs...>(addr_provider_->FindAddress(hModule, HookId));
-                nitro_function->SetHook(hook);
-            };
+            auto on_lib_loaded =
+                [this, nitro_function, callback_wrapper = std::move(callback_wrapper)](nitro_utils::SysModule hModule) mutable {
+                    auto* hook = hook_storage_->GetStaticHook<HookId, CallingConventions::Cdecl, TResult, TArgs...>(
+                        addr_provider_->FindAddress(hModule, HookId), std::move(callback_wrapper)
+                    );
+                    nitro_function->SetHook(hook);
+                };
 
             RegisterFunc(nitro_function, std::move(on_lib_loaded), std::string(magic_enum::enum_name(HookId)));
         }

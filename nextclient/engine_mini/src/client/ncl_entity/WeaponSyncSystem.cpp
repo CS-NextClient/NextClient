@@ -115,6 +115,7 @@ void WeaponSyncSystem::OnDestroy(uint16_t entity_id)
     {
         weapon_id_to_entity_id_.erase(rev);
     }
+
     entity_to_weapon_.erase(it);
 }
 

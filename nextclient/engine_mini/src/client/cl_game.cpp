@@ -1,8 +1,9 @@
 #include "../engine.h"
-#include <optick.h>
+#include <ncl_perf/profiler.h>
 #include <goldsrc/client_api.h>
 #include <goldsrc/types.h>
 #include "spriteapi.h"
+
 
 goldsrc::HSPRITE_t ghCrosshair;
 goldsrc::wrect_t gCrosshairRc;
@@ -12,7 +13,7 @@ int gCrosshairB;
 
 void SetCrosshair(goldsrc::HSPRITE_t hspr, goldsrc::wrect_t rc, int r, int g, int b)
 {
-    OPTICK_EVENT();
+    NCL_PROFILE_SCOPE();
 
     p_g_engdstAddrs->pfnSetCrosshair(&hspr, &rc, &r, &g, &b);
     ghCrosshair = hspr;
@@ -24,7 +25,8 @@ void SetCrosshair(goldsrc::HSPRITE_t hspr, goldsrc::wrect_t rc, int r, int g, in
 
 void DrawCrosshair(int x, int y)
 {
-    OPTICK_EVENT();
+    NCL_PROFILE_SCOPE();
+
 
     if (ghCrosshair)
     {

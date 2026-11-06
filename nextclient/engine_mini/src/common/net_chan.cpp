@@ -1,6 +1,6 @@
 #include "net_chan.h"
 #include <filesystem>
-#include <optick.h>
+#include <ncl_perf/profiler.h>
 #include <bzlib.h>
 #include <nitro_utils/string_utils.h>
 #include <resource/ResourceDescriptor.h>
@@ -22,14 +22,14 @@ void Netchan_Setup(
     goldsrc::qboolean (*pfnNetchan_Blocksize)(void*)
 )
 {
-    OPTICK_EVENT();
+    NCL_PROFILE_SCOPE();
 
     eng()->Netchan_Setup(socketnumber, chan, adr, player_slot, connection_status, pfnNetchan_Blocksize);
 }
 
 goldsrc::qboolean Netchan_CopyFileFragments(goldsrc::netchan_t* chan)
 {
-    OPTICK_EVENT();
+    NCL_PROFILE_SCOPE();
 
     goldsrc::fragbuf_t* p;
     int nsize;
@@ -246,21 +246,21 @@ goldsrc::qboolean Netchan_CopyFileFragments(goldsrc::netchan_t* chan)
 
 goldsrc::qboolean Netchan_CopyNormalFragments(goldsrc::netchan_t* chan)
 {
-    OPTICK_EVENT();
+    NCL_PROFILE_SCOPE();
 
     return eng()->Netchan_CopyNormalFragments.InvokeChained(chan);
 }
 
 goldsrc::qboolean Netchan_Process(goldsrc::netchan_t* chan)
 {
-    OPTICK_EVENT();
+    NCL_PROFILE_SCOPE();
 
     return eng()->Netchan_Process.InvokeChained(chan);
 }
 
 goldsrc::qboolean Netchan_IncomingReady(goldsrc::netchan_t* chan)
 {
-    OPTICK_EVENT();
+    NCL_PROFILE_SCOPE();
 
     if (chan->incomingready[0] == false)
         return chan->incomingready[1] != 0;
@@ -270,56 +270,56 @@ goldsrc::qboolean Netchan_IncomingReady(goldsrc::netchan_t* chan)
 
 void Netchan_CreateFragments(bool server, goldsrc::netchan_t* chan, goldsrc::sizebuf_t* msg)
 {
-    OPTICK_EVENT();
+    NCL_PROFILE_SCOPE();
 
     eng()->Netchan_CreateFragments.InvokeChained(server, chan, msg);
 }
 
 void Netchan_FragSend(goldsrc::netchan_t* chan)
 {
-    OPTICK_EVENT();
+    NCL_PROFILE_SCOPE();
 
     eng()->Netchan_FragSend.InvokeChained(chan);
 }
 
 void Netchan_FlushIncoming(goldsrc::netchan_t* chan, int stream)
 {
-    OPTICK_EVENT();
+    NCL_PROFILE_SCOPE();
 
     eng()->Netchan_FlushIncoming.InvokeChained(chan, stream);
 }
 
 void Netchan_Transmit(goldsrc::netchan_t* chan, int length, uint8_t* data)
 {
-    OPTICK_EVENT();
+    NCL_PROFILE_SCOPE();
 
     eng()->Netchan_Transmit.InvokeChained(chan, length, data);
 }
 
 void Netchan_UpdateProgress(goldsrc::netchan_t* chan)
 {
-    OPTICK_EVENT();
+    NCL_PROFILE_SCOPE();
 
     eng()->Netchan_UpdateProgress.InvokeChained(chan);
 }
 
 void Netchan_Clear(goldsrc::netchan_t* chan)
 {
-    OPTICK_EVENT();
+    NCL_PROFILE_SCOPE();
     
     eng()->Netchan_Clear.InvokeChained(chan);
 }
 
 goldsrc::qboolean NET_GetPacket(goldsrc::netsrc_t sock)
 {
-    OPTICK_EVENT();
+    NCL_PROFILE_SCOPE();
 
     return eng()->NET_GetPacket.InvokeChained(sock);
 }
 
 goldsrc::qboolean NET_GetPacket_0()
 {
-    OPTICK_EVENT();
+    NCL_PROFILE_SCOPE();
 
     return eng()->NET_GetPacket_0.InvokeChained();
 }

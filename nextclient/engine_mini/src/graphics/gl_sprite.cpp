@@ -1,6 +1,6 @@
 #include "engine.h"
 
-#include <optick.h>
+#include <ncl_perf/profiler.h>
 #include <goldsrc/engine/model.h>
 #include <goldsrc/format/sprite.h>
 
@@ -9,7 +9,7 @@
 
 goldsrc::mspriteframe_t* R_GetSpriteFrame(goldsrc::msprite_t* pSprite, int frame)
 {
-    OPTICK_EVENT();
+    NCL_PROFILE_SCOPE();
 
     if (!pSprite)
     {

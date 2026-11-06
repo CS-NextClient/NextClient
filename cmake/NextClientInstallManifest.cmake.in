@@ -1,0 +1,15 @@
+set(INSTALL_PLATFORM @NEXTCLIENT_INSTALL_PLATFORM@)
+set(INSTALL_DIRECTORY [==[@NEXTCLIENT_INSTALL_DIR@]==])
+set(INSTALL_ASSETS_DIRECTORY [==[@NEXTCLIENT_ROOT@/assets]==])
+set(INSTALL_LIBRARY_SOURCES
+    [==[$<TARGET_FILE:next_launcher>]==]
+    [==[$<TARGET_FILE:engine_mini>]==]
+    [==[$<TARGET_FILE:filesystem_proxy>]==]
+    [==[$<TARGET_FILE:client_mini>]==]
+    [==[$<TARGET_FILE:gameui>]==]
+    [==[$<TARGET_FILE:steam_api_proxy>]==]
+    [==[$<TARGET_FILE:nitro_api>]==]
+    [==[$<TARGET_FILE:vgui2>]==])
+set(INSTALL_CRASHPAD_SOURCE [==[@VCPKG_INSTALLED_DIR@/@VCPKG_TARGET_TRIPLET@/tools/sentry-native/crashpad_handler.exe]==])
+set(INSTALL_LINUX_LAUNCHER_SOURCE [==[@NEXTCLIENT_ROOT@/nextclient/launcher/linux/nextclient.sh]==])
+set(INSTALL_TRACY_SOURCE [==[@NEXTCLIENT_INSTALL_TRACY_SOURCE@]==])

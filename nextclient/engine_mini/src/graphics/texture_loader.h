@@ -1,4 +1,5 @@
 #pragma once
+#include "graphics/TextureLoadGuard.h"
 #include "resource/texture_manager/Texture.h"
 #include "gl_local.h"
 
@@ -8,6 +9,18 @@ namespace tex
     /// Populates texture with the resulting GL object metadata.
     /// Returns false if the file cannot be loaded.
     bool LoadTextureFromFile(Texture& texture, const TexIdentifierStr& identifier, const char* filename, bool mipmap, int filter);
+
+    /// Loads an image from an arbitrary path, TGA or PNG, and uploads it. Unlike
+    /// LoadTextureFromFile this neither prefixes gfx/ nor appends an extension: material
+    /// artwork is named by the material that refers to it.
+    bool LoadTextureFromPath(
+        Texture& texture,
+        const TexIdentifierStr& identifier,
+        const char* path,
+        bool mipmap,
+        int filter,
+        tex::TextureLoadGuard guard = {}
+    );
 
     /// Main texture upload pipeline. Handles indexed (palette-based), RGBA and grayscale
     /// formats, optional POT resampling, hardware palette path, mipmap generation and
@@ -23,7 +36,8 @@ namespace tex
         int height,
         bool mipmap,
         const uint8_t* palette,
-        int filter
+        int filter,
+        tex::TextureLoadGuard guard = {}
     );
 
     /// Deletes the GL texture object owned by texture and releases

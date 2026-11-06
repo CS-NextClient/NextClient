@@ -544,6 +544,17 @@ namespace
             return 0;
         }
 
+        void ForgetGl()
+        {
+            for (auto& entry : atlases_)
+            {
+                entry.second.ForgetGl();
+            }
+
+            atlases_.clear();
+            DropCells();
+        }
+
         void ReleaseGl()
         {
             for (auto& entry : atlases_)
@@ -780,6 +791,11 @@ TextFontInfo TextRender_FontInfo(TextFont_t font)
 unsigned int TextRender_PageTexture(int page)
 {
     return g_TextRender.PageTexture(page);
+}
+
+void TextRender_ForgetGl()
+{
+    g_TextRender.ForgetGl();
 }
 
 void TextRender_ReleaseGl()

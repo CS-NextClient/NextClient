@@ -60,16 +60,21 @@ target_include_directories(${PROJECT_NAME} PRIVATE
 )
 
 target_link_libraries(${PROJECT_NAME} PRIVATE
+        NextClient::profiling
         hl1_source_sdk::hl1_source_sdk
         goldsrc::abi
         NextClient::engine_mini
+        ncl_material::ncl_material
         NextClient::client_mini
+        NextClient::next_launcher
         nitro_utils::nitro_utils
         data_encoding::data_encoding
         concurrencpp::concurrencpp
+        ncl_image::ncl_image
         view::view
         cvars::cvars
         ncl_math::ncl_math
+        ncl_studio::ncl_studio
         crosshair::crosshair
         settings_code::settings_code
 )

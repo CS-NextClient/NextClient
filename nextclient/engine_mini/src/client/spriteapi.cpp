@@ -2,7 +2,7 @@
 #include "../engine.h"
 #include <unordered_set>
 #include <string>
-#include <optick.h>
+#include <ncl_perf/profiler.h>
 #include <goldsrc/client_api.h>
 #include <goldsrc/engine/model.h>
 #include <goldsrc/engine/video.h>
@@ -24,7 +24,7 @@ int gSpriteCount;
 
 static SPRITELIST* SPR_Get(goldsrc::HSPRITE_t hsprite)
 {
-    OPTICK_EVENT();
+    NCL_PROFILE_SCOPE();
 
     hsprite--;
 
@@ -36,7 +36,7 @@ static SPRITELIST* SPR_Get(goldsrc::HSPRITE_t hsprite)
 
 void SPR_Init()
 {
-    OPTICK_EVENT();
+    NCL_PROFILE_SCOPE();
 
     if (!gSpriteList)
     {
@@ -50,7 +50,7 @@ void SPR_Init()
 
 void SPR_Shutdown()
 {
-    OPTICK_EVENT();
+    NCL_PROFILE_SCOPE();
 
     // Previously there was a return from the function if host_initialized == false.
     // The check has been removed, because host_initialized is set to false always before this function is called (bug in the original engine).
@@ -80,7 +80,7 @@ void SPR_Shutdown()
 
 void SPR_Shutdown_NoModelFree()
 {
-    OPTICK_EVENT();
+    NCL_PROFILE_SCOPE();
 
     // Previously there was a return from the function if host_initialized == false.
     // The check has been removed, because host_initialized is set to false always before this function is called (bug in the original engine).
@@ -107,7 +107,7 @@ void SPR_Shutdown_NoModelFree()
 
 void SPR_ResetState()
 {
-    OPTICK_EVENT();
+    NCL_PROFILE_SCOPE();
 
     gpSprite = nullptr;
     gSpriteList = nullptr;
@@ -118,7 +118,7 @@ void SPR_ResetState()
 
 goldsrc::HSPRITE_t SPR_Load(const char* pTextureName)
 {
-    OPTICK_EVENT();
+    NCL_PROFILE_SCOPE();
 
     p_g_engdstAddrs->pfnSPR_Load(&pTextureName);
 
@@ -168,7 +168,7 @@ bool SPR_IsLoaded(const char* sprite_name)
 
 void SPR_Set(goldsrc::HSPRITE_t hsprite, int r, int g, int b)
 {
-    OPTICK_EVENT();
+    NCL_PROFILE_SCOPE();
 
     p_g_engdstAddrs->pfnSPR_Set(&hsprite, &r, &g, &b);
 
@@ -183,7 +183,7 @@ void SPR_Set(goldsrc::HSPRITE_t hsprite, int r, int g, int b)
 
 void SPR_Draw(int frame, int x, int y, const goldsrc::wrect_t* prc)
 {
-    OPTICK_EVENT();
+    NCL_PROFILE_SCOPE();
 
     p_g_engdstAddrs->pfnSPR_Draw(&frame, &x, &y, &prc);
 
@@ -199,7 +199,7 @@ void SPR_Draw(int frame, int x, int y, const goldsrc::wrect_t* prc)
 
 void SPR_DrawAdditive(int frame, int x, int y, const goldsrc::wrect_t* prc)
 {
-    OPTICK_EVENT();
+    NCL_PROFILE_SCOPE();
 
     p_g_engdstAddrs->pfnSPR_DrawAdditive(&frame, &x, &y, &prc);
 
@@ -215,7 +215,7 @@ void SPR_DrawAdditive(int frame, int x, int y, const goldsrc::wrect_t* prc)
 
 void SPR_DrawHoles(int frame, int x, int y, const goldsrc::wrect_t* prc)
 {
-    OPTICK_EVENT();
+    NCL_PROFILE_SCOPE();
 
     p_g_engdstAddrs->pfnSPR_DrawHoles(&frame, &x, &y, &prc);
 
@@ -231,7 +231,7 @@ void SPR_DrawHoles(int frame, int x, int y, const goldsrc::wrect_t* prc)
 
 void SPR_DrawGeneric(int frame, int x, int y, const goldsrc::wrect_t* prc, int src, int dest, int width, int height)
 {
-    OPTICK_EVENT();
+    NCL_PROFILE_SCOPE();
 
     p_g_engdstAddrs->pfnSPR_DrawGeneric(&frame, &x, &y, &prc, &src, &dest, &width, &height);
 
@@ -247,7 +247,7 @@ void SPR_DrawGeneric(int frame, int x, int y, const goldsrc::wrect_t* prc, int s
 
 void SPR_EnableScissor(int x, int y, int width, int height)
 {
-    OPTICK_EVENT();
+    NCL_PROFILE_SCOPE();
 
     p_g_engdstAddrs->pfnSPR_EnableScissor(&x, &y, &width, &height);
 
@@ -256,7 +256,7 @@ void SPR_EnableScissor(int x, int y, int width, int height)
 
 void SPR_DisableScissor()
 {
-    OPTICK_EVENT();
+    NCL_PROFILE_SCOPE();
 
     p_g_engdstAddrs->pfnSPR_DisableScissor();
 
@@ -265,7 +265,7 @@ void SPR_DisableScissor()
 
 int SPR_Width(goldsrc::HSPRITE_t hsprite, int frame)
 {
-    OPTICK_EVENT();
+    NCL_PROFILE_SCOPE();
 
     p_g_engdstAddrs->pfnSPR_Width(&hsprite, &frame);
 
@@ -282,7 +282,7 @@ int SPR_Width(goldsrc::HSPRITE_t hsprite, int frame)
 
 int SPR_Height(goldsrc::HSPRITE_t hsprite, int frame)
 {
-    OPTICK_EVENT();
+    NCL_PROFILE_SCOPE();
 
     p_g_engdstAddrs->pfnSPR_Height(&hsprite, &frame);
 
@@ -299,7 +299,7 @@ int SPR_Height(goldsrc::HSPRITE_t hsprite, int frame)
 
 int SPR_Frames(goldsrc::HSPRITE_t hsprite)
 {
-    OPTICK_EVENT();
+    NCL_PROFILE_SCOPE();
 
     p_g_engdstAddrs->pfnSPR_Frames(&hsprite);
 
@@ -312,7 +312,7 @@ int SPR_Frames(goldsrc::HSPRITE_t hsprite)
 
 const goldsrc::model_t* SPR_GetModelPointer(goldsrc::HSPRITE_t hsprite)
 {
-    OPTICK_EVENT();
+    NCL_PROFILE_SCOPE();
 
     SPRITELIST* sprite = SPR_Get(hsprite);
     if (sprite)

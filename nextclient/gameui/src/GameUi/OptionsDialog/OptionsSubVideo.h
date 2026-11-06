@@ -24,6 +24,10 @@ namespace vgui2
     class ComboBox;
 }
 
+namespace render
+{
+    class ShaderRendererInterface;
+} // namespace render
 class CCvarSlider;
 class CCvarToggleCheckButton;
 
@@ -35,12 +39,13 @@ class COptionsSubVideo : public vgui2::PropertyPage
     DECLARE_CLASS_SIMPLE( COptionsSubVideo, vgui2::PropertyPage );
 
 public:
-    COptionsSubVideo(vgui2::Panel *parent);
+    COptionsSubVideo(vgui2::Panel* parent, std::shared_ptr<nitro_utils::FileConfigProvider> config, render::ShaderRendererInterface* renderer);
     ~COptionsSubVideo();
 
     virtual void OnResetData();
     virtual void OnApplyChanges();
     virtual void OnCommand(const char *command);
+    void OnThink() override;
 
 private:
     struct CVidSettings
@@ -53,10 +58,12 @@ private:
         int			vid_level;
         int			disable_multitexture;
         int			stretch_aspect;
+        int msaa_samples;
         char		renderer[ 128 ];
     };
 
     std::shared_ptr<nitro_utils::FileConfigProvider> m_pUserConfig;
+    render::ShaderRendererInterface* m_Renderer;
 
     CVidSettings		m_OrigSettings;
     CVidSettings		m_CurrentSettings;
@@ -66,6 +73,9 @@ private:
     void		ApplyVidSettings(bool bForceRefresh);
 
     void        SetCurrentResolutionComboItem();
+    void UpdateShaderRenderingAvailability();
+    void UpdateMsaaAvailability();
+    void ResetMsaaSelection();
 
     MESSAGE_FUNC( OnDataChanged, "ControlModified" );
     MESSAGE_FUNC_PARAMS( OnButtonChecked, "CheckButtonChecked", panel);
@@ -77,8 +87,10 @@ private:
     vgui2::ComboBox *m_pColorDepth;
     vgui2::CheckButton *m_pWindowed;
     vgui2::ComboBox *m_pAspectRatio;
+    vgui2::ComboBox* m_pMsaa{};
     CCvarToggleCheckButton *m_pDetailTextures;
     CCvarToggleCheckButton *m_pVsync;
+    CCvarToggleCheckButton* m_pShaderRenderer{};
     vgui2::CheckButton *m_pHDModels;
     vgui2::CheckButton *m_pAddonsFolder;
     vgui2::CheckButton *m_pLowVideoDetail;

@@ -1,0 +1,278 @@
+--- a/public/tracy/TracyOpenGL.hpp
++++ b/public/tracy/TracyOpenGL.hpp
+@@ -117,6 +117,9 @@
+         : m_context( NextGpuContextId() )
+         , m_head( 0 )
+         , m_tail( 0 )
++        , m_alive( true )
++        , m_writeHead( 0 )
++        , m_writeTail( 0 )
+         , m_supportsQueryBufferObject( false )
+     {
+         ZoneScopedC( Color::Red4 );
+@@ -203,35 +206,74 @@
+     {
+         ZoneScopedC( Color::Red4 );
+ 
+-#ifdef TRACY_ON_DEMAND
+-        if( !GetProfiler().IsConnected() )
+-        {
+-            m_head = m_tail = 0;
+-            return;
+-        }
+-#endif
++        if( !m_alive ) return;
+ 
+ #ifdef TRACY_OPENGL_AUTO_CALIBRATION
+-        // Before the drain's early-returns, so it runs even on frames with no
+-        // completed queries.
++#ifdef TRACY_ON_DEMAND
++        if( GetProfiler().IsConnected() )
++#endif
+         Recalibrate();
+ #endif
+ 
+-        if( m_tail == m_head ) return;
+-
+-        while( m_tail != m_head )
+-        {
++        if( m_writeTail == m_writeHead ) return;
++
++        while( m_writeTail != m_writeHead )
++        {
++            const auto queryId = m_writeOrder[m_writeTail];
+             uint64_t time;
+-            if( !GetTimestamp(time, m_tail) ) return;
+-
+-            TracyLfqPrepare( QueueType::GpuTime );
+-            MemWrite( &item->gpuTime.gpuTime, (int64_t)time );
+-            MemWrite( &item->gpuTime.queryId, (uint16_t)m_tail );
+-            MemWrite( &item->gpuTime.context, uint8_t( m_context ) );
+-            TracyLfqCommit;
+-
+-            m_tail = ( m_tail + 1 ) % QueryCount;
+-        }
++            if( !GetTimestamp( time, queryId ) ) return;
++
++#ifdef TRACY_ON_DEMAND
++            if( GetProfiler().IsConnected() && m_connection[queryId] == GetProfiler().ConnectionId() )
++#endif
++            {
++                TracyLfqPrepare( QueueType::GpuTime );
++                MemWrite( &item->gpuTime.gpuTime, (int64_t)time );
++                MemWrite( &item->gpuTime.queryId, (uint16_t)queryId );
++                MemWrite( &item->gpuTime.context, uint8_t( m_context ) );
++                TracyLfqCommit;
++            }
++
++            m_read[queryId] = true;
++            m_writeTail = ( m_writeTail + 1 ) % QueryCount;
++            while( m_tail != m_head && m_read[m_tail] )
++            {
++                m_tail = ( m_tail + 1 ) % QueryCount;
++            }
++        }
++    }
++
++    bool ReserveQueryPair( unsigned int& start, unsigned int& end )
++    {
++        if( !m_alive || ( m_tail + QueryCount - m_head - 1 ) % QueryCount < 2 ) return false;
++        start = m_head;
++        end = ( m_head + 1 ) % QueryCount;
++        m_read[start] = m_read[end] = false;
++#ifdef TRACY_ON_DEMAND
++        m_connection[start] = m_connection[end] = GetProfiler().ConnectionId();
++#endif
++        m_head = ( m_head + 2 ) % QueryCount;
++        return true;
++    }
++
++    void WriteTimestamp( unsigned int id )
++    {
++        if( !m_alive ) return;
++        glQueryCounter( m_query[id], GL_TIMESTAMP );
++        m_writeOrder[m_writeHead] = id;
++        m_writeHead = ( m_writeHead + 1 ) % QueryCount;
++    }
++
++    void ReleaseGl()
++    {
++        if( m_alive ) glDeleteQueries( QueryCount, m_query );
++        AbandonGl();
++    }
++
++    void AbandonGl()
++    {
++        m_alive = false;
++        m_head = m_tail = m_writeHead = m_writeTail = 0;
+     }
+ 
+ private:
+@@ -316,14 +358,6 @@
+     }
+ #endif
+ 
+-    tracy_force_inline unsigned int NextQueryId()
+-    {
+-        const auto id = m_head;
+-        m_head = ( m_head + 1 ) % QueryCount;
+-        TRACY_ASSERT( m_head != m_tail );
+-        return id;
+-    }
+-
+     tracy_force_inline unsigned int TranslateOpenGlQueryId( unsigned int id )
+     {
+         return m_query[id];
+@@ -339,6 +373,14 @@
+ 
+     unsigned int m_head;
+     unsigned int m_tail;
++    bool m_alive;
++    bool m_read[QueryCount];
++    unsigned int m_writeHead;
++    unsigned int m_writeTail;
++    unsigned int m_writeOrder[QueryCount];
++#ifdef TRACY_ON_DEMAND
++    uint64_t m_connection[QueryCount];
++#endif
+ 
+ #ifdef TRACY_OPENGL_AUTO_CALIBRATION
+     int64_t m_prevCalibration; // host-ns timestamp of the last emitted calibration
+@@ -360,14 +402,20 @@
+     {
+         if( !m_active ) return;
+ 
+-        const auto queryId = GetGpuCtx().ptr->NextQueryId();
+-        glQueryCounter( GetGpuCtx().ptr->TranslateOpenGlQueryId( queryId ), GL_TIMESTAMP );
++        m_context = GetGpuCtx().ptr;
++        unsigned int queryId;
++        if( !m_context || !m_context->ReserveQueryPair( queryId, m_endQueryId ) )
++        {
++            m_active = false;
++            return;
++        }
++        m_context->WriteTimestamp( queryId );
+ 
+         TracyLfqPrepare( QueueType::GpuZoneBegin );
+         MemWrite( &item->gpuZoneBegin.cpuTime, Profiler::GetTime() );
+         memset( &item->gpuZoneBegin.thread, 0, sizeof( item->gpuZoneBegin.thread ) );
+         MemWrite( &item->gpuZoneBegin.queryId, uint16_t( queryId ) );
+-        MemWrite( &item->gpuZoneBegin.context, uint8_t( GetGpuCtx().ptr->GetId() ) );
++        MemWrite( &item->gpuZoneBegin.context, uint8_t( m_context->GetId() ) );
+         MemWrite( &item->gpuZoneBegin.srcloc, (uint64_t)srcloc );
+         TracyLfqCommit;
+     }
+@@ -382,8 +430,14 @@
+     {
+         if( !m_active ) return;
+ 
+-        const auto queryId = GetGpuCtx().ptr->NextQueryId();
+-        glQueryCounter( GetGpuCtx().ptr->TranslateOpenGlQueryId( queryId ), GL_TIMESTAMP );
++        m_context = GetGpuCtx().ptr;
++        unsigned int queryId;
++        if( !m_context || !m_context->ReserveQueryPair( queryId, m_endQueryId ) )
++        {
++            m_active = false;
++            return;
++        }
++        m_context->WriteTimestamp( queryId );
+ 
+ #ifdef TRACY_FIBERS
+         TracyLfqPrepare( QueueType::GpuZoneBegin );
+@@ -395,7 +449,7 @@
+ #endif
+         MemWrite( &item->gpuZoneBegin.cpuTime, Profiler::GetTime() );
+         MemWrite( &item->gpuZoneBegin.queryId, uint16_t( queryId ) );
+-        MemWrite( &item->gpuZoneBegin.context, uint8_t( GetGpuCtx().ptr->GetId() ) );
++        MemWrite( &item->gpuZoneBegin.context, uint8_t( m_context->GetId() ) );
+         MemWrite( &item->gpuZoneBegin.srcloc, (uint64_t)srcloc );
+         TracyLfqCommit;
+     }
+@@ -410,15 +464,21 @@
+     {
+         if( !m_active ) return;
+ 
+-        const auto queryId = GetGpuCtx().ptr->NextQueryId();
+-        glQueryCounter( GetGpuCtx().ptr->TranslateOpenGlQueryId( queryId ), GL_TIMESTAMP );
++        m_context = GetGpuCtx().ptr;
++        unsigned int queryId;
++        if( !m_context || !m_context->ReserveQueryPair( queryId, m_endQueryId ) )
++        {
++            m_active = false;
++            return;
++        }
++        m_context->WriteTimestamp( queryId );
+ 
+         TracyLfqPrepare( QueueType::GpuZoneBeginAllocSrcLoc );
+         const auto srcloc = Profiler::AllocSourceLocation( line, source, sourceSz, function, functionSz, name, nameSz );
+         MemWrite( &item->gpuZoneBegin.cpuTime, Profiler::GetTime() );
+         memset( &item->gpuZoneBegin.thread, 0, sizeof( item->gpuZoneBegin.thread ) );
+         MemWrite( &item->gpuZoneBegin.queryId, uint16_t( queryId ) );
+-        MemWrite( &item->gpuZoneBegin.context, uint8_t( GetGpuCtx().ptr->GetId() ) );
++        MemWrite( &item->gpuZoneBegin.context, uint8_t( m_context->GetId() ) );
+         MemWrite( &item->gpuZoneBegin.srcloc, (uint64_t)srcloc );
+         TracyLfqCommit;
+     }
+@@ -433,8 +493,14 @@
+     {
+         if( !m_active ) return;
+ 
+-        const auto queryId = GetGpuCtx().ptr->NextQueryId();
+-        glQueryCounter( GetGpuCtx().ptr->TranslateOpenGlQueryId( queryId ), GL_TIMESTAMP );
++        m_context = GetGpuCtx().ptr;
++        unsigned int queryId;
++        if( !m_context || !m_context->ReserveQueryPair( queryId, m_endQueryId ) )
++        {
++            m_active = false;
++            return;
++        }
++        m_context->WriteTimestamp( queryId );
+ 
+ #ifdef TRACY_FIBERS
+         TracyLfqPrepare( QueueType::GpuZoneBeginAllocSrcLoc );
+@@ -447,7 +513,7 @@
+         const auto srcloc = Profiler::AllocSourceLocation( line, source, sourceSz, function, functionSz, name, nameSz );
+         MemWrite( &item->gpuZoneBegin.cpuTime, Profiler::GetTime() );
+         MemWrite( &item->gpuZoneBegin.queryId, uint16_t( queryId ) );
+-        MemWrite( &item->gpuZoneBegin.context, uint8_t( GetGpuCtx().ptr->GetId() ) );
++        MemWrite( &item->gpuZoneBegin.context, uint8_t( m_context->GetId() ) );
+         MemWrite( &item->gpuZoneBegin.srcloc, (uint64_t)srcloc );
+         TracyLfqCommit;
+     }
+@@ -456,22 +522,27 @@
+     {
+         if( !m_active ) return;
+ 
+-        const auto queryId = GetGpuCtx().ptr->NextQueryId();
+-        glQueryCounter( GetGpuCtx().ptr->TranslateOpenGlQueryId( queryId ), GL_TIMESTAMP );
+-
+-#ifdef TRACY_ON_DEMAND
+-        if( GetProfiler().ConnectionId() != m_connectionId ) return;
++        const auto queryId = m_endQueryId;
++        m_context->WriteTimestamp( queryId );
++
++#ifdef TRACY_ON_DEMAND
++        if( !GetProfiler().IsConnected() || GetProfiler().ConnectionId() != m_connectionId ) return;
+ #endif
+         TracyLfqPrepare( QueueType::GpuZoneEnd );
+         MemWrite( &item->gpuZoneEnd.cpuTime, Profiler::GetTime() );
+         memset( &item->gpuZoneEnd.thread, 0, sizeof( item->gpuZoneEnd.thread ) );
+         MemWrite( &item->gpuZoneEnd.queryId, uint16_t( queryId ) );
+-        MemWrite( &item->gpuZoneEnd.context, uint8_t( GetGpuCtx().ptr->GetId() ) );
+-        TracyLfqCommit;
+-    }
++        MemWrite( &item->gpuZoneEnd.context, uint8_t( m_context->GetId() ) );
++        TracyLfqCommit;
++    }
++
++    void Deactivate() { m_active = false; }
++    bool IsActive() const { return m_active; }
+ 
+ private:
+-    const bool m_active;
++    bool m_active;
++    GpuCtx* m_context = nullptr;
++    unsigned int m_endQueryId = 0;
+ 
+ #ifdef TRACY_ON_DEMAND
+     uint64_t m_connectionId = 0;

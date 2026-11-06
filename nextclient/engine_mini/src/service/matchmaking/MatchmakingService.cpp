@@ -1,6 +1,6 @@
 #include "MatchmakingService.h"
 
-#include <optick.h>
+#include <ncl_perf/profiler.h>
 #include <mutex>
 #include <queue>
 #include <ranges>
@@ -363,7 +363,7 @@ result<std::vector<MatchmakingService::ServerInfo>> MatchmakingService::WaitAnyS
 
 bool MatchmakingService::IsServerListForcedToBeEmpty(const std::vector<ServerInfo>& servers)
 {
-    OPTICK_EVENT()
+    NCL_PROFILE_SCOPE()
 
     if (servers.size() != 1)
     {
@@ -377,7 +377,7 @@ bool MatchmakingService::IsServerListForcedToBeEmpty(const std::vector<ServerInf
 
 gameserveritem_t MatchmakingService::ConvertToGameServerItem(const SQResponseInfo<SQ_INFO>& sq_info)
 {
-    OPTICK_EVENT()
+    NCL_PROFILE_SCOPE()
 
     const netadr_t& address = sq_info.address;
 

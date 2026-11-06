@@ -4,6 +4,7 @@
 #include "CommandLoggerInterface.h"
 #include "AnalyticsInterface.h"
 #include "HttpDownloadManagerInterface.h"
+#include "MaterialEditInterface.h"
 #include "NclmVerificatorInterface.h"
 #include "NextClientVersion.h"
 #include "TextRenderInterface.h"
@@ -38,7 +39,8 @@ public:
 
     // Returns nullptr when the platform uses the stock text renderer.
     virtual TextRenderInterface* GetTextRender() = 0;
+    virtual render::MaterialEditInterface* GetMaterialEdit() = 0;
 };
 
-#define ENGINE_MINI_INTERFACE_VERSION "EngineMini013"
+#define ENGINE_MINI_INTERFACE_VERSION "EngineMini014"
 

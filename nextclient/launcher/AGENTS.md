@@ -1,8 +1,6 @@
 # Launcher and updater
 
-The launcher owns the process, engine startup and relaunch. On Windows, `src/updater_gui_app` owns
-the update workflow; the GUI's cancellation request and the end of HTTP or file work are separate
-events. The updater GUI is not ported to Linux.
+The launcher owns the process, engine startup and relaunch. On Windows, `src/updater_gui_app` owns the update workflow; the GUI's cancellation request and the end of HTTP or file work are separate events. The updater GUI is not ported to Linux.
 
 ## Shutdown and HTTP work
 
@@ -27,14 +25,10 @@ events. The updater GUI is not ported to Linux.
 - Keep install, backup and downloaded-file paths distinct. Tests must use their isolated temporary
   directories and local HTTP fixtures, not the developer's installed game or a production backend.
 
+The shared `video_settings` namespace owns the MSAA configuration constants, normalization, and per-launch engine command-line preparation. Keep launcher and GameUI consumers on that same definition.
+
 ## Verification
 
-`updater-test` is available on Windows with `NEXTCLIENT_BUILD_TESTS` and
-`NEXT_LAUNCHER_ENABLE_UPDATER` enabled.
-Run its CTest cases sequentially (`ctest --test-dir <test-build> -C <config> -j 1 --output-on-failure`).
-`NextUpdaterTestFixture.h` allocates ports from a process-local counter starting at 59873, so parallel
-CTest processes can choose the same port. A connection or download failure under parallel execution
-can therefore be a fixture collision; check sequentially before changing production networking.
+`updater-test` is available on Windows with `NEXTCLIENT_BUILD_TESTS` and `NEXT_LAUNCHER_ENABLE_UPDATER` enabled. Run its CTest cases sequentially (`ctest --test-dir <test-build> -C <config> -j 1 --output-on-failure`). `NextUpdaterTestFixture.h` allocates ports from a process-local counter starting at 59873, so parallel CTest processes can choose the same port. A connection or download failure under parallel execution can therefore be a fixture collision; check sequentially before changing production networking.
 
-For cancellation or shutdown changes, include the early-exit and failure paths, not only a complete
-successful update. Build the affected launcher target as well as the tests.
+For cancellation or shutdown changes, include the early-exit and failure paths, not only a complete successful update. Build the affected launcher target as well as the tests.

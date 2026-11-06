@@ -254,6 +254,7 @@ namespace nitroapi
 
     const std::unordered_map<std::string, SearchConfig> EngineAddressProvider8684Linux::addresses_str_
     {
+        { "Host_EndGame",                           SearchConfig("Host_EndGame", SearchType::ExportFunc) },
         { "server",                                 SearchConfig("sv", SearchType::ExportFunc) },
         { "server_static",                          SearchConfig("svs", SearchType::ExportFunc) },
         { "client_static",                          SearchConfig("cls", SearchType::ExportFunc) },
@@ -337,6 +338,7 @@ namespace nitroapi
         { "maxTransObjs",                           SearchConfig("maxTransObjs", SearchType::Symbol) },
         { "gLoadSky",                               SearchConfig("gLoadSky", SearchType::ExportFunc) },
         { "lightmap_textures",                      SearchConfig("lightmap_textures", SearchType::ExportFunc) },
+        { "cl_elights",                             SearchConfig("cl_elights", SearchType::ExportFunc) },
         { "vgui2_surface",                          SearchConfig() },
         { "ip_sockets",                             SearchConfig("ip_sockets", SearchType::ExportFunc) },
         { "ipx_sockets",                            SearchConfig() },

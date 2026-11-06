@@ -352,12 +352,35 @@ namespace nitroapi
 
         VGui_InitInterfacesList,
 
+        SDL_GL_SwapWindow,
+        SDL_GL_GetDrawableSize,
+        SDL_GL_GetCurrentWindow,
+        SDL_GetWindowSize,
+        SDL_GetVersion,
+        SDL_GL_CreateContext,
+        SDL_GL_DeleteContext,
+        SDL_GL_GetCurrentContext,
+
+        CStudioModelRenderer__StudioSetupBones,
+        CGameStudioModelRenderer__StudioSetupBones,
+        CStudioModelRenderer__StudioGetAnim,
+        CStudioModelRenderer__StudioEstimateInterpolant,
+        CStudioModelRenderer__StudioEstimateFrame,
+        CStudioModelRenderer__StudioSlerpBones,
+        CStudioModelRenderer__StudioCalcBoneAdj,
+        CStudioModelRenderer__StudioCalcBoneQuaterion,
+        CStudioModelRenderer__StudioCalcBonePosition,
+        CStudioModelRenderer__StudioCalcRotations,
+        CStudioModelRenderer__StudioSaveBones,
+        CStudioModelRenderer__StudioMergeBones,
+
         LAST_ITEM
     };
 }
 
 template <>
-struct magic_enum::customize::enum_range<nitroapi::StaticHookId> {
+struct magic_enum::customize::enum_range<nitroapi::StaticHookId>
+{
     static constexpr int min = 0;
     static constexpr int max = (int)nitroapi::StaticHookId::LAST_ITEM;
 };

@@ -6,7 +6,7 @@
 #include <ranges>
 
 #include <easylogging++.h>
-#include <optick.h>
+#include <ncl_perf/profiler.h>
 #include <strtools.h>
 
 #include "service/geoip/GeoIpLanguage.h"
@@ -193,7 +193,7 @@ gameserveritem_t* MatchmakingSteamComp::GetServerDetails(HServerListRequest requ
 
 void MatchmakingSteamComp::CancelQuery(HServerListRequest request_id)
 {
-    OPTICK_EVENT();
+    NCL_PROFILE_SCOPE();
     
     if (!server_requests_.contains(request_id))
     {
@@ -338,12 +338,12 @@ void MatchmakingSteamComp::RefreshServer(HServerListRequest request_id, int serv
             gameserver.m_ulTimeLastPlayed = request_data.servers[server_id].gameserver.m_ulTimeLastPlayed;
             request_data.servers[server_id].gameserver = gameserver;
 
-            OPTICK_EVENT("MatchmakingSteamComp::RefreshServer - response_callback->ServerResponded")
+            NCL_PROFILE_NAMED_SCOPE("MatchmakingSteamComp::RefreshServer - response_callback->ServerResponded")
             request_data.response_callback->ServerResponded(request_id, server_id);
         }
         else
         {
-            OPTICK_EVENT("MatchmakingSteamComp::RefreshServer - response_callback->ServerFailedToRespond")
+            NCL_PROFILE_NAMED_SCOPE("MatchmakingSteamComp::RefreshServer - response_callback->ServerFailedToRespond")
             request_data.response_callback->ServerFailedToRespond(request_id, server_id);
         }
     });
@@ -390,7 +390,7 @@ result<void> MatchmakingSteamComp::RequestServerList(
     // server_requests_ and the response callback are main-thread confined
     assert(TaskCoro::IsMainThread());
 
-    OPTICK_EVENT("MatchmakingSteamComp::RequestServerList - response_callback->RefreshComplete")
+    NCL_PROFILE_NAMED_SCOPE("MatchmakingSteamComp::RequestServerList - response_callback->RefreshComplete")
     response_callback->RefreshComplete(request_id, eServerResponded);
 }
 
@@ -410,7 +410,7 @@ result<void> MatchmakingSteamComp::RefreshServerList(
 
     assert(TaskCoro::IsMainThread());
 
-    OPTICK_EVENT("MatchmakingSteamComp::RefreshServerList - response_callback->RefreshComplete")
+    NCL_PROFILE_NAMED_SCOPE("MatchmakingSteamComp::RefreshServerList - response_callback->RefreshComplete")
     response_callback->RefreshComplete(request_id, eServerResponded);
 }
 
@@ -419,7 +419,7 @@ void MatchmakingSteamComp::ServerAnsweredHandler(
     ISteamMatchmakingServerListResponse* response_callback,
     const MatchmakingService::ServerInfo& server_info)
 {
-    OPTICK_EVENT("MatchmakingSteamComp::ServerAnsweredHandler")
+    NCL_PROFILE_NAMED_SCOPE("MatchmakingSteamComp::ServerAnsweredHandler")
 
     auto& request = server_requests_[request_id];
 
@@ -450,19 +450,19 @@ void MatchmakingSteamComp::ServerAnsweredHandler(
 
     if (server_info.gameserver.m_bHadSuccessfulResponse)
     {
-        OPTICK_EVENT("MatchmakingSteamComp::ServerAnsweredHandler - ServerResponded")
+        NCL_PROFILE_NAMED_SCOPE("MatchmakingSteamComp::ServerAnsweredHandler - ServerResponded")
         response_callback->ServerResponded(request_id, server_info.server_index);
     }
     else
     {
-        OPTICK_EVENT("MatchmakingSteamComp::ServerAnsweredHandler - ServerFailedToRespond")
+        NCL_PROFILE_NAMED_SCOPE("MatchmakingSteamComp::ServerAnsweredHandler - ServerFailedToRespond")
         response_callback->ServerFailedToRespond(request_id, server_info.server_index);
     }
 }
 
 void MatchmakingSteamComp::InitEmptyGameServerItem(gameserveritem_t& gameserver, uint32_t ip, uint16_t port)
 {
-    OPTICK_EVENT()
+    NCL_PROFILE_SCOPE()
 
     if (app_id_ == 0)
     {

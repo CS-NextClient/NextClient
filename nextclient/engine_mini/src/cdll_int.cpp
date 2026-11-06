@@ -1,16 +1,16 @@
 #include "engine.h"
-#include <optick.h>
+#include <ncl_perf/profiler.h>
 
 void ClientDLL_DrawTransparentTriangles()
 {
-    OPTICK_EVENT();
+    NCL_PROFILE_SCOPE();
 
     eng()->ClientDLL_DrawTransparentTriangles.InvokeChained();
 }
 
 void ClientDLL_DrawNormalTriangles()
 {
-    OPTICK_EVENT();
+    NCL_PROFILE_SCOPE();
 
     eng()->ClientDLL_DrawNormalTriangles.InvokeChained();
 }

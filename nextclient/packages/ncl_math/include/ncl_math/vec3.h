@@ -4,7 +4,12 @@
 #include <cmath>
 #include <type_traits>
 
+#if defined(_M_IX86) || defined(_M_X64) || defined(__SSE__)
+#include <xmmintrin.h>
+#endif
+
 #include "scalar.h"
+#include "ncl_math/trigonometry.h"
 
 namespace ncl_math
 {
@@ -43,8 +48,9 @@ namespace ncl_math
 
         Vector2 Rotated(float radians) const
         {
-            float c = std::cos(radians);
-            float s = std::sin(radians);
+            float s, c;
+            SinCos(radians, s, c);
+
             return {x * c - y * s, x * s + y * c};
         }
 
@@ -106,8 +112,27 @@ namespace ncl_math
 
         Vector3 Normalized() const
         {
-            float len = Length();
-            return len > 0.0f ? Vector3{x / len, y / len, z / len} : Vector3{};
+#if defined(_M_IX86) || defined(_M_X64) || defined(__SSE__)
+            const __m128 value = _mm_set_ps(0.0f, z, y, x);
+            const __m128 squared = _mm_mul_ps(value, value);
+            const __m128 xy = _mm_add_ss(squared, _mm_shuffle_ps(squared, squared, _MM_SHUFFLE(1, 1, 1, 1)));
+            const __m128 length = _mm_sqrt_ss(_mm_add_ss(xy, _mm_shuffle_ps(squared, squared, _MM_SHUFFLE(2, 2, 2, 2))));
+
+            if (_mm_cvtss_f32(length) > 0.0f)
+            {
+                const __m128 normalized = _mm_div_ps(value, _mm_shuffle_ps(length, length, _MM_SHUFFLE(0, 0, 0, 0)));
+                float result[4];
+                _mm_storeu_ps(result, normalized);
+
+                return {result[0], result[1], result[2]};
+            }
+
+            return {};
+#else
+            const float length = Length();
+
+            return length > 0.0f ? Vector3{x / length, y / length, z / length} : Vector3{};
+#endif
         }
 
         static Vector3& Ref(float* p) { return *reinterpret_cast<Vector3*>(p); }
@@ -124,7 +149,13 @@ namespace ncl_math
         Vector2 ApplyVector(Vector2 v) const { return basis_x * v.x + basis_y * v.y; }
     };
 
-    inline Vector2 FromAngle(float radians) { return {std::cos(radians), std::sin(radians)}; }
+    inline Vector2 FromAngle(float radians)
+    {
+        float sine, cosine;
+        SinCos(radians, sine, cosine);
+
+        return {cosine, sine};
+    }
 
     inline Vector2 Lerp(Vector2 a, Vector2 b, float t) { return a + (b - a) * t; }
     inline Vector3 Lerp(const Vector3& a, const Vector3& b, float t) { return a + (b - a) * t; }
@@ -257,12 +288,10 @@ namespace ncl_math
     // angles = pitch, yaw, roll in degrees (engine convention).
     inline void AngleVectors(const float* angles, float* forward, float* right, float* up)
     {
-        float sp = std::sin(angles[0] * kDeg2Rad);
-        float cp = std::cos(angles[0] * kDeg2Rad);
-        float sy = std::sin(angles[1] * kDeg2Rad);
-        float cy = std::cos(angles[1] * kDeg2Rad);
-        float sr = std::sin(angles[2] * kDeg2Rad);
-        float cr = std::cos(angles[2] * kDeg2Rad);
+        float sp, cp, sy, cy, sr, cr;
+        SinCos(angles[0] * kDeg2Rad, sp, cp);
+        SinCos(angles[1] * kDeg2Rad, sy, cy);
+        SinCos(angles[2] * kDeg2Rad, sr, cr);
 
         if (forward)
         {

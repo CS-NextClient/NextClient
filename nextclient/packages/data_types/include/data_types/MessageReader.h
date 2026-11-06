@@ -28,6 +28,7 @@ public:
     float ReadAngle();
     float ReadHiResAngle();
 
+    size_t get_remaining_size() const;
     bool is_overflowed() const;
 
 private:

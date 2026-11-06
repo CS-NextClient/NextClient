@@ -21,8 +21,11 @@ struct FrameContext
     int observed_idx{}; // observer target, independent of in-eye highlighting
 };
 
+class RadarDrawContext;
+
 struct RadarFrame
 {
+    RadarDrawContext& draw;
     RadarBox box;
     RadarTransform t;
     float time;

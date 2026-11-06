@@ -10,6 +10,7 @@
 namespace
 {
     std::vector<uint8_t> g_Upload;
+    uint32_t g_TextDeletions{};
 
     void APIENTRY GetInteger(GLenum, GLint* value)
     {
@@ -24,7 +25,10 @@ namespace
     void APIENTRY BindTexture(GLenum, GLuint) {}
     void APIENTRY TextureParameter(GLenum, GLenum, GLint) {}
     void APIENTRY PixelStore(GLenum, GLint) {}
-    void APIENTRY DeleteTextures(GLsizei, const GLuint*) {}
+    void APIENTRY DeleteTextures(GLsizei count, const GLuint*)
+    {
+        g_TextDeletions += count;
+    }
     void APIENTRY TextureImage(GLenum, GLint, GLint, GLsizei, GLsizei, GLint, GLenum, GLenum, const GLvoid*) {}
 
     void APIENTRY UploadGlyph(GLenum, GLint, GLint, GLint, GLsizei wide, GLsizei tall, GLenum format, GLenum type, const GLvoid* pixels)
@@ -131,3 +135,27 @@ TEST_P(TextRenderShadowTest, ShadowPreservesTheBlendedFillCoverage)
 }
 
 INSTANTIATE_TEST_SUITE_P(Coverage, TextRenderShadowTest, testing::Values(kTextFontNone, kTextFontAntialias));
+
+TEST_P(TextRenderShadowTest, LossForgetsCellsWithoutDeletingAndPreservesFontsForLazyRecreation)
+{
+    TextRenderInterface* renderer = TextRender_Get();
+    TextFontDesc desc{"Arial", 19, 400, GetParam(), TextGlyphFormat::Coverage};
+    TextFont_t font = renderer->FindOrCreateFont(desc);
+    ASSERT_NE(renderer->GetGlyph(font, 'A'), nullptr);
+    TextRenderStats before = TextRender_Stats();
+    ASSERT_GT(before.pages, 0);
+    uint32_t deletions = g_TextDeletions;
+    TextRender_ForgetGl();
+    TextRenderStats lost = TextRender_Stats();
+    EXPECT_EQ(lost.pages, 0);
+    EXPECT_EQ(lost.cells, 0);
+    EXPECT_EQ(lost.fonts, before.fonts);
+    EXPECT_GT(lost.generation, before.generation);
+    EXPECT_EQ(g_TextDeletions, deletions);
+    TextRender_ReleaseGl();
+    EXPECT_EQ(g_TextDeletions, deletions);
+    ASSERT_NE(renderer->GetGlyph(font, 'A'), nullptr);
+    EXPECT_GT(TextRender_Stats().pages, 0);
+    TextRender_ReleaseGl();
+    EXPECT_GT(g_TextDeletions, deletions);
+}

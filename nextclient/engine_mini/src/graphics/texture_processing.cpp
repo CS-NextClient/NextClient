@@ -4,7 +4,7 @@
 #include <algorithm>
 
 #include <magic_enum/magic_enum.hpp>
-#include <optick.h>
+#include <ncl_perf/profiler.h>
 #include <goldsrc/cvar.h>
 
 #include "console/console.h"
@@ -15,7 +15,7 @@ namespace tex
 {
     void GetAdjustedTexturePOTSize(int width, int height, int* width_out, int* height_out)
     {
-        OPTICK_EVENT();
+        NCL_PROFILE_SCOPE();
 
         int max_size = std::max(128, (int)gl_max_size.value);
         int round_down = (int)gl_round_down.value;
@@ -56,7 +56,7 @@ namespace tex
 
     void ApplyGammaToPalette(const uint8_t* data, uint8_t* data_out, int count)
     {
-        OPTICK_EVENT();
+        NCL_PROFILE_SCOPE();
 
         for (int i = 0; i < count; ++i)
         {
@@ -73,7 +73,7 @@ namespace tex
         uint8_t* data_out
     )
     {
-        OPTICK_EVENT();
+        NCL_PROFILE_SCOPE();
 
         const uint32_t alpha_mask = 0xFFu << 24;
 
@@ -170,7 +170,7 @@ namespace tex
 
     void ResamplePointIndexed(const uint8_t* data, int width, int height, uint8_t* data_out, int scaled_width, int scaled_height)
     {
-        OPTICK_EVENT();
+        NCL_PROFILE_SCOPE();
 
         uint32_t src_x_step = ((uint32_t)width << 16) / scaled_width;
         uint32_t src_y_step = ((uint32_t)height << 16) / scaled_height;
@@ -199,7 +199,7 @@ namespace tex
 
     int MipMapRGBA(const uint8_t* data, int width, int height, uint8_t* data_out)
     {
-        OPTICK_EVENT();
+        NCL_PROFILE_SCOPE();
 
         // Textures no longer have to be powers of two, so either side can be odd or 1: the
         // level is then floor(size / 2) but at least 1, and the last column or row pairs with
@@ -232,7 +232,7 @@ namespace tex
 
     int BoxFilter3x3RGBA(const uint8_t* data, int width, int height, int x, int y, uint8_t* data_out)
     {
-        OPTICK_EVENT();
+        NCL_PROFILE_SCOPE();
 
         int sum_r = 0;
         int sum_g = 0;
@@ -281,7 +281,7 @@ namespace tex
 
     void ResampleRGBA(const uint8_t* data, int width, int height, uint8_t* data_out, int scaled_width, int scaled_height)
     {
-        OPTICK_EVENT();
+        NCL_PROFILE_SCOPE();
 
         if (scaled_width <= 0 || scaled_height <= 0)
         {
@@ -335,7 +335,7 @@ namespace tex
 
     void ResampleGrayscale(const uint8_t* data, int width, int height, uint8_t* data_out, int scaled_width, int scaled_height)
     {
-        OPTICK_EVENT();
+        NCL_PROFILE_SCOPE();
 
         if (scaled_width <= 0 || scaled_height <= 0)
         {
@@ -384,7 +384,7 @@ namespace tex
 
     bool TryUnpackTextureToRGBA(const uint8_t* data, TextureFormat format, int width, int height, const uint8_t* palette, uint8_t* data_out)
     {
-        OPTICK_EVENT();
+        NCL_PROFILE_SCOPE();
 
         if (!palette)
         {
@@ -415,7 +415,7 @@ namespace tex
 
     void ApplySpriteBlendingRGBA(const uint8_t* data, int width, int height, uint8_t* data_out)
     {
-        OPTICK_EVENT();
+        NCL_PROFILE_SCOPE();
 
         int texels = width * height;
 

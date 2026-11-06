@@ -1,5 +1,6 @@
 #pragma once
 
+#include <functional>
 #include <unordered_map>
 #include <utility>
 #include <funchook.h>
@@ -10,8 +11,8 @@
 #include <platform.h>
 #include "../seh_platform.h"
 
-#ifdef NITROAPI_USE_PROFILER
-#include "../profiler.h"
+#if USE_PROFILER
+#include "profiler.h"
 #endif
 
 namespace nitroapi
@@ -19,6 +20,11 @@ namespace nitroapi
     template<StaticHookId HookId, CallingConventions TConv, class TResult, class... TArgs>
     class GenericHookStatic : public GenericHookInterface<TResult, TArgs...>
     {
+    public:
+        typedef std::function<TResult(TArgs...)> CallbackFunc;
+        typedef std::function<CallbackFunc(CallbackFunc)> CallbackWrapperFunc;
+
+    private:
         typedef TResult (__cdecl *FuncTypeCdecl)(TArgs...);
         typedef TResult (__stdcall *FuncTypeStdcall)(TArgs...);
         typedef TResult (__thiscall *FuncTypeThiscall)(TArgs...);
@@ -31,11 +37,14 @@ namespace nitroapi
         bool hook_created_ = false;
         bool hook_active_ = false;
 
-        static std::function<TResult(TArgs...)> s_callback_;
+        CallbackWrapperFunc callback_wrapper_;
+
+        static CallbackFunc s_callback_;
 
     public:
-        explicit GenericHookStatic(uint32_t hook_address) :
-            hook_address_(hook_address)
+        explicit GenericHookStatic(uint32_t hook_address, CallbackWrapperFunc callback_wrapper = {}) :
+            hook_address_(hook_address),
+            callback_wrapper_(std::move(callback_wrapper))
         {
             int status;
 
@@ -93,22 +102,20 @@ namespace nitroapi
                 return;
             }
 
-#ifdef NITROAPI_USE_PROFILER
+#if USE_PROFILER
             s_callback_ = [hook_callback = std::move(hook_callback)](TArgs... args) -> TResult {
-                if (!g_ProfilerInsideFrame)
-                    return hook_callback(std::forward<TArgs>(args)...);
-
-                static char event_name[64] = {'\0'};
-                if (event_name[0] == '\0')
-                    V_snprintf(event_name, sizeof(event_name), "Hook %s", magic_enum::enum_name(HookId));
-
-                OPTICK_EVENT(event_name);
+                NCL_PROFILE_NAMED_SCOPE((nitroapi::profiling::HookName<HookId, false>()));
 
                 return hook_callback(std::forward<TArgs>(args)...);
             };
 #else
             s_callback_ = std::move(hook_callback);
 #endif
+
+            if (callback_wrapper_)
+            {
+                s_callback_ = callback_wrapper_(std::move(s_callback_));
+            }
 
             LOG_IF(hook_active_, WARNING) << "[static hook] Hook callback changed for " << magic_enum::enum_name(HookId);
 
@@ -129,14 +136,10 @@ namespace nitroapi
         {
             uint32_t address = hook_active_ ? trampoline_address_ : hook_address_;
 
-#ifdef NITROAPI_USE_PROFILER
-            if (g_ProfilerInsideFrame && hook_active_)
+#if USE_PROFILER
+            if (hook_active_)
             {
-                static char event_name[64] = {'\0'};
-                if (event_name[0] == '\0')
-                    V_snprintf(event_name, sizeof(event_name), "Original %s", magic_enum::enum_name(HookId));
-
-                OPTICK_EVENT(event_name);
+                NCL_PROFILE_NAMED_SCOPE((nitroapi::profiling::HookName<HookId, true>()));
 
                 return InvokeInternal(address, std::forward<TArgs>(args)...);
             }

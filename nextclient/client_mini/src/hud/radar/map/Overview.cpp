@@ -21,30 +21,32 @@ namespace
     constexpr float kRuntimeZoom = 0.85f;
 } // namespace
 
-RadarOverview::~RadarOverview()
-{
-    Invalidate();
-}
-
-void RadarOverview::ResetLayerImages()
+void RadarOverview::ResetLayerImages(bool release)
 {
     layer_image_ = nullptr;
-    layer_renderer_.Reset();
+    layer_renderer_.Reset(release);
     layer_materials_.clear();
     layer_gl_failed_ = false;
     layer_waiting_reason_.clear();
     runtime_failed_ = false;
 }
 
-void RadarOverview::Invalidate()
+void RadarOverview::Invalidate(bool release)
 {
     map_sprite_ = nullptr;
-    ResetLayerImages();
+    ResetLayerImages(release);
     layer_layout_ready_ = false;
     runtime_layout_ready_ = false;
     runtime_layers_ready_ = false;
     runtime_failed_ = false;
-    MapRender_Free(runtime_);
+    if (release)
+    {
+        MapRender_Free(runtime_);
+    }
+    else
+    {
+        runtime_ = {};
+    }
     data_ = overview_t{};
     loaded_map_[0] = '\0';
     loaded_mode_ = RadarMapMode::None;

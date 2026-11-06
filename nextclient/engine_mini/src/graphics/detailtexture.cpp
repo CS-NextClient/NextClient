@@ -3,7 +3,7 @@
 
 #include <SDL.h>
 #include <SDL_opengl.h>
-#include <optick.h>
+#include <ncl_perf/profiler.h>
 #include <ankerl/unordered_dense.h>
 #include <goldsrc/cvar.h>
 #include <goldsrc/types.h>
@@ -180,7 +180,7 @@ goldsrc::qboolean DT_SetRenderState(int diffuseId)
 
 static bool DT_GetToken(const char** cPtr, ParseState* parseState, std::string& token)
 {
-    OPTICK_EVENT();
+    NCL_PROFILE_SCOPE();
 
     static const std::string whitespace = " \t\r\n";
     static const std::string specialChars = "_.-/{}\"~!+[]";
@@ -236,7 +236,7 @@ static bool DT_GetToken(const char** cPtr, ParseState* parseState, std::string& 
 
 static void DT_Parse(const char* pBuffer)
 {
-    OPTICK_EVENT();
+    NCL_PROFILE_SCOPE();
 
     ParseState state = ParseState::START;
     const char* currentPos = pBuffer;
@@ -333,7 +333,7 @@ static void DT_Parse(const char* pBuffer)
 
 void DT_LoadDetailMapFile(const char* level_name)
 {
-    OPTICK_EVENT();
+    NCL_PROFILE_SCOPE();
 
     if (!detTexSupported)
     {
@@ -394,7 +394,7 @@ void DT_LoadDetailMapFile(const char* level_name)
 
 void DT_Initialize()
 {
-    OPTICK_EVENT();
+    NCL_PROFILE_SCOPE();
 
     Cvar_RegisterVariable(&r_detailtextures);
     Cvar_RegisterVariable(&r_detailtexturessupported);

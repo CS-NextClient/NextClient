@@ -8,16 +8,19 @@
 #include <direct.h>
 #include <Windows.h>
 #include <shellapi.h>
+#undef SendMessage
 #else
 #include <sys/stat.h>
 #endif
 #include <tier1/tier1.h>
+#include <next_engine_mini/ShaderRendererInterface.h>
 #include <tier2/tier2.h>
 #include <IEngineVGui.h>
 #include <IBaseUI.h>
 #include <IBaseSystem.h>
 #include <FileSystem.h>
 #include <vgui/ILocalize.h>
+#include <vgui/IPanel.h>
 #include <vgui/ISchemeNext.h>
 #include <vgui/ISurfaceNext.h>
 #include <vgui/IVGui.h>
@@ -35,6 +38,8 @@
 #include "GameConsole.h"
 #include "LoadingDialog.h"
 #include "DemoPlayerDialog.h"
+#include "Controls/ImageFilePanel.h"
+#include "GameUi/MaterialEditor/MaterialEditDialog.h"
 #include "OptionsDialog/HudRadarDialog.h"
 #include "OptionsSubMiscellaneous.h"
 #include "SettingsShare.h"
@@ -82,6 +87,90 @@ void CGameUI::OpenHudRadarDialog()
         g_hHudRadarDialog->MoveToFront();
         g_hHudRadarDialog->RequestFocus();
     }
+}
+
+void CGameUI::OpenMaterialEditDialog()
+{
+    if (m_ShuttingDown)
+    {
+        return;
+    }
+
+    if (IsInLevel() || m_bLoadlingLevel || m_MaterialEditor == nullptr || g_pScenePreview == nullptr ||
+        !g_pScenePreview->is_authoring_available())
+    {
+        engine->pfnConsolePrint("r_mat_panel: open the material editor from the disconnected main menu\n");
+        return;
+    }
+
+    if (!m_hMaterialEditDialog.Get())
+    {
+        m_ImageFileCache = ImageFile_CreateCache(*m_FileSystem, *m_Surface);
+        m_hMaterialEditDialog =
+            new material_editor::CMaterialEditDialog(BasePanel(), *this, *m_MaterialEditor, *g_pScenePreview, *m_FileSystem, *m_Surface, m_ImageFileCache);
+    }
+
+    m_hMaterialEditDialog->Activate();
+    m_hMaterialEditDialog->SetVisible(true);
+    m_hMaterialEditDialog->MoveToFront();
+    m_hMaterialEditDialog->RequestFocus();
+}
+
+void CGameUI::CloseMaterialEditDialog()
+{
+    material_editor::CMaterialEditDialog* dialog = m_hMaterialEditDialog.Get();
+
+    if (dialog == nullptr)
+    {
+        return;
+    }
+
+    m_hMaterialEditDialog = nullptr;
+    dialog->ForceClose();
+    m_ImageFileCache.reset();
+}
+
+void CGameUI::OnMaterialEditDialogClosed(material_editor::CMaterialEditDialog* dialog)
+{
+    if (m_hMaterialEditDialog.Get() == dialog)
+    {
+        m_hMaterialEditDialog = nullptr;
+        m_ImageFileCache.reset();
+    }
+}
+
+void CGameUI::RequestMaterialStateDump()
+{
+    engine->pfnClientCmd("r_mat_scene_state\nr_mat_state\n");
+}
+
+void CGameUI::PrintMaterialReport(const char* report)
+{
+    engine->pfnConsolePrint(report);
+}
+
+void CGameUI::DumpMaterialImages()
+{
+    ImageFilePanel_Report(m_ImageFileCache.get(), *engine);
+}
+
+void CGameUI::DumpMaterialSceneState()
+{
+    if (m_hMaterialEditDialog.Get() != nullptr)
+    {
+        m_hMaterialEditDialog->DumpState();
+    }
+    else
+    {
+        engine->pfnConsolePrint("material scene: editor closed\n");
+    }
+
+    engine->pfnClientCmd("r_preview_state\n");
+}
+
+bool CGameUI::is_material_editor_open() const
+{
+    return m_hMaterialEditDialog.Get() != nullptr;
 }
 
 void CGameUI::CloseHudRadarDialog()
@@ -211,6 +300,12 @@ void CGameUI::Initialize(CreateInterfaceFn *factories, int count)
     g_pServerBrowser = (IServerBrowserEx*)CreateInterface(SERVERBROWSEREX_INTERFACE_VERSION, NULL);
     g_pEngineMini = reinterpret_cast<EngineMiniInterface*>(Sys_GetFactory("next_engine_mini.dll")(ENGINE_MINI_INTERFACE_VERSION, NULL));
     g_pScenePreview = reinterpret_cast<ScenePreviewInterface*>(Sys_GetFactory("next_engine_mini.dll")(SCENE_PREVIEW_INTERFACE_VERSION, NULL));
+    m_ShaderRenderer =
+        reinterpret_cast<render::ShaderRendererInterface*>(Sys_GetFactory("next_engine_mini.dll")(SHADER_RENDERER_INTERFACE_VERSION, nullptr));
+
+    m_MaterialEditor = g_pEngineMini != nullptr ? g_pEngineMini->GetMaterialEdit() : nullptr;
+    m_FileSystem = g_pFullFileSystem;
+    m_Surface = vgui2::surface();
 
     g_pVGuiLocalize->AddFile(g_pFullFileSystem, "resource/gameui_%language%.txt");
     g_pVGuiLocalize->AddFile(g_pFullFileSystem, "resource/valve_%language%.txt");
@@ -246,7 +341,7 @@ void CGameUI::Initialize(CreateInterfaceFn *factories, int count)
         g_pVGuiLocalize->AddFile(g_pFullFileSystem, "resource/vgui_%language%.txt");
     }
 
-    auto base_panel = new CBasePanel();
+    auto base_panel = new CBasePanel(*this, g_pScenePreview, m_ShaderRenderer);
     base_panel->SetBounds(0, 0, 400, 300);
     base_panel->SetPaintBorderEnabled(false);
     base_panel->SetPaintBackgroundEnabled(true);
@@ -269,6 +364,7 @@ void CGameUI::Initialize(CreateInterfaceFn *factories, int count)
 void CGameUI::Start(goldsrc::cl_enginefunc_t* engineFuncs, int interfaceVersion, void* system)
 {
     engine = engineFuncs;
+    BasePanel()->CreateDeveloperTools(*engineFuncs, *g_pVGuiLocalize);
     g_pBaseSystem = (IBaseSystem*)system;
 
     settings_share::RegisterCommands();
@@ -280,6 +376,11 @@ void CGameUI::Start(goldsrc::cl_enginefunc_t* engineFuncs, int interfaceVersion,
         g_pServerBrowser->ActiveGameName(ModInfo().GetGameDescription(), engine->pfnGetGameDirectory());
         g_pServerBrowser->Reactivate();
     }
+
+    // Engine command registration must finish before host initialization.
+    engine->pfnAddCommand("r_mat_panel", []() { GameUI().OpenMaterialEditDialog(); });
+    engine->pfnAddCommand("r_mat_scene_state", []() { GameUI().DumpMaterialSceneState(); });
+    engine->pfnAddCommand("r_mat_images", []() { GameUI().DumpMaterialImages(); });
 
 #ifdef _WIN32
     RegisterCommonJsApi(engineFuncs);
@@ -293,16 +394,19 @@ void CGameUI::Start(goldsrc::cl_enginefunc_t* engineFuncs, int interfaceVersion,
 
 void CGameUI::Shutdown(void)
 {
+    m_ShuttingDown = true;
+    CloseMaterialEditDialog();
+    m_ImageFileCache.reset();
     vgui2::system()->SaveUserConfigFile();
 
     if (g_pServerBrowser)
     {
         g_pServerBrowser->Deactivate();
         g_pServerBrowser->Shutdown();
-
-        // Extra frame so that all MarkForDeletion are executed
-        vgui2::ivgui()->RunFrame();
     }
+
+    // Delayed authoring children must release textures before their providers disconnect.
+    vgui2::ivgui()->RunFrame();
 
     task_run_impl_->OnShutdown();
     TaskCoro::UnInitialize();
@@ -372,6 +476,11 @@ int CGameUI::HasExclusiveInput(void)
 
 void CGameUI::RunFrame(void)
 {
+    if (is_material_editor_open() && (m_bLoadlingLevel || g_pScenePreview == nullptr || !g_pScenePreview->is_authoring_available()))
+    {
+        CloseMaterialEditDialog();
+    }
+
     int wide, tall;
     vgui2::surface()->GetScreenSize(wide, tall);
     BasePanel()->SetSize(wide, tall);
@@ -407,7 +516,9 @@ void CGameUI::ConnectToServer(const char *game, int IP, int port)
 
 void CGameUI::DisconnectFromServer(void)
 {
+    CloseMaterialEditDialog();
     CloseHudRadarDialog();
+    ClosePanelOverGame();
 
     if (g_pServerBrowser)
         g_pServerBrowser->DisconnectFromGame();
@@ -459,6 +570,23 @@ bool CGameUI::BeginPanelOverGame(vgui2::Panel* panel)
     return true;
 }
 
+void CGameUI::ClosePanelOverGame()
+{
+    vgui2::Panel* panel = m_hPanelOverGame.Get();
+
+    if (panel == nullptr)
+    {
+        return;
+    }
+
+    // Sent rather than posted: the callers go on to activate the menu, and a close that has
+    // not happened yet still holds the handle that suppresses it. The panel clears the
+    // handle from EndPanelOverGame in its own OnClose.
+    vgui2::ipanel()->SendMessage(panel->GetVPanel(), new KeyValues("Close"), NULL);
+
+    m_hPanelOverGame = nullptr;
+}
+
 void CGameUI::EndPanelOverGame()
 {
     if (!m_hPanelOverGame.Get())
@@ -481,7 +609,9 @@ bool CGameUI::IsGameUIActive(void)
 
 void CGameUI::LoadingStarted(const char *resourceType, const char *resourceName)
 {
+    CloseMaterialEditDialog();
     CloseHudRadarDialog();
+    ClosePanelOverGame();
     m_bLoadlingLevel = true;
 
     GameConsole().Hide();
@@ -646,5 +776,7 @@ void CGameUI::NeedApplyMultiplayerGameSettings()
 void CGameUI::OnDisconnectFromServer(int eSteamLoginFailure, const char *username)
 {
     m_bNeedApplyMultiplayerGameSettings = false;
+    CloseMaterialEditDialog();
     CloseHudRadarDialog();
+    ClosePanelOverGame();
 }

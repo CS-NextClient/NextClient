@@ -1,7 +1,5 @@
 #pragma once
-#include <nitroapi/hook/GenericHookInterface.h>
-#include <nitroapi/chain/HandlersChainInterface.h>
-#include <easylogging++.h>
+
 #include <algorithm>
 #include <cstdint>
 #include <ios>
@@ -10,6 +8,11 @@
 #include <type_traits>
 #include <utility>
 #include <vector>
+
+#include <easylogging++.h>
+
+#include <nitroapi/chain/HandlersChainInterface.h>
+#include <nitroapi/hook/GenericHookInterface.h>
 
 namespace nitroapi
 {
@@ -51,11 +54,13 @@ namespace nitroapi
                 while (*handler_index_ < handlers_count_)
                 {
                     auto handler = chain_->handlers_[(*handler_index_)++];
+
                     if (handler != nullptr)
                     {
                         if constexpr (std::is_void_v<TResult>)
                         {
                             handler->Handle(std::forward<TArgs>(args)..., this);
+
                             return;
                         }
                         else
@@ -68,6 +73,7 @@ namespace nitroapi
                 if constexpr (std::is_void_v<TResult>)
                 {
                     chain_->hook_->InvokeOriginal(std::forward<TArgs>(args)...);
+
                     return;
                 }
                 else
@@ -83,6 +89,8 @@ namespace nitroapi
 
         std::string description_{};
         uint32_t invocation_depth_{};
+        HandlerInterface<TResult, TArgs...>* single_handler_{};
+        bool* single_handler_state_{};
 
     public:
         explicit HandlersChain(std::string description = {}) :
@@ -91,14 +99,54 @@ namespace nitroapi
 
         ~HandlersChain() override = default;
 
+        bool TrackSingleHandler(HandlerInterface<TResult, TArgs...>* handler, bool* state)
+        {
+            if (state == nullptr)
+            {
+                return false;
+            }
+
+            if (handler == nullptr)
+            {
+                if (single_handler_state_ != state)
+                {
+                    return false;
+                }
+
+                *single_handler_state_ = false;
+                single_handler_ = nullptr;
+                single_handler_state_ = nullptr;
+
+                return true;
+            }
+
+            if (single_handler_state_ != nullptr && (single_handler_state_ != state || single_handler_ != handler))
+            {
+                return false;
+            }
+
+            if (FindItemIndex(handlers_, handler) == handlers_.size())
+            {
+                *state = false;
+
+                return false;
+            }
+
+            single_handler_ = handler;
+            single_handler_state_ = state;
+            UpdateSingleHandlerState();
+
+            return true;
+        }
+
         void AttachHook(GenericHookInterface<TResult, TArgs...>* hook) override
         {
             DetachHook();
 
             hook_ = hook;
-            hook->SetCallbackAndEnableHook([this](TArgs... args) -> TResult {
-                return GenericHook(std::forward<TArgs>(args)...);
-            });
+            hook->SetCallbackAndEnableHook([this](TArgs... args) -> TResult { return GenericHook(std::forward<TArgs>(args)...); });
+
+            UpdateSingleHandlerState();
 
             LogChainEvent("AttachHook", hook_, handlers_.size());
         }
@@ -106,12 +154,15 @@ namespace nitroapi
         void DetachHook() override
         {
             if (hook_ == nullptr)
+            {
                 return;
+            }
 
             LogChainEvent("DetachHook", hook_, handlers_.size());
 
             hook_->UnsetCallbackAndDisableHook();
             hook_ = nullptr;
+            UpdateSingleHandlerState();
         }
 
         [[nodiscard]] bool IsHookAttached() override
@@ -139,20 +190,25 @@ namespace nitroapi
             if (handler == nullptr)
             {
                 LOG(WARNING) << "HandlersChain AddHandler ignored null handler chain=" << (const void*)this;
+
                 return false;
             }
 
             size_t index = FindItemIndex(handlers_, handler);
+
             if (index != handlers_.size())
             {
                 LogChainEvent("AddHandler duplicate", handler, index);
+
                 return false;
             }
 
             index = StoreItem(handlers_, handler, invocation_depth_ == 0);
+            UpdateSingleHandlerState();
 
             LogReentrantMutationWarning("AddHandler", handler, index);
             LogChainEvent("AddHandler", handler, index);
+
             return true;
         }
 
@@ -161,20 +217,25 @@ namespace nitroapi
             if (handler == nullptr)
             {
                 LOG(WARNING) << "HandlersChain RemoveHandler ignored null handler chain=" << (const void*)this;
+
                 return false;
             }
 
             size_t index = FindItemIndex(handlers_, handler);
+
             if (index == handlers_.size())
             {
                 LogChainEvent("RemoveHandler not_found", handler, index);
+
                 return false;
             }
 
             handlers_[index] = nullptr;
+            UpdateSingleHandlerState();
 
             LogReentrantMutationWarning("RemoveHandler", handler, index);
             LogChainEvent("RemoveHandler", handler, index);
+
             return true;
         }
 
@@ -183,20 +244,25 @@ namespace nitroapi
             if (subscriber == nullptr)
             {
                 LOG(WARNING) << "HandlersChain Subscribe ignored null subscriber chain=" << (const void*)this;
+
                 return false;
             }
 
             size_t index = FindItemIndex(subscribers_, subscriber);
+
             if (index != subscribers_.size())
             {
                 LogChainEvent("Subscribe duplicate", subscriber, index);
+
                 return false;
             }
 
             index = StoreItem(subscribers_, subscriber, invocation_depth_ == 0);
+            UpdateSingleHandlerState();
 
             LogReentrantMutationWarning("Subscribe", subscriber, index);
             LogChainEvent("Subscribe", subscriber, index);
+
             return true;
         }
 
@@ -205,24 +271,38 @@ namespace nitroapi
             if (subscriber == nullptr)
             {
                 LOG(WARNING) << "HandlersChain Unsubscribe ignored null subscriber chain=" << (const void*)this;
+
                 return false;
             }
 
             size_t index = FindItemIndex(subscribers_, subscriber);
+
             if (index == subscribers_.size())
             {
                 LogChainEvent("Unsubscribe not_found", subscriber, index);
+
                 return false;
             }
 
             subscribers_[index] = nullptr;
+            UpdateSingleHandlerState();
 
             LogReentrantMutationWarning("Unsubscribe", subscriber, index);
             LogChainEvent("Unsubscribe", subscriber, index);
+
             return true;
         }
 
     private:
+        void UpdateSingleHandlerState()
+        {
+            if (single_handler_state_ != nullptr)
+            {
+                *single_handler_state_ = hook_ != nullptr && hook_->IsHookActive() && CountActiveHandlers() == 1 &&
+                                         CountActiveSubscribers() == 0 && FindItemIndex(handlers_, single_handler_) != handlers_.size();
+            }
+        }
+
         TResult GenericHook(TArgs... args)
         {
             InvocationScope invocation_scope(this);
@@ -240,8 +320,11 @@ namespace nitroapi
                 for (int i = (int)subscribers_count - 1; i >= 0; i--)
                 {
                     auto subscriber = subscribers_[i];
+
                     if (subscriber != nullptr)
+                    {
                         subscriber->OnEvent(args..., VoidResult{});
+                    }
                 }
             }
             else
@@ -251,45 +334,15 @@ namespace nitroapi
                 for (int i = (int)subscribers_count - 1; i >= 0; i--)
                 {
                     auto subscriber = subscribers_[i];
+
                     if (subscriber != nullptr)
+                    {
                         subscriber->OnEvent(args..., result);
+                    }
                 }
 
                 return result;
             }
-        }
-        
-        template <class TItem>
-        static std::size_t FindItemIndex(const std::vector<TItem*>& items, TItem* item)
-        {
-            auto iterator = std::find(items.begin(), items.end(), item);
-            if (iterator == items.end())
-                return items.size();
-
-            return (std::size_t)(iterator - items.begin());
-        }
-
-        template <class TItem>
-        static std::size_t StoreItem(std::vector<TItem*>& items, TItem* item, bool reuse_empty_slots)
-        {
-            if (reuse_empty_slots)
-            {
-                auto iterator = std::find(items.begin(), items.end(), nullptr);
-                if (iterator != items.end())
-                {
-                    *iterator = item;
-                    return (std::size_t)(iterator - items.begin());
-                }
-            }
-
-            items.push_back(item);
-            return items.size() - 1;
-        }
-
-        template <class TItem>
-        static uint32_t CountActiveItems(const std::vector<TItem*>& items)
-        {
-            return (uint32_t)std::count_if(items.begin(), items.end(), [](TItem* item) { return item != nullptr; });
         }
 
         [[nodiscard]] uint32_t CountActiveHandlers() const
@@ -324,9 +377,50 @@ namespace nitroapi
         void LogReentrantMutationWarning(const char* event, const void* item, std::size_t index) const
         {
             if (invocation_depth_ == 0)
+            {
                 return;
+            }
 
             LOG(WARNING) << "HandlersChain reentrant mutation event=" << event << BuildChainStateLogMessage(item, index);
+        }
+
+        template <class TItem>
+        static std::size_t FindItemIndex(const std::vector<TItem*>& items, TItem* item)
+        {
+            auto iterator = std::find(items.begin(), items.end(), item);
+
+            if (iterator == items.end())
+            {
+                return items.size();
+            }
+
+            return (std::size_t)(iterator - items.begin());
+        }
+
+        template <class TItem>
+        static std::size_t StoreItem(std::vector<TItem*>& items, TItem* item, bool reuse_empty_slots)
+        {
+            if (reuse_empty_slots)
+            {
+                auto iterator = std::find(items.begin(), items.end(), nullptr);
+
+                if (iterator != items.end())
+                {
+                    *iterator = item;
+
+                    return (std::size_t)(iterator - items.begin());
+                }
+            }
+
+            items.push_back(item);
+
+            return items.size() - 1;
+        }
+
+        template <class TItem>
+        static uint32_t CountActiveItems(const std::vector<TItem*>& items)
+        {
+            return (uint32_t)std::count_if(items.begin(), items.end(), [](TItem* item) { return item != nullptr; });
         }
     };
 } // namespace nitroapi

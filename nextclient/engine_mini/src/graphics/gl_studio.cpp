@@ -1,6 +1,6 @@
 #include "engine.h"
 
-#include <optick.h>
+#include <ncl_perf/profiler.h>
 #include <goldsrc/engine/model.h>
 #include <goldsrc/types.h>
 
@@ -11,7 +11,7 @@ goldsrc::cache_user_t model_texture_cache[goldsrc::MAX_KNOWN_MODELS][32];
 
 int* R_StudioReloadSkin(goldsrc::model_t* pModel, int index, goldsrc::skin_t* pskin)
 {
-    OPTICK_EVENT();
+    NCL_PROFILE_SCOPE();
 
     int v3; // edx
     int* v5; // ebx

@@ -1,7 +1,10 @@
 #pragma once
-#include <string>
+
 #include <cstdint>
 
+class ClientStringRegistry;
+
+ClientStringRegistry& CL_GetStringRegistry();
 void CL_StringRegistryInit();
 void CL_StringRegistryShutdown();
 void CL_StringRegistryClear();

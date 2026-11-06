@@ -2,7 +2,7 @@
 #include "../common/zone.h"
 #include "../common/com_strings.h"
 #include "cl_sound.h"
-#include "optick.h"
+#include <ncl_perf/profiler.h>
 #include "ncl_entity/PlayerSyncSystem.h"
 #include "ncl_entity/WeaponSyncSystem.h"
 #include "ncl_entity/cl_ncl_entity_sync.h"
@@ -64,7 +64,7 @@ namespace
 
 goldsrc::sfx_t* S_PrecacheSound(char* sample)
 {
-    OPTICK_EVENT();
+    NCL_PROFILE_SCOPE();
 
     return eng()->S_PrecacheSound(sample);
 }
@@ -81,7 +81,7 @@ void S_StartDynamicSoundHook(
     S_StartDynamicSoundChain* next
 )
 {
-    OPTICK_EVENT();
+    NCL_PROFILE_SCOPE();
 
     goldsrc::sfx_t* replacement_sfx = GetReplacementSfx(entnum, entchannel, sfx);
     if (replacement_sfx)
@@ -95,14 +95,14 @@ void S_StartDynamicSoundHook(
 
 void S_StopAllSounds(goldsrc::qboolean clear)
 {
-    OPTICK_EVENT();
+    NCL_PROFILE_SCOPE();
 
     eng()->S_StopAllSounds.InvokeChained(clear);
 }
 
 void S_UnloadSounds(const std::unordered_set<std::string>& names)
 {
-    OPTICK_EVENT();
+    NCL_PROFILE_SCOPE();
 
     goldsrc::sfx_t* known_sfx = *p_known_sfx;
     int num_sfx = *p_num_sfx;

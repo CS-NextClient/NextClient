@@ -2,6 +2,8 @@
 #define GAMEUI_INTERFACE_H
 #pragma once
 
+#include <memory>
+
 #include <vgui/VGUI2.h>
 #include <IGameUI.h>
 #include <goldsrc/client_api.h>
@@ -15,6 +17,23 @@
 #include <next_engine_mini/ScenePreviewInterface.h>
 
 #include "LoadingDialog.h"
+#include "GameUi/Controls/ImageFileCache.h"
+
+namespace render
+{
+    class ShaderRendererInterface;
+    class MaterialEditInterface;
+} // namespace render
+
+namespace material_editor
+{
+    class CMaterialEditDialog;
+}
+class IFileSystem;
+namespace vgui2
+{
+    class ISurface;
+}
 
 class CGameUI : public IGameUI
 {
@@ -61,6 +80,14 @@ public:
     // frame floating over the running game while in a level. Called directly from the
     // Options button (there is no console command for it).
     void OpenHudRadarDialog();
+    void OpenMaterialEditDialog();
+    void CloseMaterialEditDialog();
+    void OnMaterialEditDialogClosed(material_editor::CMaterialEditDialog* dialog);
+    bool is_material_editor_open() const;
+    void DumpMaterialImages();
+    void RequestMaterialStateDump();
+    void PrintMaterialReport(const char* report);
+    void DumpMaterialSceneState();
 
     // Shows a VGUI panel over the running game instead of the menu: reparents it to
     // the client panel the engine paints while the GameUI menu is hidden, hides the
@@ -86,6 +113,7 @@ public:
 private:
     void OpenServerBrowserIfNeeded();
     void CloseHudRadarDialog();
+    void ClosePanelOverGame();
 
 private:
     bool m_bFirstActivatePassed;
@@ -102,6 +130,14 @@ private:
     CreateInterfaceFn m_FactoryList[MAX_NUM_FACTORIES];
 
     std::shared_ptr<TaskCoroImpl> task_run_impl_;
+    // VGUI safe-handle lookup has no const overload.
+    mutable vgui2::DHANDLE<material_editor::CMaterialEditDialog> m_hMaterialEditDialog;
+    std::shared_ptr<ImageFileCache> m_ImageFileCache;
+    render::ShaderRendererInterface* m_ShaderRenderer{};
+    render::MaterialEditInterface* m_MaterialEditor{};
+    IFileSystem* m_FileSystem{};
+    vgui2::ISurface* m_Surface{};
+    bool m_ShuttingDown{};
 
     class ContainerExtensionGameUiApi* browserExtensionGameUiApi = nullptr;
 };

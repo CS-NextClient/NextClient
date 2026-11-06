@@ -2,6 +2,8 @@
 #include "GameUINext.h"
 #include "BasePanel.h"
 
+#include "GameUi/Controls/DeveloperToolsPanel.h"
+
 #include "vgui/IInputInternal.h"
 #include "vgui/ILocalize.h"
 #include "vgui/IPanel.h"
@@ -342,7 +344,11 @@ static CBackgroundMenuButton *CreateMenuButton(CBasePanel *parent, const char *p
     return pButton;
 }
 
-CBasePanel::CBasePanel(void) : vgui2::Panel(NULL, "BaseGameUIPanel")
+CBasePanel::CBasePanel(CGameUI& host, ScenePreviewInterface* preview, render::ShaderRendererInterface* renderer) :
+    vgui2::Panel(NULL, "BaseGameUIPanel"),
+    m_Host(host),
+    m_Preview(preview),
+    m_Renderer(renderer)
 {
     g_pBasePanel = this;
     m_bLevelLoading = false;
@@ -378,6 +384,12 @@ CBasePanel::CBasePanel(void) : vgui2::Panel(NULL, "BaseGameUIPanel")
     m_pFocusPanel = NULL;
 }
 
+void CBasePanel::CreateDeveloperTools(goldsrc::cl_enginefunc_t& engine, vgui2::ILocalize& localize)
+{
+    m_pDeveloperTools = new CDeveloperToolsPanel(this, engine, localize);
+    InvalidateLayout();
+}
+
 KeyValues *CBasePanel::GetConsoleControlSettings(void)
 {
     return m_pConsoleControlSettings;
@@ -392,7 +404,7 @@ void CBasePanel::PaintBackground(void)
 {
     if (!m_hOptionsDialog.Get())
     {
-        m_hOptionsDialog = new COptionsDialog(this);
+        m_hOptionsDialog = new COptionsDialog(this, m_Renderer);
         m_hCreateMultiplayerGameDialog = new CCreateMultiplayerGameDialog(this);
 
         PositionDialog(m_hOptionsDialog);
@@ -770,6 +782,12 @@ void CBasePanel::RunFrame(void)
         vgui2::surface()->PaintTraverse(GetVPanel());
 
     UpdateBackgroundState();
+    if (m_pDeveloperTools != nullptr)
+    {
+        m_pDeveloperTools->Refresh(
+            !m_bLevelLoading && !m_Host.is_material_editor_open(), m_Preview != nullptr && m_Preview->is_authoring_available()
+        );
+    }
 }
 
 void CBasePanel::PerformLayout(void)
@@ -778,6 +796,11 @@ void CBasePanel::PerformLayout(void)
 
     int wide, tall;
     vgui2::surface()->GetScreenSize(wide, tall);
+    if (m_pDeveloperTools != nullptr)
+    {
+        int tools_inset = vgui2::scheme()->GetProportionalScaledValue(16);
+        m_pDeveloperTools->SetBounds(tools_inset, tools_inset, 350, 176);
+    }
 
     int menuWide, menuTall;
     m_pGameMenu->GetSize(menuWide, menuTall);
@@ -960,6 +983,10 @@ void CBasePanel::RunMenuCommand(const char *command)
     {
         OnOpenCreateMultiplayerGameDialog();
     }
+    else if (!Q_stricmp(command, "OpenMaterialEditor"))
+    {
+        m_Host.OpenMaterialEditDialog();
+    }
     else if (!Q_stricmp(command, "OpenOptionsDialog"))
     {
         OnOpenOptionsDialog();
@@ -1107,7 +1134,7 @@ void CBasePanel::OnOpenOptionsDialog(const char* tabName)
 {
     if (!m_hOptionsDialog.Get())
     {
-        m_hOptionsDialog = new COptionsDialog(this);
+        m_hOptionsDialog = new COptionsDialog(this, m_Renderer);
         PositionDialog(m_hOptionsDialog);
     }
 

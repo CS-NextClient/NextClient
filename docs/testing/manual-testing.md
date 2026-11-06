@@ -4,7 +4,9 @@
 
 Use the dedicated test server to prepare repeatable scenes, then inspect them in a NextClient instance started by the developer. The [scenario checklist](manual-testing-scenarios.md) defines nine scenarios and 22 role/outcome variants. Complete five runs of each variant.
 
-Installation and command parameters are covered in the [test server reference](../../tools/test_server/README.md). The supported configuration and limitations are described in [compatibility](../../tools/test_server/compatibility.md).
+Installation and command parameters are covered in the [test server reference](../tools/test-server.md). The supported configuration and limitations are described in [compatibility](../tools/test-server-compatibility.md).
+
+For a server with all repository test plugins, run `python tools/test_server/test_server.py prepare` from the repository root. It installs TestLab, the material-effects plugin, its resources and the ready NextClientServerApi module. API requirements and path options are described in [complete preparation](../tools/test-server.md#prepare-all-test-plugins). The TestLab-only workflow below uses `init`.
 
 Server operations, client visibility, and visual acceptance are separate results. A successful server operation does not establish what the client received or displayed. Checks without evidence remain `not_run`.
 
@@ -19,7 +21,7 @@ Server operations, client visibility, and visual acceptance are separate results
    python tools/test_server/test_server.py start --map cs_office
    ```
 
-   Use `python3` on Linux. For a separate configuration, put `--config <path>` before the subcommand in every host command. Complete the [Linux setup](../../tools/test_server/README.md#linux) before starting a Linux server.
+   Use `python3` on Linux. For a separate configuration, put `--config <path>` before the subcommand in every host command. Complete the [Linux setup](../tools/test-server.md#linux) before starting a Linux server.
 
 2. Start NextClient manually. In its console, connect to the server:
 
@@ -36,7 +38,7 @@ Server operations, client visibility, and visual acceptance are separate results
    nct_run radar_hostage_follow ct
    ```
 
-   Alternatively, use `nct_menu` to select the role, scenario, and outcome. The menu closes after an action. Menu actions and console commands use the same dispatcher.
+   Alternatively, use `nct_menu` to select the role, scenario, and outcome. The menu closes after an action. A menu selection has the same effect as the corresponding console command.
 
 4. Wait for `ready`, then inspect the prepared scene. Run one step:
 
@@ -81,7 +83,7 @@ The client command `nct_status` prints a short status line. Detailed player, obj
 | Visibility in `data.visibility` | `pvs`, `los`, `los_hit`, and `original_pack` |
 | Following in `data.hostage_follow` | Phase, route, waypoint, confirmed transitions, outside duration, message count, and traveled distance |
 
-LOS is the line of sight to the object. PVS is the set of map regions that the engine considers potentially visible to the client. `original_pack` records whether the original `AddToFullPack` callback included the entity in the client's snapshot. PVS is `unknown` until a real client callback provides evidence.
+LOS is the line of sight to the object. PVS is the set of map regions that the engine considers potentially visible to the client. `original_pack` records whether the stock game included the entity in the client's update. PVS remains `unknown` until an actual client update provides evidence.
 
 Reports can be collected between steps. An unfinished scenario or missing manual assessment is expected in an intermediate report. After another step, collect the report again and refresh the page. The client command `nct_report` records a journal snapshot; the host command `report --run` creates the HTML and JSON files.
 
@@ -152,7 +154,7 @@ To transfer a collection, copy the index, its linked HTML/JSON results, and clea
 
 Loading a map clears `last_run`. Keep the ID separately before a map change. Record server cleanup and the visual reset as separate observations.
 
-For auxiliary commands, including respawn, death, invulnerability, and movement, see the [client command reference](../../tools/test_server/README.md#client-commands).
+For auxiliary commands, including respawn, death, invulnerability, and movement, see the [client command reference](../tools/test-server.md#client-commands).
 
 <a id="hostage-follow"></a>
 ## Check hostage coordinate transitions
@@ -170,14 +172,14 @@ The four steps check these transitions:
 
 Route completion also checks that the hostage remains assigned to the CT leader, comes within 80 game units of the leader's feet, and that the server delivers a periodic `HostagePos` to the operator. The selected hostage ID is taken from a uniquely matched real message; the report preserves both that ID and `native_hostage_id`.
 
-Inspect the checks `hostage_follow_inside`, `hostage_follow_outside`, and `hostage_follow_return` in the report. Follow progress is in `data.hostage_follow`. The route coordinates are defined in [cs_office.ini](../../plugins/nextclient_testlab/maps/cs_office.ini).
+Inspect the checks `hostage_follow_inside`, `hostage_follow_outside`, and `hostage_follow_return` in the report. Follow progress is in `data.hostage_follow`. The route coordinates are defined in [cs_office.ini](../../test_support/plugins/nextclient_testlab/maps/cs_office.ini).
 
 <a id="calibration"></a>
 ## Calibrate visibility and route positions
 
 An anchor is a named position and viewing direction in a map profile. Use calibration when a reported hull, LOS, or PVS condition fails. A hull check verifies that the player-sized volume and movement path are unobstructed.
 
-The source profiles are [cs_office.ini](../../plugins/nextclient_testlab/maps/cs_office.ini) and [de_dust2.ini](../../plugins/nextclient_testlab/maps/de_dust2.ini). Installed profiles are under `<server.root>/cstrike/addons/amxmodx/configs/nextclient_testlab/maps/`. Their BSP hash must match the map. A mismatch stops preparation before the scene is moved.
+The source profiles are [cs_office.ini](../../test_support/plugins/nextclient_testlab/maps/cs_office.ini) and [de_dust2.ini](../../test_support/plugins/nextclient_testlab/maps/de_dust2.ini). Installed profiles are under `<server.root>/cstrike/addons/amxmodx/configs/nextclient_testlab/maps/`. Their BSP hash must match the map. A mismatch stops preparation before the scene is moved.
 
 1. Save the failing run ID and report. For a visibility test, keep its objective available and wait for `ready`. For follow-route calibration, use `nct_reset round` and wait for reset completion.
 2. In the client console, enable tracing and move to the relevant anchor:

@@ -1,33 +1,27 @@
-#include "engine.h"
-#include "console/console.h"
-#include "client/cl_main.h"
+#include "client/cl_string_registry.h"
 
-#include <goldsrc/client_api.h>
+#include <utility>
+
 #include <data_types/MessageReader.h>
-#include <unordered_map>
+#include <goldsrc/client_api.h>
+
+#include "client/ClientStringRegistry.h"
+#include "client/cl_main.h"
+#include "console/console.h"
+#include "engine.h"
 
 namespace
 {
-    constexpr size_t kMaxCacheSize = 2048;
-
-    std::unordered_map<uint16_t, std::string> g_Entries;
+    ClientStringRegistry g_Registry;
     int g_MsgNclStrReg = 0;
 
     void RegisterString(uint16_t string_id, std::string value)
     {
-        if (string_id == 0)
-        {
-            return;
-        }
-
-        if (g_Entries.size() >= kMaxCacheSize && !g_Entries.count(string_id))
+        if (g_Registry.Register(string_id, std::move(value)) == ClientStringRegistry::RegisterResult::CapacityExceeded)
         {
             COM_ExplainDisconnection(true, "Server exceeded client string cache limit.");
             CL_Disconnect();
-            return;
         }
-
-        g_Entries[string_id] = std::move(value);
     }
 
     int MsgFunc_NclStrReg(const char* msg_name, int size, void* buf)
@@ -46,7 +40,7 @@ namespace
             return 1;
         }
 
-        RegisterString(string_id, value);
+        RegisterString(string_id, std::move(value));
         return 1;
     }
 
@@ -54,13 +48,18 @@ namespace
     {
         Con_Printf("NCL strings:\n");
 
-        for (const auto& entry : g_Entries)
+        for (const auto& entry : g_Registry.get_entries())
         {
             Con_Printf("%d: %s\n", entry.first, entry.second.c_str());
         }
     }
 } // namespace
 
+
+ClientStringRegistry& CL_GetStringRegistry()
+{
+    return g_Registry;
+}
 
 void CL_StringRegistryInit()
 {
@@ -70,22 +69,16 @@ void CL_StringRegistryInit()
 
 void CL_StringRegistryShutdown()
 {
-    g_Entries.clear();
+    g_Registry.Clear();
     g_MsgNclStrReg = 0;
 }
 
 void CL_StringRegistryClear()
 {
-    g_Entries.clear();
+    g_Registry.Clear();
 }
 
 const char* CL_StringRegistryGetString(uint16_t string_id)
 {
-    auto it = g_Entries.find(string_id);
-    if (it != g_Entries.end())
-    {
-        return it->second.c_str();
-    }
-
-    return nullptr;
+    return g_Registry.Find(string_id);
 }

@@ -11,12 +11,22 @@
 #include <next_client_mini/radar_cvars.h>
 
 #include "hud/radar/map/MapRender.h"
+#include "hud/radar/integration/Performance.h"
 #include "hud/radar/map/layers/RadarLayerContext.h"
 #include "hud/radar/integration/RadarLayersDump.h"
 #include "RadarMapLayerFixtures.h"
 
 namespace
 {
+    struct LiveMapRelease
+    {
+        MapLayerRenderer& renderer;
+        ~LiveMapRelease()
+        {
+            renderer.Reset();
+        }
+    };
+
     struct GlState
     {
         GLint active = GL_TEXTURE1;
@@ -506,6 +516,9 @@ namespace
     class MapLayerRender : public testing::Test
     {
     protected:
+        radar::integration::Performance performance_{nullptr};
+
+    protected:
         GlFake fake_;
         std::vector<std::function<void()>> restore_;
         RadarMapLayers map_;
@@ -608,7 +621,7 @@ namespace
 
     TEST(RadarCvars, MapSmoothingDefaultsDisabledAndBounded)
     {
-        RadarCvarDef smoothing = RadarCvarDef_Get("hud_radar_map_smoothing");
+        cvars::CvarDefinition smoothing = radar::FindCvar("hud_radar_map_smoothing");
 
         EXPECT_STREQ(smoothing.default_value, "0");
         EXPECT_EQ(smoothing.min_value, 0.0f);
@@ -621,7 +634,8 @@ namespace
         {
             SCOPED_TRACE(textured);
             GlState before = fake_.state;
-            MapLayerRenderer renderer;
+            MapLayerRenderer renderer{performance_};
+            LiveMapRelease renderer_release{renderer};
             ASSERT_EQ(renderer.Ensure(map_, materials_, 0, textured, 10), RadarMapStatus::Ready);
             GLuint texture = renderer.get_map(0)->texture;
             EXPECT_EQ(fake_.min_filters[texture], GL_LINEAR);
@@ -640,7 +654,8 @@ namespace
 
     TEST_F(MapLayerRender, CachedLayerImagesPreserveTheirPixelsAndLinearFilter)
     {
-        MapLayerRenderer renderer;
+        MapLayerRenderer renderer{performance_};
+        LiveMapRelease renderer_release{renderer};
         GlState before = fake_.state;
         std::array<GLuint, 3> textures{};
 
@@ -672,7 +687,8 @@ namespace
     {
         fake_.pixels = {{0.2f, 0.4f, 0.8f, 0.5f}, {0.8f, 0.6f, 0.4f, 0.0f}, {0.6f, 0.7f, 0.8f, 1.0f}};
         GlState before = fake_.state;
-        MapLayerRenderer renderer;
+        MapLayerRenderer renderer{performance_};
+        LiveMapRelease renderer_release{renderer};
         ASSERT_EQ(renderer.Ensure(map_, {}, 0, false, 10), RadarMapStatus::Ready);
         EXPECT_EQ(
             fake_.pixels, (std::vector<std::array<float, 4>>{{0.1f, 0.2f, 0.4f, 0.5f}, {0.0f, 0.0f, 0.0f, 0.0f}, {0.6f, 0.7f, 0.8f, 1.0f}})
@@ -682,7 +698,8 @@ namespace
 
     TEST_F(MapLayerRender, CachedImageSkipsMaterialsOnlyForMatchingMapAndMode)
     {
-        MapLayerRenderer renderer;
+        MapLayerRenderer renderer{performance_};
+        LiveMapRelease renderer_release{renderer};
         EXPECT_FALSE(renderer.is_cached(map_, 0, true));
 
         ASSERT_EQ(renderer.Ensure(map_, materials_, 0, true, 10), RadarMapStatus::Ready);
@@ -708,7 +725,8 @@ namespace
     TEST_F(MapLayerRender, RestoresStateAndUsesTransparentUppermostPass)
     {
         GlState before = fake_.state;
-        MapLayerRenderer renderer;
+        MapLayerRenderer renderer{performance_};
+        LiveMapRelease renderer_release{renderer};
 
         ASSERT_EQ(renderer.Ensure(map_, materials_, 0, true, 10), RadarMapStatus::Ready);
         ASSERT_NE(renderer.get_map(0), nullptr);
@@ -758,7 +776,8 @@ namespace
             {
                 fake_.error = error;
                 GlState before = fake_.state;
-                MapLayerRenderer renderer;
+                MapLayerRenderer renderer{performance_};
+                LiveMapRelease renderer_release{renderer};
 
                 EXPECT_EQ(renderer.Ensure(map_, materials_, 0, textured, 10), RadarMapStatus::Ready);
                 EXPECT_NE(renderer.get_map(0), nullptr);
@@ -801,7 +820,9 @@ namespace
                 SCOPED_TRACE(testing::Message() << "textured=" << textured << " adjacent_height=" << adjacent_height);
                 fake_.drawn.clear();
 
-                MapLayerRenderer renderer;
+                MapLayerRenderer renderer{performance_};
+
+                LiveMapRelease renderer_release{renderer};
                 ASSERT_EQ(renderer.Ensure(map, materials, 0, textured, 10), RadarMapStatus::Ready);
                 EXPECT_DOUBLE_EQ(fake_.projection[4], -192.0);
                 EXPECT_DOUBLE_EQ(fake_.projection[5], 0.0);
@@ -860,7 +881,8 @@ namespace
             fake_.pixels = source;
             fake_.tone_vertices.clear();
             GlState before = fake_.state;
-            MapLayerRenderer renderer;
+            MapLayerRenderer renderer{performance_};
+            LiveMapRelease renderer_release{renderer};
             ASSERT_EQ(renderer.Ensure(map_, materials_, 0, textured, 10), RadarMapStatus::Ready);
             const std::vector<std::array<float, 4>>& expected = textured ? lifted : source;
 
@@ -897,7 +919,8 @@ namespace
             fake_.fail_depth = failure == 1;
             fake_.status = failure == 2 ? GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT : GL_FRAMEBUFFER_COMPLETE;
             GlState before = fake_.state;
-            MapLayerRenderer renderer;
+            MapLayerRenderer renderer{performance_};
+            LiveMapRelease renderer_release{renderer};
 
             EXPECT_EQ(renderer.Ensure(map_, materials_, 0, true, 10), RadarMapStatus::Failed);
 
@@ -917,7 +940,8 @@ namespace
 
     TEST_F(MapLayerRender, TextureWaitKeepsCacheAndRetries)
     {
-        MapLayerRenderer renderer;
+        MapLayerRenderer renderer{performance_};
+        LiveMapRelease renderer_release{renderer};
         materials_[0].lightmap_texture = 0;
         std::string reason = "stale";
 
@@ -939,7 +963,8 @@ namespace
 
     TEST_F(MapLayerRender, ContextTextureWaitDoesNotConsumeFrameBudget)
     {
-        MapLayerRenderer renderer;
+        MapLayerRenderer renderer{performance_};
+        LiveMapRelease renderer_release{renderer};
         materials_[3].lightmap_texture = 0;
         std::string reason;
         EXPECT_EQ(renderer.Ensure(map_, materials_, 0, true, 10, &reason), RadarMapStatus::Waiting);
@@ -955,7 +980,8 @@ namespace
 
     TEST_F(MapLayerRender, BaseTextureWaitIsOwnedAndDumpPerformsNoQueries)
     {
-        MapLayerRenderer renderer;
+        MapLayerRenderer renderer{performance_};
+        LiveMapRelease renderer_release{renderer};
         materials_[0].base_texture = 0;
         std::string reason;
 
@@ -1000,7 +1026,9 @@ namespace
         materials_.assign(3, {0, 0, true});
         materials_[0] = {7, 8, true};
 
-        MapLayerRenderer renderer;
+        MapLayerRenderer renderer{performance_};
+
+        LiveMapRelease renderer_release{renderer};
         std::string reason;
 
         ASSERT_EQ(renderer.Ensure(map_, materials_, 0, true, 10, &reason), RadarMapStatus::Ready);
@@ -1020,7 +1048,8 @@ namespace
 
     TEST_F(MapLayerRender, MissingMaterialAndEmptyMeshHavePreciseWaitReasons)
     {
-        MapLayerRenderer renderer;
+        MapLayerRenderer renderer{performance_};
+        LiveMapRelease renderer_release{renderer};
         std::string reason;
 
         EXPECT_EQ(renderer.Ensure(map_, {}, 0, true, 10, &reason), RadarMapStatus::Waiting);
@@ -1034,7 +1063,8 @@ namespace
 
     TEST_F(MapLayerRender, ThreeImagesShareOneDepthTargetAndFrameBudget)
     {
-        MapLayerRenderer renderer;
+        MapLayerRenderer renderer{performance_};
+        LiveMapRelease renderer_release{renderer};
 
         for (int layer = 0; layer < 4; layer++)
         {
@@ -1058,7 +1088,8 @@ namespace
 
     TEST_F(MapLayerRender, FailureWaitsForReset)
     {
-        MapLayerRenderer renderer;
+        MapLayerRenderer renderer{performance_};
+        LiveMapRelease renderer_release{renderer};
         fake_.status = GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT;
         EXPECT_EQ(renderer.Ensure(map_, materials_, 0, false, 10), RadarMapStatus::Failed);
 
@@ -1097,7 +1128,9 @@ namespace
     {
         Bind(glad_glGenFramebuffers, static_cast<PFNGLGENFRAMEBUFFERSPROC>(nullptr));
 
-        MapLayerRenderer renderer;
+        MapLayerRenderer renderer{performance_};
+
+        LiveMapRelease renderer_release{renderer};
         EXPECT_EQ(renderer.Ensure(map_, materials_, 0, false, 10), RadarMapStatus::Failed);
         EXPECT_EQ(renderer.get_failure_reason(), "glGenFramebuffers unavailable");
 
@@ -1111,7 +1144,9 @@ namespace
         GlState before = fake_.state;
         fake_.fail_draw = true;
 
-        MapLayerRenderer renderer;
+        MapLayerRenderer renderer{performance_};
+
+        LiveMapRelease renderer_release{renderer};
         EXPECT_EQ(renderer.Ensure(map_, materials_, 0, false, 10), RadarMapStatus::Failed);
         EXPECT_EQ(renderer.get_failure_reason(), "layer mesh rendering failed (GL error=0x502)");
         EXPECT_EQ(fake_.state, before);
@@ -1120,11 +1155,12 @@ namespace
         EXPECT_TRUE(fake_.renderbuffers.empty());
     }
 
-    TEST_F(MapLayerRender, ModeResetDropsImagesAndDestructorReleasesObjects)
+    TEST_F(MapLayerRender, ModeResetDropsImagesAndExplicitCleanupReleasesObjects)
     {
         GlState before = fake_.state;
         {
-            MapLayerRenderer renderer;
+            MapLayerRenderer renderer{performance_};
+            LiveMapRelease renderer_release{renderer};
             ASSERT_EQ(renderer.Ensure(map_, materials_, 0, true, 10), RadarMapStatus::Ready);
             EXPECT_EQ(renderer.Ensure(map_, materials_, 1, false, 11), RadarMapStatus::Ready);
             EXPECT_EQ(renderer.get_map(0), nullptr);
@@ -1149,7 +1185,8 @@ namespace
         std::string error;
         ASSERT_TRUE(map_.ApplyOverrides(overrides, error)) << error;
         ASSERT_EQ(map_.get_layers().size(), 2u);
-        MapLayerRenderer renderer;
+        MapLayerRenderer renderer{performance_};
+        LiveMapRelease renderer_release{renderer};
 
         for (int layer = 0; layer < 2; layer++)
         {

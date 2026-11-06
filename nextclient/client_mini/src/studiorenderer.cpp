@@ -4,6 +4,8 @@
 
 #include <cstdint>
 
+#include <ncl_perf/profiler.h>
+
 #include <goldsrc/engine/model.h>
 #include <goldsrc/entity.h>
 #include <goldsrc/format/studio.h>
@@ -82,6 +84,8 @@ namespace
 
 int StudioDrawModel(int flags)
 {
+    NCL_PROFILE_NAMED_SCOPE("Studio client model callback");
+
     goldsrc::cl_entity_t* entity = IEngineStudio.GetCurrentEntity();
 
     if (entity == IEngineStudio.GetViewEntity())
@@ -112,6 +116,8 @@ int StudioDrawModel(int flags)
 
 int StudioDrawPlayer(int flags, goldsrc::entity_state_t* pplayer)
 {
+    NCL_PROFILE_NAMED_SCOPE("Studio client player callback");
+
     goldsrc::cl_entity_t* entity = IEngineStudio.GetCurrentEntity();
 
     if (entity != nullptr && ShouldUnmaskTextures(entity, flags))

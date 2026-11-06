@@ -3,7 +3,7 @@
 #include <algorithm>
 #include <easylogging++.h>
 #include <format>
-#include <optick.h>
+#include <ncl_perf/profiler.h>
 
 #ifdef _WIN32
     #include <winsock2.h>
@@ -193,7 +193,7 @@ result<result_promise<void>> MasterServerQueryClient::BeginSequentialRequest()
 
 std::vector<netadr_t> MasterServerQueryClient::ParseMasterServerResponse(ByteBuffer& buffer)
 {
-    OPTICK_EVENT();
+    NCL_PROFILE_SCOPE();
 
     std::vector<netadr_t> addresses;
 

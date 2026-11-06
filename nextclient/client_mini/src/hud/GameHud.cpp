@@ -6,7 +6,11 @@
 
 extern goldsrc::cl_enginefunc_t gEngfuncs;
 
-GameHud::GameHud(nitroapi::NitroApiInterface* nitro_api)
+GameHud::GameHud(
+    nitroapi::NitroApiInterface* nitro_api,
+    radar::integration::Performance& performance,
+    taskcoro::TaskCoroImplInterface& scheduler
+)
 {
     health_ = std::make_shared<HudHealth>(nitro_api);
     all_hud_.push_back(health_);
@@ -23,10 +27,9 @@ GameHud::GameHud(nitroapi::NitroApiInterface* nitro_api)
     damage_direction_ = std::make_shared<HudDamageDirection>(nitro_api);
     all_hud_.push_back(damage_direction_);
 
-    radar_ = std::make_shared<HudRadar>(nitro_api);
+    radar_advanced_ = std::make_shared<HudRadarAdvanced>(nitro_api, performance, scheduler);
+    radar_ = std::make_shared<HudRadar>(nitro_api, radar_advanced_->get_draw_context());
     all_hud_.push_back(radar_);
-
-    radar_advanced_ = std::make_shared<HudRadarAdvanced>(nitro_api);
     all_hud_.push_back(radar_advanced_);
 
     death_notice_ = std::make_shared<HudDeathNotice>(nitro_api);
@@ -100,4 +103,9 @@ void GameHud::FetchCvars()
 
     RadarConfig_Init();
     RadarDebug_Init();
+}
+
+void GameHud::Shutdown()
+{
+    radar_advanced_->Shutdown();
 }

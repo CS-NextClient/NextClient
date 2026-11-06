@@ -1,10 +1,10 @@
 #include "engine.h"
 
-#include <optick.h>
+#include <ncl_perf/profiler.h>
 
 void CL_Stop_f()
 {
-    OPTICK_EVENT();
+    NCL_PROFILE_SCOPE();
 
     eng()->CL_Stop_f.InvokeChained();
 }

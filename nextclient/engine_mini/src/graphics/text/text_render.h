@@ -30,6 +30,7 @@ unsigned int TextRender_PageTexture(int page);
 // Registers text_atlas_dump and text_service_info. Called from Draw_Init, where the console is up.
 void TextRender_RegisterDiagnostics();
 
-// Releases every atlas page. Must run while the GL context is still current, so it is driven from
-// the Draw_Shutdown hook rather than from module teardown.
+// Requires the context owning the atlas pages to be current.
 void TextRender_ReleaseGl();
+// Invalidates cached cells and page names without GL calls, preserving CPU fonts.
+void TextRender_ForgetGl();

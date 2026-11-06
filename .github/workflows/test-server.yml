@@ -2,9 +2,9 @@ name: Test server
 
 on:
   push:
-    paths: ['tools/test_server/**', 'plugins/nextclient_testlab/**', '.github/workflows/test-server.yml']
+    paths: ['tools/test_server/**', 'test_support/plugins/nextclient_testlab/**', 'test_support/plugins/nextclient_materials_test/**', '.github/workflows/test-server.yml']
   pull_request:
-    paths: ['tools/test_server/**', 'plugins/nextclient_testlab/**', '.github/workflows/test-server.yml']
+    paths: ['tools/test_server/**', 'test_support/plugins/nextclient_testlab/**', 'test_support/plugins/nextclient_materials_test/**', '.github/workflows/test-server.yml']
   workflow_dispatch:
     inputs:
       server_smoke:

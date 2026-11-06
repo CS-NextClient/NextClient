@@ -1,6 +1,6 @@
 #include "engine.h"
 
-#include <optick.h>
+#include <ncl_perf/profiler.h>
 
 #include <goldsrc/client_api.h>
 #include <goldsrc/engine/model.h>
@@ -9,10 +9,15 @@
 #include <goldsrc/format/studio.h>
 #include <goldsrc/server_api.h>
 #include <goldsrc/types.h>
+#include <ncl_studio/studio_validate.h>
 
 #include "console/console.h"
 #include "graphics/gl_local.h"
 #include "graphics/detailtexture.h"
+#include "graphics/preview/preview_model.h"
+#include "graphics/render/StudioDraw.h"
+#include "graphics/render/StudioIntercept.h"
+#include "graphics/render/model/studio_model_cache.h"
 #include "common/model.h"
 #include "common/sys_dll.h"
 #include "common/zone.h"
@@ -29,21 +34,21 @@ uint8_t* pspritepal;
 
 void Mod_LoadAliasModel(goldsrc::model_t* mod, void* buffer)
 {
-    OPTICK_EVENT();
+    NCL_PROFILE_SCOPE();
 
     eng()->Mod_LoadAliasModel.InvokeChained(mod, buffer);
 }
 
 void Mod_LoadBrushModel(goldsrc::model_t* mod, void* buffer)
 {
-    OPTICK_EVENT();
+    NCL_PROFILE_SCOPE();
 
     eng()->Mod_LoadBrushModel.InvokeChained(mod, buffer);
 }
 
 void* Mod_Extradata(goldsrc::model_t* mod)
 {
-    OPTICK_EVENT();
+    NCL_PROFILE_SCOPE();
 
     if (!mod)
         return nullptr;
@@ -65,7 +70,7 @@ void* Mod_Extradata(goldsrc::model_t* mod)
 
 void Mod_FillInCRCInfo(goldsrc::qboolean trackCRC, int model_number)
 {
-    OPTICK_EVENT();
+    NCL_PROFILE_SCOPE();
 
     goldsrc::mod_known_info_t* p;
 
@@ -77,7 +82,7 @@ void Mod_FillInCRCInfo(goldsrc::qboolean trackCRC, int model_number)
 
 goldsrc::model_t* Mod_FindName(goldsrc::qboolean trackCRC, const char* name)
 {
-    OPTICK_EVENT();
+    NCL_PROFILE_SCOPE();
 
     goldsrc::model_t* avail;
     int i;
@@ -110,6 +115,10 @@ goldsrc::model_t* Mod_FindName(goldsrc::qboolean trackCRC, const char* name)
         {
             if (!avail)
                 Sys_Error("mod_numknown >= MAX_KNOWN_MODELS");
+
+            render::Studio_Flush(render::StudioFlushReason::Resource);
+            render::Studio_ForgetModel(avail);
+            render::Models_ForgetModel(avail->name);
             mod = avail;
             Mod_FillInCRCInfo(trackCRC, avail - mod_known);
         }
@@ -131,7 +140,7 @@ goldsrc::model_t* Mod_FindName(goldsrc::qboolean trackCRC, const char* name)
 
 goldsrc::qboolean Mod_ValidateCRC(const char* name, goldsrc::CRC32_t crc)
 {
-    OPTICK_EVENT();
+    NCL_PROFILE_SCOPE();
 
     goldsrc::model_t* mod;
     goldsrc::mod_known_info_t* p;
@@ -149,7 +158,7 @@ goldsrc::qboolean Mod_ValidateCRC(const char* name, goldsrc::CRC32_t crc)
 
 void Mod_NeedCRC(const char* name, goldsrc::qboolean needCRC)
 {
-    OPTICK_EVENT();
+    NCL_PROFILE_SCOPE();
 
     goldsrc::model_t* mod;
     goldsrc::mod_known_info_t* p;
@@ -162,7 +171,7 @@ void Mod_NeedCRC(const char* name, goldsrc::qboolean needCRC)
 
 void* Mod_LoadSpriteFrame(void* pin, goldsrc::mspriteframe_t** ppframe, int framenum)
 {
-	OPTICK_EVENT();
+	NCL_PROFILE_SCOPE();
 
 	goldsrc::dspriteframe_t* pinframe = (goldsrc::dspriteframe_t*)pin;
 	int origin[2] = {LittleLong(pinframe->origin[0]), LittleLong(pinframe->origin[1])};
@@ -207,7 +216,7 @@ void* Mod_LoadSpriteFrame(void* pin, goldsrc::mspriteframe_t** ppframe, int fram
 
 void* Mod_LoadSpriteGroup(void* pin, goldsrc::mspriteframe_t** ppframe, int framenum)
 {
-    OPTICK_EVENT();
+    NCL_PROFILE_SCOPE();
 
 	goldsrc::dspritegroup_t* pingroup = (goldsrc::dspritegroup_t*)pin;
 	int numframes = LittleLong(pingroup->numframes);
@@ -243,7 +252,7 @@ void* Mod_LoadSpriteGroup(void* pin, goldsrc::mspriteframe_t** ppframe, int fram
 
 void Mod_LoadSpriteModel(goldsrc::model_t* mod, void* buffer)
 {
-	OPTICK_EVENT();
+	NCL_PROFILE_SCOPE();
 
 	goldsrc::dsprite_t* pin = (goldsrc::dsprite_t*)buffer;
 
@@ -300,23 +309,49 @@ void Mod_LoadSpriteModel(goldsrc::model_t* mod, void* buffer)
 	}
 }
 
-void Mod_LoadStudioModel(goldsrc::model_t* mod, void* buffer)
+void Mod_LoadStudioModel(goldsrc::model_t* mod, void* buffer, int file_length)
 {
-    OPTICK_EVENT();
+    NCL_PROFILE_SCOPE();
 
-    goldsrc::studiohdr_t* phdr = (goldsrc::studiohdr_t*)buffer;
-    if (LittleLong(phdr->version) != STUDIO_VERSION)
+    goldsrc::studiohdr_t* phdr = reinterpret_cast<goldsrc::studiohdr_t*>(buffer);
+
+    // The file length is the only bound in the process that is not itself taken from the
+    // file, and every reader downstream works from the truncated cache block without any
+    // way to tell how far it goes. A model that does not hold together is turned into the
+    // same empty stub an unsupported version already produces, so the failure is one the
+    // rest of the engine already knows how to carry.
+    ncl_utils::Result<> valid = ncl_studio::ValidateStudioFile(buffer, (size_t)file_length);
+
+    if (valid.has_error())
     {
-        Q_memset(phdr, 0, 244u);
-        Q_strcpy(phdr->name, "bogus");
-        phdr->length = 244;
-        phdr->texturedataindex = 244;
+        Con_Printf("Mod_LoadStudioModel: %s: %s\n", mod->name, valid.error_str().c_str());
+    }
+
+    // Built beside the load buffer rather than over it: the buffer is exactly the file's own
+    // length, and a file shorter than a header is one of the things the validation refuses,
+    // so writing a whole header back into it is a heap overflow on the very input that
+    // failed. Nothing downstream reads the buffer once this points elsewhere.
+    goldsrc::studiohdr_t stub;
+
+    if (valid.has_error() || LittleLong(phdr->version) != STUDIO_VERSION)
+    {
+        Q_memset(&stub, 0, sizeof(stub));
+        Q_strcpy(stub.name, "bogus");
+        stub.length = static_cast<int>(sizeof(goldsrc::studiohdr_t));
+        stub.texturedataindex = static_cast<int>(sizeof(goldsrc::studiohdr_t));
+
+        phdr = &stub;
+        buffer = &stub;
     }
 
     mod->type = goldsrc::mod_studio;
     mod->flags = phdr->flags;
 
     int length = phdr->textureindex ? phdr->texturedataindex : phdr->length;
+
+    render::Studio_Flush(render::StudioFlushReason::Resource);
+    render::Studio_ForgetModel(mod);
+    render::Models_ForgetModel(mod->name);
 
     Cache_Alloc(&mod->cache, length, mod->name);
     uint8_t* pout = (uint8_t*) mod->cache.data;
@@ -350,7 +385,7 @@ void Mod_LoadStudioModel(goldsrc::model_t* mod, void* buffer)
 
 goldsrc::model_t* Mod_LoadModel(goldsrc::model_t* mod, goldsrc::qboolean crash, goldsrc::qboolean trackCRC)
 {
-    OPTICK_EVENT();
+    NCL_PROFILE_SCOPE();
 
     unsigned char* buf;
     char tmpName[MAX_PATH];
@@ -429,7 +464,7 @@ goldsrc::model_t* Mod_LoadModel(goldsrc::model_t* mod, goldsrc::qboolean crash, 
             Mod_LoadSpriteModel(mod, buf);
             break;
         case IDSTUDIOHEADER:
-            Mod_LoadStudioModel(mod, buf);
+            Mod_LoadStudioModel(mod, buf, length);
             break;
         case goldsrc::Q1BSP_VERSION:
         case goldsrc::HLBSP_VERSION:
@@ -455,7 +490,7 @@ goldsrc::model_t* Mod_LoadModel(goldsrc::model_t* mod, goldsrc::qboolean crash, 
 
 goldsrc::model_t* Mod_ForName(const char* name, goldsrc::qboolean crash, goldsrc::qboolean trackCRC)
 {
-    OPTICK_EVENT();
+    NCL_PROFILE_SCOPE();
 
     goldsrc::model_t* mod;
 
@@ -468,7 +503,7 @@ goldsrc::model_t* Mod_ForName(const char* name, goldsrc::qboolean crash, goldsrc
 
 void Mod_Print()
 {
-    OPTICK_EVENT();
+    NCL_PROFILE_SCOPE();
 
     int i;
     goldsrc::model_t* mod;
@@ -488,7 +523,7 @@ void Mod_Print()
 
 void Mod_UnloadSpriteTextures(goldsrc::model_t* pModel)
 {
-    OPTICK_EVENT();
+    NCL_PROFILE_SCOPE();
 
     if (!pModel)
         return;
@@ -512,7 +547,7 @@ void Mod_UnloadSpriteTextures(goldsrc::model_t* pModel)
 
 void Mod_UnloadFiltered(const std::function<bool(goldsrc::model_t*)>& filter)
 {
-    OPTICK_EVENT();
+    NCL_PROFILE_SCOPE();
 
     goldsrc::model_t* mod;
     goldsrc::mod_known_info_t* p;
@@ -523,6 +558,10 @@ void Mod_UnloadFiltered(const std::function<bool(goldsrc::model_t*)>& filter)
 
         if (!filter(mod))
             continue;
+
+        render::Studio_DiscardPending();
+        render::Studio_ForgetModel(mod);
+        render::Models_ForgetModel(mod->name);
 
         Con_DPrintf(ConLogType::Info, "%s: unloading \"%s\"\n", __func__, mod->name);
 
@@ -542,7 +581,11 @@ void Mod_UnloadFiltered(const std::function<bool(goldsrc::model_t*)>& filter)
 
 void Mod_ClearAll()
 {
-    OPTICK_EVENT();
+    NCL_PROFILE_SCOPE();
+
+    render::Studio_ForgetModel();
+    render::Models_ForgetSessionMetadata();
+    PreviewModel_ResetModels();
 
     goldsrc::model_t* mod;
 
@@ -562,7 +605,11 @@ void Mod_ClearAll()
 
 void Mod_ResetState()
 {
-    OPTICK_EVENT();
+    NCL_PROFILE_SCOPE();
+
+    render::Studio_ForgetModel();
+    render::Models_ForgetSessionMetadata();
+    PreviewModel_ResetModels();
 
     Q_memset(mod_known, 0, sizeof(mod_known));
     Q_memset(mod_known_info, 0, sizeof(mod_known_info));

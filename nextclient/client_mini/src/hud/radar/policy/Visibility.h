@@ -1,5 +1,7 @@
 #pragma once
 
+#include "hud/radar/integration/Performance.h"
+
 #include <array>
 
 #include <ncl_math/vec3.h>
@@ -48,13 +50,16 @@ private:
     float last_update_{};
     bool objective_tests_open_{};
     bool traces_begun_{};
-    float traces_ms_{};
 
     // Owned by HudRadarAdvanced; outlives this object.
     const SmokeRegistry& smoke_;
+    radar::integration::Performance& performance_;
 
 public:
-    explicit RadarVisibility(const SmokeRegistry& smoke) : smoke_(smoke) {}
+    RadarVisibility(const SmokeRegistry& smoke, radar::integration::Performance& performance) :
+        smoke_(smoke),
+        performance_(performance)
+    {}
     void Update(int self_player_id, RadarTeam my_team, bool spectating, float time, const RadarPolicy& policy);
 
     // False for spectators.
@@ -75,14 +80,6 @@ public:
 
     void Reset();
 
-    float get_traces_ms() const
-    {
-        return traces_ms_;
-    }
-    void ResetStats()
-    {
-        traces_ms_ = 0.0f;
-    }
 
 private:
     void BeginTraces();

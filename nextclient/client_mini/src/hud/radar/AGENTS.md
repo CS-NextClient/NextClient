@@ -1,30 +1,16 @@
 # Advanced radar (client_mini/src/hud/radar)
 
-The advanced radar HUD: it replaces the stock square radar with a projected map, markers, labels
-and objectives. `HudRadarAdvanced` (one level up, in `src/hud`) owns the per-frame draw; everything
-under this directory is the machinery it drives.
+The advanced radar HUD: it replaces the stock square radar with a projected map, markers, labels and objectives. `HudRadarAdvanced` (one level up, in `src/hud`) owns the per-frame draw; everything under this directory is the machinery it drives.
 
-`map/` owns map geometry and layer analysis, `render/` projection, GL drawing and text,
-`markers/` shared placement and feeds, `policy/` reveal decisions, and `integration/` engine
-hooks and diagnostics. The HUD layers own drawn state, with player and objective units
-beside their owning layer under `layers/`.
+`map/` owns map geometry and layer analysis, `render/` projection, GL drawing and text, `markers/` shared placement and feeds, `policy/` reveal decisions, and `integration/` engine hooks and diagnostics. The HUD layers own drawn state, with player and objective units beside their owning layer under `layers/`.
 
-Cvar definitions do not live here: `include/next_client_mini/radar_cvars.h` is the single table the
-client registration and the GameUI dialog both read. Adding a cvar means editing that table, the
-dialog (`nextclient/gameui/src/GameUi/OptionsDialog/HudRadarDialog.cpp`, its `.res` and the
-localization files), not a new constant in this directory.
+Cvar definitions do not live here: `include/next_client_mini/radar_cvars.h` is the single table the client registration and the GameUI dialog both read. Adding a cvar means editing that table, the dialog (`nextclient/gameui/src/GameUi/OptionsDialog/HudRadarDialog.cpp`, its `.res` and the localization files), not a new constant in this directory.
 
 ## How a frame works
 
-`HudRadarAdvanced::Draw` computes, in this order: `RadarBox` (where the radar sits on screen),
-`RadarShape` (its rim), `RadarTransform` (world to screen), then fills one `RadarFrame` and hands it
-to the layers. Draw order is expressed literally by the order of those calls; there is no z sort.
+`HudRadarAdvanced::Draw` computes, in this order: `RadarBox` (where the radar sits on screen), `RadarShape` (its rim), `RadarTransform` (world to screen), then fills one `RadarFrame` and hands it to the layers. Draw order is expressed literally by the order of those calls; there is no z sort.
 
-Every draw belongs to a layer: a layer consumes the `RadarFrame` and owns the state behind what it
-draws. `HudRadarAdvanced` keeps only what produces that frame (the box, the transform, the frame
-context, the policy update, the flash alpha) plus the cvar and hook plumbing. A new drawn thing is a
-new layer or an existing one, never another `DrawX` on the HUD class; the layers hold no base class,
-because a virtual list would bury the order that this file calls load-bearing.
+Every draw belongs to a layer: a layer consumes the `RadarFrame` and owns the state behind what it draws. `HudRadarAdvanced` keeps only what produces that frame (the box, the transform, the frame context, the policy update, the flash alpha) plus the cvar and hook plumbing. Add new drawing to a new or existing layer, never to another `DrawX` method on the HUD class. Layers have no base class: direct calls keep draw order explicit.
 
 ## Invariants that break silently when violated
 
@@ -37,9 +23,9 @@ because a virtual list would bury the order that this file calls load-bearing.
   sweeps over the job array so each is a single prim batch and z order comes from pass order.
   Folding them into a per-marker routine reorders the output and lets one player's cone wash over a
   neighbor's marker.
-- **GL state around the prim batches is load-bearing.** `RadarDraw` forces texture unit 0 and
-  restores the binding, the current color and the blend state. Both were once real HUD defects
-  (garbled number sprites, a white flashing timer digit), not caution.
+- **Restore GL state around the prim batches.** `RadarDraw` forces texture unit 0 and restores
+  the binding, current color and blend state. Incorrect restoration can garble number sprites
+  or make timer digits flash white.
 - **Player and hostage tables are sized from `RadarLimits.h`.** The bounds are restated once there
   and tied to `goldsrc::cstrike::MAX_PLAYERS` and `MAX_HOSTAGES` by the static_asserts beside them.
   A local copy of either number is how a table silently ends up one size and its writer another.
@@ -106,22 +92,14 @@ because a virtual list would bury the order that this file calls load-bearing.
 
 The root `AGENTS.md` defines API shape. Apply it here as follows:
 
-- Keep owned state in classes: `HudRadarAdvanced` owns the layers and shared services;
-  each layer owns its player or objective units. `RadarSinks` registration in `RadarHooks.h`
-  is live for exactly the HUD owner's lifetime.
-  Keep each unit's remembered state in its owning class, one class per file.
-- Use `Module_Function` free functions for pure helpers and process or GL-context
-  singletons reached through engine callbacks, including `RadarDraw`, `RadarHooks` and
-  `RadarDebug`.
-- Namespaces group qualified constants: `RadarPalette`, `RadarDrawUniform` and
-  `RadarPlayerMarkerGeometry`. Types such as `RadarBox`, `RadarShape`, `RadarTransform`,
-  `RadarFrame` and `FrameContext` stay at file scope.
-  Bounds in `RadarLimits.h` stay at file scope as well.
+- Keep owned state in classes: `HudRadarAdvanced` owns the layers and shared services; each layer owns its player or objective units. `RadarSinks` registration in `RadarHooks.h` is live for exactly the HUD owner's lifetime. Keep each unit's remembered state in its owning class and group related classes by owner.
+- `HudRadarAdvanced` owns `radar::integration::LayerAnalysis`. Its native `RadarLayerAnalysisJob` owns worker input, cancellation, one running task and the latest pending request. The job emits native request/status/duration events only from owner-thread dispatch, reset and polling. The integration adapter captures monitor map generations at `Start`, translates events to worker reports and erases attribution on terminal events. Shut down and join analysis before destroying the injected performance owner or scheduler; the adapter cannot be copied or moved because its job sink captures the owner.
+- `HudRadarAdvanced` owns the concrete `RadarDrawContext` and supplies direct references to its layers and text. Small marker units receive the same context through `RadarFrame`. Prepare native identity at HUD frame/lifecycle boundaries, never inside primitive or glyph loops. Stop retirement callbacks before destroying the HUD. Explicit reset releases GL names only for the tracked current lifetime; otherwise it abandons names and pending work. Overview/map target owners follow the same decision, and their destructors perform no GL work. `RadarHooks` and `RadarDebug` remain engine callback adapters.
+- Subsystem APIs may group types and functions in namespaces under the root rules. `RadarPalette`, `RadarDrawUniform` and `RadarPlayerMarkerGeometry` qualify groups of constants; `RadarLimits.h` defines the shared table bounds.
 
 ## Conventions
 
-Includes, member defaults, naming forms, comments, casts and braces are project-wide and live in the
-root `AGENTS.md`. What this directory adds:
+Includes, member defaults, naming forms, comments, casts and braces are project-wide and live in the root `AGENTS.md`. What this directory adds:
 
 - Project include paths are written from `src` (`#include "hud/radar/render/RadarDraw.h"`),
   and the module umbrella `main.h` stays ahead of the legacy HL SDK headers, which are not
@@ -131,16 +109,14 @@ root `AGENTS.md`. What this directory adds:
   `Vector2::Perp`. If an expression is written twice, it belongs in the package.
 - tier1 string helpers are `V_`-prefixed (`V_strcpy_safe`, `V_sprintf_safe`); the `Q_` names are
   aliases.
-- The `Check` half of the predicate rule lands here as `RadarDraw_CheckPrimsAvailable` (one-time
+- The `Check` half of the predicate rule lands here as `RadarDrawContext::CheckPrimsAvailable` (one-time
   shader init), `RadarText::CheckAvailable` (creates the font) and
   `RadarVisibility::CheckPointVisible` (runs engine traces); `get_map_objectives` is the accessor
   that is not plain, since it parses the entity lump.
 
 ## Building and checking
 
-Use the configured build directories and toolchain described in the root `AGENTS.md`. Replace
-`<build-dir>`, `<test-build-dir>` and `<config>` with the selected directories and configuration;
-the test build must have `NEXTCLIENT_BUILD_TESTS=ON`.
+Use the configured build directories and toolchain described in the root `AGENTS.md`. Replace `<build-dir>`, `<test-build-dir>` and `<config>` with the selected directories and configuration; the test build must have `NEXTCLIENT_BUILD_TESTS=ON`.
 
 ```text
 cmake --build <build-dir> --target client_mini --config <config>
@@ -149,12 +125,6 @@ cmake --build <test-build-dir> --target client_mini-tests --config <config>
 
 Run `client_mini-tests` from `<test-build-dir>/out/bin/<config>/`, with the `.exe` suffix on Windows.
 
-The unit tests cover the parts that can run without the engine: `RadarViewTests` (projection and
-clamping, including the rotated basis), `RadarPolicyTests`, `RadarFadeTests`, `PlayerTracksTests`,
-`MarkerIdentityTests`, `MarkerFeedTests`, `ObjectiveSourceTests`, `RadarUtilTests`, `HudTextZoneTests`
-and `HudTextBufferTests`, with `PlayerMarkerFadeTests` covering immediate positions, source transitions and opacity fades. Changes to projection, reveal rules or stock-text placement must keep the
-corresponding tests green.
+The unit tests cover the parts that can run without the engine: `RadarViewTests` (projection and clamping, including the rotated basis), `RadarPolicyTests`, `RadarFadeTests`, `PlayerTracksTests`, `MarkerIdentityTests`, `MarkerFeedTests`, `ObjectiveSourceTests`, `RadarUtilTests`, `HudTextZoneTests` and `HudTextBufferTests`, with `PlayerMarkerFadeTests` covering immediate positions, source transitions and opacity fades. Changes to projection, reveal rules or stock-text placement must keep the corresponding tests green.
 
-Do not launch the game to check a change. A build plus the unit tests is the loop; the developer runs
-the game. Deploying (`--target BUILD_ALL`) installs into the user's game directory, so do it only when
-asked.
+Do not launch the game to check a change. A build plus the unit tests is the loop; the developer runs the game. `BUILD_ALL` is available only in non-test configurations and installs into the user's game directory when `NEXTCLIENT_INSTALL_DIR` is set, so run it only when deployment is requested.

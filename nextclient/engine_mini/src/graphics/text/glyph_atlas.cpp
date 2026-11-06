@@ -169,6 +169,11 @@ namespace text_render
         return pages_[page].texture;
     }
 
+    void GlyphAtlas::ForgetGl()
+    {
+        pages_.clear();
+    }
+
     void GlyphAtlas::ReleaseGl()
     {
         for (const Page& page : pages_)

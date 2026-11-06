@@ -1,9 +1,123 @@
 #include <ncl_gl/program.h>
 
+#include <algorithm>
+#include <cassert>
+
+namespace
+{
+    class ProgramBuildScope
+    {
+    private:
+        const ncl_gl::ProgramBuildCallbacks* callbacks_{};
+        uint64_t token_{};
+        bool success_{};
+
+    public:
+        ProgramBuildScope(const ncl_gl::ProgramBuildCallbacks* callbacks, ncl_gl::ProgramBuildStage stage)
+        {
+            if (callbacks && callbacks->Begin && callbacks->End)
+            {
+                callbacks_ = callbacks;
+                token_ = callbacks_->Begin(callbacks_->user, stage);
+            }
+        }
+
+        ~ProgramBuildScope()
+        {
+            if (callbacks_)
+            {
+                callbacks_->End(callbacks_->user, token_, success_);
+            }
+        }
+
+        void SetSucceeded()
+        {
+            success_ = true;
+        }
+    };
+}
+
 namespace ncl_gl
 {
-    GLuint CompileShader(GLenum type, const char* src, std::string* error_log)
+    namespace
     {
+        constexpr int kMaxDrainedErrors = 32;
+
+        // The stage label keeps a mixed log readable: on a failed link the collected text
+        // starts with the successful compile stages' chatter, and without the labels the
+        // error's origin is guesswork.
+        template <class Getter, class LogGetter>
+        void AppendInfoLog(GLuint object, Getter get_iv, LogGetter get_log, const char* stage, std::string* info_log)
+        {
+            if (info_log == nullptr)
+            {
+                return;
+            }
+
+            GLint len = 0;
+            get_iv(object, GL_INFO_LOG_LENGTH, &len);
+
+            if (len <= 1)
+            {
+                return;
+            }
+
+            std::string log(static_cast<size_t>(len), '\0');
+            get_log(object, len, nullptr, log.data());
+
+            info_log->append(stage);
+            info_log->append(": ");
+            info_log->append(log.c_str());
+        }
+    }
+
+    GLint Program::UniformLocation(const char* name) const
+    {
+        auto found = uniform_locations_.find(name);
+
+        if (found != uniform_locations_.end())
+        {
+            return found->second;
+        }
+
+        GLint location = glGetUniformLocation(prog, name);
+        uniform_locations_.emplace(name, location);
+
+        return location;
+    }
+
+    GLuint Program::UniformBlockIndex(const char* name) const
+    {
+        auto found = uniform_blocks_.find(name);
+
+        if (found != uniform_blocks_.end())
+        {
+            return found->second;
+        }
+
+        GLuint index = glGetUniformBlockIndex(prog, name);
+        uniform_blocks_.emplace(name, index);
+
+        return index;
+    }
+
+    void Program::ResolveLocations(const char* const* names, int count)
+    {
+        assert(count >= 0 && count <= kMaxUniforms);
+        assert(names != nullptr || count == 0);
+        uniform_locations_.clear();
+        uniform_blocks_.clear();
+        std::fill_n(loc, kMaxUniforms, -1);
+
+        for (int index = 0; index < count; ++index)
+        {
+            loc[index] = UniformLocation(names[index]);
+        }
+    }
+
+    GLuint CompileShader(GLenum type, const char* src, std::string* info_log, const ProgramBuildCallbacks* callbacks)
+    {
+        ProgramBuildScope scope(callbacks, ProgramBuildStage::Compile);
         GLuint shader = glCreateShader(type);
         glShaderSource(shader, 1, &src, nullptr);
         glCompileShader(shader);
@@ -11,32 +125,26 @@ namespace ncl_gl
         GLint status = GL_FALSE;
         glGetShaderiv(shader, GL_COMPILE_STATUS, &status);
 
+        const char* stage =
+            type == GL_VERTEX_SHADER ? "vertex shader" :
+            type == GL_FRAGMENT_SHADER ? "fragment shader" : "shader";
+
+        AppendInfoLog(shader, glGetShaderiv, glGetShaderInfoLog, stage, info_log);
+
         if (status != GL_TRUE)
         {
-            if (error_log != nullptr)
-            {
-                GLint len = 0;
-                glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &len);
-
-                if (len > 1)
-                {
-                    std::string log(static_cast<size_t>(len), '\0');
-                    glGetShaderInfoLog(shader, len, nullptr, log.data());
-                    error_log->append(log.c_str());
-                }
-            }
-
             glDeleteShader(shader);
             return 0;
         }
 
+        scope.SetSucceeded();
         return shader;
     }
 
-    GLuint LinkProgram(const char* vs_src, const char* fs_src, const char* const* attribs, int attrib_count, std::string* error_log)
+    GLuint LinkProgram(const char* vs_src, const char* fs_src, const char* const* attribs, int attrib_count, std::string* info_log, const ProgramBuildCallbacks* callbacks)
     {
-        GLuint vs = CompileShader(GL_VERTEX_SHADER, vs_src, error_log);
-        GLuint fs = CompileShader(GL_FRAGMENT_SHADER, fs_src, error_log);
+        GLuint vs = CompileShader(GL_VERTEX_SHADER, vs_src, info_log, callbacks);
+        GLuint fs = CompileShader(GL_FRAGMENT_SHADER, fs_src, info_log, callbacks);
 
         if (vs == 0 || fs == 0)
         {
@@ -53,9 +161,18 @@ namespace ncl_gl
             return 0;
         }
 
+        ProgramBuildScope scope(callbacks, ProgramBuildStage::Link);
         GLuint program = glCreateProgram();
         glAttachShader(program, vs);
         glAttachShader(program, fs);
+
+        // Asked for on every program rather than only on the ones a cache reads back: the
+        // hint has to be set before the link, so a program linked without it can never be
+        // stored, and the driver keeps a blob for a handful of programs either way.
+        if (ProgramBinarySupported())
+        {
+            glProgramParameteri(program, GL_PROGRAM_BINARY_RETRIEVABLE_HINT, GL_TRUE);
+        }
 
         // Bind the attributes to fixed locations before linking so aPos lands on
         // location 0. GL 2.x compatibility array draws require an enabled array at
@@ -73,25 +190,15 @@ namespace ncl_gl
         GLint linked = GL_FALSE;
         glGetProgramiv(program, GL_LINK_STATUS, &linked);
 
+        AppendInfoLog(program, glGetProgramiv, glGetProgramInfoLog, "link", info_log);
+
         if (linked != GL_TRUE)
         {
-            if (error_log != nullptr)
-            {
-                GLint len = 0;
-                glGetProgramiv(program, GL_INFO_LOG_LENGTH, &len);
-
-                if (len > 1)
-                {
-                    std::string log(static_cast<size_t>(len), '\0');
-                    glGetProgramInfoLog(program, len, nullptr, log.data());
-                    error_log->append(log.c_str());
-                }
-            }
-
             glDeleteProgram(program);
             return 0;
         }
 
+        scope.SetSucceeded();
         return program;
     }
 
@@ -103,20 +210,18 @@ namespace ncl_gl
         int count,
         const char* const* attribs,
         int attrib_count,
-        std::string* error_log
+        std::string* info_log,
+        const ProgramBuildCallbacks* callbacks
     )
     {
         p = Program{};
 
-        // Every slot starts at the "not in this program" value, so an enumerator the name
-        // table does not cover is an inert glUniform call instead of a write to whatever
-        // the linker placed at location 0.
         for (GLint& loc : p.loc)
         {
             loc = -1;
         }
 
-        GLuint prog = LinkProgram(vs_src, fs_src, attribs, attrib_count, error_log);
+        GLuint prog = LinkProgram(vs_src, fs_src, attribs, attrib_count, info_log, callbacks);
 
         if (prog == 0)
         {
@@ -124,12 +229,99 @@ namespace ncl_gl
         }
 
         p.prog = prog;
+        p.ResolveLocations(names, count);
+        p.ok = true;
+    }
 
-        for (int i = 0; i < count; i++)
+    bool ProgramBinarySupported()
+    {
+        if (glGetProgramBinary == nullptr || glProgramBinary == nullptr || glProgramParameteri == nullptr)
         {
-            p.loc[i] = glGetUniformLocation(prog, names[i]);
+            return false;
         }
 
+        GLint formats = 0;
+        glGetIntegerv(GL_NUM_PROGRAM_BINARY_FORMATS, &formats);
+
+        return formats > 0;
+    }
+
+    bool GetProgramBinary(GLuint prog, GLenum& format, std::vector<uint8_t>& out)
+    {
+        if (prog == 0 || !ProgramBinarySupported())
+        {
+            return false;
+        }
+
+        GLint length = 0;
+        glGetProgramiv(prog, GL_PROGRAM_BINARY_LENGTH, &length);
+
+        if (length <= 0)
+        {
+            return false;
+        }
+
+        out.resize(static_cast<size_t>(length));
+
+        GLsizei written = 0;
+        GLenum binary_format = 0;
+        glGetProgramBinary(prog, length, &written, &binary_format, out.data());
+
+        if (written <= 0)
+        {
+            out.clear();
+            return false;
+        }
+
+        out.resize(static_cast<size_t>(written));
+        format = binary_format;
+
+        return true;
+    }
+
+    void LoadProgramBinary(
+        Program& p,
+        const void* data,
+        size_t size,
+        GLenum format,
+        const char* const* names,
+        int count
+    )
+    {
+        p = Program{};
+
+        for (GLint& loc : p.loc)
+        {
+            loc = -1;
+        }
+
+        if (data == nullptr || size == 0 || !ProgramBinarySupported())
+        {
+            return;
+        }
+
+        GLuint prog = glCreateProgram();
+        glProgramBinary(prog, format, data, static_cast<GLsizei>(size));
+
+        // A rejected blob is reported through the link status rather than through an error,
+        // and the driver may also have raised GL_INVALID_ENUM on a format it no longer
+        // knows; clearing it here keeps that out of the next unrelated error check. Bounded
+        // because a context that has gone away answers every query with an error.
+        for (int i = 0; i < kMaxDrainedErrors && glGetError() != GL_NO_ERROR; i++)
+        {
+        }
+
+        GLint linked = GL_FALSE;
+        glGetProgramiv(prog, GL_LINK_STATUS, &linked);
+
+        if (linked != GL_TRUE)
+        {
+            glDeleteProgram(prog);
+            return;
+        }
+
+        p.prog = prog;
+        p.ResolveLocations(names, count);
         p.ok = true;
     }
 }

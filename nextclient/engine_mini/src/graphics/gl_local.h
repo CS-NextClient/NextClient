@@ -4,6 +4,7 @@
 #include <goldsrc/entity.h>
 #include <goldsrc/format/wad.h>
 #include <goldsrc/types.h>
+#include <nitroapi/modules/engine/EngineData.h>
 #include "qgl.hpp"
 
 enum class TextureFormat

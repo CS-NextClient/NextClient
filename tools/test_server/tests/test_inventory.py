@@ -25,3 +25,13 @@ class InventoryTests(unittest.TestCase):
         versions = self.Versions()
         versions["amxx modules"] = versions["amxx modules"].replace("JSON 1.10 running", "JSON 1.10 bad load")
         self.assertIn("module:JSON", Runtime_CheckVersions(versions, Install_LoadLock(), "0.1.0"))
+
+    def test_all_plugins_requires_running_material_plugin_and_api_module(self):
+        versions = self.Versions()
+        versions["amxx modules"] += "\nNext Client API 2.6.0 running"
+        versions["amxx plugins"] += "\nNextClient Material Ef 1.0.0 NextClient nextclient_mate running"
+        self.assertEqual(Runtime_CheckVersions(versions, Install_LoadLock(), "0.1.0", all_plugins=True), [])
+        versions["amxx plugins"] = versions["amxx plugins"].replace("nextclient_mate running", "nextclient_mate bad load")
+        self.assertIn("materials_plugin", Runtime_CheckVersions(versions, Install_LoadLock(), "0.1.0", all_plugins=True))
+        versions["amxx modules"] = versions["amxx modules"].replace("Next Client API 2.6.0 running", "Next Client API 2.6.0 bad load")
+        self.assertIn("module:Next Client API", Runtime_CheckVersions(versions, Install_LoadLock(), "0.1.0", all_plugins=True))

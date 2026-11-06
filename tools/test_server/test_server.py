@@ -3,8 +3,8 @@ import json
 from pathlib import Path
 import sys
 
-from common import Config_Load, Json_Write, Path_Resolve, kRepoRoot
-from install import Install_BuildPlugin, Install_CompileOnly, Install_Doctor, Install_Ensure, Install_LoadLock
+from common import Config_Load, Json_Read, Json_Write, Path_Resolve, kRepoRoot
+from install import Install_CompileOnly, Install_Doctor, Install_Ensure, Install_LoadLock
 
 
 def Main():
@@ -13,6 +13,10 @@ def Main():
     commands = parser.add_subparsers(dest="command", required=True)
     init = commands.add_parser("init")
     init.add_argument("--repair-base", action="store_true")
+    prepare = commands.add_parser("prepare", help="Install the server with every repository test plugin")
+    prepare.add_argument("--repair-base", action="store_true")
+    prepare.add_argument("--server-api", help="NextClientServerApi repository (default: auto discovery)")
+    prepare.add_argument("--server-api-module", help="Built x86 API module (default: conventional release outputs)")
     commands.add_parser("doctor")
     commands.add_parser("build")
     commands.add_parser("compile-only")
@@ -39,12 +43,26 @@ def Main():
         overrides = {key: getattr(arguments, key, None) for key in ["map", "bind", "port"]}
         config = Config_Load(config_path, overrides)
         lock = Install_LoadLock()
-        if arguments.command == "init":
+        if arguments.command in ("init", "prepare"):
             if not config_path.exists():
                 Json_Write(config_path, {"schema": 1})
-            result = Install_Ensure(config, lock, arguments.repair_base)
+            if arguments.command == "prepare":
+                from all_plugins import Plugins_Prepare
+                result = Plugins_Prepare(config, lock, arguments.repair_base,
+                                         arguments.server_api, arguments.server_api_module)
+                if result["ok"] and (arguments.server_api or arguments.server_api_module):
+                    saved = Json_Read(config_path)
+                    paths = saved.setdefault("paths", {})
+                    for key in ("server_api", "server_api_module"):
+                        value = getattr(arguments, key)
+                        if value:
+                            paths[key] = value if value == "auto" else str(Path_Resolve(value))
+                    Json_Write(config_path, saved)
+            else:
+                result = Install_Ensure(config, lock, arguments.repair_base)
         elif arguments.command == "build":
-            result = Install_BuildPlugin(config, lock)
+            from all_plugins import Plugins_Build
+            result = Plugins_Build(config, lock)
         elif arguments.command == "compile-only":
             result = Install_CompileOnly(config, lock)
         elif arguments.command == "report":

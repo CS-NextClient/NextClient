@@ -9,6 +9,8 @@ class ScratchAllocator
     size_t offset_{};
 
 public:
+    static constexpr size_t kAlignment = 16;
+
     explicit ScratchAllocator(size_t capacity)
         : buffer_(new uint8_t[capacity]),
           capacity_(capacity)
@@ -26,7 +28,7 @@ public:
     void* Allocate(size_t size)
     {
         // Align to 16 bytes
-        size_t aligned_size = (size + 15) & ~15;
+        size_t aligned_size = (size + kAlignment - 1) & ~(kAlignment - 1);
 
         if (offset_ + aligned_size > capacity_)
         {
