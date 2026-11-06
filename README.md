@@ -130,8 +130,6 @@ bindlist
 
 ### Windows
 
-The [Windows installer](docs/installation.md) supports a new standalone installation from Steam and updates of existing NextClient directories, including ZIP installations. Download `NextClient-<tag>-setup.exe` from the release assets. Manual ZIP installation uses the steps below.
-
 1. NextClient requires engine build 8684. Select the "steam_legacy - Pre-25th Anniversary Build" beta branch in Steam and use the official game files.
 2. Copy the entire Counter-Strike 1.6 (Half-Life) folder to a separate folder outside of the Steam folder
 3. Copy all NextClient files to the folder where you copied all the CS 1.6 files

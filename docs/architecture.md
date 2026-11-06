@@ -18,8 +18,7 @@ NextClient adds features to Counter-Strike 1.6: it changes the HUD and menus, ex
 | [nextclient/packages](../nextclient/packages/) | Shared libraries for math, image processing, materials, settings, and background tasks. |
 | [nextclient/goldsrc_abi](../nextclient/goldsrc_abi/) | Headers for compatibility with stock GoldSrc libraries. |
 | [assets](../assets/) | Interface resources, localization, shaders, and materials installed with the client. |
-| [installer](../installer/) | Install, update, recover, and remove standalone Windows game copies. |
-| [tools](../tools/) | Utilities for preparing assets, packaging releases, running a test server, and checking results. |
+| [tools](../tools/) | Utilities for preparing assets, running a test server, and checking results. |
 | [test_support](../test_support/) | Test server plugins and libraries needed to run tests. |
 
 `client_mini` and `gameui` use features provided by `engine_mini`. For example, GameUI displays the material editor, while `engine_mini` renders the model in its window. Modules access the stock engine through `nitro_api`. Code shared by several modules belongs in `packages`.
