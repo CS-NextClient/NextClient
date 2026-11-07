@@ -3,7 +3,7 @@ Language: EN | [RU](README.ru.md)
 NextClient
 ==========
 
-[Documentation index](docs/README.md) | [Testing](docs/testing/README.md) | [Developer tools](docs/tools/developer-panel.md)
+[Documentation index](docs/README.md)
 
 NextClient extends Counter-Strike 1.6 for players and developers of server modifications using AMX Mod X. NextClient has integrated some features from [csldr](https://github.com/mikkokko/csldr).
 
@@ -13,7 +13,11 @@ NextClient extends Counter-Strike 1.6 for players and developers of server modif
 
 ## Getting started
 
-For a ready-to-use client, follow [Installation](#installation). To work on the source, start with [Building](#building), then choose a guide from the [documentation index](docs/README.md).
+- Players: follow [Installation](#installation).
+- Content creators: start with [material authoring](docs/weapon-materials-authoring.md) and [developer tools](docs/tools/developer-panel.md).
+- Server modification developers: use the [NextClient server API](https://github.com/CS-NextClient/NextClientServerApi) and the [server material guide](docs/weapon-materials-server-guide.md).
+
+To work on the client source, follow the [build and IDE setup guide](docs/building.md).
 
 ## Main features
 
@@ -130,6 +134,12 @@ bindlist
 
 ### Windows
 
+#### Automatic installation
+
+Download `NextClient-<tag>-setup.exe` from the [releases](https://github.com/CS-NextClient/NextClient/releases) and follow the installation wizard.
+
+#### Manual installation
+
 1. NextClient requires engine build 8684. Select the "steam_legacy - Pre-25th Anniversary Build" beta branch in Steam and use the official game files.
 2. Copy the entire Counter-Strike 1.6 (Half-Life) folder to a separate folder outside of the Steam folder
 3. Copy all NextClient files to the folder where you copied all the CS 1.6 files
@@ -198,129 +208,6 @@ The configuration file is `platform\config\MasterServer.vdf`.
    }
 }
 ```
-
-## Building
-
-### Windows
-
-Requirements:
-
- - The latest version of MSVC 2022 or later
- - CMake 3.21 or higher
- - Git LFS, set up with `git lfs install` before cloning (in a clone made without it, run `git lfs pull`)
- - Ninja (optional)
-
-Run x86 Native Tools Command Prompt for VS
-
-```
-git clone --recurse-submodules https://github.com/CS-NextClient/NextClient.git
-cd NextClient
-```
-
-Using Visual Studio 2022 generator:
-
-```
-cmake --preset vs2022
-cmake --build --preset vs2022-release --target BUILD_ALL
-```
-
-Using Visual Studio 2026 generator:
-
-```
-cmake --preset vs2026
-cmake --build --preset vs2026-release --target BUILD_ALL
-```
-
-Or using Ninja:
-
-```
-cmake --preset ninja
-cmake --build --preset ninja-release --target BUILD_ALL
-```
-
-`BUILD_ALL` also copies all built files and assets to `NEXTCLIENT_INSTALL_DIR` if the variable is set. You can pass it directly when configuring:
-
-```
-cmake --preset vs2022 -DNEXTCLIENT_INSTALL_DIR="C:/Games/CS 1.6 - NextClient"
-```
-
-Or create a `CMakeUserPresets.json` in the project root (gitignored) to avoid passing it every time:
-
-```json
-{
-  "version": 3,
-  "configurePresets": [
-    {
-      "name": "vs2022-local",
-      "inherits": "vs2022",
-      "cacheVariables": {
-        "NEXTCLIENT_INSTALL_DIR": "C:/Games/CS 1.6 - NextClient"
-      }
-    }
-  ],
-  "buildPresets": [
-    {
-      "name": "vs2022-local-release",
-      "configurePreset": "vs2022-local",
-      "configuration": "Release"
-    },
-    {
-      "name": "vs2022-local-debug",
-      "configurePreset": "vs2022-local",
-      "configuration": "Debug"
-    }
-  ]
-}
-```
-
-Then:
-
-```
-cmake --preset vs2022-local
-cmake --build --preset vs2022-local-release --target BUILD_ALL
-```
-
-### Linux
-
-Requirements for building from source:
-
-- GCC 15 or later with 32-bit build support (`gcc-multilib` and `g++-multilib` on Ubuntu).
-- CMake 3.21 or later, Ninja, Git LFS, `pkg-config`, Python 3, `curl`, `zip`, `unzip` and `tar`.
-- 32-bit OpenGL and X11 development headers and libraries. The build environment package list is in [.github/workflows/build.yml](.github/workflows/build.yml).
-
-Clone and build:
-
-```bash
-git lfs install
-git clone --recurse-submodules https://github.com/CS-NextClient/NextClient.git
-cd NextClient
-./vcpkg/bootstrap-vcpkg.sh -disableMetrics
-cmake --preset linux -DNEXTCLIENT_INSTALL_DIR="/path/to/Half-Life-NextClient"
-cmake --build --preset linux-release --target BUILD_ALL
-```
-
-The `linux` preset builds 32-bit modules with Ninja Multi-Config. `BUILD_ALL` copies libraries, assets and `nextclient.sh` into `NEXTCLIENT_INSTALL_DIR`; that folder must contain a separate copy of the native Linux game files.
-
-## Working in IDE
-
-### CLion
-
- - On Windows, use the Visual Studio x86 toolchain; on Linux, use GCC and the `linux` preset
- - Enable the required presets in CMake settings (Settings -> Build -> CMake), e.g. `vs2022 - vs2022-debug` and `vs2022 - vs2022-release`
- - Build the `BUILD_ALL` target
-
-### Visual Studio
-
- - Open the project folder
- - Select build preset, e.g. `vs2022-debug` or `vs2022-release`
- - In the main menu, select Build -> Build All
-
-### VS Code
-
- - Install the `ms-vscode.cmake-tools` extension
- - Select the `vs2022`, `vs2026`, `ninja`, or `linux` configure preset and the corresponding build configuration
- - Build the `BUILD_ALL` target
- - For the `ninja` preset, VS Code must be launched from "x86 Native Tools Command Prompt for VS"
 
 ## Thanks
 

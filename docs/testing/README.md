@@ -33,7 +33,8 @@ Use the tables below to choose a verification procedure. Each procedure describe
 | [Image comparison](../tools/image-comparison.md) | Compare prepared captures and set difference thresholds. |
 | [Matgen regression checks](matgen.md) | Verify material validation, UV output, and edge-wear baking. |
 | [Developer tools verification](../tools/developer-panel.md#verification) | Check command construction, translation, launch scripts, and files produced by generators in the test cases. |
-| [Installation and NitroApi library checks](installation-and-factory.md) | Verify the maintained installer on temporary destinations and load the built NitroApi library and check its public interface. |
+| [Native module installation and NitroApi checks](installation-and-factory.md) | Verify the CMake installation recipe in temporary destinations and check the built NitroApi library's public interface. |
+| [Windows installer checks](installer.md) | Verify new installation, ZIP updates, cancellation, recovery, and removal on synthetic files. |
 | [Repository test targets](../../AGENTS.md#tests-and-verification) | Select CMake test targets and the required configuration. |
 
 Record the relevant source revision, build configuration, installed artifacts, selected scenario, and result. Reuse passing evidence for an unchanged source and configuration snapshot; repeat checks when the affected behavior changes or a concrete concern requires it.
