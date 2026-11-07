@@ -1,0 +1,7 @@
+Bot profiles and radio recordings are distributed from the ReGameDLL_CS bot_profiles.zip archive.
+
+Source: https://github.com/rehlds/ReGameDLL_CS/blob/master/regamedll/extra/zBot/bot_profiles.zip
+Git blob: 79fcca87ed79d19748f81b225a332826aa6f7e29
+Archive SHA-256: 39e6e8a137dbbbdef842cdb4318ef1069b3467127a0cc19bdc6eca1d5d693e38
+
+BotProfile.db and BotChatter.db retain their original attribution to Michael S. Booth, Turtle Rock Studios.

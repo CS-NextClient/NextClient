@@ -18,6 +18,8 @@ import tempfile
 import time
 import uuid
 
+from installer.localization import Message
+
 
 kReceipt = ".nextclient/receipt.json"
 kReparsePoint = 0x400
@@ -30,7 +32,7 @@ kDiskSpaceReserve = 64 * 1024 * 1024
 
 class InstallationCanceled(RuntimeError):
     def __init__(self):
-        super().__init__("Installation canceled")
+        super().__init__(Message("ErrorCanceled"))
 
 
 class Progress:
@@ -67,11 +69,12 @@ class Progress:
         percent = self.start + int((self.end - self.start) * fraction)
         if self.total and self.unit == "MB":
             divisor, unit = (1024 * kBlockBytes, "GB") if self.total > 1024 * kBlockBytes else (kBlockBytes, "MB")
-            detail = f"{self.completed / divisor:,.1f} of {self.total / divisor:,.1f} {unit} processed"
+            detail = Message("ProgressGigabytes" if unit == "GB" else "ProgressMegabytes",
+                             f"{self.completed / divisor:,.1f}", f"{self.total / divisor:,.1f}")
         elif self.total:
-            detail = f"{self.completed:,} of {self.total:,} {self.unit}"
+            detail = Message("ProgressFiles", f"{self.completed:,}", f"{self.total:,}")
         else:
-            detail = "Please wait..."
+            detail = Message("ProgressWait")
         self.callback(percent, self.message, detail)
 
 
@@ -125,12 +128,12 @@ def WriteJson(path, value):
 
 def RelativeName(value):
     if not isinstance(value, str) or not value or any(ord(c) < 32 for c in value):
-        raise ValueError("Invalid relative path")
+        raise ValueError(Message("ErrorInvalidRelativePath"))
     name = value.replace("\\", "/")
     if PureWindowsPath(name).drive or name.startswith("/") or ":" in name:
-        raise ValueError("Absolute paths and alternate streams are not permitted: " + value)
+        raise ValueError(Message("ErrorAbsolutePath", value))
     if any(part in ("", ".", "..") or part.endswith((" ", ".")) for part in name.split("/")):
-        raise ValueError("Noncanonical relative path: " + value)
+        raise ValueError(Message("ErrorNoncanonicalPath", value))
     return name
 
 
@@ -143,11 +146,11 @@ def RealDirectory(path, allow_missing=False):
         except FileNotFoundError:
             if allow_missing:
                 continue
-            raise ValueError("Directory does not exist: " + str(candidate)) from None
+            raise ValueError(Message("ErrorDirectoryMissing", candidate)) from None
         if stat.S_ISLNK(info.st_mode) or getattr(info, "st_file_attributes", 0) & kReparsePoint:
-            raise ValueError("Links/reparse points are unsupported: " + str(candidate))
+            raise ValueError(Message("ErrorReparsePoint", candidate))
         if not stat.S_ISDIR(info.st_mode):
-            raise ValueError("Expected a directory: " + str(candidate))
+            raise ValueError(Message("ErrorNotDirectory", candidate))
     return path
 
 
@@ -161,13 +164,13 @@ def TreeFiles(root):
             name = RelativeName(path.relative_to(root).as_posix())
             folded = name.casefold()
             if folded in names:
-                raise ValueError("Case-insensitive path collision: " + name)
+                raise ValueError(Message("ErrorPathCollision", name))
             names[folded] = name
             info = path.lstat()
             if stat.S_ISLNK(info.st_mode) or getattr(info, "st_file_attributes", 0) & kReparsePoint:
-                raise ValueError("Links/reparse points are unsupported: " + str(path))
+                raise ValueError(Message("ErrorReparsePoint", path))
             if not (stat.S_ISREG(info.st_mode) or stat.S_ISDIR(info.st_mode)):
-                raise ValueError("Unsupported file type: " + str(path))
+                raise ValueError(Message("ErrorFileType", path))
     return sorted(name for name in names.values() if (root / name).is_file())
 
 
@@ -179,12 +182,12 @@ def LoadPolicy(path):
     policy = ReadJson(path)
     allowed = {"schema_version", "include", "exclude", "hooks", "preserve_existing"}
     if set(policy) != allowed or policy["schema_version"] != 1:
-        raise ValueError("Unsupported installation policy schema")
+        raise ValueError(Message("ErrorPolicySchema"))
     for field in ("include", "exclude", "preserve_existing"):
         if not isinstance(policy[field], list) or any(not isinstance(p, str) or not p for p in policy[field]):
-            raise ValueError("Policy patterns must be nonempty strings: " + field)
+            raise ValueError(Message("ErrorPolicyPattern", field))
     if not isinstance(policy["hooks"], list):
-        raise ValueError("Policy hooks must be a list")
+        raise ValueError(Message("ErrorPolicyHooks"))
     return policy
 
 
@@ -196,7 +199,7 @@ def ParseVdf(text):
     while offset < len(text):
         found = token.match(text, offset)
         if not found:
-            raise ValueError("Malformed Steam KeyValues metadata")
+            raise ValueError(Message("ErrorSteamMetadata"))
         offset = found.end()
         if found.group(1) is not None:
             tokens.append(re.sub(r'\\(["\\])', r'\1', found.group(1)))
@@ -207,7 +210,7 @@ def ParseVdf(text):
     def object_value(nested=False, depth=0):
         nonlocal cursor
         if depth > 32:
-            raise ValueError("Steam metadata nesting limit exceeded")
+            raise ValueError(Message("ErrorSteamNesting"))
         result = {}
         while cursor < len(tokens):
             key = tokens[cursor]
@@ -215,16 +218,16 @@ def ParseVdf(text):
             if key == "}" and nested:
                 return result
             if key in ("{", "}") or cursor >= len(tokens) or key in result:
-                raise ValueError("Malformed or duplicate Steam metadata key")
+                raise ValueError(Message("ErrorSteamKey"))
             value = tokens[cursor]
             cursor += 1
             if value == "{":
                 value = object_value(True, depth + 1)
             elif value == "}":
-                raise ValueError("Missing Steam metadata value")
+                raise ValueError(Message("ErrorSteamValue"))
             result[key] = value
         if nested:
-            raise ValueError("Unclosed Steam metadata object")
+            raise ValueError(Message("ErrorSteamObject"))
         return result
 
     return object_value()
@@ -273,10 +276,10 @@ def Discover(roots=None):
         try:
             app = ParseVdf(manifest.read_text(encoding="utf-8-sig"))["AppState"]
             if app["appid"] != "10":
-                raise ValueError("Expected Counter-Strike AppID 10")
+                raise ValueError(Message("ErrorAppId"))
             source = RealDirectory(library / "steamapps/common" / RelativeName(app["installdir"]))
             if not (source / "cstrike").is_dir() or not (source / "valve").is_dir():
-                raise ValueError("Required cstrike/valve resources are missing")
+                raise ValueError(Message("ErrorStockResources"))
             candidates.append({"source": str(source), "appmanifest": str(manifest),
                                "buildid": app.get("buildid", "unknown")})
         except (KeyError, ValueError, OSError, TypeError) as error:
@@ -291,7 +294,7 @@ def VerifyFiles(root, expected, progress=None, cancel=None):
         path = Path(root) / name
         RealDirectory(path.parent)
         if path.is_symlink() or not path.is_file() or Sha256(path, progress, cancel) != digest:
-            raise ValueError("Missing or mismatched SHA-256: " + str(path))
+            raise ValueError(Message("ErrorHashMismatch", path))
 
 
 class MigrationContext:
@@ -304,17 +307,17 @@ class MigrationContext:
         name = RelativeName(name)
         path = self.destination / name
         if name.casefold().startswith(".nextclient/installer") or name.casefold() == kReceipt:
-            raise ValueError("Hooks cannot change installer metadata")
+            raise ValueError(Message("ErrorHookMetadata"))
         RealDirectory(path.parent, allow_missing=True)
         if path.exists() and (path.is_symlink() or not path.is_file()):
-            raise ValueError("Hook target must be a regular file")
+            raise ValueError(Message("ErrorHookTarget"))
         path.parent.mkdir(parents=True, exist_ok=True)
         if not path.exists() and self.source is not None:
             original = self.source / name
             RealDirectory(original.parent, allow_missing=True)
             if original.exists():
                 if original.is_symlink() or not original.is_file():
-                    raise ValueError("Migration source must be a regular file")
+                    raise ValueError(Message("ErrorMigrationSource"))
                 shutil.copy2(original, path)
         if path.exists():
             path.chmod(path.stat().st_mode | stat.S_IWRITE)
@@ -322,7 +325,7 @@ class MigrationContext:
 
     def SetCvar(self, name, key, value):
         if not re.fullmatch(r"[A-Za-z_][A-Za-z_0-9]*", key) or any(c in value for c in '\r\n";'):
-            raise ValueError("Invalid config key or value")
+            raise ValueError(Message("ErrorConfigValue"))
         path = self.PrepareFile(name)
         data = path.read_bytes() if path.exists() else b""
         newline = b"\r\n" if b"\r\n" in data else b"\n"
@@ -347,11 +350,11 @@ def RunHooks(bundle, policy, destination, source=None):
         hook = bundle / "hooks" / name
         RealDirectory(hook.parent)
         if hook.is_symlink() or not hook.is_file() or hook.suffix != ".py":
-            raise ValueError("Missing bundled Python migration hook: " + name)
+            raise ValueError(Message("ErrorMigrationMissing", name))
         namespace = runpy.run_path(str(hook))
         function = namespace.get("migrate")
         if not callable(function):
-            raise ValueError("Hook must define migrate(context): " + name)
+            raise ValueError(Message("ErrorMigrationFunction", name))
         function(MigrationContext(destination, source))
         executed.append(name)
     return executed
@@ -364,55 +367,52 @@ def IsPreserved(name, policy):
 def ValidateDestination(destination):
     destination = RealDirectory(destination, allow_missing=True)
     if destination == Path(destination.anchor):
-        raise ValueError("A volume root cannot be an installation directory")
+        raise ValueError(Message("ErrorVolumeRoot"))
     for candidate in (destination, *destination.parents):
         if candidate.name.casefold() == "common" and candidate.parent.name.casefold() == "steamapps":
-            raise ValueError("Choose a standalone directory outside the Steam library")
+            raise ValueError(Message("ErrorSteamDestination"))
     return destination
 
 
 def Separate(first, second):
     if first == second or first in second.parents or second in first.parents:
-        raise ValueError("Installation paths must be separate directory trees")
+        raise ValueError(Message("ErrorOverlappingPaths"))
 
 
 def LoadBundle(bundle):
     bundle = RealDirectory(bundle)
     package = ReadJson(bundle / "package.json")
     if package.get("schema_version") != 1 or package.get("configuration") != "Release":
-        raise ValueError("Only a Release installer bundle is supported")
+        raise ValueError(Message("ErrorReleaseBundle"))
     fields = ["overlay", "baseline", "policy_files"]
     if package.get("anniversary"):
         fields.append("anniversary")
     for field in fields:
         records = package[field]
         if not isinstance(records, dict) or not records:
-            raise ValueError("Missing package inventory: " + field)
+            raise ValueError(Message("ErrorInventoryMissing", field))
         folded = set()
         for name, digest in records.items():
             RelativeName(name)
             if name.casefold() in folded or not re.fullmatch("[0-9a-f]{64}", digest):
-                raise ValueError("Invalid package inventory: " + name)
+                raise ValueError(Message("ErrorInventoryInvalid", name))
             folded.add(name.casefold())
     for name in package["overlay"]:
         if name.casefold().startswith(".nextclient/") or name.casefold() == ".nextclient":
-            raise ValueError("Package collides with installer metadata")
+            raise ValueError(Message("ErrorPackageMetadata"))
     VerifyFiles(bundle, package["policy_files"])
     policy = LoadPolicy(bundle / "policy.json")
     expected_policy = {"policy.json"} | {"hooks/" + RelativeName(n) for n in policy["hooks"]}
     if set(package["policy_files"]) != expected_policy:
-        raise ValueError("Migration/policy inventory differs from package manifest")
+        raise ValueError(Message("ErrorPolicyInventory"))
     VerifyFiles(bundle / "overlay", package["overlay"])
     if set(TreeFiles(bundle / "overlay")) != set(package["overlay"]):
-        raise ValueError("Overlay file inventory differs from package manifest")
+        raise ValueError(Message("ErrorOverlayInventory"))
     return bundle, package, policy
 
 
 def UnsupportedGameMessage(details, anniversary=False):
-    reason = ("Counter-Strike Anniversary Update detected. This game version is not supported. " if anniversary
-              else "Unsupported game version. ")
-    return (reason + "NextClient requires engine build 8684. Select the steam_legacy - "
-            "Pre-25th Anniversary Build branch in Steam, then try again. " + details)
+    return Message("ErrorAnniversary" if anniversary else "ErrorUnsupportedGame", details)
 
 
 def ValidateBaseline(source, package):
@@ -427,7 +427,7 @@ def ValidateBaseline(source, package):
                 break
             except (ValueError, OSError):
                 continue
-        raise ValueError(UnsupportedGameMessage(str(error), anniversary)) from error
+        raise ValueError(UnsupportedGameMessage(error, anniversary)) from error
     for name in ("cstrike", "valve"):
         RealDirectory(source / name)
 
@@ -437,11 +437,11 @@ def SelectSourceFiles(source, package, policy):
     names = TreeFiles(source)
     for name in names:
         if name.casefold().startswith(".nextclient/"):
-            raise ValueError("Steam source collides with installer metadata")
+            raise ValueError(Message("ErrorSourceMetadata"))
     selected = [n for n in names if Matches(n, policy["include"]) and not Matches(n, policy["exclude"])]
     available = {n.casefold() for n in selected} | {n.casefold() for n in package["overlay"]}
     if not {n.casefold() for n in package["baseline"]}.issubset(available):
-        raise ValueError("Copy rules exclude a required stock module")
+        raise ValueError(Message("ErrorExcludedModule"))
     return selected
 
 
@@ -469,17 +469,17 @@ def ReadReceipt(destination):
     path = destination / kReceipt
     RealDirectory(path.parent)
     if path.is_symlink() or not path.is_file():
-        raise ValueError("Installation receipt must be a regular file")
+        raise ValueError(Message("ErrorReceiptFile"))
     receipt = ReadJson(path)
     if receipt.get("schema_version") != 1 or Path(receipt.get("destination", "")) != destination:
-        raise ValueError("Installation receipt belongs to another destination")
+        raise ValueError(Message("ErrorReceiptDestination"))
     if receipt.get("source"):
         Separate(destination, Path(receipt["source"]))
     for field in ("files", "package_files"):
         for name, digest in receipt[field].items():
             RelativeName(name)
             if name.casefold().startswith(".nextclient/") or not re.fullmatch("[0-9a-f]{64}", digest):
-                raise ValueError("Invalid installation receipt entry")
+                raise ValueError(Message("ErrorReceiptEntry"))
     return receipt
 
 
@@ -490,12 +490,12 @@ def _InstallNew(bundle, source, destination, defer_commit=False, progress=None, 
     Separate(source, destination)
     Separate(bundle, destination)
     if destination.exists():
-        raise ValueError("Destination already exists; choose a new directory")
+        raise ValueError(Message("ErrorDestinationExists"))
     selected = SelectSourceFiles(source, package, policy)
     destination.parent.mkdir(parents=True, exist_ok=True)
     space = NewDiskSpace(bundle, source, package, selected)
     if shutil.disk_usage(destination.parent).free < space["required_bytes"]:
-        raise ValueError("Insufficient free disk space")
+        raise ValueError(Message("ErrorDiskSpace"))
     staging = Path(tempfile.mkdtemp(prefix=".nextclient-new-", dir=destination.parent))
     progress = progress or Progress()
     try:
@@ -503,14 +503,14 @@ def _InstallNew(bundle, source, destination, defer_commit=False, progress=None, 
             name = Path(directory).relative_to(source).as_posix()
             if name != "." and Matches(name, policy["include"]) and not Matches(name, policy["exclude"]):
                 (staging / name).mkdir(parents=True, exist_ok=True)
-        progress.Phase("Copying game files...", 5, 65, space["source_bytes"])
+        progress.Phase(Message("ProgressCopying"), 5, 65, space["source_bytes"])
         for name in selected:
             target = staging / name
             target.parent.mkdir(parents=True, exist_ok=True)
             copied_digest = CopyDurable(source / name, target, progress, hash_copy=True)
             VerifyFiles(staging, {name: copied_digest}, cancel=progress.CheckCanceled)
         applied = {}
-        progress.Phase("Installing NextClient files...", 65, 80, space["package_bytes"])
+        progress.Phase(Message("ProgressInstalling"), 65, 80, space["package_bytes"])
         for name, digest in package["overlay"].items():
             target = staging / name
             if target.exists() and IsPreserved(name, policy):
@@ -523,23 +523,23 @@ def _InstallNew(bundle, source, destination, defer_commit=False, progress=None, 
         RunHooks(bundle, policy, staging)
         staged = TreeFiles(staging)
         verification_bytes = sum((staging / n).stat().st_size for n in staged)
-        progress.Phase("Verifying installation...", 80, 99, verification_bytes)
+        progress.Phase(Message("ProgressVerifying"), 80, 99, verification_bytes)
         verified = {}
         expected = {n.casefold(): (n, d) for n, d in applied.items() if not IsPreserved(n, policy)}
         for name in staged:
             digest = Sha256(staging / name, progress)
             record = expected.pop(name.casefold(), None)
             if record is not None and digest != record[1]:
-                raise ValueError("Missing or mismatched SHA-256: " + str(staging / name))
+                raise ValueError(Message("ErrorHashMismatch", staging / name))
             verified[name] = digest
         if expected:
             name = next(iter(expected.values()))[0]
-            raise ValueError("Missing or mismatched SHA-256: " + str(staging / name))
+            raise ValueError(Message("ErrorHashMismatch", staging / name))
         verified_names = {n.casefold(): d for n, d in verified.items()}
         for name, digest in package["baseline"].items():
             if verified_names.get(name.casefold()) != digest:
                 anniversary = any(verified_names.get(n.casefold()) == d for n, d in package.get("anniversary", {}).items())
-                details = "Missing or mismatched SHA-256: " + str(staging / name)
+                details = Message("ErrorHashMismatch", staging / name)
                 raise ValueError(UnsupportedGameMessage(details, anniversary))
         files = {n: d for n, d in verified.items() if not IsPreserved(n, policy)}
         receipt = MakeReceipt(destination, source, package, policy, files, applied)
@@ -556,7 +556,7 @@ def _InstallNew(bundle, source, destination, defer_commit=False, progress=None, 
                        "created_directories": sorted(directories, key=len, reverse=True)}
             WriteJson(staging / ".nextclient/transaction/journal.json", journal)
         if destination.exists():
-            raise ValueError("Destination appeared during installation")
+            raise ValueError(Message("ErrorDestinationAppeared"))
         progress.CheckCanceled()
         staging.rename(destination)
         return {"destination": str(destination), "state": "pending" if defer_commit else "passed",
@@ -584,7 +584,7 @@ def RemoveFile(path):
 
 def _Uninstall(destination, keep_installer=False, removal_mode="preserve", progress=None):
     if removal_mode not in ("preserve", "full"):
-        raise ValueError("Unknown removal mode")
+        raise ValueError(Message("ErrorRemovalMode"))
     destination = ValidateDestination(destination)
     receipt = ReadReceipt(destination)
     protected = kInstallerFiles if keep_installer else set()
@@ -592,7 +592,7 @@ def _Uninstall(destination, keep_installer=False, removal_mode="preserve", progr
     removed = []
     progress = progress or Progress()
     count = sum(len(dirs) + len(files) for _, dirs, files in os.walk(destination, followlinks=False))
-    progress.Phase("Removing NextClient files...", 5, 99, count, "files")
+    progress.Phase(Message("ProgressRemoving"), 5, 99, count, "files")
     def Visit(directory):
         for path in sorted(directory.iterdir()):
             name = path.relative_to(destination).as_posix()
@@ -643,8 +643,7 @@ def Update(bundle, destination, defer_commit=False, progress=None, owner_pid=Non
                 try:
                     operation.Rollback()
                 except Exception as recovery_error:
-                    raise RuntimeError("Update failed: " + str(error) + "; recovery failed: " + str(recovery_error)
-                                       + "; backup retained at " + str(operation.directory)) from error
+                    raise RuntimeError(Message("ErrorRecoveryFailed", error, recovery_error, operation.directory)) from error
             raise
         operation_id = operation.journal["operation_id"]
         if not defer_commit:
@@ -663,7 +662,7 @@ def Recover(destination):
 def Complete(destination, operation_id, commit=True):
     from installer.Transaction import Transaction
     if not operation_id:
-        raise ValueError("An operation identifier is required")
+        raise ValueError(Message("ErrorOperationId"))
     with Transaction(destination) as operation:
         if commit:
             operation.Commit(operation_id)
@@ -675,7 +674,7 @@ def Complete(destination, operation_id, commit=True):
 def Uninstall(destination, keep_installer=False, removal_mode="preserve", progress=None):
     from installer.Transaction import Transaction
     if removal_mode not in ("preserve", "full"):
-        raise ValueError("Unknown removal mode")
+        raise ValueError(Message("ErrorRemovalMode"))
     with Transaction(destination) as operation:
         operation.Recover()
         return _Uninstall(destination, keep_installer, removal_mode, progress)

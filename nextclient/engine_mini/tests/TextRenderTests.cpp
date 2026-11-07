@@ -1,7 +1,11 @@
 #include <algorithm>
 #include <cstdint>
+#include <cwchar>
+#include <memory>
+#include <type_traits>
 #include <vector>
 
+#include <Windows.h>
 #include <gtest/gtest.h>
 
 #include "graphics/qgl.hpp"
@@ -9,6 +13,10 @@
 
 namespace
 {
+    constexpr wchar_t kSimplifiedChineseGlyph = L'\u663E';
+    constexpr int kChineseFontTall = 19;
+    constexpr int kChineseFontWeight = 400;
+
     std::vector<uint8_t> g_Upload;
     uint32_t g_TextDeletions{};
 
@@ -158,4 +166,72 @@ TEST_P(TextRenderShadowTest, LossForgetsCellsWithoutDeletingAndPreservesFontsFor
     EXPECT_GT(TextRender_Stats().pages, 0);
     TextRender_ReleaseGl();
     EXPECT_GT(g_TextDeletions, deletions);
+}
+
+TEST_P(TextRenderShadowTest, SimplifiedChineseFallbackMatchesNativeGlyphCoverageAndMetrics)
+{
+    LOGFONTW native_desc{};
+    native_desc.lfHeight = kChineseFontTall;
+    native_desc.lfWeight = kChineseFontWeight;
+    native_desc.lfCharSet = DEFAULT_CHARSET;
+    native_desc.lfOutPrecision = OUT_TT_PRECIS;
+    native_desc.lfQuality = GetParam() & kTextFontAntialias ? ANTIALIASED_QUALITY : NONANTIALIASED_QUALITY;
+    std::wcsncpy(native_desc.lfFaceName, L"Microsoft YaHei", LF_FACESIZE - 1);
+
+    std::unique_ptr<std::remove_pointer_t<HFONT>, decltype(&DeleteObject)> native_font(CreateFontIndirectW(&native_desc), DeleteObject);
+    ASSERT_NE(native_font, nullptr);
+    std::unique_ptr<std::remove_pointer_t<HDC>, decltype(&DeleteDC)> dc(CreateCompatibleDC(nullptr), DeleteDC);
+    ASSERT_NE(dc, nullptr);
+    ASSERT_NE(SelectObject(dc.get(), native_font.get()), nullptr);
+
+    wchar_t actual_face[LF_FACESIZE]{};
+    ASSERT_GT(GetTextFaceW(dc.get(), LF_FACESIZE, actual_face), 0);
+    if (std::wcscmp(actual_face, L"Microsoft YaHei") != 0)
+    {
+        GTEST_SKIP() << "Microsoft YaHei is not installed";
+    }
+
+    WORD glyph_index = 0;
+    ASSERT_NE(GetGlyphIndicesW(dc.get(), &kSimplifiedChineseGlyph, 1, &glyph_index, GGI_MARK_NONEXISTING_GLYPHS), GDI_ERROR);
+    ASSERT_NE(glyph_index, 0xFFFF);
+
+    TEXTMETRICW native_metrics{};
+    ASSERT_TRUE(GetTextMetricsW(dc.get(), &native_metrics));
+    UINT format = GetParam() & kTextFontAntialias ? GGO_GRAY8_BITMAP : GGO_BITMAP;
+    MAT2 identity = {{0, 1}, {0, 0}, {0, 0}, {0, 1}};
+    GLYPHMETRICS metrics{};
+    DWORD size = GetGlyphOutlineW(dc.get(), kSimplifiedChineseGlyph, format, &metrics, 0, nullptr, &identity);
+    ASSERT_NE(size, GDI_ERROR);
+    ASSERT_GT(size, 0u);
+    std::vector<uint8_t> native_bitmap(size);
+    ASSERT_EQ(GetGlyphOutlineW(dc.get(), kSimplifiedChineseGlyph, format, &metrics, size, native_bitmap.data(), &identity), size);
+
+    TextRenderInterface* renderer = TextRender_Get();
+    TextFontDesc desc{"Tahoma", kChineseFontTall, kChineseFontWeight, GetParam(), TextGlyphFormat::Coverage};
+    TextFont_t font = renderer->FindOrCreateFont(desc);
+    ASSERT_NE(font, kInvalidTextFont);
+    const TextGlyph* glyph = renderer->GetGlyph(font, kSimplifiedChineseGlyph);
+    ASSERT_NE(glyph, nullptr);
+    ASSERT_TRUE(glyph->renderable);
+
+    EXPECT_EQ(glyph->wide, metrics.gmBlackBoxX);
+    EXPECT_EQ(glyph->tall, metrics.gmBlackBoxY);
+    EXPECT_EQ(glyph->bearing_x, metrics.gmptGlyphOrigin.x);
+    EXPECT_EQ(glyph->bearing_y, renderer->GetAscent(font) - metrics.gmptGlyphOrigin.y);
+    EXPECT_EQ(glyph->advance, metrics.gmCellIncX);
+    EXPECT_EQ(renderer->GetGlyphAscent(font, kSimplifiedChineseGlyph), native_metrics.tmAscent);
+    ASSERT_EQ(g_Upload.size(), metrics.gmBlackBoxX * metrics.gmBlackBoxY * 2u);
+
+    size_t pitch = format == GGO_GRAY8_BITMAP ? (metrics.gmBlackBoxX + 3u) & ~3u : ((metrics.gmBlackBoxX + 31u) / 32u) * 4u;
+    for (size_t y = 0; y < metrics.gmBlackBoxY; y++)
+    {
+        for (size_t x = 0; x < metrics.gmBlackBoxX; x++)
+        {
+            int coverage = format == GGO_GRAY8_BITMAP ? (std::min<int>(native_bitmap[y * pitch + x], 64) * 255 + 32) / 64
+                                                      : (native_bitmap[y * pitch + x / 8] & (0x80 >> (x % 8)) ? 255 : 0);
+            size_t pixel = (y * metrics.gmBlackBoxX + x) * 2;
+            EXPECT_EQ(g_Upload[pixel], 255);
+            EXPECT_EQ(g_Upload[pixel + 1], coverage);
+        }
+    }
 }

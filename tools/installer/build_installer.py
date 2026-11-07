@@ -107,6 +107,7 @@ def FreezeHelper(bundle, work):
     RuntimeLicenses(bundle / "licenses")
     subprocess.run([sys.executable, "-m", "PyInstaller", "--noconfirm", "--clean", "--noupx", "--onefile",
                     "--name", "nextclient-install", "--paths", str(kRoot),
+                    "--add-data", str(kRoot / "installer/windows/languages") + ";installer/windows/languages",
                     "--distpath", str(bundle / "tool"), "--workpath", str(work / "pyinstaller"),
                     "--specpath", str(work), str(kRoot / "installer/cli.py")], cwd=kRoot, check=True)
     return bundle / "tool/nextclient-install.exe"

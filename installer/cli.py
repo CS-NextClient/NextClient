@@ -5,6 +5,7 @@ from pathlib import Path
 import sys
 
 from installer import import_game as core
+from installer.localization import Languages, Message, Text, Translate
 
 
 def Main(arguments=None):
@@ -23,9 +24,15 @@ def Main(arguments=None):
     parser.add_argument("--cancel-file", type=Path)
     parser.add_argument("--status-file", type=Path)
     parser.add_argument("--report", type=Path)
+    parser.add_argument("--language", choices=Languages(), default="english")
     args = parser.parse_args(arguments)
+
     def OutputProgress(percent, message, detail):
-        print(f"NEXTCLIENT_PROGRESS|{percent}|{message}|{detail}", flush=True)
+        # Machine tokens keep pipe decoding and progress state independent of the UI language.
+        phase = ";".join((message.key, *map(str, message.arguments)))
+        progress_detail = ";".join((detail.key, *map(str, detail.arguments)))
+        print(f"NEXTCLIENT_PROGRESS|{percent}|{phase}|{progress_detail}", flush=True)
+
     progress = core.Progress(OutputProgress if args.progress else None,
                              args.cancel_file.exists if args.cancel_file else None)
     try:
@@ -33,21 +40,21 @@ def Main(arguments=None):
             result = {"state": "passed", **core.Discover(args.steam_root)}
         elif args.action == "inspect":
             if args.bundle is None or args.source is None:
-                raise ValueError("Inspection requires the bundle and source directories")
+                raise ValueError(Message("ErrorInspectionArguments"))
             result = core.InspectNew(args.bundle, args.source)
         else:
             if args.destination is None:
-                raise ValueError("The destination directory is required")
-            progress.Phase("Checking installation...", 0, 5)
+                raise ValueError(Message("ErrorDestinationRequired"))
+            progress.Phase(Message("ProgressChecking"), 0, 5)
             if args.action in ("install", "update"):
                 if args.bundle is None:
-                    raise ValueError("The installer bundle is required")
+                    raise ValueError(Message("ErrorBundleRequired"))
                 if args.action == "install":
                     source = args.source
                     if source is None:
                         discovered = core.Discover(args.steam_root)
                         if not discovered["source"]:
-                            raise ValueError("Select a Steam Counter-Strike folder explicitly")
+                            raise ValueError(Message("ErrorSteamRequired"))
                         source = Path(discovered["source"])
                     result = core.InstallNew(args.bundle, source, args.destination, args.defer_commit, progress, args.owner_pid)
                 else:
@@ -59,13 +66,15 @@ def Main(arguments=None):
             else:
                 result = core.Uninstall(args.destination, args.keep_installer, args.removal_mode, progress)
             progress.cancel_requested = None
-            progress.Phase("Operation completed.", 100, 100)
+            progress.Phase(Message("ProgressCompleted"), 100, 100)
         code = 0
     except core.InstallationCanceled as error:
-        result = {"state": "canceled", "error": str(error)}
+        result = {"state": "canceled", "error": Translate(error, args.language)}
         code = 2
     except Exception as error:
-        result = {"state": "failed", "error": str(error)}
+        message = (Translate(error, args.language) if len(error.args) == 1 and isinstance(error.args[0], Message)
+                   else Text(args.language, "ErrorUnexpected", error))
+        result = {"state": "failed", "error": message}
         code = 1
     if args.report:
         core.WriteJson(args.report, result)

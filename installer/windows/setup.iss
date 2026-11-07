@@ -23,6 +23,8 @@ AppendDefaultDirName=no
 DirExistsWarning=no
 UsePreviousAppDir=no
 UsePreviousLanguage=no
+ShowLanguageDialog=yes
+LanguageDetectionMethod=uilanguage
 DisableProgramGroupPage=yes
 DisableReadyPage=yes
 PrivilegesRequired=lowest
@@ -36,6 +38,17 @@ RestartApplications=no
 AllowCancelDuringInstall=yes
 UninstallFilesDir={app}
 UninstallDisplayName=NextClient ({app})
+
+[Languages]
+Name: "english"; MessagesFile: "compiler:Default.isl,languages\english.isl"
+Name: "russian"; MessagesFile: "compiler:Languages\Russian.isl,languages\russian.isl"
+Name: "ukrainian"; MessagesFile: "compiler:Languages\Ukrainian.isl,languages\ukrainian.isl"
+Name: "italian"; MessagesFile: "compiler:Languages\Italian.isl,languages\italian.isl"
+Name: "spanish"; MessagesFile: "compiler:Languages\Spanish.isl,languages\spanish.isl"
+Name: "turkish"; MessagesFile: "compiler:Languages\Turkish.isl,languages\turkish.isl"
+Name: "portuguese"; MessagesFile: "compiler:Languages\Portuguese.isl,languages\portuguese.isl"
+Name: "brazilian"; MessagesFile: "compiler:Languages\BrazilianPortuguese.isl,languages\brazilian.isl"
+Name: "schinese"; MessagesFile: "translations\ChineseSimplified.isl,languages\schinese.isl"
 
 [Files]
 Source: "{#BundleDir}\*"; DestDir: "{tmp}\payload"; Flags: dontcopy recursesubdirs createallsubdirs
@@ -55,6 +68,10 @@ Type: dirifempty; Name: "{app}\.nextclient"
 Type: dirifempty; Name: "{app}"
 
 [Code]
+const
+  kWindowStyle = -16;
+  kButtonMultiline = $2000;
+
 var
   g_ModePage: TInputOptionWizardPage;
   g_SourcePage: TInputDirWizardPage;
@@ -82,6 +99,12 @@ function GetCurrentProcessId: LongWord;
 
 function EnableWindow(window: HWND; enable: Integer): Integer;
   external 'EnableWindow@user32.dll stdcall';
+
+function GetWindowLong(window: HWND; index: Integer): Longint;
+  external 'GetWindowLongW@user32.dll stdcall';
+
+function SetWindowLong(window: HWND; index: Integer; value: Longint): Longint;
+  external 'SetWindowLongW@user32.dll stdcall';
 
 function Quoted(value: String): String;
 var
@@ -141,7 +164,7 @@ var
   directory: String;
 begin
   directory := ExistingParent(WizardDirValue);
-  if BrowseForFolder('Select the installation folder', directory, True) then begin
+  if BrowseForFolder(CustomMessage('SelectDestination'), directory, True) then begin
     if g_ModePage.SelectedValueIndex = 0 then
       directory := AddBackslash(directory) + 'Counter Strike 1.6 NextClient';
     WizardForm.DirEdit.Text := directory;
@@ -153,32 +176,32 @@ var
   directory: String;
 begin
   directory := ExistingParent(g_SourcePage.Values[0]);
-  if BrowseForFolder('Select the Steam Half-Life folder', directory, True) then
+  if BrowseForFolder(CustomMessage('SelectSteamFolder'), directory, True) then
     g_SourcePage.Values[0] := directory;
 end;
 
 function DiskSpaceText(bytes: Int64): String;
 begin
   if bytes > 1073741824 then
-    Result := Format('%.2f GB', [bytes / 1073741824.0])
+    Result := FmtMessage(CustomMessage('SpaceGigabytes'), [Format('%.2f', [bytes / 1073741824.0])])
   else
-    Result := IntToStr((bytes + 1048575) div 1048576) + ' MB';
+    Result := FmtMessage(CustomMessage('SpaceMegabytes'), [IntToStr((bytes + 1048575) div 1048576)]);
 end;
 
 procedure RequestCancellation;
 begin
   if g_CancelRequested then
     Exit;
-  if MsgBox('Cancel installation? Setup will restore any files changed by this operation.',
+  if MsgBox(CustomMessage('CancelInstallation'),
       mbConfirmation, MB_YESNO) <> IDYES then
     Exit;
   if not SaveStringToFile(g_CancelFile, 'cancel', False) then begin
-    MsgBox('Could not request cancellation. Please wait for the operation to finish.', mbError, MB_OK);
+    MsgBox(CustomMessage('CancelRequestFailed'), mbError, MB_OK);
     Exit;
   end;
   g_CancelRequested := True;
   g_CopyCancelButton.Enabled := False;
-  g_ImportPage.SetText('Canceling installation...', 'Restoring files. Please wait...');
+  g_ImportPage.SetText(CustomMessage('CancelingInstallation'), CustomMessage('RestoringFiles'));
 end;
 
 procedure CopyCancelClick(sender: TObject);
@@ -203,7 +226,7 @@ begin
   mode := Lowercase(ExpandConstant('{param:MODE|new}'));
   Result := (mode = 'new') or (mode = 'update');
   if not Result then
-    MsgBox('Unknown installation mode. Use /MODE=new or /MODE=update.', mbError, MB_OK);
+    MsgBox(CustomMessage('UnknownInstallationMode'), mbError, MB_OK);
 end;
 
 procedure PreparePayload;
@@ -212,6 +235,19 @@ begin
     ExtractTemporaryFiles('{tmp}\payload\*');
     g_PayloadReady := True;
   end;
+end;
+
+function ProgressText(value: String): String;
+var
+  fields: TArrayOfString;
+  arguments: array[0..1] of String;
+  index: Integer;
+begin
+  fields := StringSplit(value, [';'], stAll);
+  for index := 1 to GetArrayLength(fields) - 1 do
+    arguments[index - 1] := fields[index];
+  // The native FmtMessage binding requires an array constructor; progress has at most two arguments.
+  Result := FmtMessage(CustomMessage(fields[0]), [arguments[0], arguments[1]]);
 end;
 
 procedure HelperProgress(const line: String; const error, first_line: Boolean);
@@ -231,13 +267,13 @@ begin
     Exit;
   percent := StrToIntDef(fields[1], 0);
   if g_Removing then begin
-    UninstallProgressForm.StatusLabel.Caption := fields[2];
+    UninstallProgressForm.StatusLabel.Caption := ProgressText(fields[2]);
     UninstallProgressForm.ProgressBar.Position := percent;
   end else begin
     if g_CancelRequested then
       Exit;
-    g_ImportPage.SetText(fields[2], fields[3]);
-    if (fields[3] = 'Please wait...') and (percent < 100) then
+    g_ImportPage.SetText(ProgressText(fields[2]), ProgressText(fields[3]));
+    if (fields[3] = 'ProgressWait') and (percent < 100) then
       g_ImportPage.ProgressBar.Style := npbstMarquee
     else
       g_ImportPage.ProgressBar.Style := npbstNormal;
@@ -258,17 +294,18 @@ begin
     PreparePayload;
     executable := ExpandConstant('{tmp}\payload\tool\nextclient-install.exe');
   end;
-  if not ExecAndLogOutput(executable, action + ' ' + arguments + ' --progress --status-file ' + Quoted(status_file),
+  if not ExecAndLogOutput(executable, action + ' ' + arguments + ' --language ' + ActiveLanguage +
+      ' --progress --status-file ' + Quoted(status_file),
       '', SW_SHOWNORMAL, ewWaitUntilTerminated, exit_code, @HelperProgress) then
-    Result := 'Could not start the installation helper.'
+    Result := CustomMessage('HelperStartFailed')
   else if exit_code <> 0 then
-    Result := GetIniString('result', 'error', 'The installation helper failed.', status_file)
+    Result := GetIniString('result', 'error', CustomMessage('HelperFailed'), status_file)
   else begin
     state := GetIniString('result', 'state', '', status_file);
     if (state = 'passed') or (state = 'pending') then
       Result := ''
     else
-      Result := 'The installation helper did not write a successful result.';
+      Result := CustomMessage('HelperResultMissing');
   end;
 end;
 
@@ -279,9 +316,9 @@ begin
   if Result = '' then begin
     g_OperationId := '';
     g_CancellationFinished := True;
-    Result := 'Installation canceled.';
+    Result := CustomMessage('InstallationCanceled');
   end else
-    Result := 'Could not finish cancellation. Retry recovery before continuing: ' + Result;
+    Result := FmtMessage(CustomMessage('CancellationRecoveryFailed'), [Result]);
 end;
 
 procedure DiscoverSource;
@@ -291,7 +328,7 @@ begin
   if g_DiscoveryDone or (g_SourcePage.Values[0] <> '') then
     Exit;
   g_DiscoveryDone := True;
-  g_PreparationPage.SetText('Finding your Steam installation...', 'Please wait...');
+  g_PreparationPage.SetText(CustomMessage('FindingSteam'), CustomMessage('ProgressWait'));
   g_PreparationPage.Show;
   g_PreparationPage.Animate;
   try
@@ -311,10 +348,10 @@ begin
   g_NewRequiredBytes := 0;
   DiscoverSource;
   if g_SourcePage.Values[0] = '' then begin
-    Result := 'Select a Steam Counter-Strike installation or supply /GAMEDIR=path.';
+    Result := CustomMessage('SelectSteamInstallation');
     Exit;
   end;
-  g_PreparationPage.SetText('Checking game version and disk space...', 'Please wait...');
+  g_PreparationPage.SetText(CustomMessage('CheckingGameSpace'), CustomMessage('ProgressWait'));
   g_PreparationPage.Show;
   g_PreparationPage.Animate;
   try
@@ -324,7 +361,7 @@ begin
       g_NewRequiredBytes := StrToInt64Def(GetIniString('result', 'required_bytes', '',
         ExpandConstant('{tmp}\nextclient-helper-status.ini')), 0);
       if g_NewRequiredBytes <= 0 then
-        Result := 'Could not determine the required disk space.';
+        Result := CustomMessage('RequiredSpaceUnknown');
     end;
   finally
     g_PreparationPage.Hide;
@@ -334,10 +371,9 @@ end;
 procedure UpdateSpaceLabel;
 begin
   if g_ModePage.SelectedValueIndex = 0 then
-    g_RequiredSpaceLabel.Caption := 'At least ' + DiskSpaceText(g_NewRequiredBytes) +
-      ' of free disk space is required, including the Steam game files.'
+    g_RequiredSpaceLabel.Caption := FmtMessage(CustomMessage('RequiredSpace'), [DiskSpaceText(g_NewRequiredBytes)])
   else
-    g_RequiredSpaceLabel.Caption := 'Space for replacement files and backups will be checked before updating.';
+    g_RequiredSpaceLabel.Caption := CustomMessage('UpdateSpace');
 end;
 
 function NextButtonClick(cur_page_id: Integer): Boolean;
@@ -370,10 +406,9 @@ begin
       directory := parent;
     end;
     if not GetSpaceOnDisk64(directory, free_bytes, total_bytes) then
-      failure := 'Could not determine free disk space in ' + directory
+      failure := FmtMessage(CustomMessage('FreeSpaceUnknown'), [directory])
     else if free_bytes < g_NewRequiredBytes then
-      failure := 'Insufficient free disk space. At least ' +
-        DiskSpaceText(g_NewRequiredBytes) + ' is required, including the Steam game files.';
+      failure := FmtMessage(CustomMessage('NotEnoughSpace'), [DiskSpaceText(g_NewRequiredBytes)]);
     if failure <> '' then begin
       MsgBox(failure, mbError, MB_OK);
       Result := False;
@@ -383,20 +418,20 @@ end;
 
 procedure InitializeWizard;
 begin
-  g_ModePage := CreateInputOptionPage(wpWelcome, 'Installation mode', 'Choose how to install NextClient.',
-    'An update preserves your settings and files outside the release package.', True, False);
-  g_ModePage.Add('New installation from Steam');
-  g_ModePage.Add('Update an existing NextClient installation');
+  g_ModePage := CreateInputOptionPage(wpWelcome, CustomMessage('InstallationMode'), CustomMessage('ChooseMode'),
+    CustomMessage('UpdatePreservesFiles'), True, False);
+  g_ModePage.Add(CustomMessage('NewInstallation'));
+  g_ModePage.Add(CustomMessage('UpdateInstallation'));
   g_ModePage.SelectedValueIndex := 0;
   if Lowercase(ExpandConstant('{param:MODE|new}')) = 'update' then
     g_ModePage.SelectedValueIndex := 1;
-  g_SourcePage := CreateInputDirPage(g_ModePage.ID, 'Steam game folder', 'Choose your Counter-Strike installation.',
-    'Select the Half-Life folder from the steam_legacy branch. Setup creates a separate copy.', False, '');
-  g_SourcePage.Add('Half-Life folder:');
+  g_SourcePage := CreateInputDirPage(g_ModePage.ID, CustomMessage('SteamFolder'), CustomMessage('ChooseSteamFolder'),
+    CustomMessage('SteamFolderDescription'), False, '');
+  g_SourcePage.Add(CustomMessage('HalfLifeFolder'));
   g_SourcePage.Buttons[0].OnClick := @BrowseSource;
   g_SourcePage.Values[0] := ExpandConstant('{param:GAMEDIR|}');
-  g_PreparationPage := CreateOutputMarqueeProgressPage('Preparing setup', 'Finding game files.');
-  g_ImportPage := CreateOutputProgressPage('Installing NextClient', 'Preparing your installation.');
+  g_PreparationPage := CreateOutputMarqueeProgressPage(CustomMessage('PreparingSetup'), CustomMessage('FindingFiles'));
+  g_ImportPage := CreateOutputProgressPage(CustomMessage('InstallingNextClient'), CustomMessage('PreparingInstallation'));
   WizardForm.DirBrowseButton.OnClick := @BrowseDestination;
   g_CopyCancelButton := TNewButton.Create(WizardForm);
   g_CopyCancelButton.Parent := WizardForm;
@@ -410,7 +445,7 @@ begin
   g_DesktopShortcutCheck.Parent := WizardForm.FinishedPage;
   g_DesktopShortcutCheck.SetBounds(WizardForm.RunList.Left, WizardForm.RunList.Top,
     WizardForm.RunList.Width, ScaleY(24));
-  g_DesktopShortcutCheck.Caption := 'Create a desktop shortcut';
+  g_DesktopShortcutCheck.Caption := CustomMessage('DesktopShortcut');
   g_DesktopShortcutCheck.Checked := not WizardSilent;
   g_DesktopShortcutCheck.Visible := False;
   g_RequiredSpaceLabel := TNewStaticText.Create(WizardForm);
@@ -466,14 +501,14 @@ begin
   if g_ModePage.SelectedValueIndex = 0 then begin
     DiscoverSource;
     if g_SourcePage.Values[0] = '' then begin
-      Result := 'Select a Steam Counter-Strike installation or supply /GAMEDIR=path.';
+      Result := CustomMessage('SelectSteamInstallation');
       Exit;
     end;
     action := 'install';
     arguments := arguments + ' --source ' + Quoted(g_SourcePage.Values[0]);
   end else
     action := 'update';
-  g_ImportPage.SetText('Preparing game files...', 'Please wait...');
+  g_ImportPage.SetText(CustomMessage('PreparingFiles'), CustomMessage('ProgressWait'));
   g_ImportPage.ProgressBar.Style := npbstMarquee;
   g_ImportPage.Show;
   g_Copying := True;
@@ -486,7 +521,7 @@ begin
       g_OperationId := GetIniString('result', 'operation_id', '', ExpandConstant('{tmp}\nextclient-helper-status.ini'));
       g_OperationDestination := WizardDirValue;
       if g_OperationId = '' then
-        Result := 'The installation helper did not return an operation identifier.';
+        Result := CustomMessage('OperationIdMissing');
     end;
     if g_CancelRequested then begin
       if (Result = '') and (g_OperationId <> '') then begin
@@ -515,7 +550,7 @@ begin
     g_SetupDone := failure = '';
     g_CompletionFailed := not g_SetupDone;
     if g_CompletionFailed then
-      MsgBox('Could not finalize installation: ' + failure, mbError, MB_OK);
+      MsgBox(FmtMessage(CustomMessage('FinalizeFailed'), [failure]), mbError, MB_OK);
     if g_SetupDone then begin
       DeleteFile(ExpandConstant('{app}\.nextclient\installer\unins000.exe'));
       DeleteFile(ExpandConstant('{app}\.nextclient\installer\unins000.dat'));
@@ -525,7 +560,7 @@ begin
         CreateShellLink(ExpandConstant('{userdesktop}\') + ShortcutName('') + '.lnk', 'NextClient',
           ExpandConstant('{app}\cstrike.exe'), '', ExpandConstant('{app}'), '', 0, SW_SHOWNORMAL);
       except
-        MsgBox('Could not create the desktop shortcut: ' + GetExceptionMessage, mbError, MB_OK);
+        MsgBox(FmtMessage(CustomMessage('ShortcutFailed'), [GetExceptionMessage]), mbError, MB_OK);
       end;
     end;
   end;
@@ -560,36 +595,40 @@ begin
   g_RemovalMode := Lowercase(ExpandConstant('{param:REMOVEMODE|preserve}'));
   Result := (g_RemovalMode = 'preserve') or (g_RemovalMode = 'full');
   if not Result then begin
-    MsgBox('Unknown removal mode. Use /REMOVEMODE=preserve or /REMOVEMODE=full.', mbError, MB_OK);
+    MsgBox(CustomMessage('UnknownRemovalMode'), mbError, MB_OK);
     Exit;
   end;
   if UninstallSilent then
     Exit;
-  form := CreateCustomForm(ScaleX(520), ScaleY(170), False, True);
+  form := CreateCustomForm(ScaleX(620), ScaleY(220), False, True);
   try
-    form.Caption := 'Remove NextClient';
-    form.ClientWidth := ScaleX(520);
-    form.ClientHeight := ScaleY(170);
+    form.Caption := CustomMessage('RemoveNextClient');
+    form.ClientWidth := ScaleX(620);
+    form.ClientHeight := ScaleY(220);
     preserve_button := TNewRadioButton.Create(form);
     preserve_button.Parent := form;
-    preserve_button.SetBounds(ScaleX(16), ScaleY(20), ScaleX(490), ScaleY(24));
-    preserve_button.Caption := 'Keep settings, modified files, maps, demos, and other user files';
+    preserve_button.SetBounds(ScaleX(16), ScaleY(20), ScaleX(588), ScaleY(48));
+    preserve_button.Caption := CustomMessage('PreserveUserFiles');
     preserve_button.Checked := g_RemovalMode = 'preserve';
+    SetWindowLong(preserve_button.Handle, kWindowStyle,
+      GetWindowLong(preserve_button.Handle, kWindowStyle) or kButtonMultiline);
     full_button := TNewRadioButton.Create(form);
     full_button.Parent := form;
-    full_button.SetBounds(ScaleX(16), ScaleY(60), ScaleX(490), ScaleY(24));
-    full_button.Caption := 'Delete the entire game folder, including all user files';
+    full_button.SetBounds(ScaleX(16), ScaleY(80), ScaleX(588), ScaleY(48));
+    full_button.Caption := CustomMessage('DeleteAllFiles');
     full_button.Checked := g_RemovalMode = 'full';
+    SetWindowLong(full_button.Handle, kWindowStyle,
+      GetWindowLong(full_button.Handle, kWindowStyle) or kButtonMultiline);
     accept_button := TNewButton.Create(form);
     accept_button.Parent := form;
-    accept_button.SetBounds(ScaleX(320), ScaleY(120), ScaleX(88), ScaleY(26));
-    accept_button.Caption := 'Remove';
+    accept_button.SetBounds(ScaleX(420), ScaleY(170), ScaleX(88), ScaleY(26));
+    accept_button.Caption := CustomMessage('RemoveButton');
     accept_button.ModalResult := mrOk;
     accept_button.Default := True;
     cancel_button := TNewButton.Create(form);
     cancel_button.Parent := form;
-    cancel_button.SetBounds(ScaleX(416), ScaleY(120), ScaleX(88), ScaleY(26));
-    cancel_button.Caption := 'Cancel';
+    cancel_button.SetBounds(ScaleX(516), ScaleY(170), ScaleX(88), ScaleY(26));
+    cancel_button.Caption := SetupMessage(msgButtonCancel);
     cancel_button.ModalResult := mrCancel;
     cancel_button.Cancel := True;
     Result := form.ShowModal = mrOk;
@@ -611,6 +650,6 @@ begin
     failure := Helper('uninstall', '--destination ' + Quoted(ExpandConstant('{app}')) +
       ' --keep-installer --removal-mode ' + g_RemovalMode, True);
     if failure <> '' then
-      RaiseException('Could not remove installation: ' + failure);
+      RaiseException(FmtMessage(CustomMessage('RemovalFailed'), [failure]));
   end;
 end;

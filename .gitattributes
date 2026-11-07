@@ -13,6 +13,9 @@
 *.dll filter=lfs diff=lfs merge=lfs -text
 *.exe filter=lfs diff=lfs merge=lfs -text
 assets/platform/servers/*.mmdb filter=lfs diff=lfs merge=lfs -text
+assets/cstrike/sound/radio/bot/*.wav filter=lfs diff=lfs merge=lfs -text
+# The upstream bot databases contain CRCRLF line endings.
+assets/cstrike/Bot*.db -text
 
 *.[pP][sS][dD] filter=lfs diff=lfs merge=lfs -text
 *.[jJ][pP][gG] filter=lfs diff=lfs merge=lfs -text

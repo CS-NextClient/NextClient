@@ -238,6 +238,8 @@ namespace
         "Gadugi",
         "Nirmala UI",
         "Microsoft Sans Serif",
+        "Microsoft YaHei",
+        "SimSun",
         "Malgun Gothic",
         "MS UI Gothic",
     };
