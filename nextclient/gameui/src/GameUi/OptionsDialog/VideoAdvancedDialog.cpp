@@ -113,6 +113,7 @@ void CVideoAdvancedDialog::OnControlModified(Panel *panel)
     if (panel == m_pFovViewmodelAutoCheckbox)
     {
         m_pFovViewmodelSlider->SetEnabled(!m_pFovViewmodelAutoCheckbox->IsSelected());
+        m_pFovViemodelText->SetEnabled(!m_pFovViewmodelAutoCheckbox->IsSelected());
 
         if (m_pFovViewmodelAutoCheckbox->IsSelected())
         {
