@@ -56,3 +56,8 @@ if (WIN32)
     target_link_libraries(nitro_utils
             psapi.lib)
 endif ()
+
+if (NEXTCLIENT_BUILD_TESTS AND UNIX)
+    enable_testing()
+    add_subdirectory(tests)
+endif ()

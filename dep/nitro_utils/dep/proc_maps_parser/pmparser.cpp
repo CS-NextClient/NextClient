@@ -193,12 +193,12 @@ void _pmparser_split_line(
     while(buf[i]=='\t' || buf[i]==' ')
         i++;
     orig=i;
-    while(buf[i]!='\t' && buf[i]!=' ' && buf[i]!='\n'){
-        pathname[i-orig]=buf[i];
+    while (buf[i] != '\n' && buf[i] != '\0')
+    {
+        pathname[i - orig] = buf[i];
         i++;
     }
-    pathname[i-orig]='\0';
-
+    pathname[i - orig] = '\0';
 }
 
 void pmparser_print(procmaps_struct* map, int order){

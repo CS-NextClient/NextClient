@@ -58,7 +58,7 @@ cmake --build --preset vs2022-tests-release --target client_mini-tests
 Test targets require `NEXTCLIENT_BUILD_TESTS=ON`, enabled by the tracked `vs2022-tests`, `ninja-tests` and `ninja-profiler-tests` presets or a local preset. Available targets are grouped below:
 
 - Module tests: `client_mini-tests`, `engine_mini-tests`, `gameui-tests`, `drag-value-label-tests`, `material-preview-panel-tests`, `nitro_api-tests` and `ncl-entity-message-tests`.
-- Shared package tests: `ncl_math-tests`, `ncl_studio-tests`, `data_types-tests`, `view-tests`, `crosshair-tests`, `key-binding-tests`, `settings_code-tests`, `ncl_image-tests` and `ncl_perf-tests`.
+- Shared package tests: `nitro_utils-tests` (Linux), `ncl_math-tests`, `ncl_studio-tests`, `data_types-tests`, `view-tests`, `crosshair-tests`, `key-binding-tests`, `settings_code-tests`, `ncl_image-tests` and `ncl_perf-tests`.
 - Renderer and lifecycle tests: `renderer-lifecycle-tests`, `material-lifecycle-tests`, `performance-history-tests` and `preview-model-tests`.
 - Offscreen GL tests: `radar-gl-tests`, `performance-gl-tests`, `studio-capture-gl-tests` and `scene-preview-gl-tests`.
 - Conditional tests: `diagnostic-profiling-tests` and `profiling-connection-tests` additionally require `USE_PROFILER=ON`; `updater-test` requires Windows and `NEXT_LAUNCHER_ENABLE_UPDATER=ON`.
