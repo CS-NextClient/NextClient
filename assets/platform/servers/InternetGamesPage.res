@@ -341,7 +341,7 @@
 		"enabled"		"1"
 		"tabPosition"		"7"
 		"paintbackground"		"1"
-		"labelText"		"#ServerBrowser_ServerNotFull"
+		"labelText"		"#ServerBrowser_ServerHasFreeSlots"
 		"textAlignment"		"west"
 		"wrap"		"0"
 		"Default"		"0"
