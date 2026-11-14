@@ -3,7 +3,7 @@ Language: EN | [RU](README.ru.md)
 NextClient
 ==========
 
-[Documentation index](docs/README.md)
+[Official website](https://cs-nextclient.github.io/) | [Documentation index](docs/README.md)
 
 NextClient extends Counter-Strike 1.6 for players and developers of server modifications using AMX Mod X. NextClient has integrated some features from [csldr](https://github.com/mikkokko/csldr).
 

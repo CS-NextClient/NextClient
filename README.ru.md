@@ -3,7 +3,7 @@
 NextClient
 ==========
 
-[Вся документация](docs/README.ru.md)
+[Официальный сайт](https://cs-nextclient.github.io/) | [Вся документация](docs/README.ru.md)
 
 NextClient расширяет возможности Counter-Strike 1.6 для игроков и разработчиков серверных модификаций на AMX Mod X. В NextClient также включены некоторые возможности из [csldr](https://github.com/mikkokko/csldr).
 
