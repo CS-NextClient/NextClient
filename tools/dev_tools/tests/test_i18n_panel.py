@@ -61,7 +61,7 @@ class BilingualPanelTests(unittest.TestCase):
         texts.extend(self.panel.tabs.tab(tab, "text") for tab in self.panel.tabs.tabs())
         for text in texts:
             self.assertFalse(any("\u0400" <= char <= "\u04ff" for char in text), text)
-        self.assertEqual(len(self.panel.tabs.tabs()), 5)
+        self.assertEqual(len(self.panel.tabs.tabs()), 4)
         self.assertIn("Image comparison", [self.panel.tabs.tab(tab, "text") for tab in self.panel.tabs.tabs()])
         self.panel.SetLanguage("ru")
         self.assertIn("Сравнение изображений", [self.panel.tabs.tab(tab, "text") for tab in self.panel.tabs.tabs()])
@@ -95,7 +95,7 @@ class BilingualPanelTests(unittest.TestCase):
                 opener.assert_called_with(key, "en")
             for group, tool, guide in [
                 ("assets", "flags", "panel"), ("assets", "masks", "masks"),
-                ("materials", "matgen_uv", "materials"), ("studio", "mdl_flags", "studio"),
+                ("studio", "mdl_flags", "studio"),
                 ("radar", "imgdiff", "radar"),
             ]:
                 self.panel.SelectTool(group, tool)

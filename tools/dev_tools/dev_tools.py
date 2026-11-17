@@ -15,7 +15,7 @@ from runner import JobRunner
 from tool_page import ToolPage
 
 kLogLimit = 200000
-kToolGroups = ("assets", "materials", "studio", "radar")
+kToolGroups = ("assets", "studio", "radar")
 
 
 class Panel:
@@ -40,7 +40,6 @@ class Panel:
         self.repetitions = tk.StringVar(master=window, value="5")
         self.run_id = tk.StringVar(master=window)
         self.game_dir = tk.StringVar(master=window)
-        self.matgen_executable = tk.StringVar(master=window, value=self.builder.FindMatgen())
         self.language_choice = tk.StringVar(master=window, value=language.upper())
         self.server_status = tk.StringVar(master=window)
         self.operation_status = tk.StringVar(master=window)
@@ -299,7 +298,7 @@ class Panel:
 
     def RunTool(self, key):
         values = {name: variable.get() for name, variable in self.tool_values[key].items()}
-        self.BuildAndStart(lambda: self.builder.Tool(key, values, native_executable=self.matgen_executable.get()))
+        self.BuildAndStart(lambda: self.builder.Tool(key, values))
 
     def Flags(self):
         self.RunTool("flags")
@@ -429,7 +428,7 @@ def Main():
     if arguments.self_check:
         try:
             window.update_idletasks()
-            if panel.runner.thread is not None or panel.busy or len(panel.tabs.tabs()) != 5:
+            if panel.runner.thread is not None or panel.busy or len(panel.tabs.tabs()) != 4:
                 raise RuntimeError(Text(arguments.language, "self_check_failed"))
             print(Text(arguments.language, "self_check_passed", version=window.tk.call("info", "patchlevel")))
         finally:

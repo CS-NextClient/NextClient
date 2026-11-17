@@ -38,7 +38,6 @@ Each non-server tab has a tool selector and a form containing its supported inpu
 |---|---|---|
 | Images | `flags/convert_flags.py`, `flags/make_country_column_icon.py` | Source PNG folder, output folder or file; creates 16×16 TGA flags or a country column icon. |
 | Images | `material_masks/make_masks.py` | Output directory, default `assets/cstrike/materials`; generates the full 512×512 collection. |
-| Matgen materials | `matgen uv`, `matgen check`, `matgen bake edges` | Built executable and model/material paths; output, image size, skin family, or game directory as supported by each command. |
 | Studio | `mdl_flags.py` | Source MDL, output folder, optional first-texture-only flag. |
 | Studio | `make_labels.py` | Output WAD and space-separated ASCII labels. The output's parent folder must exist. |
 | Studio | `make_finish_sample.py` | MDL, model texture name, optional pattern PNG output; writes five images and an adjacent MAT. |
@@ -48,10 +47,6 @@ Each non-server tab has a tool selector and a form containing its supported inpu
 | Image comparison | `imgdiff.py` | Reference/candidate images, optional region and heatmap, RGB tolerance, allowed difference fraction, and all cluster thresholds. |
 
 The **Studio** game-directory field and **Fill paths from the game directory** button fill the related model, WAD, source-map, and preset paths. Select the local installation before filling paths or enter each path explicitly. Fields that depend on an installation start empty; map compilation requires an explicit game directory. See [Studio tools](studio-content.md), [material images](material-masks.md), and [image comparison](image-comparison.md) for content requirements.
-
-Select a built matgen executable explicitly or let the panel find it in this checkout's CMake outputs. An explicit path takes priority. Build the required configuration first; the panel does not build matgen. The selected executable determines which version of the tool processes the files.
-
-An empty matgen output folder writes beside the model. An empty size uses the model texture dimensions; skin family defaults to `0`. For `check`, an empty game directory uses the repository root because that is the panel's tool working directory. See [matgen](matgen.md) for sizing, validation, and output limits.
 
 The Windows map compiler runs `powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File ...` with an argument list. The execution policy applies only to that helper process. The four map compilers must already exist under the game root's `tools/` folder. The panel does not download or build them.
 
@@ -91,4 +86,4 @@ python -X utf8 tools/dev_tools/dev_tools.py --language en --self-check
 python -X utf8 tools/dev_tools/dev_tools.py --language ru --self-check
 ```
 
-The tests cover commands, processes, window behavior, translation completeness, language switching, launch-script exit status, and files produced by generators in temporary directories for the test cases. GUI tests require a usable desktop and Tcl/Tk file access. The self-check creates and destroys a hidden window without running tools. Tests do not launch a game or real server, access Steam, install dependencies, compile maps, run matgen generation, or regenerate the complete image collection.
+The tests cover commands, processes, window behavior, translation completeness, language switching, launch-script exit status, and files produced by generators in temporary directories for the test cases. GUI tests require a usable desktop and Tcl/Tk file access. The self-check creates and destroys a hidden window without running tools. Tests do not launch a game or real server, access Steam, install dependencies, compile maps, or regenerate the complete image collection.

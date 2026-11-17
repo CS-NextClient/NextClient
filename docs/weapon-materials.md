@@ -82,6 +82,6 @@ These are preset parameters. Replacement is active while shader materials are en
 
 A UV transform, `[scale_u, scale_v, offset_u, offset_v]`, sets image scale and offset on the surface. The pattern overlays the base texture. Worn areas reveal the underlying layer. The reflection mask controls shine, and scene lighting affects highlights and matcap reflection.
 
-Use [matgen](tools/matgen.md) to validate a document before delivery. The [renderer architecture](renderer-architecture.md) explains the responsibilities of materials and rendering.
+The [renderer architecture](renderer-architecture.md) explains the responsibilities of materials and rendering.
 
 [Material effects](material-effects.md)

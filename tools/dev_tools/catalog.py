@@ -34,8 +34,6 @@ class Tool:
     script: str
     fields: tuple[Field, ...]
     dependencies: tuple[str, ...] = ()
-    runtime: str = "python"
-    prefix: tuple[str, ...] = ()
 
     @property
     def label(self):
@@ -102,22 +100,6 @@ kTools = (
         Field("cluster_bias", "float", "0.6", "--cluster-bias", minimum=0, maximum=1),
         Field("cluster_list", "int", "10", "--cluster-list", minimum=0),
     ), ("Pillow", "numpy")),
-    Tool("matgen_uv", "materials", "matgen", (
-        Field("model", "input_file", extension=".mdl"),
-        Field("output", "output_dir", "", "--out", True),
-        Field("size", "int", "", "--size", True, minimum=1),
-        Field("skin", "int", "0", "--skin", minimum=0),
-    ), runtime="native", prefix=("uv",)),
-    Tool("matgen_check", "materials", "matgen", (
-        Field("material", "input_file", extension=".mat"),
-        Field("game", "input_dir", "", "--game", True),
-    ), runtime="native", prefix=("check",)),
-    Tool("matgen_edges", "materials", "matgen", (
-        Field("model", "input_file", extension=".mdl"),
-        Field("output", "output_dir", "", "--out", True),
-        Field("size", "int", "", "--size", True, minimum=1),
-        Field("skin", "int", "0", "--skin", minimum=0),
-    ), runtime="native", prefix=("bake", "edges")),
 )
 
 

@@ -3,6 +3,8 @@
 #include <cstddef>
 #include <cstdint>
 #include <limits>
+#include <numbers>
+#include <vector>
 
 #include <goldsrc/format/studio.h>
 #include <gtest/gtest.h>
@@ -10,10 +12,15 @@
 
 namespace
 {
+    constexpr float kHalfPi = std::numbers::pi_v<float> / 2.0f;
+    // The repeated sample has weights (2/15, 31/40, 11/120) over curvatures (0, -1/sqrt(2), -1).
+    constexpr uint8_t kRepeatedSampleThreshold = 112;
+    constexpr std::array<short, 6> kHorizontalRepeatedTexels = {90, 20, 110, 20, 90, 80};
+
     struct TriangleModel
     {
         goldsrc::studiohdr_t header{};
-        goldsrc::mstudiobone_t bones[2]{};
+        goldsrc::mstudiobone_t bones[3]{};
         goldsrc::mstudiobodyparts_t body{};
         goldsrc::mstudiomodel_t submodel{};
         goldsrc::mstudiomesh_t meshes[2]{};
@@ -60,6 +67,15 @@ namespace
         textures.skins.references = 1;
         textures.skins.values = {0, 1};
         return textures;
+    }
+
+    void SetTriangleTexels(TriangleModel& model, const std::array<short, 6>& texels)
+    {
+        for (size_t corner = 0; corner < 3; corner++)
+        {
+            model.commands[3 + corner * 4] = texels[corner * 2];
+            model.commands[4 + corner * 4] = texels[corner * 2 + 1];
+        }
     }
 } // namespace
 
@@ -197,4 +213,84 @@ TEST(StudioWearBake, CanceledOperationReturnsBeforeReadingTheModel)
     auto result = ncl_studio::BakeStudioWearMaps(nullptr, 0, Textures(), options);
     ASSERT_TRUE(result.has_error());
     EXPECT_EQ(result.error_str(), "wear generation canceled");
+}
+
+TEST(StudioWearBake, WrapsThresholdInterpolationAcrossTextureRepeats)
+{
+    struct RepeatCase
+    {
+        std::array<short, 6> texels;
+        int sample_x;
+        int sample_y;
+    };
+
+    const std::array<RepeatCase, 4> cases = {{
+        {kHorizontalRepeatedTexels, 5, 25},
+        {{20, 90, 20, 110, 80, 90}, 25, 5},
+        {{-10, 20, 10, 20, -10, 80}, 5, 25},
+        {{390, -180, 410, -180, 390, -120}, 5, 25},
+    }};
+    std::array<std::vector<uint8_t>, cases.size()> images;
+
+    for (size_t index = 0; index < cases.size(); index++)
+    {
+        SCOPED_TRACE(index);
+        TriangleModel model;
+        SetTriangleTexels(model, cases[index].texels);
+        auto result = ncl_studio::BakeStudioWearMaps(&model, sizeof(model), Textures(), {});
+        ASSERT_FALSE(result.has_error()) << result.error_str();
+        ASSERT_EQ(result->size(), 1u);
+
+        const ncl_studio::StudioWearMap& image = (*result)[0];
+        ASSERT_EQ(image.width, 100);
+        ASSERT_EQ(image.height, 100);
+        const size_t sample = static_cast<size_t>(cases[index].sample_y) * image.width + cases[index].sample_x;
+        EXPECT_EQ(image.pixels[sample], kRepeatedSampleThreshold);
+        images[index] = image.pixels;
+    }
+
+    EXPECT_EQ(images[0], images[2]);
+    EXPECT_EQ(images[0], images[3]);
+}
+
+TEST(StudioWearBake, AppliesParentTransformsAndIndependentNormalBones)
+{
+    std::array<TriangleModel, 2> cases;
+    TriangleModel& hierarchy = cases[0];
+    hierarchy.header.numbones = 3;
+    hierarchy.bones[1].value[0] = 10;
+    hierarchy.bones[1].value[5] = kHalfPi;
+    hierarchy.bones[2].parent = 1;
+    hierarchy.bones[2].value[1] = 9;
+    hierarchy.positions[1][0] = 0;
+    hierarchy.position_bones[1] = 2;
+
+    TriangleModel& independent = cases[1];
+    independent.header.numbones = 3;
+    independent.bones[1].value[0] = 10;
+    independent.bones[2].parent = -1;
+    independent.bones[2].value[0] = 80;
+    independent.bones[2].value[1] = 90;
+    independent.bones[2].value[2] = 100;
+    independent.bones[2].value[5] = kHalfPi;
+    independent.positions[1][0] = -9;
+    independent.normals[1][0] = 0;
+    independent.normals[1][1] = -1;
+    independent.position_bones[1] = 1;
+    independent.normal_bones[1] = 2;
+
+    for (size_t index = 0; index < cases.size(); index++)
+    {
+        SCOPED_TRACE(index);
+        TriangleModel& model = cases[index];
+        SetTriangleTexels(model, kHorizontalRepeatedTexels);
+        auto result = ncl_studio::BakeStudioWearMaps(&model, sizeof(model), Textures(), {});
+        ASSERT_FALSE(result.has_error()) << result.error_str();
+        ASSERT_EQ(result->size(), 1u);
+
+        const ncl_studio::StudioWearMap& image = (*result)[0];
+        ASSERT_EQ(image.width, 100);
+        ASSERT_EQ(image.height, 100);
+        EXPECT_EQ(image.pixels[25 * 100 + 5], kRepeatedSampleThreshold);
+    }
 }

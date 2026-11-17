@@ -120,4 +120,4 @@ Create `build/materials-test`. Run the compiler from the repository root, substi
 amxxpc test_support/plugins/nextclient_materials_test/nextclient_materials_test.sma "-i<amxx>/scripting/include" "-i<api>/addons/amxmodx/scripting/include" "-obuild/materials-test/nextclient_materials_test.amxx"
 ```
 
-On Windows, use `amxxpc.exe`. In WSL, compile a copy of the source and headers on a native Linux filesystem because the 32-bit AMXX compiler is incompatible with some DrvFs operations. ReAPI is not required. Check the preset with `matgen check` using the current embedded client manifests. The preset uses the exact texture names and case from the stock models.
+On Windows, use `amxxpc.exe`. In WSL, compile a copy of the source and headers on a native Linux filesystem because the 32-bit AMXX compiler is incompatible with some DrvFs operations. ReAPI is not required. Inspect preset loading with the [client diagnostic commands](../weapon-materials-server-guide.md#diagnose-a-missing-material). The preset uses the exact texture names and case from the stock models.

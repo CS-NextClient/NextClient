@@ -18,12 +18,6 @@ class ToolPage:
                 row=row + 1, column=1, sticky="w", pady=(2, 10)
             )
             row += 2
-        elif group == "materials":
-            panel.AddPath(self.frame, row, "matgen_executable", panel.matgen_executable, "input_file", ".exe")
-            ttk.Label(self.frame, text=panel.Text("matgen_hint"), wraplength=920).grid(
-                row=row + 1, column=0, columnspan=3, sticky="w", pady=(2, 10)
-            )
-            row += 2
 
         ttk.Label(self.frame, text=panel.Text("tool_selector")).grid(row=row, column=0, sticky="w", padx=(0, 8))
         self.choice = tk.StringVar(master=panel.window)

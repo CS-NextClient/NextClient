@@ -22,15 +22,14 @@ class ExpandedCommandTests(unittest.TestCase):
         self.config.write_text('{"schema":1}', encoding="utf-8")
 
     def test_catalog_covers_every_operator_script(self):
-        self.assertEqual({tool.script for tool in kTools if tool.runtime != "native"}, {
+        self.assertEqual({tool.script for tool in kTools}, {
             "flags/convert_flags.py", "flags/make_country_column_icon.py", "material_masks/make_masks.py",
             "studio_tests/mdl_flags.py", "studio_tests/make_labels.py", "studio_tests/make_finish_sample.py",
             "studio_tests/make_maps.py", "studio_tests/make_studio_tests_preset.py", "studio_tests/build_maps.ps1",
             "radar_tests/imgdiff.py",
         })
         for tool in kTools:
-            if tool.runtime != "native":
-                self.assertTrue((kRepoRoot / "tools" / tool.script).is_file())
+            self.assertTrue((kRepoRoot / "tools" / tool.script).is_file())
 
     def test_public_server_subcommands_match_current_parser(self):
         tree = ast.parse((kRepoRoot / "tools/test_server/test_server.py").read_text(encoding="utf-8"))

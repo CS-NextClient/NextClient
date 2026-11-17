@@ -17,7 +17,6 @@ A modification of the Counter-Strike 1.6 client. It ships replacement libraries 
 | [`nextclient/goldsrc_abi`](nextclient/goldsrc_abi/AGENTS.md) | headers only | clean-room declarations of the stock engine ABI, namespace `goldsrc` |
 | `dep/ncl-hl1-source-sdk` | `vgui2.dll` (Windows), `vgui2.so` (Linux) | HL1 SDK fork: `tier1`, `tier2`, `vgui2`, `mathlib`, `cef`, HLTV |
 | `assets/` | copied into the game directory | resources, schemes, localization, shaders |
-| `tools/matgen` | `matgen` development utility | Studio UV templates, material validation, and edge baking |
 | `test_support/plugins/` | test server plugins | AMX Mod X test fixtures: `nextclient_testlab`, `nextclient_materials_test` |
 | `test_support/runtime/` | test runtime dependencies | DLLs copied to test output directories by CMake |
 

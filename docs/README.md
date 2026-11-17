@@ -32,7 +32,6 @@ These guides cover building, configuration, and diagnostics. The [developer pane
 | Inspect map geometry and object properties | [Map inspection](performance-limits.md) |
 | Compare renderers and save images and measurements | [Renderer diagnostics](renderer-diagnostics.md) |
 | Create and edit materials | [Material authoring](weapon-materials-authoring.md) |
-| Export UVs, validate materials, or bake wear | [matgen](tools/matgen.md) |
 | Generate material images or Studio test scenes | [Material images](tools/material-masks.md) and [Studio content](tools/studio-content.md) |
 | Compare reference and candidate captures | [Image comparison](tools/image-comparison.md) |
 | Apply materials from a server plugin | [Server material workflow](weapon-materials-server-guide.md) |

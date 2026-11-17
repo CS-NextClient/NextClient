@@ -12,7 +12,6 @@ kDocuments = {
     "panel": "docs/tools/developer-panel.md",
     "server": "docs/tools/test-server.md",
     "materials_test": "docs/testing/materials-test-plugin.md",
-    "materials": "docs/tools/matgen.md",
     "masks": "docs/tools/material-masks.md",
     "studio": "docs/tools/studio-content.md",
     "radar": "docs/tools/image-comparison.md",

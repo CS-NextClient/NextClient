@@ -3,7 +3,6 @@ import importlib.util
 import ipaddress
 import json
 import math
-import os
 from pathlib import Path
 import re
 import shutil
@@ -19,7 +18,6 @@ kServerLabels = {action: "server." + action for action in (
 )}
 kSmokeSuites = ("stack", "gameplay", "core", "review", "hostage", "bomb", "players", "lifecycle")
 kServerCycleActions = {"start", "smoke", "calibrate"}
-kCmakeSearchExcludedDirectories = {".git", "_deps", "CMakeFiles", "dep", "out", "test-server", "vcpkg", "vcpkg_installed", "vendor"}
 
 
 @dataclass(frozen=True)
@@ -175,88 +173,13 @@ class CommandBuilder:
             raise ValueError(self.Text("map_invalid"))
         return [field.flag, value] if field.flag else [value]
 
-    def CMakeBuilds(self):
-        caches = []
-        root_cache = self.root / "CMakeCache.txt"
-        if root_cache.is_file():
-            caches.append(root_cache)
-        for directory, children, files in os.walk(self.root / "build"):
-            children[:] = sorted(name for name in children if name not in kCmakeSearchExcludedDirectories)
-            if "CMakeCache.txt" in files:
-                caches.append(Path(directory) / "CMakeCache.txt")
-                children.clear()
-
-        builds = []
-        for cache_path in caches:
-            try:
-                values = {}
-                for line in cache_path.read_text(encoding="utf-8", errors="replace").splitlines():
-                    if line.startswith(("#", "//")):
-                        continue
-                    declaration, separator, value = line.partition("=")
-                    name, type_separator, cache_type = declaration.partition(":")
-                    if separator and type_separator:
-                        values[name] = value
-                home = values.get("CMAKE_HOME_DIRECTORY")
-                if home and Path(home).resolve() == self.root:
-                    builds.append((cache_path.parent, values))
-            except (OSError, ValueError):
-                continue
-        return builds
-
-    def CMakeOutputPath(self, value, build, configuration):
-        value = value.replace("${CMAKE_BINARY_DIR}", str(build)).replace("${CMAKE_SOURCE_DIR}", str(self.root))
-        value = value.replace("$<CONFIG>", configuration)
-        path = Path(value)
-        return (path if path.is_absolute() else build / path).resolve()
-
-    def FindMatgen(self):
-        name = "matgen.exe" if sys.platform == "win32" else "matgen"
-        configurations = ("Release", "Debug", "RelWithDebInfo", "MinSizeRel")
-        output = self.root / "out" / "bin"
-        directories = [output / configuration for configuration in configurations]
-        directories.append(output)
-        for directory in directories:
-            path = directory / name
-            if path.is_file():
-                return str(path)
-
-        directories = []
-        for build, cache in self.CMakeBuilds():
-            build_configurations = list(configurations)
-            configured = cache.get("CMAKE_CONFIGURATION_TYPES", "").split(";") + [cache.get("CMAKE_BUILD_TYPE", "")]
-            build_configurations.extend(value for value in configured if value and value not in build_configurations)
-            runtime = cache.get("CMAKE_RUNTIME_OUTPUT_DIRECTORY", "")
-            for configuration in build_configurations:
-                specific = cache.get("CMAKE_RUNTIME_OUTPUT_DIRECTORY_" + configuration.upper(), "")
-                if specific:
-                    directories.append(self.CMakeOutputPath(specific, build, configuration))
-                if runtime:
-                    path = self.CMakeOutputPath(runtime, build, configuration)
-                    directories.append(path if "$<CONFIG>" in runtime else path / configuration)
-                directories.append(build / "out" / "bin" / configuration)
-            if runtime:
-                directories.append(self.CMakeOutputPath(runtime, build, cache.get("CMAKE_BUILD_TYPE", "")))
-            directories.append(build / "out" / "bin")
-
-        for directory in dict.fromkeys(directories):
-            path = directory / name
-            if path.is_file():
-                return str(path)
-        return ""
-
-    def Tool(self, key, values, *, native_executable=""):
+    def Tool(self, key, values):
         try:
             tool = Tool_Get(key)
         except StopIteration as error:
             raise ValueError(self.Text("unknown_tool", tool=key)) from error
         self.CheckDependencies(tool.dependencies)
-        if tool.runtime == "native":
-            executable = self.Path(native_executable) if native_executable.strip() else self.FindMatgen()
-            if not executable or not Path(executable).is_file():
-                raise ValueError(self.Text("matgen_missing"))
-            args = [str(executable), *tool.prefix]
-        elif tool.script.endswith(".ps1"):
+        if tool.script.endswith(".ps1"):
             powershell = shutil.which("powershell.exe")
             if not powershell:
                 raise ValueError(self.Text("powershell_missing"))

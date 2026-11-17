@@ -120,4 +120,4 @@ ncl_fx set glitch_speed 12
 amxxpc test_support/plugins/nextclient_materials_test/nextclient_materials_test.sma "-i<amxx>/scripting/include" "-i<api>/addons/amxmodx/scripting/include" "-obuild/materials-test/nextclient_materials_test.amxx"
 ```
 
-В Windows используется `amxxpc.exe`. В WSL компилируйте копию исходника и заголовков на файловой системе Linux: 32-битный компилятор AMXX несовместим с некоторыми операциями DrvFs. ReAPI не требуется. Для проверки пресета используйте `matgen check` с актуальными встроенными манифестами клиента. Имена всех текстур штатных моделей в пресете учитывают регистр.
+В Windows используется `amxxpc.exe`. В WSL компилируйте копию исходника и заголовков на файловой системе Linux: 32-битный компилятор AMXX несовместим с некоторыми операциями DrvFs. ReAPI не требуется. Проверьте загрузку пресета с помощью [диагностических команд клиента](../weapon-materials-server-guide.ru.md#если-материал-не-отображается). Имена всех текстур штатных моделей в пресете учитывают регистр.

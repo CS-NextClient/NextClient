@@ -31,7 +31,6 @@ Use the tables below to choose a verification procedure. Each procedure describe
 |---|---|
 | [Renderer diagnostics](../renderer-diagnostics.md) | Capture renderer state and inspect the resulting files. |
 | [Image comparison](../tools/image-comparison.md) | Compare prepared captures and set difference thresholds. |
-| [Matgen regression checks](matgen.md) | Verify material validation, UV output, and edge-wear baking. |
 | [Developer tools verification](../tools/developer-panel.md#verification) | Check command construction, translation, launch scripts, and files produced by generators in the test cases. |
 | [Native module installation and NitroApi checks](installation-and-factory.md) | Verify the CMake installation recipe in temporary destinations and check the built NitroApi library's public interface. |
 | [Windows installer checks](installer.md) | Verify new installation, ZIP updates, cancellation, recovery, and removal on synthetic files. |

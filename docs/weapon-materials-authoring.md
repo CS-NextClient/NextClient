@@ -56,7 +56,7 @@ Choice parameters accept only integer indices; fractional indices are rejected b
 
 A color parameter opens a picker with RGB and alpha values in `0..255`, hue, saturation, brightness, and transparency controls. Changes preview immediately; Cancel restores the starting color, and Default restores the program's default.
 
-The texture browser shows folders, thumbnails, and an enlarged preview for the shipped collection. Selecting a row applies the image to the model. Select accepts the image, Back restores each selected texture's prior reference, and Remove clears it. The edit session persists while browsing the same target. A texture path can also be entered directly. The editor checks the path syntax. Before delivery, validate the referenced image files with `matgen check`.
+The texture browser shows folders, thumbnails, and an enlarged preview for the shipped collection. Selecting a row applies the image to the model. Select accepts the image, Back restores each selected texture's prior reference, and Remove clears it. The edit session persists while browsing the same target. A texture path can also be entered directly. The editor checks the path syntax. Before delivery, inspect the referenced images in the editor and check that their paths and dimensions meet the [format requirements](weapon-materials.md#file-and-image-limits).
 
 ## Edit a texture group
 
@@ -68,10 +68,9 @@ The image browser and color picker preserve the original parameter separately fo
 
 ## Add a pattern
 
-1. Run `matgen uv models/v_ak47.mdl` to export a wireframe PNG for each model texture.
-2. Paint on the exported UV template in an image editor. Pattern alpha controls which areas show the base skin.
-3. Save the image under the game directory, set `uPattern`, and adjust `uLayerMix`, `uPatternTint`, and `uPatternTransform`.
-4. Configure the wear map and underlay, then inspect the material over the full wear range.
+1. Prepare a pattern image in an external image editor using the model's UV layout. Pattern alpha controls which areas show the base skin.
+2. Save the image under the game directory, set `uPattern`, and adjust `uLayerMix`, `uPatternTint`, and `uPatternTransform`.
+3. Configure the wear map and underlay, then inspect the material over the full wear range.
 
 ## Bake model-specific wear
 
@@ -81,13 +80,7 @@ The preview updates immediately. Use **Back** to adjust `uWear`, the underlay, a
 
 The editor bakes the model's reference pose at a longest-side resolution of 1024 pixels. Scratches are off by default and use the shipped `fine_random.png` mask when enabled. Opening the wear page starts background baking. Changes to the checkbox or intensity request a new bake after a short pause; a newer request replaces an unfinished result. Back or leaving the page cancels unfinished work and keeps the latest completed maps in the edit session.
 
-The command-line tool is also available:
-
-```text
-matgen bake edges models/v_ak47.mdl
-```
-
-The command writes a grayscale PNG for each texture used by the selected skin family. Convex edges are dark and wear first; recessed regions are light. The bake extends image contents beyond UV island edges to reduce filtering seams. Set the result as `uWearMap`.
+The generated maps use grayscale: convex edges are dark and wear first; recessed regions are light. The bake extends image contents beyond UV island edges to reduce filtering seams.
 
 External baking tools can use the model's existing UV layout after importing its SMD data. A curvature bake can supply `uWearMap`; ambient occlusion can supply it when wear should start in recesses. Painted artwork supplies `uPattern`, and the exposed surface image supplies `uUnderlay`. Configure an island margin during baking.
 
@@ -101,7 +94,7 @@ Custom images must be PNG or TGA with at most 1,048,576 pixels. The limit applie
 
 The `v_`, `p_`, and `w_` models have separate documents. The Save targets checkboxes select individual sibling models and start unchecked. Save prepares each selected destination and applies the material to its matching texture. Missing textures, preparation failures, and write failures are reported per path. Any failed destination keeps the session dirty. Inspect each related model in the preview before delivery.
 
-1. Validate each document with `matgen check models/v_ak47.mat --game <game>/cstrike`. Image paths resolve against `--game`, or the current directory when omitted.
+1. Check each document and its image references against the [material format](weapon-materials.md).
 2. Use the panel's preset-material export to print an entry for a server preset.
 3. Place the entry in the server's preset and distribute the preset with its custom images. References to the shipped collection use the images already installed with the client.
 
