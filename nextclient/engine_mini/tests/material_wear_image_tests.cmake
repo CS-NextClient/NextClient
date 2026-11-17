@@ -1,0 +1,8 @@
+foreach (test IN LISTS material_lifecycle_tests)
+    if (test MATCHES "^MaterialWearImageGeneration\\.")
+        set_tests_properties("${test}" PROPERTIES LABELS gl)
+        if (UNIX)
+            set_tests_properties("${test}" PROPERTIES ENVIRONMENT "LIBGL_ALWAYS_SOFTWARE=1")
+        endif ()
+    endif ()
+endforeach ()

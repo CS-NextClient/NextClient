@@ -32,6 +32,14 @@
     "uSphereMap": { "type": "texture", "label": "#ncl_mat_sphere_map", "hint": "#ncl_mat_sphere_map_hint" },
     "uReflectMask": { "type": "texture", "label": "#ncl_mat_reflect_mask", "hint": "#ncl_mat_reflect_mask_hint" },
 
+    "uBaseTexture": {
+      "type": "texture", "label": "#ncl_mat_base_texture", "hint": "#ncl_mat_base_texture_hint"
+    },
+    "uBaseUvMode": {
+      "type": "scalar", "default": 0, "min": 0, "max": 1, "widget": "choice",
+      "choices": ["#ncl_mat_base_uv_model", "#ncl_mat_base_uv_image"],
+      "label": "#ncl_mat_base_uv_mode", "hint": "#ncl_mat_base_uv_mode_hint"
+    },
     "uBaseTint": {
       "type": "vec4", "default": [1.0, 1.0, 1.0, 1.0], "widget": "color", "min": 0.0, "max": 1.0,
       "label": "#ncl_mat_base_tint", "hint": "#ncl_mat_base_tint_hint"
@@ -101,7 +109,7 @@
 
     {"name": "dissolve", "label": "#ncl_mat_group_dissolve", "params": ["uDissolveMap", "uDissolveTransform", "uDissolveSpace", "uDissolve"]},
     {"name": "noise", "label": "#ncl_mat_group_noise", "params": ["uNoise", "uNoiseSpace", "uNoiseScale", "uNoiseSeed", "uNoiseSpeed"]},
-    { "name": "base", "label": "#ncl_mat_group_base", "params": ["uBaseTint"] },
+    { "name": "base", "label": "#ncl_mat_group_base", "params": ["uBaseTexture", "uBaseUvMode", "uBaseTint"] },
     {
       "name": "pattern", "label": "#ncl_mat_group_pattern",
       "params": ["uPattern", "uPatternTint", "uPatternTransform", "uLayerMix"]

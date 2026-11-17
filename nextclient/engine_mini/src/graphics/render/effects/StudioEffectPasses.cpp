@@ -74,6 +74,7 @@ const ncl_gl::Program* render::StudioEffectPasses::PrepareCapture()
         mask_bindings_.texel_scale = mask->UniformLocation("uTexelScale");
         mask_bindings_.chrome = mask->UniformLocation("uChrome");
         mask_bindings_.masked = mask->UniformLocation("uMasked");
+        mask_bindings_.blend_base_alpha = mask->UniformLocation("uBlendBaseAlpha");
         mask_bindings_.alpha_scale = mask->UniformLocation("uAlphaScale");
         mask_bindings_.fill = mask->UniformLocation("uFill");
         mask_bindings_.outline = mask->UniformLocation("uOutline");
@@ -134,6 +135,10 @@ void render::StudioEffectPasses::CaptureMask(
 
 void render::StudioEffectPasses::DrawMeshes(const StudioDrawPacket& packet, const effects::Rect_t& viewport)
 {
+    const StudioRasterState& raster = packet.raster;
+    const bool blend_base_alpha = raster.blend && raster.blend_equation_rgb == GL_FUNC_ADD && raster.blend_src_rgb == GL_SRC_ALPHA &&
+                                  (raster.blend_dst_rgb == GL_ONE_MINUS_SRC_ALPHA || raster.blend_dst_rgb == GL_ONE);
+
     StudioMaterialState textures;
     glBindSampler(kStudioBaseTextureUnit, 0);
     glBindSampler(kFirstMaterialUnit, 0);
@@ -149,6 +154,7 @@ void render::StudioEffectPasses::DrawMeshes(const StudioDrawPacket& packet, cons
         glUniform2fv(mask_bindings_.texel_scale, 1, mesh.texel_scale);
         glUniform1i(mask_bindings_.chrome, mesh.chrome);
         glUniform1i(mask_bindings_.masked, mesh.masked);
+        glUniform1i(mask_bindings_.blend_base_alpha, blend_base_alpha && !mesh.additive);
 
         const float alpha = StudioContract_PickingAlpha(material, manifest, packet.blend);
         glUniform1f(mask_bindings_.alpha_scale, alpha);

@@ -230,11 +230,11 @@ namespace
             manifests.emplace("custom", std::move(*manifest));
         }
 
-        GLuint Load(const char* path, tex::TextureLoadGuard) override
+        render::MaterialImage Load(const char* path, tex::TextureLoadGuard) override
         {
             if (path == nullptr || *path == '\0')
             {
-                return 0;
+                return {};
             }
 
             GLint active = 0;
@@ -253,7 +253,7 @@ namespace
             glActiveTexture(GL_TEXTURE0);
             glBindTexture(GL_TEXTURE_2D, texture);
 
-            return texture;
+            return {texture, 1, 1};
         }
 
         GLuint CreateNeutral() override

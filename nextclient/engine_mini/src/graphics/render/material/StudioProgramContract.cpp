@@ -54,6 +54,14 @@ namespace
         return schema;
     }
 
+    ParamSchema BaseUvMode()
+    {
+        ParamSchema schema = Scalar("uBaseUvMode", 0, 0, 1);
+        schema.widget = ncl_material::ParamWidget::Choice;
+        schema.choices = {"#ncl_mat_base_uv_model", "#ncl_mat_base_uv_image"};
+        return schema;
+    }
+
     const render::StudioProgramContract kStudioEffectsV1{
         render::StudioCoverageProfile::DissolveNoiseGlitchV1,
         true,
@@ -80,7 +88,9 @@ namespace
          Scalar("uGlitchBands", 24, 1, 128, true),
          Scalar("uGlitchRgbSplit", 2, 0, 16, true),
          Scalar("uGlitchSpeed", 12, 0, 60, true),
-         Scalar("uGlitchSeed", 0, 0, 32767, true)},
+         Scalar("uGlitchSeed", 0, 0, 32767, true),
+         Sampler("uBaseTexture"),
+         BaseUvMode()},
         {StudioParameterRole::Dissolve,
          StudioParameterRole::DissolveSpace,
          StudioParameterRole::Noise,
@@ -161,7 +171,14 @@ ncl_utils::Result<> render::StudioContract_Validate(const ncl_material::ProgramM
             std::find(kStudioEffectsV1.restricted_activations.begin(), kStudioEffectsV1.restricted_activations.end(), role) !=
             kStudioEffectsV1.restricted_activations.end();
 
+        if (actual == nullptr && (role == StudioParameterRole::BaseTexture || role == StudioParameterRole::BaseUvMode))
+        {
+            continue;
+        }
+
         if (actual == nullptr || actual->type != expected.type || actual->instance != expected.instance ||
+            (role == StudioParameterRole::BaseUvMode &&
+             (actual->widget != ncl_material::ParamWidget::Choice || actual->choices.size() != 2)) ||
             actual->has_range != expected.has_range ||
             (expected.has_range && (actual->min_value != expected.min_value || actual->max_value != expected.max_value)) ||
             !MatchesDefault(*actual, expected, restricted))

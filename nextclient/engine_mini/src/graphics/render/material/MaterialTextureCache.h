@@ -8,11 +8,18 @@
 
 namespace render
 {
+    struct MaterialImage
+    {
+        unsigned int texture{};
+        int width{};
+        int height{};
+    };
+
     class MaterialImageLoader
     {
     public:
         virtual ~MaterialImageLoader() = default;
-        virtual unsigned int Load(const char* path, tex::TextureLoadGuard guard) = 0;
+        virtual MaterialImage Load(const char* path, tex::TextureLoadGuard guard) = 0;
         virtual unsigned int CreateNeutral() = 0;
         virtual void DeleteTexture(unsigned int texture) = 0;
         virtual void ReportRejected(const char* path) = 0;
@@ -24,7 +31,7 @@ namespace render
         struct Entry
         {
             std::string path;
-            unsigned int texture{};
+            MaterialImage image;
         };
 
         RenderDevice& device_;
@@ -39,6 +46,7 @@ namespace render
         MaterialTextureCache(const MaterialTextureCache&) = delete;
         MaterialTextureCache& operator=(const MaterialTextureCache&) = delete;
         unsigned int Get(const char* path, tex::TextureLoadGuard guard = {}, bool* canceled = nullptr);
+        MaterialImage GetImage(const char* path, tex::TextureLoadGuard guard = {}, bool* canceled = nullptr);
         unsigned int Neutral(tex::TextureLoadGuard guard = {}, bool* canceled = nullptr);
         uint32_t get_revision() const
         {

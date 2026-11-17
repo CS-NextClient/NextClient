@@ -36,6 +36,8 @@ namespace render
         GlitchRgbSplit,
         GlitchSpeed,
         GlitchSeed,
+        BaseTexture,
+        BaseUvMode,
         Count
     };
 

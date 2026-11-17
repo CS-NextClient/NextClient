@@ -20,7 +20,7 @@ The `studio_effects_v1` material profile defines these effects. Parameter names,
 | `uNoiseSeed` | Reproducible pattern selection, `0..32767`. |
 | `uNoiseSpeed` | Pattern updates per second, `0..60`. Zero freezes the pattern. |
 
-Viewport coordinates start at the lower-left corner of the rendered view and divide both axes by its height. One screen unit therefore spans the viewport height, and noise cells remain square at any aspect ratio. The pattern stays fixed in the view while the model moves. UV coordinates follow the model. Dissolve and noise choose their coordinate spaces independently. Only fragments that survive both tests remain visible. Masked base-skin holes remain holes.
+Viewport coordinates start at the lower-left corner of the rendered view and divide both axes by its height. One screen unit therefore spans the viewport height, and noise cells remain square at any aspect ratio. The pattern stays fixed in the view while the model moves. UV coordinates follow the model. Dissolve and noise choose their coordinate spaces independently. Only fragments that survive both tests remain visible. Masked holes use the selected base image, including `uBaseTexture` replacements.
 
 Noise hides individual areas of the surface. `uNoiseSeed` controls the pattern, and `uNoiseSpeed` controls how often it changes. Outlines and mouse selection respect transparent areas. A material can contain up to 64 parameters, including defaults.
 

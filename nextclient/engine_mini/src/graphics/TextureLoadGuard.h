@@ -17,13 +17,16 @@ namespace tex
         uint32_t expected_texture_revision{};
         render::RenderDevice* device{};
         uint32_t expected_device_generation{};
+        const uint64_t* request_revision{};
+        uint64_t expected_request_revision{};
 
         bool is_epoch_current() const
         {
             return (device == nullptr || (device->is_context_alive() && device->get_generation() == expected_device_generation)) &&
                    (preparation_epoch == nullptr || *preparation_epoch == expected_preparation_epoch) &&
                    (shader_generation == nullptr || *shader_generation == expected_shader_generation) &&
-                   (texture_revision == nullptr || *texture_revision == expected_texture_revision);
+                   (texture_revision == nullptr || *texture_revision == expected_texture_revision) &&
+                   (request_revision == nullptr || *request_revision == expected_request_revision);
         }
         bool is_current() const
         {

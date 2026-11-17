@@ -2696,3 +2696,25 @@ TEST_F(MaterialSyncTest, DirectFloatConsoleRequiresCompleteFiniteNumber)
     ASSERT_NE(material, nullptr);
     EXPECT_EQ(std::bit_cast<uint32_t>(material->FindParam("uWear")->scalar), std::bit_cast<uint32_t>(-0.0000001f));
 }
+
+TEST_F(MaterialSyncTest, BaseTextureRolesAreOptionalForExistingEffectsManifests)
+{
+    InstallStudioContract();
+    std::erase_if(g_Manifest.parameters, [](const ncl_material::ParamSchema& schema) {
+        return schema.name == "uBaseTexture" || schema.name == "uBaseUvMode";
+    });
+    g_Manifest.groups.clear();
+    EXPECT_FALSE(render::StudioContract_Validate(g_Manifest).has_error());
+    ResetMaterialOwners();
+    EXPECT_NE(render::Manifest_Get("test"), nullptr);
+
+    InstallStudioContract();
+    for (ncl_material::ParamSchema& schema : g_Manifest.parameters)
+    {
+        if (schema.name == "uBaseUvMode")
+        {
+            schema.instance = true;
+        }
+    }
+    EXPECT_TRUE(render::StudioContract_Validate(g_Manifest).has_error());
+}

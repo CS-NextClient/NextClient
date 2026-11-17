@@ -312,6 +312,20 @@ namespace
             return bytes_.data() + bodypart.modelindex;
         }
 
+        void SetConstantTexel(short s, short t, int width, int height)
+        {
+            goldsrc::mstudiomodel_t* submodel = static_cast<goldsrc::mstudiomodel_t*>(get_submodel(0));
+            short* commands = At<short>(At<goldsrc::mstudiomesh_t>(submodel->meshindex)->triindex);
+            for (int vertex = 0; vertex < 3; ++vertex)
+            {
+                commands[3 + vertex * 4] = s;
+                commands[4 + vertex * 4] = t;
+            }
+            goldsrc::mstudiotexture_t& texture = At<goldsrc::mstudiotexture_t>(get_header()->textureindex)[0];
+            texture.width = width;
+            texture.height = height;
+        }
+
         void SetTextureCoordinates()
         {
             goldsrc::mstudiomodel_t* submodel = static_cast<goldsrc::mstudiomodel_t*>(get_submodel(0));
@@ -1035,6 +1049,7 @@ namespace
 
             g_Capture = CaptureState{};
             studio_test::g_Files.clear();
+            studio_test::g_MaterialImages.clear();
             client_ = std::make_unique<goldsrc::client_state_t>();
             cl = client_.get();
             enabled_.value = 1;
@@ -1117,6 +1132,7 @@ namespace
             }
 
             studio_test::g_Files.clear();
+            studio_test::g_MaterialImages.clear();
             render::MaterialEdit_Get()->End();
             render::Studio_Shutdown();
             render::Models_Clear();
@@ -3825,7 +3841,7 @@ TEST_F(StudioCaptureGlTest, ImagePreparationCancellationKeepsPayloadOwnedAndPubl
     render::g_RenderCfg.studio_materials = nullptr;
     CaptureModel model("models/cancel_image.mdl", {1});
     studio_test::g_Files["models/cancel_image.mat"] =
-        R"({"version":1,"materials":{"red":{"program":"weapon_finish","params":{"uPattern":{"texture":"fixtures/runtime-color.png"}}}}})";
+        R"({"version":1,"materials":{"red":{"program":"weapon_finish","params":{"uBaseTexture":{"texture":"fixtures/runtime-color.png"}}}}})";
     goldsrc::cl_entity_t entity{};
     render::preview::PreviewInteraction capture(
         render::GetRendererState().resources.device, render::GetRendererState().resources.shaders, render::GetRendererState().coverage
@@ -5201,4 +5217,314 @@ TEST_F(StudioCaptureGlTest, PickingSnapshotSurvivesQueueCapacityGrowthAndRendere
     capture.DiscardPackets();
     EXPECT_EQ(Capture::Count(capture), 0u);
     EXPECT_EQ(glGetError(), GLenum(GL_NO_ERROR));
+}
+
+TEST_F(StudioCaptureGlTest, BaseTextureReplacesSkinForBothMaterials)
+{
+    render::g_RenderCfg.studio_materials = nullptr;
+    for (const char* program : {"studio", "weapon_finish"})
+    {
+        SCOPED_TRACE(program);
+        const std::string name = std::string("models/base_") + program;
+        CaptureModel model((name + ".mdl").c_str(), {1});
+        studio_test::g_Files[name + ".mat"] = std::string(R"({"version":1,"materials":{"red":{"program":")") + program +
+                                              R"(","params":{"uBaseTexture":{"texture":"fixtures/runtime-color.png"}}}}})";
+        goldsrc::cl_entity_t entity{};
+        entity.index = 1;
+        glClear(GL_COLOR_BUFFER_BIT);
+        render::Studio_BeginOpaquePass();
+        BeginModel(model, entity, 0);
+        DrawPart(0);
+        EndModel();
+        render::Studio_EndOpaquePass();
+        EXPECT_EQ(ReadPixel(16), (std::array<uint8_t, 4>{32, 96, 192, 255}));
+        EXPECT_EQ(g_Capture.stock_calls, 0) << render::Studio_LastRejection();
+        render::Models_Clear();
+    }
+}
+
+TEST_F(StudioCaptureGlTest, BaseTextureUvModeUsesModelOrOriginalImageDimensions)
+{
+    struct Case
+    {
+        int model_width;
+        int image_width;
+        int mode;
+        bool missing;
+        std::array<uint8_t, 4> color;
+    };
+    const Case cases[] = {
+        {4, 512, 1, false, {0, 255, 0, 255}},
+        {4, 512, 0, false, {255, 0, 0, 255}},
+        {512, 1024, 0, false, {0, 255, 0, 255}},
+        {512, 1024, 1, false, {255, 0, 0, 255}},
+        {4, 512, 1, true, {255, 0, 0, 255}}
+    };
+    render::g_RenderCfg.studio_materials = nullptr;
+    int index = 0;
+    for (const char* program : {"studio", "weapon_finish"})
+    {
+        for (const Case& test : cases)
+        {
+            SCOPED_TRACE(index);
+            const std::string name = "models/base_uv_" + std::to_string(index++);
+            const std::string image = name + ".png";
+            if (!test.missing)
+            {
+                studio_test::MaterialImagePixels pixels;
+                pixels.width = test.image_width;
+                pixels.pixels.resize(static_cast<size_t>(pixels.width) * 4);
+                for (int column = 0; column < pixels.width; ++column)
+                {
+                    pixels.pixels[column * 4] = column < pixels.width / 2 ? 255 : 0;
+                    pixels.pixels[column * 4 + 1] = column < pixels.width / 2 ? 0 : 255;
+                    pixels.pixels[column * 4 + 3] = 255;
+                }
+                studio_test::g_MaterialImages[image] = std::move(pixels);
+            }
+            CaptureModel model((name + ".mdl").c_str(), {1});
+            model.SetConstantTexel(256, 0, test.model_width, 1);
+            studio_test::g_Files[name + ".mat"] = std::string(R"({"version":1,"materials":{"red":{"program":")") + program +
+                                                  R"(","params":{"uBaseTexture":{"texture":")" + image + R"("},"uBaseUvMode":)" +
+                                                  std::to_string(test.mode) + "}}}}";
+            goldsrc::cl_entity_t entity{};
+            entity.index = 1;
+            glClear(GL_COLOR_BUFFER_BIT);
+            render::Studio_BeginOpaquePass();
+            BeginModel(model, entity, 0);
+            DrawPart(0);
+            EndModel();
+            render::Studio_EndOpaquePass();
+            EXPECT_EQ(ReadPixel(16), test.color);
+            EXPECT_EQ(g_Capture.stock_calls, 0) << render::Studio_LastRejection();
+            render::Models_Clear();
+        }
+    }
+}
+
+TEST_F(StudioCaptureGlTest, ReplacedBaseAlphaAndCoverageAgreeWithPreviewPicking)
+{
+    struct Case
+    {
+        uint8_t alpha;
+        const char* params;
+        bool visible;
+    };
+    const Case cases[] = {
+        {0, "", false},
+        {255, "", true},
+        {255, R"(,"uBaseTint":[1,1,1,0.25])", false},
+        {255, R"(,"uDissolve":1)", false},
+        {255, R"(,"uNoise":1)", false},
+        {0, R"(,"uPattern":{"texture":"fixtures/runtime-color.png"},"uLayerMix":1)", false}
+    };
+    int index = 0;
+    for (const char* program : {"studio", "weapon_finish"})
+    {
+        for (const Case& test : cases)
+        {
+            if (program == std::string_view("studio") && std::string_view(test.params).find("uPattern") != std::string_view::npos)
+            {
+                continue;
+            }
+            SCOPED_TRACE(index);
+            const std::string name = "models/base_alpha_" + std::to_string(index++);
+            const std::string image = name + ".png";
+            studio_test::g_MaterialImages[image] = {1, 1, {0, 255, 0, test.alpha}};
+            CaptureModel model((name + ".mdl").c_str(), {1});
+            goldsrc::mstudiotexture_t* texture = reinterpret_cast<goldsrc::mstudiotexture_t*>(
+                reinterpret_cast<uint8_t*>(model.get_header()) + model.get_header()->textureindex
+            );
+            texture->flags |= goldsrc::STUDIO_NF_MASKED;
+            studio_test::g_Files[name + ".mat"] = std::string(R"({"version":1,"materials":{"red":{"program":")") + program +
+                                                  R"(","params":{"uBaseTexture":{"texture":")" + image + R"("})" + test.params + "}}}}";
+            goldsrc::cl_entity_t entity{};
+            PreviewDrawParams params{};
+            params.mode = PreviewRenderMode::MaterialAuthoring;
+            PreviewModel request{};
+            render::preview::PreviewInteraction interaction(
+                render::GetRendererState().resources.device,
+                render::GetRendererState().resources.shaders,
+                render::GetRendererState().coverage
+            );
+            interaction.BeginFrame();
+            interaction.BeginModel(0, request);
+            glClear(GL_COLOR_BUFFER_BIT);
+            {
+                render::StudioPreviewContext preview(render::GetRendererState().studio, &entity, params, request, &interaction);
+                BeginModel(model, entity, 0);
+                DrawPart(0);
+                EndModel();
+            }
+            EXPECT_EQ(ReadPixel(16)[1], test.visible ? 255 : 0);
+            const PreviewHit hit =
+                interaction.Render({0, 0, kImageWidth, kImageHeight}, {0, 0, kImageWidth, kImageHeight}, 16, kImageHeight / 2);
+            EXPECT_EQ(hit.model_index, test.visible ? 0 : -1);
+            interaction.Clear();
+            render::Models_Clear();
+        }
+    }
+}
+
+TEST_F(StudioCaptureGlTest, PatternStillMixesOverTheReplacedBase)
+{
+    CaptureModel model("models/base_pattern.mdl", {1});
+    studio_test::g_MaterialImages["fixtures/base.png"] = {1, 1, {224, 160, 64, 255}};
+    studio_test::g_Files["models/base_pattern.mat"] = R"({"version":1,"materials":{"red":{
+        "program":"weapon_finish","params":{
+            "uBaseTexture":{"texture":"fixtures/base.png"},
+            "uPattern":{"texture":"fixtures/runtime-color.png"},"uLayerMix":0.5
+        }}}})";
+    render::g_RenderCfg.studio_materials = nullptr;
+    goldsrc::cl_entity_t entity{};
+    render::Studio_BeginOpaquePass();
+    BeginModel(model, entity, 0);
+    DrawPart(0);
+    EndModel();
+    render::Studio_EndOpaquePass();
+    EXPECT_EQ(ReadPixel(16), (std::array<uint8_t, 4>{128, 128, 128, 255}));
+}
+
+TEST_F(StudioCaptureGlTest, ForcedGlowShellKeepsItsEngineTextureBeforeAReplacedOrdinaryPass)
+{
+    CaptureModel model("models/base_shell.mdl", {1});
+    studio_test::g_Files["models/base_shell.mat"] = R"({"version":1,"materials":{"red":{
+        "program":"studio","params":{"uBaseTexture":{"texture":"fixtures/runtime-color.png"},"uBaseUvMode":1}
+    }}})";
+    render::g_RenderCfg.studio_materials = nullptr;
+    goldsrc::cl_entity_t entity{};
+    entity.curstate.renderfx = goldsrc::kRenderFxGlowShell;
+    entity.curstate.renderamt = 20;
+    entity.curstate.rendercolor.r = 255;
+    g_Capture.forced_flags = goldsrc::STUDIO_NF_CHROME;
+    render::Studio_BeginOpaquePass();
+    BeginModel(model, entity, -0.5f);
+    DrawPart(0);
+    EndModel();
+    entity.curstate.renderfx = 0;
+    g_Capture.forced_flags = 0;
+    BeginModel(model, entity, 0.5f);
+    DrawPart(0);
+    EndModel();
+    render::Studio_EndOpaquePass();
+    ASSERT_EQ(g_Capture.draws.size(), 2u);
+    EXPECT_EQ(g_Capture.draws[0].texture, static_cast<GLint>(g_Capture.textures[0]));
+    EXPECT_NE(g_Capture.draws[1].texture, static_cast<GLint>(g_Capture.textures[0]));
+    EXPECT_EQ(ReadPixel(24), (std::array<uint8_t, 4>{32, 96, 192, 255}));
+}
+
+TEST_F(StudioCaptureGlTest, OccludedEffectsRespectTheReplacementAlpha)
+{
+    int index = 0;
+    for (const char* program : {"studio", "weapon_finish"})
+    {
+        for (uint8_t alpha : {uint8_t{0}, uint8_t{127}, uint8_t{128}, uint8_t{255}})
+        {
+            SCOPED_TRACE(program);
+            SCOPED_TRACE(alpha);
+            const std::string name = "models/base_effect_" + std::to_string(index++);
+            const std::string image = name + ".png";
+            studio_test::g_MaterialImages[image] = {1, 1, {255, 0, 0, alpha}};
+            CaptureModel model((name + ".mdl").c_str(), {1});
+            goldsrc::mstudiotexture_t* texture = reinterpret_cast<goldsrc::mstudiotexture_t*>(
+                reinterpret_cast<uint8_t*>(model.get_header()) + model.get_header()->textureindex
+            );
+            texture->flags |= goldsrc::STUDIO_NF_MASKED;
+            const GLuint depth = PrepareEffectScene((name + ".mat").c_str());
+            studio_test::g_Files[name + ".mat"] =
+                std::string(R"({"version":1,"materials":{"red":{"program":")") + program + R"(","params":{"uBaseTexture":{"texture":")" +
+                image + R"("},"uOccludedAmount":1,"uOccludedColor":[0,1,0,1],"uOutlineWidth":2,"uOutlineColor":[0,0,1,1]}}}})";
+            goldsrc::cl_entity_t entity{};
+            entity.index = 1;
+            glClear(GL_COLOR_BUFFER_BIT);
+            BeginModel(model, entity, 0);
+            DrawPart(0);
+            EndModel();
+            render::StudioEffects_EndView();
+            EXPECT_EQ(ReadPixel(16)[1], alpha > 127 ? 255 : 0);
+            glDeleteRenderbuffers(1, &depth);
+            render::Models_Clear();
+        }
+    }
+}
+
+TEST_F(StudioCaptureGlTest, OccludedEffectsUseTheCapturedBaseTextureBlend)
+{
+    struct Case
+    {
+        int render_mode;
+        int flags;
+        bool blend;
+        GLenum blend_destination;
+        uint8_t texture_alpha;
+        int expected_color;
+    };
+    const Case cases[] = {
+        {goldsrc::kRenderTransTexture, 0, true, GL_ONE_MINUS_SRC_ALPHA, 0, 0},
+        {goldsrc::kRenderTransTexture, 0, true, GL_ONE_MINUS_SRC_ALPHA, 64, 64},
+        {goldsrc::kRenderTransTexture, 0, true, GL_ONE_MINUS_SRC_ALPHA, 255, 255},
+        {goldsrc::kRenderNormal, 0, false, GL_ONE_MINUS_SRC_ALPHA, 0, 255},
+        {goldsrc::kRenderTransAdd, 0, true, GL_ONE, 64, 64},
+        {goldsrc::kRenderNormal, goldsrc::STUDIO_NF_ADDITIVE, true, GL_ONE_MINUS_SRC_ALPHA, 0, 255},
+    };
+
+    int index = 0;
+    for (const char* program : {"studio", "weapon_finish"})
+    {
+        for (const Case& test : cases)
+        {
+            SCOPED_TRACE(program);
+            SCOPED_TRACE(index);
+            const std::string name = "models/blended_base_effect_" + std::to_string(index++);
+            const std::string image = name + ".png";
+            const std::string material_path = name + ".mat";
+            const std::string material =
+                std::string(R"({"version":1,"materials":{"red":{"program":")") + program +
+                R"(","params":{"uBaseTexture":{"texture":")" + image + R"("},"uOccludedAmount":1,"uOccludedColor":[0,1,0,1]}}}})";
+            studio_test::g_MaterialImages[image] = {1, 1, {255, 0, 0, test.texture_alpha}};
+            studio_test::g_Files[material_path] = material;
+            render::g_RenderCfg.studio_materials = nullptr;
+
+            CaptureModel model((name + ".mdl").c_str(), {1});
+            goldsrc::mstudiotexture_t* texture = reinterpret_cast<goldsrc::mstudiotexture_t*>(
+                reinterpret_cast<uint8_t*>(model.get_header()) + model.get_header()->textureindex
+            );
+            texture->flags = goldsrc::STUDIO_NF_FULLBRIGHT | test.flags;
+            goldsrc::cl_entity_t entity{};
+            entity.curstate.rendermode = test.render_mode;
+
+            if (test.blend)
+            {
+                glEnable(GL_BLEND);
+            }
+            else
+            {
+                glDisable(GL_BLEND);
+            }
+
+            glBlendFunc(GL_SRC_ALPHA, test.blend_destination);
+            glDepthMask(GL_FALSE);
+            glDisable(GL_DEPTH_TEST);
+            glClearColor(0, 0, 0, 0);
+            glClear(GL_COLOR_BUFFER_BIT);
+            BeginModel(model, entity, 0);
+            DrawPart(0);
+            EndModel();
+            EXPECT_EQ(ReadPixel(16)[0], test.expected_color);
+
+            const GLuint depth = PrepareEffectScene(material_path.c_str());
+            studio_test::g_Files[material_path] = material;
+            glDepthMask(GL_FALSE);
+            BeginModel(model, entity, 0);
+            DrawPart(0);
+            EndModel();
+            render::StudioEffects_EndView();
+            EXPECT_EQ(ReadPixel(16)[1], test.expected_color);
+            EXPECT_EQ(g_Capture.stock_calls, 0) << render::Studio_LastRejection();
+            EXPECT_EQ(glGetError(), GLenum(GL_NO_ERROR));
+
+            glDeleteRenderbuffers(1, &depth);
+            render::Models_Clear();
+        }
+    }
 }

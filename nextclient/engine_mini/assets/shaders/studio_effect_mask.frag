@@ -2,6 +2,7 @@
 #include "material_coverage.glsl"
 uniform sampler2D uBase;
 uniform int uMasked;
+uniform int uBlendBaseAlpha;
 uniform float uAlphaScale;
 uniform vec4 uFill;
 uniform vec4 uOutline;
@@ -14,18 +15,18 @@ layout(location = 2) out vec4 outShape;
 void main()
 {
     bool visible = MaterialCoverage_Evaluate(vUv);
-    bool masked_out = false;
+    bool masked = uMasked != 0;
+    bool blend_base_alpha = uBlendBaseAlpha != 0;
+    float base_alpha = (masked || blend_base_alpha) ? texture(uBase, vUv).a : 1.0;
+    float alpha = base_alpha * uAlphaScale;
 
-    if (uMasked != 0)
-    {
-        masked_out = texture(uBase, vUv).a * uAlphaScale <= 0.5;
-    }
-
-    if (!visible || masked_out)
+    if (!visible || (masked && alpha <= 0.5) || (blend_base_alpha && alpha <= 0.0))
     {
         discard;
     }
-    outFill = uFill;
-    outOutline = uOutline;
+
+    float effect_alpha = blend_base_alpha ? base_alpha : 1.0;
+    outFill = vec4(uFill.rgb, uFill.a * effect_alpha);
+    outOutline = vec4(uOutline.rgb, uOutline.a * effect_alpha);
     outShape = vec4(uShape, 1.0 + uOutlineMode);
 }

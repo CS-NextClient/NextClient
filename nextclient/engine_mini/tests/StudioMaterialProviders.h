@@ -1,5 +1,6 @@
 #pragma once
 
+#include <array>
 #include <map>
 #include <string>
 #include <vector>
@@ -82,6 +83,7 @@ public:
     render::MaterialTextureCache cache{device, *this};
     std::map<std::string, ncl_material::ProgramManifest> manifests;
     std::map<std::string, GLuint> textures;
+    std::map<std::string, std::array<int, 2>> image_sizes;
     std::vector<std::string> manifest_queries;
     std::vector<std::string> texture_queries;
     std::vector<std::string> localization;
@@ -231,11 +233,13 @@ public:
         errors.push_back(error);
     }
 
-    GLuint Load(const char* path, tex::TextureLoadGuard) override
+    render::MaterialImage Load(const char* path, tex::TextureLoadGuard) override
     {
         texture_queries.emplace_back(path);
         auto found = textures.find(path);
-        return found != textures.end() ? found->second : 0;
+        auto size = image_sizes.find(path);
+        const std::array<int, 2> dimensions = size != image_sizes.end() ? size->second : std::array<int, 2>{1, 1};
+        return found != textures.end() ? render::MaterialImage{found->second, dimensions[0], dimensions[1]} : render::MaterialImage{};
     }
 
     GLuint CreateNeutral() override

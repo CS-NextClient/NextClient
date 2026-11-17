@@ -735,7 +735,7 @@ TEST_P(MaterialCoverageGlTest, IndependentOwnersLoadImagesBeforeBindingAndRestor
         GLuint original{};
         unsigned int checked{};
 
-        GLuint Load(const char* path, tex::TextureLoadGuard) override
+        render::MaterialImage Load(const char* path, tex::TextureLoadGuard) override
         {
             CheckBinding();
             return StudioMaterialSourceFixture::Load(path, {});

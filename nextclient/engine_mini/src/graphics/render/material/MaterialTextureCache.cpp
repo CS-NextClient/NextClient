@@ -24,6 +24,11 @@ namespace render
 
     unsigned int MaterialTextureCache::Get(const char* path, tex::TextureLoadGuard guard, bool* canceled)
     {
+        return GetImage(path, guard, canceled).texture;
+    }
+
+    MaterialImage MaterialTextureCache::GetImage(const char* path, tex::TextureLoadGuard guard, bool* canceled)
+    {
         if (canceled != nullptr)
         {
             *canceled = false;
@@ -31,14 +36,14 @@ namespace render
 
         if (path == nullptr || *path == '\0' || !device_.CheckAvailable())
         {
-            return 0;
+            return {};
         }
 
         for (const Entry& entry : textures_)
         {
             if (entry.path == path)
             {
-                return entry.texture;
+                return entry.image;
             }
         }
 
@@ -57,33 +62,33 @@ namespace render
                 {
                     *canceled = true;
                 }
-                return 0;
+                return {};
             }
-            textures_.push_back(Entry{owned_path, 0u});
+            textures_.push_back(Entry{owned_path, {}});
 
-            return 0;
+            return {};
         }
 
         guard.texture_revision = &revision_;
         guard.expected_texture_revision = revision_;
         const uint32_t device_generation = device_.get_generation();
-        unsigned int texture = loader_.Load(owned_path.c_str(), guard);
+        MaterialImage image = loader_.Load(owned_path.c_str(), guard);
         if (!guard.is_current())
         {
             if (canceled != nullptr)
             {
                 *canceled = true;
             }
-            if (texture != 0 && device_.get_generation() == device_generation && context::Current() == guard.native_context &&
+            if (image.texture != 0 && device_.get_generation() == device_generation && context::Current() == guard.native_context &&
                 device_.IsContextCurrent())
             {
-                loader_.DeleteTexture(texture);
+                loader_.DeleteTexture(image.texture);
             }
-            return 0;
+            return {};
         }
-        textures_.push_back(Entry{owned_path, texture});
+        textures_.push_back(Entry{owned_path, image});
 
-        return texture;
+        return image;
     }
 
     unsigned int MaterialTextureCache::Neutral(tex::TextureLoadGuard guard, bool* canceled)
@@ -131,7 +136,7 @@ namespace render
 #endif
             if (matches)
             {
-                retired.push_back(entry.texture);
+                retired.push_back(entry.image.texture);
             }
 
             return matches;
@@ -162,9 +167,9 @@ namespace render
         {
             for (const Entry& entry : textures_)
             {
-                if (entry.texture != 0)
+                if (entry.image.texture != 0)
                 {
-                    loader_.DeleteTexture(entry.texture);
+                    loader_.DeleteTexture(entry.image.texture);
                 }
             }
 

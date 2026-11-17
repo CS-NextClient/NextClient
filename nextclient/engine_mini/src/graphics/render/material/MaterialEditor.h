@@ -132,6 +132,7 @@ namespace render
         ncl_material::Param* FindParam(const char* name);
         const ncl_material::ParamSchema* SchemaOf(const char* name);
         void SetParam(const char* name, const ncl_material::ParamValue& value);
+        bool IsWearJobCurrent(const WearGenerationJob& job) const;
         bool StartWearJob(std::shared_ptr<WearGenerationJob> job);
         bool PublishWearImages(WearGenerationJob& job, std::string& error);
         void DiscardGeneratedImages();

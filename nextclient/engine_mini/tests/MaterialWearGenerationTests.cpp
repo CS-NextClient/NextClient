@@ -1,16 +1,18 @@
-#include <gtest/gtest.h>
-
+#include <algorithm>
+#include <chrono>
 #include <cstring>
 #include <functional>
-#include <chrono>
 #include <thread>
 
+#include <gtest/gtest.h>
 #include <ncl_image/Decode.h>
 #include <ncl_image/Encode.h>
+#include <ncl_material/MaterialPreset.h>
 #include <ncl_material/material_parse.h>
 
 #include "MaterialOwnerFiles.h"
 #include "PerformanceTestCore.h"
+#include "RadarGlContext.h"
 #include "StudioMaterialProviders.h"
 #include "StudioModelTestSupport.h"
 #include "graphics/render/material/MaterialEditor.h"
@@ -148,9 +150,28 @@ namespace
         }
     };
 
+    class WearImageSource : public StudioMaterialSourceFixture
+    {
+    public:
+        std::function<void()> before_load;
+        unsigned int load_count{};
+
+        render::MaterialImage Load(const char* path, tex::TextureLoadGuard guard) override
+        {
+            ++load_count;
+            if (before_load)
+            {
+                std::function<void()> callback = std::move(before_load);
+                callback();
+            }
+
+            return guard.is_current() ? StudioMaterialSourceFixture::Load(path, guard) : render::MaterialImage{};
+        }
+    };
+
     struct WearFixture
     {
-        StudioMaterialSourceFixture source;
+        WearImageSource source;
         WearFiles files;
         render::MaterialDocumentStore documents{files};
         render::ServerMaterials server{documents, source.catalog};
@@ -171,6 +192,11 @@ namespace
             map.name = "uWearMap";
             map.type = ncl_material::ParamType::TextureRef;
             manifest.parameters.push_back(map);
+            map.name = "uBaseTexture";
+            manifest.parameters.push_back(map);
+            ncl_material::ParamSchema mode;
+            mode.name = "uBaseUvMode";
+            manifest.parameters.push_back(mode);
             map.name = "uUnderlay";
             manifest.parameters.push_back(map);
             ncl_material::ParamSchema transform;
@@ -706,4 +732,267 @@ TEST(MaterialWearGeneration, NewRequestDuringImageWriteKeepsItsRunningStatus)
         ncl_image::DecodeRgba8({reinterpret_cast<const uint8_t*>(png.data()), png.size()}, 1048576);
     ASSERT_FALSE(image.has_error());
     EXPECT_NEAR(image->pixels.get()[0], 64, 1);
+}
+
+class MaterialWearImageGeneration : public testing::Test
+{
+private:
+    RadarGlContext context_;
+
+protected:
+    void SetUp() override
+    {
+        std::string error;
+        ASSERT_TRUE(context_.Initialize(error)) << error;
+    }
+};
+
+TEST_F(MaterialWearImageGeneration, BaseImageUvModeMatchesTheExternalLayout)
+{
+    WearFixture model_layout;
+    ASSERT_TRUE(model_layout.Generate());
+    const std::string expected = model_layout.files.files.at(model_layout.Map("base.bmp"));
+
+    WearFixture image_layout;
+    WearModelBlock binary;
+    binary.textures[0].width = 4;
+    binary.textures[0].height = 1;
+    image_layout.files.files[image_layout.model.name] = std::string(reinterpret_cast<const char*>(&binary), sizeof(binary));
+    const std::vector<uint8_t> pixels(64 * 64 * 4, 255);
+    const auto encoded = ncl_image::EncodePng(64, 64, 4, pixels);
+    ASSERT_FALSE(encoded.has_error());
+    image_layout.files.files["materials/base.png"] = std::string(reinterpret_cast<const char*>(encoded->data()), encoded->size());
+    image_layout.source.textures["materials/base.png"] = 17;
+    image_layout.source.image_sizes["materials/base.png"] = {64, 64};
+    ASSERT_TRUE(image_layout.editor.SetTexture("uBaseTexture", "materials/base.png"));
+    ASSERT_TRUE(image_layout.editor.SetScalar("uBaseUvMode", 1));
+    ASSERT_TRUE(image_layout.Generate());
+    EXPECT_TRUE(image_layout.files.files.at(image_layout.Map("base.bmp")) == expected);
+}
+
+TEST_F(MaterialWearImageGeneration, EditingDuringBaseImageLoadCancelsGeneration)
+{
+    WearFixture owned;
+    owned.source.textures["materials/base.png"] = 17;
+    owned.source.image_sizes["materials/base.png"] = {64, 64};
+    ASSERT_TRUE(owned.editor.SetTexture("uBaseTexture", "materials/base.png"));
+    ASSERT_TRUE(owned.editor.SetScalar("uBaseUvMode", 1));
+    owned.source.before_load = [&] { EXPECT_TRUE(owned.editor.SetScalar("uWear", 0.75f)); };
+    char error[512]{};
+
+    EXPECT_FALSE(owned.editor.BeginWearGeneration(0, 0, error, sizeof(error)));
+    EXPECT_NE(std::string(error).find("base image"), std::string::npos);
+    EXPECT_EQ(owned.files.generated_attempts, 0);
+    EXPECT_TRUE(owned.Map("base.bmp").empty());
+}
+
+TEST_F(MaterialWearImageGeneration, DeviceLossDuringBaseImageLoadCancelsGeneration)
+{
+    WearFixture owned;
+    owned.source.textures["materials/base.png"] = 17;
+    owned.source.image_sizes["materials/base.png"] = {64, 64};
+    ASSERT_TRUE(owned.editor.SetTexture("uBaseTexture", "materials/base.png"));
+    ASSERT_TRUE(owned.editor.SetScalar("uBaseUvMode", 1));
+    owned.source.before_load = [&] { owned.source.device.OnContextDestroyed(); };
+    char error[512]{};
+
+    EXPECT_FALSE(owned.editor.BeginWearGeneration(0, 0, error, sizeof(error)));
+    EXPECT_NE(std::string(error).find("base image"), std::string::npos);
+    EXPECT_EQ(owned.files.generated_attempts, 0);
+    EXPECT_TRUE(owned.Map("base.bmp").empty());
+}
+
+TEST_F(MaterialWearImageGeneration, CanceledBaseImageLoadIsRetried)
+{
+    WearFixture owned;
+    owned.source.textures["materials/base.png"] = 17;
+    owned.source.image_sizes["materials/base.png"] = {64, 64};
+    ASSERT_TRUE(owned.editor.SetTexture("uBaseTexture", "materials/base.png"));
+    ASSERT_TRUE(owned.editor.SetScalar("uBaseUvMode", 1));
+    owned.source.before_load = [&] { owned.editor.CancelWearGeneration(); };
+    char error[512]{};
+
+    EXPECT_FALSE(owned.editor.BeginWearGeneration(0, 0, error, sizeof(error)));
+    EXPECT_EQ(owned.source.cache.GetImage("materials/base.png").texture, 17u);
+    EXPECT_EQ(owned.source.load_count, 2u);
+    EXPECT_TRUE(owned.source.deletions.empty());
+}
+
+TEST_F(MaterialWearImageGeneration, ReplacementRequestDoesNotCacheTheCanceledOuterLoad)
+{
+    WearFixture owned;
+    owned.source.textures["materials/base.png"] = 17;
+    owned.source.image_sizes["materials/base.png"] = {64, 64};
+    ASSERT_TRUE(owned.editor.SetTexture("uBaseTexture", "materials/base.png"));
+    ASSERT_TRUE(owned.editor.SetScalar("uBaseUvMode", 1));
+    owned.source.before_load = [&] {
+        char nested_error[512]{};
+        EXPECT_TRUE(owned.editor.BeginWearGeneration(0, 0, nested_error, sizeof(nested_error))) << nested_error;
+    };
+    char error[512]{};
+
+    EXPECT_FALSE(owned.editor.BeginWearGeneration(0, 0, error, sizeof(error)));
+    ASSERT_TRUE(WaitForWear(owned.editor, error, sizeof(error))) << error;
+    EXPECT_FALSE(owned.Map("base.bmp").empty());
+    owned.source.cache.Remove("materials/base.png");
+    EXPECT_EQ(owned.source.deletions, std::vector<GLuint>{17});
+}
+
+TEST_F(MaterialWearImageGeneration, ContextReplacementRejectsThePreparedImageDimensions)
+{
+    WearFixture owned;
+    owned.source.textures["materials/base.png"] = 17;
+    owned.source.image_sizes["materials/base.png"] = {64, 64};
+    ASSERT_TRUE(owned.editor.SetTexture("uBaseTexture", "materials/base.png"));
+    ASSERT_TRUE(owned.editor.SetScalar("uBaseUvMode", 1));
+    char error[512]{};
+    ASSERT_TRUE(owned.editor.BeginWearGeneration(0, 0, error, sizeof(error))) << error;
+
+    owned.source.device.OnContextDestroyed();
+    owned.source.device.OnContextCreated();
+    owned.source.image_sizes["materials/base.png"] = {128, 64};
+    ASSERT_EQ(owned.source.cache.GetImage("materials/base.png").width, 128);
+
+    EXPECT_FALSE(WaitForWear(owned.editor, error, sizeof(error)));
+    EXPECT_EQ(owned.files.generated_attempts, 0);
+    EXPECT_TRUE(owned.Map("base.bmp").empty());
+}
+
+TEST_F(MaterialWearImageGeneration, CacheResetDuringPublicationRollsBackGeneratedImages)
+{
+    WearFixture owned;
+    owned.source.textures["materials/base.png"] = 17;
+    owned.source.image_sizes["materials/base.png"] = {64, 64};
+    ASSERT_TRUE(owned.editor.SetTexture("uBaseTexture", "materials/base.png"));
+    ASSERT_TRUE(owned.editor.SetScalar("uBaseUvMode", 1));
+    owned.files.after_generated_write = [&] { owned.source.cache.Forget(); };
+    char error[512]{};
+
+    EXPECT_FALSE(RunWear(owned.editor, 0, 0, error, sizeof(error)));
+    EXPECT_EQ(owned.files.generated_attempts, 1);
+    EXPECT_TRUE(owned.Map("base.bmp").empty());
+    EXPECT_EQ(owned.files.files.size(), 1u);
+}
+
+TEST_F(MaterialWearImageGeneration, CachedMissingBaseImageKeepsItsLayoutWhenTheFileAppears)
+{
+    WearModelBlock binary;
+    binary.textures[0].width = 4;
+    binary.textures[0].height = 1;
+    const std::string model(reinterpret_cast<const char*>(&binary), sizeof(binary));
+    WearFixture original;
+    original.files.files[original.model.name] = model;
+    ASSERT_TRUE(original.Generate());
+    const std::string expected = original.files.files.at(original.Map("base.bmp"));
+
+    WearFixture replacement;
+    replacement.files.files[replacement.model.name] = model;
+    ASSERT_EQ(replacement.source.cache.GetImage("materials/base.png").texture, 0u);
+    const std::vector<uint8_t> pixels(64 * 64 * 4, 255);
+    const auto encoded = ncl_image::EncodePng(64, 64, 4, pixels);
+    ASSERT_FALSE(encoded.has_error());
+    replacement.files.files["materials/base.png"] = std::string(reinterpret_cast<const char*>(encoded->data()), encoded->size());
+    replacement.source.textures["materials/base.png"] = 17;
+    replacement.source.image_sizes["materials/base.png"] = {64, 64};
+    ASSERT_TRUE(replacement.editor.SetTexture("uBaseTexture", "materials/base.png"));
+    ASSERT_TRUE(replacement.editor.SetScalar("uBaseUvMode", 1));
+    ASSERT_TRUE(replacement.Generate());
+
+    EXPECT_TRUE(replacement.files.files.at(replacement.Map("base.bmp")) == expected);
+    EXPECT_EQ(replacement.source.cache.GetImage("materials/base.png").texture, 0u);
+    EXPECT_EQ(replacement.source.texture_queries.size(), 1u);
+}
+
+TEST_F(MaterialWearImageGeneration, CachedBaseImageDimensionsSurviveSourceReplacement)
+{
+    WearFixture original;
+    ASSERT_TRUE(original.Generate());
+    const std::string expected = original.files.files.at(original.Map("base.bmp"));
+
+    WearFixture replacement;
+    WearModelBlock binary;
+    binary.textures[0].width = 4;
+    binary.textures[0].height = 1;
+    replacement.files.files[replacement.model.name] = std::string(reinterpret_cast<const char*>(&binary), sizeof(binary));
+    replacement.source.textures["materials/base.png"] = 17;
+    replacement.source.image_sizes["materials/base.png"] = {64, 64};
+    ASSERT_EQ(replacement.source.cache.GetImage("materials/base.png").width, 64);
+    const std::vector<uint8_t> pixels(128 * 64 * 4, 255);
+    const auto encoded = ncl_image::EncodePng(128, 64, 4, pixels);
+    ASSERT_FALSE(encoded.has_error());
+    replacement.files.files["materials/base.png"] = std::string(reinterpret_cast<const char*>(encoded->data()), encoded->size());
+    replacement.source.image_sizes["materials/base.png"] = {128, 64};
+    ASSERT_TRUE(replacement.editor.SetTexture("uBaseTexture", "materials/base.png"));
+    ASSERT_TRUE(replacement.editor.SetScalar("uBaseUvMode", 1));
+    ASSERT_TRUE(replacement.Generate());
+
+    EXPECT_TRUE(replacement.files.files.at(replacement.Map("base.bmp")) == expected);
+    EXPECT_EQ(replacement.source.cache.GetImage("materials/base.png").width, 64);
+    EXPECT_EQ(replacement.source.texture_queries.size(), 1u);
+}
+
+TEST_F(MaterialWearImageGeneration, AcceptedBaseImageDimensionsIgnoreTheDocumentReadLimit)
+{
+    WearFixture original;
+    ASSERT_TRUE(original.Generate());
+    const std::string expected = original.files.files.at(original.Map("base.bmp"));
+
+    WearFixture replacement;
+    WearModelBlock binary;
+    binary.textures[0].width = 4;
+    binary.textures[0].height = 1;
+    replacement.files.files[replacement.model.name] = std::string(reinterpret_cast<const char*>(&binary), sizeof(binary));
+    std::string image(ncl_material::kMaxImageFileBytes + 64, '\0');
+    image[2] = 2;
+    image[12] = 64;
+    image[14] = 64;
+    image[16] = 32;
+    image[17] = 40;
+    std::fill_n(image.data() + 18, 64 * 64 * 4, char{127});
+    const auto decoded = ncl_image::DecodeRgba8(
+        {reinterpret_cast<const uint8_t*>(image.data()), ncl_material::kMaxImageFileBytes}, ncl_material::kMaxImagePixels
+    );
+    ASSERT_FALSE(decoded.has_error());
+    ASSERT_EQ(decoded->width, 64);
+    ASSERT_EQ(decoded->height, 64);
+    replacement.files.files["materials/base.tga"] = std::move(image);
+    replacement.source.textures["materials/base.tga"] = 17;
+    replacement.source.image_sizes["materials/base.tga"] = {decoded->width, decoded->height};
+    ASSERT_TRUE(replacement.editor.SetTexture("uBaseTexture", "materials/base.tga"));
+    ASSERT_TRUE(replacement.editor.SetScalar("uBaseUvMode", 1));
+    ASSERT_TRUE(replacement.Generate());
+
+    EXPECT_TRUE(replacement.files.files.at(replacement.Map("base.bmp")) == expected);
+}
+
+TEST_F(MaterialWearImageGeneration, UnsupportedImageContentKeepsTheModelLayout)
+{
+    WearModelBlock binary;
+    binary.textures[0].width = 4;
+    binary.textures[0].height = 1;
+    const std::string model(reinterpret_cast<const char*>(&binary), sizeof(binary));
+    WearFixture original;
+    original.files.files[original.model.name] = model;
+    ASSERT_TRUE(original.Generate());
+    const std::string expected = original.files.files.at(original.Map("base.bmp"));
+
+    std::string bitmap(54 + 64 * 64 * 3, '\0');
+    const auto write_integer = [&](size_t offset, uint32_t value) { std::memcpy(bitmap.data() + offset, &value, sizeof(value)); };
+    bitmap[0] = 'B';
+    bitmap[1] = 'M';
+    write_integer(2, static_cast<uint32_t>(bitmap.size()));
+    write_integer(10, 54);
+    write_integer(14, 40);
+    write_integer(18, 64);
+    write_integer(22, 64);
+    bitmap[26] = 1;
+    bitmap[28] = 24;
+
+    WearFixture replacement;
+    replacement.files.files[replacement.model.name] = model;
+    replacement.files.files["materials/renamed.png"] = bitmap;
+    ASSERT_TRUE(replacement.editor.SetTexture("uBaseTexture", "materials/renamed.png"));
+    ASSERT_TRUE(replacement.editor.SetScalar("uBaseUvMode", 1));
+    ASSERT_TRUE(replacement.Generate());
+    EXPECT_TRUE(replacement.files.files.at(replacement.Map("base.bmp")) == expected);
 }

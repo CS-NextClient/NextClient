@@ -369,7 +369,7 @@ TEST_F(StudioMaterialRuntimeGlTest, InjectedMaterialsSelectDefaultsAndNeutralIma
         std::array<GLuint, 2> original{};
         unsigned int checked_loads{};
 
-        GLuint Load(const char* path, tex::TextureLoadGuard) override
+        render::MaterialImage Load(const char* path, tex::TextureLoadGuard) override
         {
             CheckBindings();
 
@@ -825,6 +825,7 @@ TEST_F(StudioMaterialRuntimeGlTest, GammaRevisionAndShaderGenerationReconfigureT
 
 studio_test::TextureUploadCallbacks studio_test::g_TextureUploadCallbacks;
 std::function<void(tex::TextureLoadGuard)> studio_test::g_MaterialImageLoadCallback;
+std::map<std::string, studio_test::MaterialImagePixels> studio_test::g_MaterialImages;
 
 namespace tex
 {
@@ -876,10 +877,15 @@ namespace tex
         TextureLoadGuard guard
     )
     {
-        if (std::string_view(path) != kRuntimeImagePath)
+        auto fixture = studio_test::g_MaterialImages.find(path);
+        if (std::string_view(path) != kRuntimeImagePath && fixture == studio_test::g_MaterialImages.end())
         {
             return false;
         }
+        const int width = fixture != studio_test::g_MaterialImages.end() ? fixture->second.width : 1;
+        const int height = fixture != studio_test::g_MaterialImages.end() ? fixture->second.height : 1;
+        const uint8_t* image_pixels =
+            fixture != studio_test::g_MaterialImages.end() ? fixture->second.pixels.data() : kRuntimeImagePixel.data();
 
         if (studio_test::g_MaterialImageLoadCallback)
         {
@@ -903,12 +909,13 @@ namespace tex
         glGenTextures(1, &image);
         GL_Bind(static_cast<int>(image));
         *p_currenttexture = -1;
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, 1, 1, 0, GL_RGBA, GL_UNSIGNED_BYTE, kRuntimeImagePixel.data());
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, image_pixels);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
         texture.identifier = identifier;
         texture.texnum = static_cast<int>(image);
-        texture.width = texture.height = 1;
+        texture.width = width;
+        texture.height = height;
         texture.mipmap = mipmap;
         return true;
     }

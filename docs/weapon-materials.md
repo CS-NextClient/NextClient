@@ -53,6 +53,16 @@ The schema allows 64 parameters and eight texture parameters. Optional `groups` 
 
 A scalar with `widget: "choice"` declares `choices` as an array of localized labels. Values are integer indices: `min` is `0`, and `max` is one less than the number of choices, and an integer `default` in that range. The editor displays a non-editable list. Fractional indices are rejected before clamping; out-of-range integer writes clamp to the range. For example, `uOutlineMode` uses index `0` for occluded-only outline, `1` for the entire silhouette, and `2` for visible-only outline.
 
+## Base texture replacement
+
+Both `studio` and `weapon_finish` accept `uBaseTexture`, an optional PNG or TGA reference that replaces the selected model texture's color and alpha. An empty reference or a failed image load uses the model texture. `uBaseTint` applies to the selected image. The original MDL texture name remains the material key, including a leading `#` when present.
+
+`uBaseUvMode` selects the dimensions used to interpret the model's texture coordinates. `0` (default) uses the MDL texture dimensions, preserving the layout when a higher-resolution image replaces a normal skin. `1` uses the external image's original dimensions, supporting models whose MDL contains a small placeholder but whose coordinates were authored for the external image. Missing replacements use the MDL dimensions in either mode. Generated chrome coordinates keep their existing scale; glow shell retains its engine texture.
+
+Replacement alpha follows the model's `masked` flag and the entity's existing rendering mode. It combines with `uBaseTint.a`, entity transparency, dissolve and noise, and is respected by material effects and mouse selection. An alpha channel does not automatically enable translucent rendering. In `weapon_finish`, pattern alpha still controls coverage over the selected base image; wear, underlay and reflections remain independent material controls.
+
+These are preset parameters. Replacement is active while shader materials are enabled; editor Compare displays the original model. The same image path can be shared by weapon and hand materials. Files must use the supported Studio model format; archive extraction and CSNZ image conversion are separate preparation steps.
+
 ## `weapon_finish` inputs
 
 | Parameter | Meaning |

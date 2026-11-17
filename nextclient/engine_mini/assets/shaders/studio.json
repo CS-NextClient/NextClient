@@ -17,6 +17,14 @@
     "uGlowRadius": {"type": "scalar", "default": 8, "min": 0, "max": 64, "label": "#ncl_mat_glow_radius", "hint": "#ncl_mat_glow_hint"},
     "uGlowStrength": {"type": "scalar", "default": 0, "min": 0, "max": 4, "instance": true, "label": "#ncl_mat_glow_strength", "hint": "#ncl_mat_glow_hint"},
 
+    "uBaseTexture": {
+      "type": "texture", "label": "#ncl_mat_base_texture", "hint": "#ncl_mat_base_texture_hint"
+    },
+    "uBaseUvMode": {
+      "type": "scalar", "default": 0, "min": 0, "max": 1, "widget": "choice",
+      "choices": ["#ncl_mat_base_uv_model", "#ncl_mat_base_uv_image"],
+      "label": "#ncl_mat_base_uv_mode", "hint": "#ncl_mat_base_uv_mode_hint"
+    },
     "uBaseTint": {
       "type": "vec4",
       "default": [
@@ -117,7 +125,7 @@
       "name": "base",
       "label": "#ncl_mat_group_base",
       "params": [
-        "uBaseTint"
+        "uBaseTexture", "uBaseUvMode", "uBaseTint"
       ]
     },
     {

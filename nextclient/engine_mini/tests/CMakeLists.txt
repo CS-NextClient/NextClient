@@ -116,6 +116,7 @@ add_executable(performance-gl-tests
         ../src/graphics/render/material/MaterialManifestCatalog.cpp
         ../src/graphics/render/material/MaterialTextureCache.cpp
         ../src/graphics/render/material/StudioProgramContract.cpp
+        ../src/graphics/render/material/studio_effect_material.cpp
         StudioSubmissionGlTests.cpp
         StudioOptimizationsGlTests.cpp
         ../src/common/memory/g_scratch_allocator.cpp
@@ -236,6 +237,7 @@ if (USE_PROFILER)
 endif ()
 
 add_executable(material-lifecycle-tests
+        ../../client_mini/tests/RadarGlContext.cpp
         MaterialLifecycleTests.cpp
         MaterialDependencyTests.cpp
         MaterialWearGenerationTests.cpp
@@ -260,6 +262,7 @@ add_executable(material-lifecycle-tests
         ../src/client/ncl_entity/MaterialSyncSystem.cpp
         ../src/graphics/render/material/ServerMaterials.cpp
         ../src/graphics/render/material/StudioProgramContract.cpp
+        ../src/graphics/render/material/studio_effect_material.cpp
         ../src/graphics/render/RenderCaptureSession.cpp
         ../src/graphics/render/render_file_name.cpp)
 target_sources(material-lifecycle-tests PRIVATE
@@ -271,12 +274,20 @@ target_sources(material-lifecycle-tests PRIVATE
         ../src/performance/PerformanceDumpCapture.cpp
         ../src/performance/GpuQueryCollector.cpp
         ../src/performance/performance_stages.cpp)
-target_include_directories(material-lifecycle-tests PRIVATE ../src ../include ../../../dep/nextclientapi_amxx/include)
+target_include_directories(material-lifecycle-tests PRIVATE
+        ../src ../include ../../client_mini/tests ../../../dep/nextclientapi_amxx/include)
 get_target_property(ENGINE_MINI_TEST_LIBRARIES engine_mini LINK_LIBRARIES)
 target_link_libraries(material-lifecycle-tests PRIVATE GTest::gtest_main ${ENGINE_MINI_TEST_LIBRARIES})
 target_compile_definitions(material-lifecycle-tests PRIVATE NOMINMAX
         NEXTCLIENT_STUDIO_MANIFEST_PATH="${CMAKE_CURRENT_SOURCE_DIR}/../assets/shaders/studio.json")
-gtest_discover_tests(material-lifecycle-tests)
+gtest_discover_tests(material-lifecycle-tests TEST_LIST material_lifecycle_tests)
+set_property(DIRECTORY APPEND PROPERTY TEST_INCLUDE_FILES
+        "${CMAKE_CURRENT_SOURCE_DIR}/material_wear_image_tests.cmake")
+if (WIN32)
+    target_link_libraries(material-lifecycle-tests PRIVATE opengl32 gdi32 user32)
+else ()
+    target_link_libraries(material-lifecycle-tests PRIVATE ${CMAKE_DL_LIBS})
+endif ()
 
 add_executable(performance-history-tests
         FrameHistoryTests.cpp

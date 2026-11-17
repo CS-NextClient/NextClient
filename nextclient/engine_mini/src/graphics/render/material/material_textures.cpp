@@ -29,7 +29,7 @@ namespace render
         class NativeMaterialImageLoader final : public MaterialImageLoader
         {
         public:
-            unsigned int Load(const char* path, tex::TextureLoadGuard guard) override
+            MaterialImage Load(const char* path, tex::TextureLoadGuard guard) override
             {
                 std::optional<ScopedGlState> saved;
                 if (guard.device != nullptr)
@@ -46,7 +46,7 @@ namespace render
 
                 if (!guard.is_current())
                 {
-                    return 0;
+                    return {};
                 }
 
                 if (!ok)
@@ -54,7 +54,7 @@ namespace render
                     Con_Printf("render: material texture %s could not be loaded\n", path);
                 }
 
-                return ok ? static_cast<unsigned int>(texture.texnum) : 0u;
+                return ok ? MaterialImage{static_cast<unsigned int>(texture.texnum), texture.width, texture.height} : MaterialImage{};
             }
 
             unsigned int CreateNeutral() override

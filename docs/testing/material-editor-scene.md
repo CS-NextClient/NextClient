@@ -56,3 +56,11 @@ These observations verify engine initialization before the first map, VGUI layou
 6. Move the model behind a wall outside the player's potentially visible set (PVS) and enable `ncl_mat_through_walls`. Check the model in NextClient 2.6+ and an ordinary client, including joining after the effect is enabled and reconnecting. Disable the flag. The engine may continue transmitting a recently visible model briefly; wait for transmission to stop.
 7. Repeat after clearing the material, removing the final binding, deleting and recreating game objects, picking up and dropping a weapon, and changing maps.
 8. Transmission outside the PVS must honor the server's other restrictions: `no-draw`, missing models, observer and group rules, and the maximum number of entities in a packet.
+
+## Base texture replacement
+
+1. Select `studio`, choose a base PNG/TGA, and switch to `weapon_finish`. The base image and UV mode must remain selected. Verify pattern mixing, wear and reflections over the replacement.
+2. Replace a normal 512-pixel skin with a matching 1024-pixel image in **From model** mode. The UV layout must remain unchanged. For a placeholder model, select **From image** and verify against the external image's authored layout.
+3. Use a masked model and an external image with transparent holes. Check color, outline/fill and mouse selection at those holes; repeat with dissolve/noise and base tint alpha.
+4. Test missing files, clearing the base image, Compare, temporary image cancellation, grouped edits, save/reload, closing/reopening the editor and context replacement. The original texture and UV dimensions are used when no replacement loads.
+5. Generate wear for a placeholder model in **From image** mode. Its edges must align with the visible UV layout. Cancel generation or change a parameter while it runs; a stale result must not overwrite the current material.

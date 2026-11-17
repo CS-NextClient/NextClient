@@ -254,3 +254,21 @@ TEST(MaterialPreset, RejectsVersionsThatCannotBeRepresentedAsWholeInts)
         EXPECT_TRUE(ncl_material::ParseMaterialPreset(json, ncl_material::PresetBudget{}).has_error());
     }
 }
+
+TEST(MaterialPreset, BaseReplacementAndPatternBothCountAsImageDependencies)
+{
+    const std::string preset = WithMaterials(R"({"name":"skin","texture":"#hands.bmp","material":{
+        "program":"weapon_finish","params":{
+            "uBaseTexture":{"texture":"materials/base.png"},"uBaseUvMode":1,
+            "uPattern":{"texture":"materials/pattern.png"},"uLayerMix":0.5
+        }}})");
+    ncl_material::PresetBudget budget;
+    budget.max_textures = 1;
+    EXPECT_TRUE(ncl_material::ParseMaterialPreset(preset, budget).has_error());
+    budget.max_textures = 2;
+    const auto result = ncl_material::ParseMaterialPreset(preset, budget);
+    ASSERT_FALSE(result.has_error()) << result.error_str();
+    EXPECT_EQ(result->materials[0].texture_name, "#hands.bmp");
+    ASSERT_NE(result->materials[0].material.FindParam("uBaseTexture"), nullptr);
+    EXPECT_EQ(result->materials[0].material.FindParam("uBaseTexture")->texture_ref, "materials/base.png");
+}

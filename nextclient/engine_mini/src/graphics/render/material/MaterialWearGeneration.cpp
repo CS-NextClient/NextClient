@@ -10,11 +10,14 @@
 
 #include <ncl_image/Decode.h>
 #include <ncl_image/Encode.h>
+#include <ncl_material/MaterialPreset.h>
+#include <ncl_material/MaterialResolve.h>
 #include <ncl_studio/StudioWearBake.h>
 #include <tier1/strtools.h>
 
 #include "graphics/render/material/MaterialDocumentStore.h"
 #include "graphics/render/material/MaterialTextureCache.h"
+#include "graphics/render/material/studio_effect_material.h"
 
 namespace render
 {
@@ -55,6 +58,7 @@ namespace render
     {
         uint64_t revision{};
         uint64_t request_revision{};
+        std::optional<uint32_t> image_revision;
         int skin_family{};
         float scratch_strength{};
         std::string model_data;
@@ -200,9 +204,7 @@ namespace render
         }
 
         const std::string model = session_.model;
-        const auto is_current = [&] {
-            return session_.active && edit_revision_ == job->revision && wear_request_revision_ == job->request_revision;
-        };
+        const auto is_current = [&] { return IsWearJobCurrent(*job); };
         const MaterialReadStatus model_status = documents_.ReadFile(model.c_str(), job->model_data, kMaxModelBytes);
 
         if (!is_current())
@@ -264,7 +266,49 @@ namespace render
                 return fail("selected texture is missing from the model: " + entry.texture_name);
             }
 
-            job->texture_indices.push_back(static_cast<int>(found - job->textures.textures.begin()));
+            const int texture_index = static_cast<int>(found - job->textures.textures.begin());
+            job->texture_indices.push_back(texture_index);
+
+            const StudioProgramContract& contract = StudioContract_EffectsV1();
+            const ncl_material::ProgramManifest* manifest = ManifestOf(entry.material.program.c_str());
+            if (!is_current())
+            {
+                return fail("material editing changed while loading the material manifest");
+            }
+            const ncl_material::ParamValue* mode =
+                effects::Parameter(&entry.material, manifest, contract.get_parameter(StudioParameterRole::BaseUvMode).name);
+            const ncl_material::ParamValue* base =
+                effects::Parameter(&entry.material, manifest, contract.get_parameter(StudioParameterRole::BaseTexture).name);
+            if ((found->flags & ncl_material::kFlagChrome) != 0 || mode == nullptr || mode->type != ncl_material::ParamType::Scalar ||
+                mode->scalar != 1.0f || base == nullptr || base->type != ncl_material::ParamType::TextureRef ||
+                !ncl_material::IsAdmissibleTexturePath(base->texture_ref, 128))
+            {
+                continue;
+            }
+
+            if (!job->image_revision.has_value())
+            {
+                job->image_revision = textures_.get_revision();
+            }
+
+            tex::TextureLoadGuard guard;
+            guard.preparation_epoch = &edit_revision_;
+            guard.expected_preparation_epoch = job->revision;
+            guard.request_revision = &wear_request_revision_;
+            guard.expected_request_revision = job->request_revision;
+            bool canceled = false;
+            const MaterialImage image = textures_.GetImage(base->texture_ref.c_str(), guard, &canceled);
+
+            if (canceled || !is_current())
+            {
+                return fail("material editing or rendering changed while loading the base image");
+            }
+
+            if (image.texture != 0 && image.width > 0 && image.height > 0)
+            {
+                found->width = image.width;
+                found->height = image.height;
+            }
         }
 
         if (scratch_strength > 0)
@@ -301,6 +345,12 @@ namespace render
         return true;
     }
 
+    bool MaterialEditor::IsWearJobCurrent(const WearGenerationJob& job) const
+    {
+        return session_.active && edit_revision_ == job.revision && wear_request_revision_ == job.request_revision &&
+               (!job.image_revision.has_value() || *job.image_revision == textures_.get_revision());
+    }
+
     bool MaterialEditor::StartWearJob(std::shared_ptr<WearGenerationJob> job)
     {
         WearGenerationJob* worker_job = job.get();
@@ -329,11 +379,10 @@ namespace render
 
             if (pending_wear_job_ != nullptr)
             {
-                if (!session_.active || edit_revision_ != pending_wear_job_->revision ||
-                    wear_request_revision_ != pending_wear_job_->request_revision)
+                if (!IsWearJobCurrent(*pending_wear_job_))
                 {
                     pending_wear_job_.reset();
-                    wear_error_ = "material editing changed while generating wear";
+                    wear_error_ = "material editing or rendering changed while generating wear";
                     wear_status_ = MaterialWearStatus::Failed;
                 }
                 else
@@ -341,9 +390,9 @@ namespace render
                     StartWearJob(std::move(pending_wear_job_));
                 }
             }
-            else if (!session_.active || edit_revision_ != completed->revision || wear_request_revision_ != completed->request_revision)
+            else if (!IsWearJobCurrent(*completed))
             {
-                wear_error_ = "material editing changed while generating wear";
+                wear_error_ = "material editing or rendering changed while generating wear";
                 wear_status_ = MaterialWearStatus::Failed;
             }
             else if (!completed->error.empty())
@@ -410,10 +459,10 @@ namespace render
 
             created.push_back(path);
 
-            if (!session_.active || edit_revision_ != job.revision || wear_request_revision_ != job.request_revision)
+            if (!IsWearJobCurrent(job))
             {
                 rollback();
-                error = "material editing changed while writing generated images";
+                error = "material editing or rendering changed while writing generated images";
                 return false;
             }
 
@@ -442,10 +491,10 @@ namespace render
             image_retirement_barrier_();
         }
 
-        if (!session_.active || edit_revision_ != job.revision || wear_request_revision_ != job.request_revision)
+        if (!IsWearJobCurrent(job))
         {
             rollback();
-            error = "material editing changed while retiring generated images";
+            error = "material editing or rendering changed while retiring generated images";
             return false;
         }
 

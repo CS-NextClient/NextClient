@@ -40,6 +40,7 @@ namespace render
             int texel_scale{};
             int chrome{};
             int masked{};
+            int blend_base_alpha{};
             int alpha_scale{};
             int fill{};
             int outline{};

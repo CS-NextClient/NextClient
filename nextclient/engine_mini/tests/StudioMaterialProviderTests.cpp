@@ -331,3 +331,26 @@ TEST_F(StudioMaterialProviderTest, DeviceSnapshotAllowsReentrantUnregisterAndOwn
     EXPECT_TRUE(programs.deletions.empty());
     EXPECT_TRUE(images.deletions.empty());
 }
+
+TEST_F(StudioMaterialProviderTest, BaseImageDimensionsFollowCacheIdentityAndEviction)
+{
+    StudioMaterialSourceFixture source;
+    source.textures["base.png"] = 71;
+    source.image_sizes["base.png"] = {512, 256};
+    render::MaterialImage image = source.cache.GetImage("base.png");
+    EXPECT_EQ(image.texture, 71u);
+    EXPECT_EQ(image.width, 512);
+    EXPECT_EQ(image.height, 256);
+    source.textures["base.png"] = 81;
+    source.image_sizes["base.png"] = {1024, 512};
+    EXPECT_EQ(source.cache.GetImage("base.png").width, 512);
+    EXPECT_EQ(source.texture_queries.size(), 1u);
+    source.cache.Remove("base.png");
+    EXPECT_EQ(source.deletions, (std::vector<GLuint>{71}));
+    image = source.cache.GetImage("base.png");
+    EXPECT_EQ(image.texture, 81u);
+    EXPECT_EQ(image.width, 1024);
+    EXPECT_EQ(image.height, 512);
+    EXPECT_EQ(source.cache.GetImage("missing.png").texture, 0u);
+    EXPECT_EQ(source.cache.GetImage("missing.png").width, 0);
+}

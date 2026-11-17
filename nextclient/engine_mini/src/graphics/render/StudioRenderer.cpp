@@ -519,6 +519,17 @@ namespace render
                 ++cancellation_epoch_;
                 return;
             }
+
+            const MaterialImage& base = mesh.images.base;
+            if (mesh.shade_mode != kShadeGlowShell && base.texture != 0 && base.width > 0 && base.height > 0)
+            {
+                mesh.texture = base.texture;
+                if (mesh.images.base_image_uv && !mesh.chrome)
+                {
+                    mesh.texel_scale[0] = 1.0f / base.width;
+                    mesh.texel_scale[1] = 1.0f / base.height;
+                }
+            }
         }
         if (!guard.is_epoch_current() || !device_.is_context_alive())
         {

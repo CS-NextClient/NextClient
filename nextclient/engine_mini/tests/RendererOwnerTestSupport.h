@@ -213,9 +213,9 @@ namespace renderer_test
         std::function<void(unsigned int)> on_delete_texture;
         unsigned int builds{};
         std::function<GLuint(const char*, tex::TextureLoadGuard)> on_load;
-        unsigned int Load(const char* path, tex::TextureLoadGuard guard) override
+        render::MaterialImage Load(const char* path, tex::TextureLoadGuard guard) override
         {
-            return on_load ? on_load(path, guard) : StudioMaterialSourceFixture::Load(path, guard);
+            return on_load ? render::MaterialImage{on_load(path, guard), 1, 1} : StudioMaterialSourceFixture::Load(path, guard);
         }
         bool Build(const render::ProgramDesc& descriptor, ncl_gl::Program& program) override
         {

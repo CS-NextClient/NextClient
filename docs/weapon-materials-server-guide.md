@@ -35,3 +35,13 @@ Changes through `r_mat_bind`, `r_mat_param` and `r_mat_presets` arguments requir
 Console commands are intended for local checks. Their assignments take priority over server assignments for the same texture. A server parameter update can replace local changes. One entity can use materials for at most 16 distinct textures at once; remove unnecessary local bindings when this limit is reached. Use images and dumps to check which material is displayed; see [Studio diagnostics](renderer-diagnostics.md).
 
 [Dissolve, noise and occluded effects](material-effects.md)
+
+## Delivering a replacement base image
+
+Set `uBaseTexture` to a PNG/TGA under `materials/` in a `studio` or `weapon_finish` preset and register that image with `ncl_upload_file` along with the preset. Use `uBaseUvMode: 0` for the model's original UV dimensions or `1` for the replacement image's dimensions. Bind the preset using the original MDL texture name, including `#` if present. These preset parameters require no new server command; see [base texture replacement](weapon-materials.md#base-texture-replacement) for transparency and fallback behavior.
+
+## Player and weapon gloves
+
+The optional `next_client_gloves.inc` in NextClientServerApi provides player defaults and per-weapon glove profiles over the material natives. A weapon profile takes priority; resetting it restores the current owner's default. The helper requires ReAPI with ReGameDLL and Fakemeta, and applies only the effective profile for the active weapon.
+
+Use `ncl_gloves_set_player`, `ncl_gloves_set_weapon` and their matching reset stocks. The [glove API guide](https://github.com/CS-NextClient/NextClientServerApi/blob/main/docs/gloves.md) describes profile registration, resource delivery, lifecycle integration and the example plugin. Hand texture names must match each model; other plugins must not independently assign materials to the same hand textures.

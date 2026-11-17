@@ -4,6 +4,14 @@
 
 A material specifies a shader program, parameter values, and texture references. The shipped `weapon_finish` program applies a pattern, wear, an exposed underlay, and highlights over the model's base skin. A model document is stored beside the model: `models/v_ak47.mdl` uses `models/v_ak47.mat`.
 
+## Replacing the base texture
+
+Select `studio` or `weapon_finish`, open the base group, and choose a PNG or TGA in **Base texture**. Leave **UV dimensions** at **From model** for a normal skin, including a higher-resolution replacement. Choose **From image** when the model contains a placeholder and its UV coordinates refer to the external image's dimensions. Clearing the image restores the model texture.
+
+Check masked holes, dissolve/noise, mouse selection and outlines after replacement. Pattern controls in `weapon_finish` continue to apply over the chosen base. Both programs share the base image and UV-mode parameters when switching programs. Group editing and temporary image preview use the same save and cancel behavior as other texture parameters.
+
+The editor's wear-map generator uses the same loaded base image and UV dimensions as the preview and keeps the generated map's resolution independent. After changing an image file in another application, save the material and reopen the editor to reload the image before generating a new wear map. Prepare CSNZ textures as PNG/TGA with the intended alpha before selecting them.
+
 ## Add wear to a base skin
 
 1. In the disconnected main menu, run `developer 1` and open Material editor in the upper-left tools group, or run `r_mat_panel`. The preview requires OpenGL 3.3 and uses the material shader independently of gameplay shader settings.

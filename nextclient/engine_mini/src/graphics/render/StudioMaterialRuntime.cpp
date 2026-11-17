@@ -6,6 +6,7 @@
 #include <ncl_material/MaterialResolve.h>
 #include <ncl_material/ProgramManifest.h>
 
+#include "graphics/render/material/studio_effect_material.h"
 #include "performance/PerformanceMonitor.h"
 #include "performance/performance_scopes.h"
 
@@ -254,10 +255,28 @@ namespace render
         {
             return true;
         }
+        const StudioProgramContract* contract = StudioContract_For(&material, manifest);
+        const std::string* base_name = contract != nullptr ? &contract->get_parameter(StudioParameterRole::BaseTexture).name : nullptr;
+        if (base_name != nullptr && manifest->FindParam(*base_name) != nullptr)
+        {
+            const ncl_material::ParamValue* value = effects::Parameter(&material, manifest, *base_name);
+            bool canceled = false;
+            if (value != nullptr && !value->texture_ref.empty())
+            {
+                images.base = textures_.GetImage(value->texture_ref.c_str(), guard, &canceled);
+            }
+            if (canceled)
+            {
+                return false;
+            }
+            images.base_image_uv = effects::Scalar(&material, manifest, StudioParameterRole::BaseUvMode) == 1.0f;
+        }
+
         for (size_t index = 0; index < manifest->parameters.size(); ++index)
         {
             const ncl_material::ParamSchema& schema = manifest->parameters[index];
-            if (schema.type != ncl_material::ParamType::TextureRef || bindings.parameters[index] < 0)
+            if ((base_name != nullptr && schema.name == *base_name) || schema.type != ncl_material::ParamType::TextureRef ||
+                bindings.parameters[index] < 0)
             {
                 continue;
             }
@@ -301,6 +320,8 @@ namespace render
             return 0;
         }
 
+        const StudioProgramContract* contract = StudioContract_For(&material, manifest);
+        const std::string* base_name = contract != nullptr ? &contract->get_parameter(StudioParameterRole::BaseTexture).name : nullptr;
         std::array<GLint, kStudioMaterialUnits> locations{};
         int texture_count = 0;
 
@@ -311,6 +332,12 @@ namespace render
 
             if (location < 0)
             {
+                continue;
+            }
+
+            if (base_name != nullptr && schema.name == *base_name)
+            {
+                glUniform1i(location, kStudioBaseTextureUnit);
                 continue;
             }
 

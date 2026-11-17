@@ -33,9 +33,9 @@ namespace render
             void RegisterLocalization(const char*) override {}
             void ReportError(const std::string&, const std::string&) override {}
 
-            unsigned int Load(const char*, tex::TextureLoadGuard) override
+            MaterialImage Load(const char*, tex::TextureLoadGuard) override
             {
-                return 0;
+                return {};
             }
 
             unsigned int CreateNeutral() override
