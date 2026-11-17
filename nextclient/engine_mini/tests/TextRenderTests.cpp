@@ -14,8 +14,8 @@
 namespace
 {
     constexpr wchar_t kSimplifiedChineseGlyph = L'\u663E';
-    constexpr int kChineseFontTall = 19;
-    constexpr int kChineseFontWeight = 400;
+    constexpr int kChineseFontTall = 16;
+    constexpr int kChineseFontWeight = 500;
 
     std::vector<uint8_t> g_Upload;
     uint32_t g_TextDeletions{};
@@ -168,7 +168,7 @@ TEST_P(TextRenderShadowTest, LossForgetsCellsWithoutDeletingAndPreservesFontsFor
     EXPECT_GT(g_TextDeletions, deletions);
 }
 
-TEST_P(TextRenderShadowTest, SimplifiedChineseFallbackMatchesNativeGlyphCoverageAndMetrics)
+TEST_P(TextRenderShadowTest, LinkedChineseMatchesNativeGlyphCoverageAndMetrics)
 {
     LOGFONTW native_desc{};
     native_desc.lfHeight = kChineseFontTall;
@@ -176,7 +176,7 @@ TEST_P(TextRenderShadowTest, SimplifiedChineseFallbackMatchesNativeGlyphCoverage
     native_desc.lfCharSet = DEFAULT_CHARSET;
     native_desc.lfOutPrecision = OUT_TT_PRECIS;
     native_desc.lfQuality = GetParam() & kTextFontAntialias ? ANTIALIASED_QUALITY : NONANTIALIASED_QUALITY;
-    std::wcsncpy(native_desc.lfFaceName, L"Microsoft YaHei", LF_FACESIZE - 1);
+    std::wcsncpy(native_desc.lfFaceName, L"Tahoma", LF_FACESIZE - 1);
 
     std::unique_ptr<std::remove_pointer_t<HFONT>, decltype(&DeleteObject)> native_font(CreateFontIndirectW(&native_desc), DeleteObject);
     ASSERT_NE(native_font, nullptr);
@@ -186,14 +186,14 @@ TEST_P(TextRenderShadowTest, SimplifiedChineseFallbackMatchesNativeGlyphCoverage
 
     wchar_t actual_face[LF_FACESIZE]{};
     ASSERT_GT(GetTextFaceW(dc.get(), LF_FACESIZE, actual_face), 0);
-    if (std::wcscmp(actual_face, L"Microsoft YaHei") != 0)
+    if (std::wcscmp(actual_face, L"Tahoma") != 0)
     {
-        GTEST_SKIP() << "Microsoft YaHei is not installed";
+        GTEST_SKIP() << "Tahoma is not installed";
     }
 
     WORD glyph_index = 0;
     ASSERT_NE(GetGlyphIndicesW(dc.get(), &kSimplifiedChineseGlyph, 1, &glyph_index, GGI_MARK_NONEXISTING_GLYPHS), GDI_ERROR);
-    ASSERT_NE(glyph_index, 0xFFFF);
+    ASSERT_EQ(glyph_index, 0xFFFF);
 
     TEXTMETRICW native_metrics{};
     ASSERT_TRUE(GetTextMetricsW(dc.get(), &native_metrics));
@@ -234,4 +234,54 @@ TEST_P(TextRenderShadowTest, SimplifiedChineseFallbackMatchesNativeGlyphCoverage
             EXPECT_EQ(g_Upload[pixel + 1], coverage);
         }
     }
+}
+
+TEST_P(TextRenderShadowTest, MissingGlyphDoesNotSuppressSystemFallbacks)
+{
+    TextRenderInterface* renderer = TextRender_Get();
+    TextFont_t font = renderer->CreateEmptyFont();
+    ASSERT_TRUE(renderer->AddGlyphSet(font, "Tahoma", 16, 500, GetParam()));
+    ASSERT_EQ(TextRender_FontInfo(font).faces, 1);
+
+    const TextGlyph* missing = renderer->GetGlyph(font, 0x0378);
+    ASSERT_NE(missing, nullptr);
+    EXPECT_GT(TextRender_FontInfo(font).faces, 1);
+    int faces = TextRender_FontInfo(font).faces;
+    EXPECT_EQ(renderer->GetGlyph(font, 0x0378), missing);
+    EXPECT_EQ(TextRender_FontInfo(font).faces, faces);
+}
+
+TEST_P(TextRenderShadowTest, DecorativeNicknameGlyphSurvivesMissingPrimaryCoverage)
+{
+    LOGFONTW native_desc{};
+    native_desc.lfHeight = 16;
+    native_desc.lfCharSet = DEFAULT_CHARSET;
+    std::wcsncpy(native_desc.lfFaceName, L"Gadugi", LF_FACESIZE - 1);
+    std::unique_ptr<std::remove_pointer_t<HFONT>, decltype(&DeleteObject)> native_font(CreateFontIndirectW(&native_desc), DeleteObject);
+    ASSERT_NE(native_font, nullptr);
+    std::unique_ptr<std::remove_pointer_t<HDC>, decltype(&DeleteDC)> dc(CreateCompatibleDC(nullptr), DeleteDC);
+    ASSERT_NE(dc, nullptr);
+    ASSERT_NE(SelectObject(dc.get(), native_font.get()), nullptr);
+    wchar_t actual_face[LF_FACESIZE]{};
+    ASSERT_GT(GetTextFaceW(dc.get(), LF_FACESIZE, actual_face), 0);
+    if (std::wcscmp(actual_face, L"Gadugi") != 0)
+    {
+        GTEST_SKIP() << "Gadugi is not installed";
+    }
+
+    constexpr wchar_t decorative = L'\u1403';
+    WORD index = 0;
+    ASSERT_NE(GetGlyphIndicesW(dc.get(), &decorative, 1, &index, GGI_MARK_NONEXISTING_GLYPHS), GDI_ERROR);
+    ASSERT_NE(index, 0xFFFF);
+
+    TextRenderInterface* renderer = TextRender_Get();
+    TextFont_t font = renderer->CreateEmptyFont();
+    ASSERT_TRUE(renderer->AddGlyphSet(font, "Tahoma", 16, 500, GetParam()));
+    ASSERT_NE(renderer->GetGlyph(font, 0x0378), nullptr);
+    std::vector<uint8_t> missing_bitmap = g_Upload;
+
+    const TextGlyph* glyph = renderer->GetGlyph(font, decorative);
+    ASSERT_NE(glyph, nullptr);
+    ASSERT_TRUE(glyph->renderable);
+    EXPECT_NE(g_Upload, missing_bitmap);
 }

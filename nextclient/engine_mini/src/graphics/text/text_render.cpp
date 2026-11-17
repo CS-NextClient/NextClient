@@ -105,7 +105,7 @@ namespace
                 return false;
             }
 
-            return index != 0xFFFF;
+            return index != 0xFFFF || HasLinkedGlyph(codepoint);
         }
 
         // Matches the engine's two rasterizers: GGO_GRAY8_BITMAP with 65 coverage levels (the
@@ -192,8 +192,52 @@ namespace
         const std::string& requested() const { return requested_; }
 
     private:
+        bool HasLinkedGlyph(uint32_t codepoint) const
+        {
+            auto cached = linked_glyphs_.find(codepoint);
+            if (cached != linked_glyphs_.end())
+            {
+                return cached->second;
+            }
+
+            // GDI font linking can supply a glyph that GetGlyphIndicesW does not expose. A successful
+            // outline call can also return .notdef, so compare against the font's missing-glyph bitmap.
+            MAT2 identity = {{0, 1}, {0, 0}, {0, 0}, {0, 1}};
+            GLYPHMETRICS linked{};
+            GLYPHMETRICS missing{};
+            DWORD linked_size = GetGlyphOutlineW(dc_, codepoint, GGO_BITMAP, &linked, 0, nullptr, &identity);
+            DWORD missing_size = GetGlyphOutlineW(dc_, 0, GGO_BITMAP | GGO_GLYPH_INDEX, &missing, 0, nullptr, &identity);
+            if (linked_size == GDI_ERROR || missing_size == GDI_ERROR)
+            {
+                return false;
+            }
+
+            bool available = linked_size != missing_size || linked.gmBlackBoxX != missing.gmBlackBoxX ||
+                             linked.gmBlackBoxY != missing.gmBlackBoxY || linked.gmptGlyphOrigin.x != missing.gmptGlyphOrigin.x ||
+                             linked.gmptGlyphOrigin.y != missing.gmptGlyphOrigin.y || linked.gmCellIncX != missing.gmCellIncX ||
+                             linked.gmCellIncY != missing.gmCellIncY;
+            if (!available && linked_size != 0)
+            {
+                std::vector<uint8_t> linked_bitmap(linked_size);
+                std::vector<uint8_t> missing_bitmap(missing_size);
+                if (GetGlyphOutlineW(dc_, codepoint, GGO_BITMAP, &linked, linked_size, linked_bitmap.data(), &identity) == GDI_ERROR ||
+                    GetGlyphOutlineW(dc_, 0, GGO_BITMAP | GGO_GLYPH_INDEX, &missing, missing_size, missing_bitmap.data(), &identity) ==
+                        GDI_ERROR)
+                {
+                    return false;
+                }
+
+                available = linked_bitmap != missing_bitmap;
+            }
+
+            linked_glyphs_.emplace(codepoint, available);
+            return available;
+        }
+
         void Release()
         {
+            linked_glyphs_.clear();
+
             // The DC goes first: a font selected into a DC cannot be deleted.
             if (dc_)
             {
@@ -214,6 +258,7 @@ namespace
         int line_height_ = 0;
         bool antialias_ = false;
         std::string requested_; // family as asked for, not the substituted one
+        mutable std::unordered_map<uint32_t, bool> linked_glyphs_;
     };
 
     struct Font
@@ -228,9 +273,8 @@ namespace
         bool used = false; // set once a glyph resolved, which means the chain is complete
     };
 
-    // GetGlyphOutlineW does no system font linking (the engine's ExtTextOut path does), so without
-    // these a nickname's decorative glyph renders as .notdef. Order is widest-common first; Gadugi
-    // covers Canadian Aboriginal Syllabics (U+1400..167F).
+    // Fonts outside GDI's link configuration still cover decorative nicknames. Order is widest-common
+    // first; Gadugi covers Canadian Aboriginal Syllabics (U+1400..167F).
     constexpr const char* kSystemFallbackFaces[] = {
         "Segoe UI",
         "Segoe UI Symbol",
