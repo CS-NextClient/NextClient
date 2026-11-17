@@ -8,6 +8,7 @@ add_library(${PROJECT_NAME} STATIC
     src/studio_mesh_builder.cpp
     src/StudioMetadata.cpp
     src/StudioReferencePose.cpp
+    src/StudioWearBake.cpp
     src/StudioTextures.cpp
     src/studio_validate.cpp
 )

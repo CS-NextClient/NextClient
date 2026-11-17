@@ -10,6 +10,16 @@ GL checks require an OpenGL 3.3 compatibility context. A skipped GL case does no
 
 For game observations, prepare matching Release engine, client, and GameUI libraries using the [installation procedure](installation-and-factory.md). Building a target does not install it. Closing and reopening the editor must preserve saved materials and leave settings previews and gameplay usable.
 
+## Wear map generation
+
+1. Open a model with at least two textures, select the weapon_finish program, and edit a group of textures used by the current Skin family. Set a nonidentity wear-map placement and note the wear amount and underlay settings.
+2. Click Create wear map. Verify that Add scratches is off and its intensity control is disabled. Generate maps, return to the parameters, and inspect several wear amounts. Each selected texture must have its own PNG reference and identity wear-map placement; the wear amount, underlay, and other parameters must retain their values.
+3. Generate again with scratches enabled. Compare low and high intensities at the same wear amount. Scratches must affect the covered surface while edge wear remains visible. Generation must use the selected Skin family; an unused selected texture must report an error and preserve the current material.
+4. Save, close, and reopen the editor. Maps must remain available and the material must reproduce the saved appearance. Generate another version, then discard it. The saved material and its images must remain intact; unsaved generated images must be removed.
+5. Make the destination unwritable and attempt to save. The editor must report the failure and retain the working preview for retry. After a successful save to a checked related-model destination, discarding the current edit must preserve the images used by that destination.
+6. With the scratch collection unavailable, edge-only generation must work; generation with a nonzero scratch intensity must report an error without changing the material. Check the wear page and Back/Esc navigation at the minimum supported window size and in both English and Russian.
+7. Move Scratch intensity repeatedly without pressing Generate. The preview must remain interactive, and the completed result must use the latest setting. Leave the page during calculation: unfinished work must not change the material later. Repeat several calculations without saving; only the latest unsaved maps should remain under materials/generated/, while previously saved images must stay intact.
+
 ## Developer runtime checks
 
 Run these checks in an installed Steam game with the matching libraries and updated localization resources. Record the library revision, video mode, selected model, and `r_mat_scene_state` output for any failure.

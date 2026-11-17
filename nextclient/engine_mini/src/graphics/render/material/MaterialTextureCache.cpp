@@ -120,6 +120,42 @@ namespace render
         return neutral_;
     }
 
+    void MaterialTextureCache::Remove(const std::string& path)
+    {
+        std::vector<unsigned int> retired;
+        std::erase_if(textures_, [&](const Entry& entry) {
+#ifdef _WIN32
+            const bool matches = ncl_material::EqualsIgnoreCaseAscii(entry.path, path);
+#else
+            const bool matches = entry.path == path;
+#endif
+            if (matches)
+            {
+                retired.push_back(entry.texture);
+            }
+
+            return matches;
+        });
+
+        if (retired.empty())
+        {
+            return;
+        }
+
+        ++revision_;
+
+        if (device_.IsContextCurrent())
+        {
+            for (unsigned int texture : retired)
+            {
+                if (texture != 0)
+                {
+                    loader_.DeleteTexture(texture);
+                }
+            }
+        }
+    }
+
     void MaterialTextureCache::Clear()
     {
         if (device_.IsContextCurrent())

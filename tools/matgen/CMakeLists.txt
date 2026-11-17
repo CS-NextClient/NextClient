@@ -32,6 +32,7 @@ cmrc_add_resource_library(
 # should not.
 target_link_libraries(${PROJECT_NAME} PRIVATE
         ncl_material::ncl_material
+        ncl_image::ncl_image
         ncl_math::ncl_math
         ncl_studio::ncl_studio
         # The header the client's own upload path parses images with, so that this tool

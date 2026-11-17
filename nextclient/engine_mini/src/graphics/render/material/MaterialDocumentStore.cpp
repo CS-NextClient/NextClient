@@ -46,6 +46,27 @@ namespace render
         return files_.Write(relative, text, error);
     }
 
+    bool MaterialFileBackend::WriteGenerated(const std::string&, const std::string&, std::string& error)
+    {
+        error = "generated images are unavailable";
+        return false;
+    }
+
+    bool MaterialFileBackend::RemoveGenerated(const std::string&)
+    {
+        return false;
+    }
+
+    bool MaterialDocumentStore::WriteGenerated(const std::string& relative, const std::string& data, std::string& error)
+    {
+        return files_.WriteGenerated(relative, data, error);
+    }
+
+    bool MaterialDocumentStore::RemoveGenerated(const std::string& relative)
+    {
+        return files_.RemoveGenerated(relative);
+    }
+
     ncl_material::MaterialDoc MaterialDocumentStore::LoadModel(const std::string& name)
     {
         if (name.size() < 4)

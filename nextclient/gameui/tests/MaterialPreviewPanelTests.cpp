@@ -91,7 +91,7 @@ namespace
         }
         const char* get_texture_name(const char* model, int index) override
         {
-            return {};
+            return index == 1 ? "slide.bmp" : "";
         }
         render::MaterialEditSource GetMaterialSource(const char* model, const char* texture_name, int entity_index) override
         {
@@ -212,6 +212,15 @@ namespace
             return {};
         }
         void EndParamPreview(bool accept) override {}
+        bool BeginWearGeneration(int, float, char*, int) override
+        {
+            return false;
+        }
+        render::MaterialWearStatus PollWearGeneration(char*, int) override
+        {
+            return render::MaterialWearStatus::Idle;
+        }
+        void CancelWearGeneration() override {}
     };
 
     class Preview : public ScenePreviewInterface
@@ -234,8 +243,13 @@ namespace
         {
             return false;
         }
-        PreviewDrawStatus Draw(const PreviewDrawParams&, const PreviewRect&, const PreviewRect&, PreviewHit*) override
+        PreviewDrawStatus Draw(const PreviewDrawParams& params, const PreviewRect&, const PreviewRect&, PreviewHit* hit) override
         {
+            if (hit != nullptr && params.interactive && params.cursor_x == 32 && params.cursor_y == 32)
+            {
+                *hit = {0, 1};
+            }
+
             return PreviewDrawStatus::Ready;
         }
         void CloseAuthoring() override {}
@@ -347,4 +361,59 @@ TEST_F(MaterialPreviewPanelTest, FocusLossCancelsOwnedCapture)
     panel.OnCursorMoved(70, 60);
     ExpectSameCamera(before_move, state.BuildCamera());
     EXPECT_EQ(g_Input.capture, 0u);
+}
+
+TEST_F(MaterialPreviewPanelTest, CompletedClickPostsTheModelAndTextureOnce)
+{
+    state.SetModel("models/picking.mdl", {});
+    panel.OnMousePressed(vgui2::MOUSE_LEFT);
+    panel.OnMouseReleased(vgui2::MOUSE_LEFT);
+    g_Input.x = g_Input.y = 80;
+    panel.Paint();
+
+    ASSERT_EQ(panel.action_signals.size(), 1u);
+    EXPECT_STREQ(panel.action_signals[0]->GetName(), "TexturePicked");
+    EXPECT_STREQ(panel.action_signals[0]->GetString("model"), "models/picking.mdl");
+    EXPECT_STREQ(panel.action_signals[0]->GetString("texture"), "slide.bmp");
+
+    panel.Paint();
+    EXPECT_EQ(panel.action_signals.size(), 1u);
+}
+
+TEST_F(MaterialPreviewPanelTest, QueuedCaptureLossAfterReleasePreservesTheCompletedClick)
+{
+    state.SetModel("models/picking.mdl", {});
+    panel.OnMousePressed(vgui2::MOUSE_LEFT);
+    panel.OnMouseReleased(vgui2::MOUSE_LEFT);
+    panel.OnMouseCaptureLost();
+    g_Input.x = g_Input.y = 80;
+    panel.Paint();
+
+    ASSERT_EQ(panel.action_signals.size(), 1u);
+    EXPECT_STREQ(panel.action_signals[0]->GetName(), "TexturePicked");
+    EXPECT_STREQ(panel.action_signals[0]->GetString("model"), "models/picking.mdl");
+    EXPECT_STREQ(panel.action_signals[0]->GetString("texture"), "slide.bmp");
+}
+
+TEST_F(MaterialPreviewPanelTest, CaptureLossBeforeReleaseCannotSelectATexture)
+{
+    state.SetModel("models/picking.mdl", {});
+    panel.OnMousePressed(vgui2::MOUSE_LEFT);
+    g_Input.capture = 0;
+    panel.OnMouseCaptureLost();
+    panel.OnMouseReleased(vgui2::MOUSE_LEFT);
+    panel.Paint();
+
+    EXPECT_TRUE(panel.action_signals.empty());
+}
+
+TEST_F(MaterialPreviewPanelTest, FocusLossBeforePaintingCancelsTheCompletedClick)
+{
+    state.SetModel("models/picking.mdl", {});
+    panel.OnMousePressed(vgui2::MOUSE_LEFT);
+    panel.OnMouseReleased(vgui2::MOUSE_LEFT);
+    panel.OnKillFocus();
+    panel.Paint();
+
+    EXPECT_TRUE(panel.action_signals.empty());
 }

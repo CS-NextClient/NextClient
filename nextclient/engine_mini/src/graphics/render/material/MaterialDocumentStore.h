@@ -22,6 +22,8 @@ namespace render
         virtual MaterialReadStatus ReadFile(const char* path, std::string& text, size_t max_bytes) = 0;
         virtual bool Write(const std::string& relative, const std::string& text, std::string& error) = 0;
         virtual void Report(const char* text, bool debug) = 0;
+        virtual bool WriteGenerated(const std::string& relative, const std::string& data, std::string& error);
+        virtual bool RemoveGenerated(const std::string& relative);
 
         bool Read(const char* path, std::string& text, size_t max_bytes)
         {
@@ -39,6 +41,8 @@ namespace render
         bool Read(const char* path, std::string& text, size_t max_bytes = 0);
         MaterialReadStatus ReadFile(const char* path, std::string& text, size_t max_bytes = 0);
         bool Write(const std::string& relative, const std::string& text, std::string& error);
+        bool WriteGenerated(const std::string& relative, const std::string& data, std::string& error);
+        bool RemoveGenerated(const std::string& relative);
         ncl_material::MaterialDoc LoadModel(const std::string& name);
         void Report(const char* format, ...);
         void Debug(const char* format, ...);

@@ -55,7 +55,7 @@ namespace render
             documents(files),
             server_materials(documents, resources.manifests),
             models(resources.device, documents, resources.manifests, resources.shaders, server_materials, monitor),
-            editor(models, server_materials, resources.shaders, resources.manifests, documents),
+            editor(models, server_materials, resources.shaders, resources.manifests, documents, resources.textures),
             preview_backend(models, preview_engine, files),
             preview_models(preview_backend),
             diagnostics(studio_engine),
@@ -105,7 +105,21 @@ namespace render
                 test_quad,
                 external
             )
-        {}
+        {
+            editor.SetImageRetirementBarrier([this] {
+                if (this->resources.device.IsContextCurrent())
+                {
+                    studio.Flush(StudioFlushReason::Resource);
+                }
+                else
+                {
+                    studio.DiscardPending();
+                }
+
+                preview.DiscardCapturedWork();
+                effects.DiscardCaptures();
+            });
+        }
     };
 
 } // namespace render

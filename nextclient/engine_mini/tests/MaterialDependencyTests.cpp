@@ -56,7 +56,7 @@ namespace
         render::ServerMaterials server{documents, source.catalog};
         performance_test::Core performance;
         render::StudioModelCache models{source.device, documents, source.catalog, source.shaders, server, performance.monitor};
-        render::MaterialEditor editor{models, server, source.shaders, source.catalog, documents};
+        render::MaterialEditor editor{models, server, source.shaders, source.catalog, documents, source.cache};
         ClientStringRegistry strings;
         MaterialSyncSystem sync{server, strings};
         studio_test::ModelBlock block;

@@ -53,7 +53,8 @@ private:
         Browser,
         Lighting,
         Catalog,
-        Textures
+        Textures,
+        Wear
     };
 
     CGameUI& m_Host;
@@ -99,6 +100,18 @@ private:
 
     vgui2::Button* m_pSave{};
     vgui2::Button* m_pStub{};
+    vgui2::Button* m_pWear{};
+    vgui2::Label* m_pWearInfo{};
+    vgui2::CheckButton* m_pWearScratches{};
+    vgui2::Label* m_pWearStrengthLabel{};
+    vgui2::Slider* m_pWearStrength{};
+    vgui2::Label* m_pWearStrengthValue{};
+    vgui2::Label* m_pWearResult{};
+    vgui2::Button* m_pWearGenerate{};
+    vgui2::Button* m_pWearBack{};
+    bool m_WearPending{};
+    bool m_WearGenerating{};
+    double m_WearNextUpdate{};
 
     vgui2::Label* m_pEmpty{};
     vgui2::ComboBox* m_pBrowserFolder{};
@@ -190,6 +203,12 @@ private:
     void ReloadPrograms();
     void BeginEditing();
     void RefreshEditingControls();
+    void ShowWear();
+    void GenerateWear();
+    void ScheduleWearGeneration();
+    void AdvanceWearGeneration();
+    void ShowWearError(const char* error);
+    void UpdateWearControls();
     void ShowTextureGroup();
     void ApplyTextureGroup();
     void BuildRows();

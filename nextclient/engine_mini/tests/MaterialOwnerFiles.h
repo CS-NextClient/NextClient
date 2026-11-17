@@ -47,6 +47,24 @@ public:
         return true;
     }
 
+    bool WriteGenerated(const std::string& path, const std::string& data, std::string& error) override
+    {
+        if (!files.emplace(path, data).second)
+        {
+            error = "generated image already exists";
+            return false;
+        }
+
+        writes.push_back(path);
+        return true;
+    }
+
+    bool RemoveGenerated(const std::string& path) override
+    {
+        files.erase(path);
+        return true;
+    }
+
     void Report(const char* text, bool) override
     {
         reports.emplace_back(text);

@@ -238,8 +238,8 @@ void CMaterialPreviewPanel::OnMouseCaptureLost()
 {
     BaseClass::OnMouseCaptureLost();
 
-    // Capture-loss messages can arrive after a newer press reacquires this panel.
-    if (input()->GetMouseCapture() != GetVPanel())
+    // Capture-loss messages can arrive after release or after a newer press reacquires this panel.
+    if (dragging_ && input()->GetMouseCapture() != GetVPanel())
     {
         CancelInteraction();
     }

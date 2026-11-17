@@ -67,6 +67,14 @@ The image browser and color picker preserve the original parameter separately fo
 
 ## Bake model-specific wear
 
+In the editor, select the textures to edit, choose the `weapon_finish` program, and set the Skin control to the family to bake. Click **Create wear map**, optionally enable **Add scratches** and adjust **Scratch intensity**, then inspect the background preview. **Generate** requests an immediate recalculation. Each selected texture receives its own map. Generation replaces the wear map and resets its UV placement; other material parameters retain their values. Textures unused by the selected skin family must be removed from the selection before generating.
+
+The preview updates immediately. Use **Back** to adjust `uWear`, the underlay, and the transition softness. **Save** keeps the generated images under `materials/generated/` together with the material document. Discarding the edit removes unsaved generated images. Images referenced by a successful save, including a related-model destination, remain available. Saving a material for another model reuses these maps; bake separately when that model has different geometry or UV coordinates.
+
+The editor bakes the model's reference pose at a longest-side resolution of 1024 pixels. Scratches are off by default and use the shipped `fine_random.png` mask when enabled. Opening the wear page starts background baking. Changes to the checkbox or intensity request a new bake after a short pause; a newer request replaces an unfinished result. Back or leaving the page cancels unfinished work and keeps the latest completed maps in the edit session.
+
+The command-line tool is also available:
+
 ```text
 matgen bake edges models/v_ak47.mdl
 ```

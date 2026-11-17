@@ -49,6 +49,8 @@ namespace render
             return revision_;
         }
         void Clear();
+        // Draws retaining the image must be drained or discarded before removal.
+        void Remove(const std::string& path);
         void Forget();
         void OnDeviceLost() override;
     };

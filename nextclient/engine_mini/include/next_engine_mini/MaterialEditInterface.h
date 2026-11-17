@@ -50,6 +50,14 @@ namespace render
         const char* default_texture;
     };
 
+    enum class MaterialWearStatus
+    {
+        Idle,
+        Running,
+        Ready,
+        Failed
+    };
+
     class MaterialEditInterface
     {
     public:
@@ -125,5 +133,11 @@ namespace render
         // The snapshot preserves this parameter independently for each selected texture.
         virtual bool BeginParamPreview(const char* name) = 0;
         virtual void EndParamPreview(bool accept) = 0;
+
+        // Begin copies inputs; Poll publishes completed images on the calling thread.
+        virtual bool BeginWearGeneration(int skin_family, float scratch_strength, char* error_out, int error_out_len) = 0;
+        virtual MaterialWearStatus PollWearGeneration(char* error_out, int error_out_len) = 0;
+        // Cancellation waits for the CPU worker to leave its next cancellation point.
+        virtual void CancelWearGeneration() = 0;
     };
 } // namespace render

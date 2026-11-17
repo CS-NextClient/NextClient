@@ -1,12 +1,14 @@
 #pragma once
 
 #include <cstdint>
+#include <memory>
+#include <vector>
+
+#include <tier1/KeyValues.h>
 
 #include <vgui/MouseCode.h>
 
 #define DECLARE_CLASS_SIMPLE(class_name, base_class) using BaseClass = base_class
-
-class KeyValues;
 
 namespace vgui2
 {
@@ -18,6 +20,8 @@ namespace vgui2
         Panel* parent_{};
 
     public:
+        std::vector<std::unique_ptr<::KeyValues>> action_signals;
+
         Panel(Panel* parent = nullptr, const char* = "") :
             parent_(parent)
         {}
@@ -30,7 +34,10 @@ namespace vgui2
         void SetMouseInputEnabled(bool) {}
         void SetKeyBoardInputEnabled(bool) {}
         void RequestFocus() {}
-        void PostActionSignal(::KeyValues*) {}
+        void PostActionSignal(::KeyValues* message)
+        {
+            action_signals.emplace_back(message);
+        }
         Panel* GetParent() const
         {
             return parent_;

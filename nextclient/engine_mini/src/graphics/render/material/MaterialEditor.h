@@ -1,5 +1,8 @@
 #pragma once
 
+#include <cstdint>
+#include <functional>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -16,16 +19,30 @@ namespace render
     class ShaderManager;
     class MaterialManifestCatalog;
     class MaterialDocumentStore;
+    class MaterialTextureCache;
 
     class MaterialEditor final : public MaterialEditInterface
     {
+    private:
+        struct WearGenerationJob;
+
     private:
         StudioModelCache& models_;
         ServerMaterials& server_materials_;
         ShaderManager& shaders_;
         MaterialManifestCatalog& manifests_;
         MaterialDocumentStore& documents_;
+        MaterialTextureCache& textures_;
+        std::function<void()> image_retirement_barrier_;
         MaterialEditSession session_;
+        uint64_t edit_revision_{};
+        uint64_t wear_request_revision_{};
+        uint64_t generated_sequence_{};
+        std::vector<std::string> generated_images_;
+        std::shared_ptr<WearGenerationJob> wear_job_;
+        std::shared_ptr<WearGenerationJob> pending_wear_job_;
+        MaterialWearStatus wear_status_{};
+        std::string wear_error_;
 
         // Each getter retains separate storage for simultaneously borrowed results.
         std::vector<std::string> programs_;
@@ -38,8 +55,10 @@ namespace render
             ServerMaterials& server_materials,
             ShaderManager& shaders,
             MaterialManifestCatalog& manifests,
-            MaterialDocumentStore& documents
+            MaterialDocumentStore& documents,
+            MaterialTextureCache& textures
         );
+        ~MaterialEditor() override;
         MaterialEditor(const MaterialEditor&) = delete;
         MaterialEditor& operator=(const MaterialEditor&) = delete;
         int GetProgramCount() override;
@@ -86,6 +105,10 @@ namespace render
         bool Save(const char* model, char* error_out, int error_out_len) override;
         const char* GetPresetStub() override;
         void Reload() override;
+        bool BeginWearGeneration(int skin_family, float scratch_strength, char* error_out, int error_out_len) override;
+        MaterialWearStatus PollWearGeneration(char* error_out, int error_out_len) override;
+        void CancelWearGeneration() override;
+        void SetImageRetirementBarrier(std::function<void()> barrier);
         bool BeginGroup(const char* model, const char* const* textures, int count, int entity_index, bool (*network_session)());
         MaterialEditSource GetMaterialSource(const char* model, const char* texture_name, int entity_index, bool (*network_session)());
 
@@ -109,7 +132,12 @@ namespace render
         ncl_material::Param* FindParam(const char* name);
         const ncl_material::ParamSchema* SchemaOf(const char* name);
         void SetParam(const char* name, const ncl_material::ParamValue& value);
+        bool StartWearJob(std::shared_ptr<WearGenerationJob> job);
+        bool PublishWearImages(WearGenerationJob& job, std::string& error);
+        void DiscardGeneratedImages();
+        void RemoveGeneratedImages(const std::vector<std::string>& images);
         bool SaveTo(const std::string& model, std::string& error);
+        static bool ReferencesImage(const std::vector<ncl_material::MaterialEntry>& entries, const std::string& image);
         static MaterialEditParamType TypeOf(ncl_material::ParamType type);
     };
 } // namespace render

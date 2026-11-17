@@ -169,6 +169,47 @@ TEST_F(NativeMaterialWriteTest, SuccessfulReplacementPublishesCompleteDocumentAn
     ExpectOnlyAuthoredFile();
 }
 
+TEST_F(NativeMaterialWriteTest, GeneratedImageCreationDoesNotOverwriteExistingFiles)
+{
+    std::string error;
+    EXPECT_FALSE(files_.WriteGenerated("authored.mat", replacement_, error));
+    EXPECT_FALSE(error.empty());
+    EXPECT_EQ(ReadAuthored(), original_);
+    ExpectOnlyAuthoredFile();
+}
+
+TEST_F(NativeMaterialWriteTest, GeneratedImageWriteFailureRemovesPartialOutput)
+{
+    files_.failure = OutputFailure::Write;
+    std::string error;
+    EXPECT_FALSE(files_.WriteGenerated("preview.png", std::string(1024, 'x'), error));
+    EXPECT_FALSE(error.empty());
+    ExpectOnlyAuthoredFile();
+}
+
+TEST_F(NativeMaterialWriteTest, GeneratedImageCompletionFailureRemovesOutput)
+{
+    files_.failure = OutputFailure::Completion;
+    std::string error;
+    EXPECT_FALSE(files_.WriteGenerated("preview.png", std::string(1024, 'x'), error));
+    EXPECT_FALSE(error.empty());
+    ExpectOnlyAuthoredFile();
+}
+
+TEST_F(NativeMaterialWriteTest, GeneratedImageBinaryDataCanBeRemovedIndependently)
+{
+    const std::string data("image\0pixels", 12);
+    std::string error;
+    ASSERT_TRUE(files_.WriteGenerated("preview.png", data, error)) << error;
+    std::ifstream input(directory_ / "preview.png", std::ios::binary);
+    const std::string read{std::istreambuf_iterator<char>(input), std::istreambuf_iterator<char>()};
+    EXPECT_EQ(read, data);
+    input.close();
+    EXPECT_TRUE(files_.RemoveGenerated("preview.png"));
+    EXPECT_EQ(ReadAuthored(), original_);
+    ExpectOnlyAuthoredFile();
+}
+
 TEST(MaterialOwnerTest, IndependentPresetTablesKeepValuesFailuresAndGenerations)
 {
     StudioMaterialSourceFixture first_source;
@@ -249,7 +290,7 @@ TEST(MaterialOwnerTest, FailedDocumentReadPreservesAuthoredEntriesAndDoesNotRelo
         render::MaterialDocumentStore documents(files);
         render::ServerMaterials server(documents, resources.manifests);
         render::StudioModelCache models(resources.device, documents, resources.manifests, resources.shaders, server, performance.monitor);
-        render::MaterialEditor editor(models, server, resources.shaders, resources.manifests, documents);
+        render::MaterialEditor editor(models, server, resources.shaders, resources.manifests, documents, resources.textures);
         studio_test::ModelBlock block;
         goldsrc::model_t model{};
         std::strcpy(model.name, "models/read_failure.mdl");
@@ -419,7 +460,7 @@ namespace
                 documents(files),
                 server_materials(documents, resources.manifests),
                 models(resources.device, documents, resources.manifests, resources.shaders, server_materials, performance.monitor),
-                editor(models, server_materials, resources.shaders, resources.manifests, documents)
+                editor(models, server_materials, resources.shaders, resources.manifests, documents, resources.textures)
             {}
         } state{resources, files};
         studio_test::ModelBlock block;

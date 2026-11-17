@@ -33,14 +33,21 @@ namespace render
         ServerMaterials& server_materials,
         ShaderManager& shaders,
         MaterialManifestCatalog& manifests,
-        MaterialDocumentStore& documents
+        MaterialDocumentStore& documents,
+        MaterialTextureCache& textures
     ) :
         models_(models),
         server_materials_(server_materials),
         shaders_(shaders),
         manifests_(manifests),
-        documents_(documents)
+        documents_(documents),
+        textures_(textures)
     {}
+
+    void MaterialEditor::SetImageRetirementBarrier(std::function<void()> barrier)
+    {
+        image_retirement_barrier_ = std::move(barrier);
+    }
 
     const ncl_material::Material* MaterialEditSession::FindOverride(std::string_view model_name, std::string_view texture_name) const
     {
@@ -327,6 +334,14 @@ namespace render
         }
 
         replacement.active = true;
+        const uint64_t replacement_revision = edit_revision_ + 1;
+        End();
+
+        if (edit_revision_ != replacement_revision)
+        {
+            return false;
+        }
+
         session_ = std::move(replacement);
 
         return true;
@@ -380,7 +395,10 @@ namespace render
 
     void MaterialEditor::End()
     {
+        CancelWearGeneration();
+        ++edit_revision_;
         session_ = MaterialEditSession{};
+        DiscardGeneratedImages();
     }
 
     bool MaterialEditor::is_editing()
@@ -449,6 +467,7 @@ namespace render
             }
         }
 
+        ++edit_revision_;
         return true;
     }
 
@@ -545,6 +564,7 @@ namespace render
             }
         }
 
+        ++edit_revision_;
         session_.preview_param.clear();
         session_.preview_values.clear();
     }
@@ -655,6 +675,11 @@ namespace render
                 std::erase_if(entry.material.params, [name](const ncl_material::Param& param) { return param.name == name; });
             removed = count > 0 || removed;
         }
+        if (removed)
+        {
+            ++edit_revision_;
+        }
+
         return removed;
     }
 
@@ -797,6 +822,8 @@ namespace render
 
     void MaterialEditor::SetParam(const char* name, const ncl_material::ParamValue& value)
     {
+        ++edit_revision_;
+
         for (ncl_material::MaterialEntry& entry : session_.entries)
         {
             auto found = std::find_if(entry.material.params.begin(), entry.material.params.end(), [name](const ncl_material::Param& param) {
@@ -823,6 +850,8 @@ namespace render
             return false;
         }
 
+        const uint64_t revision = edit_revision_;
+        const std::vector<ncl_material::MaterialEntry> selected_entries = session_.entries;
         std::string target = model.empty() ? session_.model : model;
         std::string path = DocumentPathOf(target);
 
@@ -839,6 +868,12 @@ namespace render
         std::string existing;
 
         const MaterialReadStatus read_status = documents_.ReadFile(path.c_str(), existing);
+
+        if (edit_revision_ != revision || !session_.active)
+        {
+            error = "material editing changed while reading the destination";
+            return false;
+        }
 
         if (read_status != MaterialReadStatus::Ready && read_status != MaterialReadStatus::NotFound)
         {
@@ -862,7 +897,7 @@ namespace render
             doc = *parsed;
         }
 
-        for (const ncl_material::MaterialEntry& selected : session_.entries)
+        for (const ncl_material::MaterialEntry& selected : selected_entries)
         {
             auto found = std::find_if(doc.entries.begin(), doc.entries.end(), [&](const ncl_material::MaterialEntry& entry) {
                 return ncl_material::EqualsIgnoreCaseAscii(entry.texture_name, selected.texture_name);
@@ -892,6 +927,8 @@ namespace render
         {
             return false;
         }
+
+        std::erase_if(generated_images_, [&](const std::string& image) { return ReferencesImage(doc.entries, image); });
 
         models_.ReloadDocuments();
 

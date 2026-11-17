@@ -18,6 +18,8 @@ namespace render
         MaterialReadStatus ReadFile(const char* path, std::string& text, size_t max_bytes) override;
         bool Write(const std::string& relative, const std::string& text, std::string& error) override;
         void Report(const char* text, bool debug) override;
+        bool WriteGenerated(const std::string& relative, const std::string& data, std::string& error) override;
+        bool RemoveGenerated(const std::string& relative) override;
 
     protected:
         virtual bool WriteOutput(std::ofstream& file, const std::string& text);

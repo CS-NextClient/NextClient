@@ -55,6 +55,7 @@ namespace
     constexpr int kPageTop = kTabTop + kTabHeight + 6;
     constexpr const char* kLabels[] = {"ModelLabel", "TextureLabel", "ProgramLabel"};
 
+    constexpr double kWearGenerationDelay = 0.3;
     constexpr int kButtonWide = 76;
     constexpr int kButtonGap = 4;
     constexpr float kPlaybackRates[] = {0.25f, 0.5f, 1.0f, 1.5f, 2.0f};
@@ -249,6 +250,26 @@ CMaterialEditDialog::CMaterialEditDialog(
     m_pValidation = new Label(m_pControls, "Validation", "");
 
     m_pRows = new CPanelListPanel(m_pControls, "Rows");
+    m_pWear = new Button(m_pControls, "Wear", "#GameUI_MatEdit_CreateWear", this, "wear");
+    m_pWearInfo = new Label(m_pControls, "WearInfo", "#GameUI_MatEdit_WearInfo");
+    m_pWearInfo->SetWrap(true);
+    m_pWearInfo->SetContentAlignment(Label::a_northwest);
+    m_pWearScratches = new CheckButton(m_pControls, "WearScratches", "#GameUI_MatEdit_WearScratches");
+    m_pWearScratches->SilentSetSelected(false);
+    m_pWearScratches->AddActionSignalTarget(this);
+    m_pWearStrengthLabel = new Label(m_pControls, "WearStrengthLabel", "#GameUI_MatEdit_WearStrength");
+    m_pWearStrength = new Slider(m_pControls, "WearStrength");
+    m_pWearStrength->SetRange(0, 100);
+    m_pWearStrength->SetNumTicks(5);
+    m_pWearStrength->SetValue(50);
+    m_pWearStrength->AddActionSignalTarget(this);
+    m_pWearStrengthValue = new Label(m_pControls, "WearStrengthValue", "50%");
+    m_pWearResult = new Label(m_pControls, "WearResult", "");
+    m_pWearResult->SetWrap(true);
+    m_pWearResult->SetContentAlignment(Label::a_northwest);
+    m_pWearGenerate = new Button(m_pControls, "WearGenerate", "#GameUI_MatEdit_GenerateWear", this, "wear_generate");
+    m_pWearBack = new Button(m_pControls, "WearBack", "#GameUI_MatEdit_Back", this, "wear_back");
+    UpdateWearControls();
 
     // Suppresses every material at once, which is the only comparison that means anything:
     // "with" against "without" has to differ for a reason the author chose.
@@ -395,6 +416,8 @@ void CMaterialEditDialog::OnClose()
 
     m_Closing = true;
     m_Transitions.Reset();
+    m_WearPending = false;
+    m_WearGenerating = false;
     m_pPreview->CancelInteraction();
     m_pPreview->SetVisible(false);
     m_pCatalogList->ClearThumbnails();
@@ -506,7 +529,16 @@ void CMaterialEditDialog::PerformLayout()
     int shown_y = compare_y - 28;
     int validation_y = shown_y - 34;
 
-    m_pRows->SetBounds(10, kPageTop + 100, wide - 20, std::max(validation_y - 6 - (kPageTop + 100), 40));
+    m_pWear->SetBounds(10, kPageTop + 100, wide - 20, 24);
+    m_pRows->SetBounds(10, kPageTop + 130, wide - 20, std::max(validation_y - 6 - (kPageTop + 130), 40));
+    m_pWearInfo->SetBounds(10, kPageTop, wide - 20, 100);
+    m_pWearScratches->SetBounds(10, kPageTop + 108, wide - 20, 24);
+    m_pWearStrengthLabel->SetBounds(10, kPageTop + 140, wide - 20, 22);
+    m_pWearStrength->SetBounds(10, kPageTop + 168, wide - 76, 32);
+    m_pWearStrengthValue->SetBounds(wide - 62, kPageTop + 168, 52, 22);
+    m_pWearResult->SetBounds(10, kPageTop + 216, wide - 20, std::max(tall - kPageTop - 268, 40));
+    m_pWearGenerate->SetBounds(10, tall - 40, wide - 110, 24);
+    m_pWearBack->SetBounds(wide - 90, tall - 40, 76, 24);
     m_pValidation->SetBounds(10, validation_y, wide - 20, 30);
 
     int half = (wide - 20) / 2;
@@ -578,6 +610,13 @@ void CMaterialEditDialog::PerformLayout()
 
 void CMaterialEditDialog::ShowPage(Page page)
 {
+    if (m_Page == Page::Wear && page != Page::Wear)
+    {
+        m_WearPending = false;
+        m_WearGenerating = false;
+        m_Editor.CancelWearGeneration();
+    }
+
     m_Page = page;
     Panel* const parameters[] = {
         m_pModel,
@@ -586,6 +625,7 @@ void CMaterialEditDialog::ShowPage(Page page)
         m_pProgram,
         m_pSource,
         m_pRows,
+        m_pWear,
         m_pValidation,
         m_pCompare,
         m_pSave,
@@ -604,6 +644,22 @@ void CMaterialEditDialog::ShowPage(Page page)
     };
     Panel* const catalog[] = {m_pCatalogFilter, m_pCatalogList, m_pCatalogCount, m_pCatalogClear, m_pCatalogRescan, m_pCatalogBack};
     Panel* const textures[] = {m_pTextureList, m_pTextureAll, m_pTextureApply, m_pTextureBack, m_pTextureGroupCount};
+    Panel* const wear[] = {
+        m_pWearInfo,
+        m_pWearScratches,
+        m_pWearStrengthLabel,
+        m_pWearStrength,
+        m_pWearStrengthValue,
+        m_pWearResult,
+        m_pWearGenerate,
+        m_pWearBack
+    };
+
+    for (Panel* panel : wear)
+    {
+        panel->SetVisible(page == Page::Wear);
+    }
+
     for (Panel* panel : textures)
     {
         panel->SetVisible(page == Page::Textures);
@@ -624,9 +680,10 @@ void CMaterialEditDialog::ShowPage(Page page)
         panel->SetVisible(page == Page::Catalog);
     }
 
+    m_pWear->SetVisible(page == Page::Parameters && !m_Model.empty());
     m_pLighting->SetVisible(page == Page::Lighting);
     m_pEmpty->SetVisible(false);
-    m_pState->SetVisible(page != Page::Textures);
+    m_pState->SetVisible(page != Page::Textures && page != Page::Wear);
     bool lighting = page == Page::Lighting || (page == Page::Catalog && m_CatalogReturnPage == Page::Lighting);
     m_pTabMaterial->SetSelected(!lighting);
     m_pTabLighting->SetSelected(lighting);
@@ -636,6 +693,9 @@ void CMaterialEditDialog::ShowPage(Page page)
     case Page::Browser: SetTitle("#GameUI_MatEdit_PickTitle", true); break;
     case Page::Lighting:
         SetTitle("#GameUI_MatEdit_TabLighting", true);
+        break;
+    case Page::Wear:
+        SetTitle("#GameUI_MatEdit_CreateWear", true);
         break;
     case Page::Textures:
         SetTitle("#GameUI_MatEdit_SelectTextures", true);
@@ -699,7 +759,7 @@ void CMaterialEditDialog::OnCloseFrameButtonPressed()
         return;
     }
 
-    if (m_Page == Page::Textures)
+    if (m_Page == Page::Textures || m_Page == Page::Wear)
     {
         ShowPage(Page::Parameters);
         return;
@@ -915,6 +975,126 @@ void CMaterialEditDialog::ReloadCatalogRows()
     InvalidateLayout();
 }
 
+void CMaterialEditDialog::ShowWear()
+{
+    if (!m_Editor.is_editing() || m_Editor.has_mixed_programs() || V_strcmp(m_Editor.get_edited_program(), "weapon_finish") != 0)
+    {
+        return;
+    }
+
+    m_pWearResult->SetText("");
+    UpdateWearControls();
+    ShowPage(Page::Wear);
+    ScheduleWearGeneration();
+}
+
+void CMaterialEditDialog::UpdateWearControls()
+{
+    const bool scratches = m_pWearScratches->IsSelected();
+    m_pWearStrength->SetEnabled(scratches);
+    m_pWearStrengthLabel->SetEnabled(scratches);
+    m_pWearStrengthValue->SetEnabled(scratches);
+
+    char value[16]{};
+    V_snprintf(value, sizeof(value), "%d%%", m_pWearStrength->GetValue());
+    m_pWearStrengthValue->SetText(value);
+}
+
+void CMaterialEditDialog::GenerateWear()
+{
+    if (m_Page != Page::Wear || !m_Editor.is_editing())
+    {
+        return;
+    }
+
+    const float strength = m_pWearScratches->IsSelected() ? m_pWearStrength->GetValue() / 100.0f : 0.0f;
+    char error[512]{};
+
+    m_WearPending = false;
+
+    if (!m_Editor.BeginWearGeneration(m_pSkin->GetActiveItem(), strength, error, sizeof(error)))
+    {
+        if (m_Closing)
+        {
+            return;
+        }
+
+        m_WearGenerating = false;
+        ShowWearError(error);
+        return;
+    }
+
+    m_WearGenerating = true;
+    m_pWearResult->SetText("#GameUI_MatEdit_WearWorking");
+}
+
+void CMaterialEditDialog::ScheduleWearGeneration()
+{
+    if (m_Page != Page::Wear || m_Closing)
+    {
+        return;
+    }
+
+    m_WearPending = true;
+    m_WearNextUpdate = system()->GetCurrentTime() + kWearGenerationDelay;
+    m_pWearResult->SetText("#GameUI_MatEdit_WearWorking");
+}
+
+void CMaterialEditDialog::AdvanceWearGeneration()
+{
+    if (m_Page != Page::Wear)
+    {
+        return;
+    }
+
+    if (m_WearPending)
+    {
+        if (system()->GetCurrentTime() >= m_WearNextUpdate)
+        {
+            GenerateWear();
+        }
+
+        return;
+    }
+
+    if (!m_WearGenerating)
+    {
+        return;
+    }
+
+    char error[512]{};
+    const render::MaterialWearStatus status = m_Editor.PollWearGeneration(error, sizeof(error));
+
+    if (m_Closing || status == render::MaterialWearStatus::Running)
+    {
+        return;
+    }
+
+    m_WearGenerating = false;
+
+    if (status == render::MaterialWearStatus::Ready)
+    {
+        BuildRows();
+        UpdateValidation();
+        MarkMaterialChanged();
+        m_pWearResult->SetText("#GameUI_MatEdit_WearCreated");
+    }
+    else if (status == render::MaterialWearStatus::Failed)
+    {
+        ShowWearError(error);
+    }
+}
+
+void CMaterialEditDialog::ShowWearError(const char* error)
+{
+    const wchar_t* heading = g_pVGuiLocalize->Find("#GameUI_MatEdit_WearFailed");
+    wchar_t detail[512]{};
+    g_pVGuiLocalize->ConvertANSIToUnicode(error, detail, sizeof(detail));
+    wchar_t text[768]{};
+    V_snwprintf(text, std::size(text), L"%s\n%s", heading != nullptr ? heading : L"", detail);
+    m_pWearResult->SetText(text);
+}
+
 void CMaterialEditDialog::ShowTextureGroup()
 {
     if (m_Model.empty())
@@ -982,6 +1162,7 @@ void CMaterialEditDialog::ReloadModels()
     m_pEmpty->SetVisible(m_Page == Page::Parameters && !has_model);
     m_pEmpty->SetText("#GameUI_MatEdit_SelectModel");
     m_pRows->SetVisible(m_Page == Page::Parameters && has_model);
+    m_pWear->SetVisible(m_Page == Page::Parameters && has_model);
     ReloadTextures();
 }
 
@@ -1142,6 +1323,9 @@ void CMaterialEditDialog::BuildRows()
 {
     m_Rows.clear();
     m_pRows->DeleteAllItems();
+    m_pWear->SetEnabled(
+        m_Editor.is_editing() && !m_Editor.has_mixed_programs() && V_strcmp(m_Editor.get_edited_program(), "weapon_finish") == 0
+    );
 
     if (!m_Editor.is_editing())
     {
@@ -1390,6 +1574,22 @@ void CMaterialEditDialog::OnCommand(const char* command)
 {
     if (m_Closing)
     {
+        return;
+    }
+
+    if (V_stricmp(command, "wear") == 0)
+    {
+        ShowWear();
+        return;
+    }
+    if (V_stricmp(command, "wear_generate") == 0)
+    {
+        GenerateWear();
+        return;
+    }
+    if (V_stricmp(command, "wear_back") == 0)
+    {
+        ShowPage(Page::Parameters);
         return;
     }
 
@@ -1656,6 +1856,13 @@ void CMaterialEditDialog::OnThink()
     }
 
     BaseClass::OnThink();
+    AdvanceWearGeneration();
+
+    if (m_Closing)
+    {
+        return;
+    }
+
     m_PreviewState.Advance(system()->GetCurrentTime());
 
     if (m_Page == Page::Lighting && m_PreviewState.is_sun_animating())
@@ -1678,7 +1885,12 @@ void CMaterialEditDialog::OnSliderMoved(Panel* panel)
         return;
     }
 
-    if (panel == m_pStandInFrame)
+    if (panel == m_pWearStrength)
+    {
+        UpdateWearControls();
+        ScheduleWearGeneration();
+    }
+    else if (panel == m_pStandInFrame)
     {
         m_PreviewState.SetFrame(m_pStandInFrame->GetValue() / 1000.0f);
     }
@@ -1691,7 +1903,12 @@ void CMaterialEditDialog::OnCheckButtonChecked(Panel* panel)
         return;
     }
 
-    if (panel == m_pCompare)
+    if (panel == m_pWearScratches)
+    {
+        UpdateWearControls();
+        ScheduleWearGeneration();
+    }
+    else if (panel == m_pCompare)
     {
         m_State.SetComparison(m_pCompare->IsSelected());
         m_pPreview->SetComparison(m_State.is_comparing());
@@ -1719,6 +1936,14 @@ void CMaterialEditDialog::MarkMaterialChanged()
 
 void CMaterialEditDialog::RequestChange(TransitionRequest request)
 {
+    if (m_Page == Page::Wear)
+    {
+        m_WearPending = false;
+        m_WearGenerating = false;
+        m_Editor.CancelWearGeneration();
+        m_pWearResult->SetText("");
+    }
+
     MarkMaterialChanged();
     RestoreSelections();
 
@@ -1872,6 +2097,11 @@ void CMaterialEditDialog::ApplyTransition(const TransitionRequest& request)
         RestoreSelections();
         m_Editor.End();
         BeginEditing();
+
+        if (m_Page == Page::Wear)
+        {
+            ShowPage(Page::Parameters);
+        }
     }
 }
 

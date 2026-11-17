@@ -6,10 +6,6 @@
 
 namespace matgen
 {
-    // Minimal PNG writer: what a tool needs to hand an image to an image editor and to the
-    // client's own loader, and nothing else. The client reads PNG through stb, which is a
-    // decoder only, so the writing side is here rather than in a package: nothing else in
-    // the tree writes images.
     struct Image
     {
         int width{};

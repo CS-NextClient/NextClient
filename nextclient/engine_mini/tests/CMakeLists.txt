@@ -238,10 +238,12 @@ endif ()
 add_executable(material-lifecycle-tests
         MaterialLifecycleTests.cpp
         MaterialDependencyTests.cpp
+        MaterialWearGenerationTests.cpp
         ClientStringRegistryIntegrationTests.cpp
         ../src/client/cl_string_registry.cpp
         ../src/graphics/render/material/material_edit.cpp
         ../src/graphics/render/material/MaterialEditor.cpp
+        ../src/graphics/render/material/MaterialWearGeneration.cpp
         ../src/client/ClientStringRegistry.cpp
         ../src/graphics/render/material/MaterialDocumentStore.cpp
         ../src/graphics/render/material/MaterialGameFiles.cpp

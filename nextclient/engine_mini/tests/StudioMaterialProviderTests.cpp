@@ -18,6 +18,50 @@ protected:
     }
 };
 
+TEST_F(StudioMaterialProviderTest, SelectiveTextureRetirementInvalidatesCapturedImagesAndPreservesOthers)
+{
+    StudioMaterialSourceFixture images;
+    images.textures = {{"materials/generated/old.png", 101}, {"materials/retained.png", 102}};
+    ASSERT_EQ(images.cache.Get("materials/generated/old.png"), 101u);
+    ASSERT_EQ(images.cache.Get("materials/retained.png"), 102u);
+    const uint32_t revision = images.cache.get_revision();
+    const size_t queries = images.texture_queries.size();
+    images.cache.Remove("materials/generated/old.png");
+    EXPECT_NE(images.cache.get_revision(), revision);
+    EXPECT_EQ(images.deletions, std::vector<GLuint>{101});
+    EXPECT_EQ(images.cache.Get("materials/retained.png"), 102u);
+    EXPECT_EQ(images.texture_queries.size(), queries);
+    images.textures["materials/generated/old.png"] = 201;
+    EXPECT_EQ(images.cache.Get("materials/generated/old.png"), 201u);
+    EXPECT_EQ(images.texture_queries.size(), queries + 1);
+    const uint32_t after = images.cache.get_revision();
+    images.cache.Remove("materials/missing.png");
+    EXPECT_EQ(images.cache.get_revision(), after);
+}
+
+#ifdef _WIN32
+TEST_F(StudioMaterialProviderTest, GeneratedImageRetirementReleasesEveryWindowsCaseAlias)
+{
+    StudioMaterialSourceFixture images;
+    images.textures = {
+        {"materials/generated/old.png", 101},
+        {"MATERIALS/generated/old.png", 103},
+        {"materials/retained.png", 102}
+    };
+    ASSERT_EQ(images.cache.Get("materials/generated/old.png"), 101u);
+    ASSERT_EQ(images.cache.Get("MATERIALS/generated/old.png"), 103u);
+    ASSERT_EQ(images.cache.Get("materials/retained.png"), 102u);
+    const size_t queries = images.texture_queries.size();
+    images.cache.Remove("materials/generated/old.png");
+    EXPECT_EQ(images.deletions, (std::vector<GLuint>{101, 103}));
+    EXPECT_EQ(images.cache.Get("materials/retained.png"), 102u);
+    EXPECT_EQ(images.texture_queries.size(), queries);
+    images.textures["MATERIALS/generated/old.png"] = 203;
+    EXPECT_EQ(images.cache.Get("MATERIALS/generated/old.png"), 203u);
+    EXPECT_EQ(images.texture_queries.size(), queries + 1);
+}
+#endif
+
 TEST_F(StudioMaterialProviderTest, IndependentInstancesCacheAndRetryTheirOwnProgramGeneration)
 {
     StudioProgramSourceFixture first_programs;

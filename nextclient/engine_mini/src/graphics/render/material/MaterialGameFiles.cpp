@@ -138,6 +138,58 @@ namespace render
         return true;
     }
 
+    bool MaterialGameFiles::WriteGenerated(const std::string& relative, const std::string& data, std::string& error)
+    {
+        if (game_directory_.empty())
+        {
+            error = "game directory is unavailable";
+            return false;
+        }
+
+        const std::filesystem::path path = std::filesystem::path(game_directory_) / relative;
+        std::error_code code;
+        std::filesystem::create_directories(path.parent_path(), code);
+
+        if (code)
+        {
+            error = "cannot create directory " + path.parent_path().string();
+            return false;
+        }
+
+        std::ofstream file(path, std::ios::binary | std::ios::out | std::ios::noreplace);
+
+        if (!file)
+        {
+            error = "cannot create generated image " + path.string();
+            return false;
+        }
+
+        const bool written = WriteOutput(file, data);
+        const bool completed = CompleteOutput(file);
+
+        if (!written || !completed)
+        {
+            std::filesystem::remove(path, code);
+            error = "cannot complete generated image " + path.string();
+            return false;
+        }
+
+        return true;
+    }
+
+    bool MaterialGameFiles::RemoveGenerated(const std::string& relative)
+    {
+        if (game_directory_.empty())
+        {
+            return false;
+        }
+
+        const std::filesystem::path path = std::filesystem::path(game_directory_) / relative;
+        std::error_code code;
+        std::filesystem::remove(path, code);
+        return !code;
+    }
+
     bool MaterialGameFiles::WriteOutput(std::ofstream& file, const std::string& text)
     {
         file.write(text.data(), static_cast<std::streamsize>(text.size()));
